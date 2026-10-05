@@ -13,30 +13,30 @@ test.use({ bundleMode: "single-file" });
  * Reject a proposed rename by keeping the old and new files separate. Acceptance should
  * remove the old configuration instead of transferring its identity.
  */
-test('Sourcing treats a rejected rename as different pages and removes the old configuration on acceptance', async ({ page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+test('Sourcing treats a rejected rename as different pages and removes the old configuration on acceptance', { annotation: { type: 'scenario-id', description: '30c13a6a-547f-4c87-ac13-cc68a5a6592a' } }, async ({ sourceCommand, page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
-  await new Workflows(page, expect).navigateToBigBundle();
+  await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
   const editor = new BundleEditorPage(page, expect);
-  await editor.waitForSourceCheck();
-  await checkpoint('the accepted source state is established before changing files');
+  await sourceCommand(() => editor.waitForSourceCheck());
+  await sourceCommand(() => checkpoint('the accepted source state is established before changing files'));
 
   // --- Test start ---
   // Rename the page and its links.
-  await sourceChanges.apply('rename-page-with-links');
-  await editor.checkSourceChanges();
+  await sourceCommand(() => sourceChanges.apply('rename-page-with-links'));
+  await sourceCommand(() => editor.checkSourceChanges());
   const review = editor.sourceReview;
-  await review.open();
-  const rename = await review.moveFrom(`${originalTitle}.md`);
-  await rename.keepSeparate();
-  await rename.expectPreviousRoute('t003 - link to section.md');
-  await addKeyFrame(orphan);
-  await checkpoint('different pages shows the previous route and proposes removing the old configuration');
+  await sourceCommand(() => review.open());
+  const rename = await sourceCommand(() => review.moveFrom(`${originalTitle}.md`));
+  await sourceCommand(() => rename.keepSeparate());
+  await sourceCommand(() => rename.expectPreviousRoute('t003 - link to section.md'));
+  await sourceCommand(() => addKeyFrame(orphan));
+  await sourceCommand(() => checkpoint('different pages shows the previous route and proposes removing the old configuration'));
 
   // Accept the source update.
-  await review.accept();
-  await editor.expectSourceOrphanCount(0);
-  await expect(page.getByRole('button', { name: 'Refresh sources', exact: true })).toBeVisible();
-  await checkpoint('acceptance removes the old identity after rejecting the rename');
+  await sourceCommand(() => review.accept());
+  await sourceCommand(() => editor.expectSourceOrphanCount(0));
+  await sourceCommand(() => expect(page.getByRole('button', { name: 'Refresh sources', exact: true })).toBeVisible());
+  await sourceCommand(() => checkpoint('acceptance removes the old identity after rejecting the rename'));
 
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

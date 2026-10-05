@@ -11,29 +11,29 @@ test.use({ bundleMode: 'single-file' });
  * Add a reachable image and inspect its proposed inclusion route. Acceptance should track
  * the new image without changing the accepted graph beforehand.
  */
-test('Sourcing previews an added image and its inclusion route before tracking it on acceptance', async ({ page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+test('Sourcing previews an added image and its inclusion route before tracking it on acceptance', { annotation: { type: 'scenario-id', description: 'bf4dde21-65c3-4632-ab21-f1b8b5f23e6e' } }, async ({ sourceCommand, page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
-  await new Workflows(page, expect).navigateToBigBundle();
+  await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
   const editor = new BundleEditorPage(page, expect);
-  await editor.waitForSourceCheck();
-  await checkpoint('the accepted source state is established before changing files');
+  await sourceCommand(() => editor.waitForSourceCheck());
+  await sourceCommand(() => checkpoint('the accepted source state is established before changing files'));
 
   // --- Test start ---
   // Add an embedded image.
-  await sourceChanges.apply('add-embedded-image');
-  await editor.checkSourceChanges();
-  await editor.sourceReview.open();
-  await editor.sourceReview.previewImage('source-changes/added sunflower.png', ['main page.md', 't006 - embedded media.md']);
-  await addKeyFrame(sourceSnapshot);
-  await checkpoint('the shared added image has a thumbnail and a real inclusion route');
+  await sourceCommand(() => sourceChanges.apply('add-embedded-image'));
+  await sourceCommand(() => editor.checkSourceChanges());
+  await sourceCommand(() => editor.sourceReview.open());
+  await sourceCommand(() => editor.sourceReview.previewImage('source-changes/added sunflower.png', ['main page.md', 't006 - embedded media.md']));
+  await sourceCommand(() => addKeyFrame(sourceSnapshot));
+  await sourceCommand(() => checkpoint('the shared added image has a thumbnail and a real inclusion route'));
 
   // Accept the source update.
-  await editor.sourceReview.accept();
-  await editor.switchToListView();
-  await editor.clickListViewRowByExactName('added sunflower');
-  await new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect).expectPill(Pill.Tracked);
-  await addKeyFrame(sourceSnapshot);
-  await checkpoint('acceptance includes and tracks the new embedded image');
+  await sourceCommand(() => editor.sourceReview.accept());
+  await sourceCommand(() => editor.switchToListView());
+  await sourceCommand(() => editor.clickListViewRowByExactName('added sunflower'));
+  await sourceCommand(() => new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect).expectPill(Pill.Tracked));
+  await sourceCommand(() => addKeyFrame(sourceSnapshot));
+  await sourceCommand(() => checkpoint('acceptance includes and tracks the new embedded image'));
 
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

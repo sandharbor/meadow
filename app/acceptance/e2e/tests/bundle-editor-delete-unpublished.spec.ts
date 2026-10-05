@@ -26,7 +26,7 @@ test.use({ bundleMode: "single-file" });
  * Delete an unpublished bundle from its editor. Confirm that it disappears from the list
  * and its local files are removed.
  */
-test("Delete unpublished bundle from within bundle editor", async ({
+test("Delete unpublished bundle from within bundle editor", { annotation: { type: 'scenario-id', description: '720025cc-0103-45b5-8e58-2ca9b37af6d0' } }, async ({ sourceCommand,
   page,
   checkpoint,
   skipMeadowHomeStateCheck,
@@ -34,37 +34,37 @@ test("Delete unpublished bundle from within bundle editor", async ({
 }) => {
   // --- Setup ---
   const wf = new Workflows(page, expect);
-  await wf.navigateToBigBundle();
+  await sourceCommand(() => wf.navigateToBigBundle());
 
   const editor = new BundleEditorPage(page, expect);
   const deleteModal = new DeleteBundleModal(page, expect);
   // Finish the initial fixture review before exercising bundle deletion.
-  await editor.waitForSourceCheck();
+  await sourceCommand(() => editor.waitForSourceCheck());
 
-  await checkpoint("the unpublished bundle is ready for deletion");
+  await sourceCommand(() => checkpoint("the unpublished bundle is ready for deletion"));
 
   // --- Test start ---
   // Open the deletion confirmation.
   // Open bundle options menu and click Delete bundle
-  await editor.clickBundleOptionsMenu();
-  await editor.clickDeleteBundleOption();
+  await sourceCommand(() => editor.clickBundleOptionsMenu());
+  await sourceCommand(() => editor.clickDeleteBundleOption());
 
   // Verify delete confirmation modal
-  await deleteModal.expectVisible();
-  await addKeyFrame(callout);
-  await addKeyFrame(deletion);
-  await checkpoint("delete confirmation for unpublished bundle");
+  await sourceCommand(() => deleteModal.expectVisible());
+  await sourceCommand(() => addKeyFrame(callout));
+  await sourceCommand(() => addKeyFrame(deletion));
+  await sourceCommand(() => checkpoint("delete confirmation for unpublished bundle"));
 
   // Confirm the deletion.
-  await deleteModal.confirmDelete();
+  await sourceCommand(() => deleteModal.confirmDelete());
 
   // Should navigate back to bundle list automatically
   const bundleList = new BundleListPage(page, expect);
-  await bundleList.expectHeadingVisible();
-  await bundleList.expectBundleNotVisible(Bundle.Big);
-  await checkpoint("bundle list after deletion - bundle gone");
+  await sourceCommand(() => bundleList.expectHeadingVisible());
+  await sourceCommand(() => bundleList.expectBundleNotVisible(Bundle.Big));
+  await sourceCommand(() => checkpoint("bundle list after deletion - bundle gone"));
 
   void bigBundle;
 
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

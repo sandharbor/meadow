@@ -26,7 +26,7 @@ test.use({ bundleMode: "single-file" });
  * Inspect the available concrete file types and solo Markdown. The graph should retain
  * only pages of that type.
  */
-test("type filter lists concrete file types and solos Markdown", async ({
+test("type filter lists concrete file types and solos Markdown", { annotation: { type: 'scenario-id', description: '463d5905-356e-4fd4-bbc9-ef4078d3ecba' } }, async ({ sourceCommand,
   page,
   checkpoint,
   assertMeadowHomeState,
@@ -37,29 +37,29 @@ test("type filter lists concrete file types and solos Markdown", async ({
   const editor = new BundleEditorPage(page, expect);
   const filterPanel = new FilterPanelComponent(page, expect);
 
-  await workflows.navigateToBigBundle();
-  await editor.expectGraphEdgeKindControlsHidden();
-  await filterPanel.expandFilterGroup("Types");
-  const markdownNodeCount = await filterPanel.getNodeTypeCount("Markdown");
+  await sourceCommand(() => workflows.navigateToBigBundle());
+  await sourceCommand(() => editor.expectGraphEdgeKindControlsHidden());
+  await sourceCommand(() => filterPanel.expandFilterGroup("Types"));
+  const markdownNodeCount = await sourceCommand(() => filterPanel.getNodeTypeCount("Markdown"));
   expect(markdownNodeCount).toBeGreaterThan(0);
   for (const typeName of ["HTML", "JavaScript", "CSS", "PNG", "GIF", "SVG", "Excalidraw"]) {
-    expect(await filterPanel.getNodeTypeCount(typeName)).toBeGreaterThan(0);
+    expect(await sourceCommand(() => filterPanel.getNodeTypeCount(typeName))).toBeGreaterThan(0);
   }
-  await checkpoint("type filters expanded");
+  await sourceCommand(() => checkpoint("type filters expanded"));
 
   // --- Test start ---
   // Solo Markdown pages.
-  await filterPanel.soloNodeType("Markdown");
-  await editor.switchToListView();
-  await expect.poll(() => editor.getListViewPageCount()).toBe(markdownNodeCount);
+  await sourceCommand(() => filterPanel.soloNodeType("Markdown"));
+  await sourceCommand(() => editor.switchToListView());
+  await sourceCommand(() => expect.poll(() => editor.getListViewPageCount()).toBe(markdownNodeCount));
 
-  const visibleTypes = await editor.getListViewNodeTypes();
+  const visibleTypes = await sourceCommand(() => editor.getListViewNodeTypes());
   expect(visibleTypes).toHaveLength(markdownNodeCount);
   expect(visibleTypes.every(type => type.trim() === ".md")).toBe(true);
-  await addKeyFrame(filters);
-  await checkpoint("Markdown nodes soloed");
+  await sourceCommand(() => addKeyFrame(filters));
+  await sourceCommand(() => checkpoint("Markdown nodes soloed"));
 
   void bigBundle;
 
-  await assertMeadowHomeState();
+  await sourceCommand(() => assertMeadowHomeState());
 });

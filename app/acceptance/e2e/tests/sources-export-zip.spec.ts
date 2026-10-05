@@ -35,71 +35,71 @@ test.use({ bundleMode: "single-file" });
  * Enable and save a source ZIP export, then disable it. The saved export should become
  * unavailable while generated HTML changes remain reviewable.
  */
-test("Sources export ZIP: saved export can be disabled without hiding changed HTML", async ({
+test("Sources export ZIP: saved export can be disabled without hiding changed HTML", { annotation: { type: 'scenario-id', description: '0ec721cf-af7a-4c07-8787-42294412e324' } }, async ({ sourceCommand,
   page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame, testServer,
 }) => {
   // --- Setup ---
   const wf = new Workflows(page, expect);
-  await wf.navigateToBigBundlePreview();
+  await sourceCommand(() => wf.navigateToBigBundlePreview());
   const modal = new PreviewPublishModal(page, expect);
   const editor = new BundleEditorPage(page, expect);
-  await checkpoint("preview loaded");
+  await sourceCommand(() => checkpoint("preview loaded"));
 
   // --- Test start ---
   // Enable source export.
   // Use the wrapped generated-page layout that exposed the section-diff bug,
   // then enable Sources ZIP at bundle level.
-  await modal.openCustomizeSidebar();
+  await sourceCommand(() => modal.openCustomizeSidebar());
   const customizeTab = new CustomizeTab(page, expect);
   const changesTab = new ChangesTab(page, expect);
-  await applyGenerationOptionAndWait(page, () => customizeTab.generationOptions.enableFolderNavigation());
-  await changesTab.waitForRegenerationComplete();
-  await applyGenerationOptionAndWait(page, () => customizeTab.generationOptions.enableSourcesExport());
-  await changesTab.waitForRegenerationComplete();
-  await addKeyFrame(customize);
-  await addKeyFrame(sourcesExport);
-  await checkpoint("regeneration complete with sources export");
+  await sourceCommand(() => applyGenerationOptionAndWait(page, () => customizeTab.generationOptions.enableFolderNavigation()));
+  await sourceCommand(() => changesTab.waitForRegenerationComplete());
+  await sourceCommand(() => applyGenerationOptionAndWait(page, () => customizeTab.generationOptions.enableSourcesExport()));
+  await sourceCommand(() => changesTab.waitForRegenerationComplete());
+  await sourceCommand(() => addKeyFrame(customize));
+  await sourceCommand(() => addKeyFrame(sourcesExport));
+  await sourceCommand(() => checkpoint("regeneration complete with sources export"));
 
   // Save the generated version.
-  await modal.clickBundlePreviewTab();
-  await modal.clickSaveChanges();
-  await modal.waitForSaveComplete();
-  await checkpoint("save completed");
+  await sourceCommand(() => modal.clickBundlePreviewTab());
+  await sourceCommand(() => modal.clickSaveChanges());
+  await sourceCommand(() => modal.waitForSaveComplete());
+  await sourceCommand(() => checkpoint("save completed"));
 
   // Check the committed files.
   // Verify the bundle directory in MeadowHome is fully committed — no untracked
   // or uncommitted files under the bundle (including build/sources_export/).
   const bundleDir = path.join(testServer.configDir, "bundles", Bundle.Big);
   const meadowGit = new MeadowHomeGit(testServer.configDir, expect);
-  await meadowGit.expectDirFullyCommitted(bundleDir);
-  await addKeyFrame(git);
-  await checkpoint("bundle directory fully committed");
+  await sourceCommand(() => meadowGit.expectDirFullyCommitted(bundleDir));
+  await sourceCommand(() => addKeyFrame(git));
+  await sourceCommand(() => checkpoint("bundle directory fully committed"));
 
   // Disable source export and inspect the diff.
   // Reopen Review, disable the saved Sources ZIP setting, and inspect the
   // resulting HTML changes through the filter dropdown.
-  await modal.closeModal();
-  await editor.clickPreview();
-  await modal.waitForPreviewComplete();
-  await modal.openCustomizeSidebar();
-  await applyGenerationOptionAndWait(page, () => customizeTab.generationOptions.disableSourcesExport());
-  await changesTab.waitForRegenerationComplete();
-  await modal.clickChangesTab();
-  await changesTab.openHtmlSectionChangesFilter();
+  await sourceCommand(() => modal.closeModal());
+  await sourceCommand(() => editor.clickPreview());
+  await sourceCommand(() => modal.waitForPreviewComplete());
+  await sourceCommand(() => modal.openCustomizeSidebar());
+  await sourceCommand(() => applyGenerationOptionAndWait(page, () => customizeTab.generationOptions.disableSourcesExport()));
+  await sourceCommand(() => changesTab.waitForRegenerationComplete());
+  await sourceCommand(() => modal.clickChangesTab());
+  await sourceCommand(() => changesTab.openHtmlSectionChangesFilter());
 
-  const modifiedCount = await changesTab.getChangeTypeCount("Modified");
+  const modifiedCount = await sourceCommand(() => changesTab.getChangeTypeCount("Modified"));
   expect(modifiedCount).toBeGreaterThan(0);
-  await changesTab.expectChangeTypeCount("Added", 0);
-  await changesTab.expectChangeTypeCount("Deleted", 2);
-  await changesTab.expectChangeTypesChecked(["Added", "Modified", "Deleted"]);
-  await changesTab.expectOnlySectionsWithChanges(["<header>"]);
-  await changesTab.expectSectionCount("<header>", modifiedCount);
-  await changesTab.expectNoHiddenFilesByFilter();
-  await addKeyFrame(changesTabDoc);
-  await addKeyFrame(filters);
-  await checkpoint("all sources zip HTML changes remain visible");
+  await sourceCommand(() => changesTab.expectChangeTypeCount("Added", 0));
+  await sourceCommand(() => changesTab.expectChangeTypeCount("Deleted", 2));
+  await sourceCommand(() => changesTab.expectChangeTypesChecked(["Added", "Modified", "Deleted"]));
+  await sourceCommand(() => changesTab.expectOnlySectionsWithChanges(["<header>"]));
+  await sourceCommand(() => changesTab.expectSectionCount("<header>", modifiedCount));
+  await sourceCommand(() => changesTab.expectNoHiddenFilesByFilter());
+  await sourceCommand(() => addKeyFrame(changesTabDoc));
+  await sourceCommand(() => addKeyFrame(filters));
+  await sourceCommand(() => checkpoint("all sources zip HTML changes remain visible"));
 
   void bigBundle;
 
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

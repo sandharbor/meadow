@@ -18,39 +18,39 @@ test.use({ fixtureHome: Fixture.SourcingReview });
  * stages the eligible page and explicitly names the departure it skipped. Acceptance applies the
  * complete scope and mandatory cleanup without any per-page source approval.
  */
-test('Sourcing bulk tracking explicitly reports departing comparison nodes it cannot track', async ({ page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+test('Sourcing bulk tracking explicitly reports departing comparison nodes it cannot track', { annotation: { type: 'scenario-id', description: 'e6c2836c-da56-4f84-9488-64b007b3989a' } }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);
   const sourcing = new SourcingWorkspacePage(page, expect);
   const proposal = new SourcingProposalState(testServer, 'sourcing-review');
-  await list.goto();
-  await list.clickBundle('sourcing-review');
-  await editor.waitForLoad('sourcing-review');
+  await sourceCommand(() => list.goto());
+  await sourceCommand(() => list.clickBundle('sourcing-review'));
+  await sourceCommand(() => editor.waitForLoad('sourcing-review'));
   const directory = path.join(testServer.configDir, 'bundles/sourcing-review');
   const saved = fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8');
-  await sourcing.open();
-  await sourcing.select('Bridge');
-  await sourcing.setSelectedOutlinkDepth(0);
-  await sourcing.select('Reference');
-  await sourcing.untrackSelected();
-  await checkpoint('the proposed graph contains an eligible untracked page and departing configured pages');
+  await sourceCommand(() => sourcing.open());
+  await sourceCommand(() => sourcing.select('Bridge'));
+  await sourceCommand(() => sourcing.setSelectedOutlinkDepth(0));
+  await sourceCommand(() => sourcing.select('Reference'));
+  await sourceCommand(() => sourcing.untrackSelected());
+  await sourceCommand(() => checkpoint('the proposed graph contains an eligible untracked page and departing configured pages'));
 
   // --- Test start ---
-  await sourcing.addToSelection('Departing');
-  await expect(sourcing.root.getByRole('button', { name: 'Track All', exact: true })).toBeEnabled();
-  await checkpoint('the mixed selection contains a candidate and a departing comparison node');
-  await sourcing.root.getByRole('button', { name: 'Track All', exact: true }).click();
-  await expect(sourcing.root.getByRole('status')).toContainText('Skipped 1 selected page: Departing');
+  await sourceCommand(() => sourcing.addToSelection('Departing'));
+  await sourceCommand(() => expect(sourcing.root.getByRole('button', { name: 'Track All', exact: true })).toBeEnabled());
+  await sourceCommand(() => checkpoint('the mixed selection contains a candidate and a departing comparison node'));
+  await sourceCommand(() => sourcing.root.getByRole('button', { name: 'Track All', exact: true }).click());
+  await sourceCommand(() => expect(sourcing.root.getByRole('status')).toContainText('Skipped 1 selected page: Departing'));
   expect(proposal.current.tracking['file:Routes/Reference.md']).toMatchObject({ track: true, origin: 'explicit' });
   expect(proposal.current.tracking['file:Departing.md']).toBeUndefined();
   expect(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).toBe(saved);
-  await addKeyFrame(sourceReviewWorkspace);
-  await checkpoint('the bulk action explicitly reports the skipped departure and stages only the eligible page');
-  await sourcing.accept();
+  await sourceCommand(() => addKeyFrame(sourceReviewWorkspace));
+  await sourceCommand(() => checkpoint('the bulk action explicitly reports the skipped departure and stages only the eligible page'));
+  await sourceCommand(() => sourcing.accept());
   const nodes = YAML.parse(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).nodes;
   expect(nodes.some((node: { bundleNodeName: string }) => node.bundleNodeName === 'Reference')).toBe(true);
   expect(nodes.some((node: { bundleNodeName: string }) => node.bundleNodeName === 'Departing')).toBe(false);
-  await checkpoint('acceptance applies the full source proposal including cleanup of the skipped departure');
-  await assertMeadowHomeState();
+  await sourceCommand(() => checkpoint('acceptance applies the full source proposal including cleanup of the skipped departure'));
+  await sourceCommand(() => assertMeadowHomeState());
 });

@@ -25,57 +25,57 @@ test.use({ bundleMode: "single-file" });
  * Solo a filter that matches no pages. The empty-graph callout should explain why the
  * pages are hidden and help restore them.
  */
-test("empty solo callout appears when solo filter hides all pages", async ({ page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame }) => {
+test("empty solo callout appears when solo filter hides all pages", { annotation: { type: 'scenario-id', description: 'bbf7cb88-2a18-46dc-b338-41f4305ce162' } }, async ({ sourceCommand, page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame }) => {
   // --- Setup ---
   const bundleList = new BundleListPage(page, expect);
-  await bundleList.goto();
-  await checkpoint("bundle list loaded");
+  await sourceCommand(() => bundleList.goto());
+  await sourceCommand(() => checkpoint("bundle list loaded"));
 
   // --- Test start ---
   // Open the big bundle.
-  await bundleList.clickBundle("meadow-test-bundle-big");
+  await sourceCommand(() => bundleList.clickBundle("meadow-test-bundle-big"));
   const editor = new BundleEditorPage(page, expect);
-  await editor.waitForLoad("meadow-test-bundle-big");
-  await checkpoint("bundle editor loaded");
+  await sourceCommand(() => editor.waitForLoad("meadow-test-bundle-big"));
+  await sourceCommand(() => checkpoint("bundle editor loaded"));
 
   // Switch to the list.
-  await editor.switchToListView();
-  await checkpoint("list view");
+  await sourceCommand(() => editor.switchToListView());
+  await sourceCommand(() => checkpoint("list view"));
 
   // Create a filter that matches nothing.
   const filterPanel = new FilterPanelComponent(page, expect);
-  await filterPanel.clickAddCustomFilter();
-  await filterPanel.fillAndSaveCustomFilter({
+  await sourceCommand(() => filterPanel.clickAddCustomFilter());
+  await sourceCommand(() => filterPanel.fillAndSaveCustomFilter({
     name: "no match",
     field: "title",
     matchType: "substring",
     value: "xyznonexistent",
-  });
-  await page.waitForTimeout(250);
-  await checkpoint("custom filter created");
+  }));
+  await sourceCommand(() => page.waitForTimeout(250));
+  await sourceCommand(() => checkpoint("custom filter created"));
 
   // Solo the empty filter.
-  await filterPanel.enableAndSoloFilter("no match");
-  await page.waitForTimeout(250);
-  await checkpoint("custom filter soloed with no matching pages");
+  await sourceCommand(() => filterPanel.enableAndSoloFilter("no match"));
+  await sourceCommand(() => page.waitForTimeout(250));
+  await sourceCommand(() => checkpoint("custom filter soloed with no matching pages"));
 
   // Check the empty-view explanation.
-  await editor.expectEmptySoloCalloutVisible();
-  await addKeyFrame(callout);
-  await checkpoint("empty solo callout visible");
+  await sourceCommand(() => editor.expectEmptySoloCalloutVisible());
+  await sourceCommand(() => addKeyFrame(callout));
+  await sourceCommand(() => checkpoint("empty solo callout visible"));
 
   // Turn off solos.
-  await editor.clickTurnOffSolos();
-  await page.waitForTimeout(250);
-  await checkpoint("solos turned off");
+  await sourceCommand(() => editor.clickTurnOffSolos());
+  await sourceCommand(() => page.waitForTimeout(250));
+  await sourceCommand(() => checkpoint("solos turned off"));
 
   // Check the restored pages.
-  await editor.expectEmptySoloCalloutNotVisible();
-  const pageCount = await editor.getListViewPageCount();
+  await sourceCommand(() => editor.expectEmptySoloCalloutNotVisible());
+  const pageCount = await sourceCommand(() => editor.getListViewPageCount());
   expect(pageCount).toBeGreaterThan(0);
-  await checkpoint("pages visible again");
+  await sourceCommand(() => checkpoint("pages visible again"));
 
   void bigBundle;
 
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

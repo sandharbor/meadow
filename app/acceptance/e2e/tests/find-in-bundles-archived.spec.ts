@@ -26,7 +26,7 @@ test.use({ bundleMode: "single-file" });
  * Find a page that also belongs to an archived bundle. The search should identify the
  * archived match and open it through the archived list.
  */
-test("find in bundles shows archived match indicator and archived tab", async ({
+test("find in bundles shows archived match indicator and archived tab", { annotation: { type: 'scenario-id', description: '2d70b840-01c1-47ff-9364-c778fb4646f9' } }, async ({ sourceCommand,
   page,
   checkpoint,
   skipMeadowHomeStateCheck,
@@ -39,67 +39,67 @@ test("find in bundles shows archived match indicator and archived tab", async ({
 
   // Add the example bundle so the bundle list has more entries, making the
   // find-in-bundles filtering more visually obvious.
-  await bundleList.goto();
-  await bundleList.addExampleBundleFromMenu();
-  await page.waitForTimeout(2000);
-  await bundleList.goto();
-  await bundleList.expectBundleVisible(Bundle.Example);
-  await checkpoint("bundle list with example bundle added");
+  await sourceCommand(() => bundleList.goto());
+  await sourceCommand(() => bundleList.addExampleBundleFromMenu());
+  await sourceCommand(() => page.waitForTimeout(2000));
+  await sourceCommand(() => bundleList.goto());
+  await sourceCommand(() => bundleList.expectBundleVisible(Bundle.Example));
+  await sourceCommand(() => checkpoint("bundle list with example bundle added"));
 
   // --- Test start ---
   // Archive the big bundle.
-  await bundleList.archiveBundle(Bundle.Big);
-  await page.waitForTimeout(500);
-  await bundleList.expectBundleNotVisible(Bundle.Big);
-  await checkpoint("big bundle archived");
+  await sourceCommand(() => bundleList.archiveBundle(Bundle.Big));
+  await sourceCommand(() => page.waitForTimeout(500));
+  await sourceCommand(() => bundleList.expectBundleNotVisible(Bundle.Big));
+  await sourceCommand(() => checkpoint("big bundle archived"));
 
   // Find the shared page from the small bundle.
-  await bundleList.clickBundle(Bundle.Small);
-  await editor.waitForLoad(Bundle.Small);
+  await sourceCommand(() => bundleList.clickBundle(Bundle.Small));
+  await sourceCommand(() => editor.waitForLoad(Bundle.Small));
 
   // Switch to list view and right-click "t001 - deeply nested"
-  await editor.switchToListView();
-  await page.waitForTimeout(250);
-  await editor.rightClickRow("t001 - deeply nested");
+  await sourceCommand(() => editor.switchToListView());
+  await sourceCommand(() => page.waitForTimeout(250));
+  await sourceCommand(() => editor.rightClickRow("t001 - deeply nested"));
 
   // Click "Find in Bundles" from the context menu
-  await editor.clickFindInBundles();
-  await page.waitForTimeout(500);
+  await sourceCommand(() => editor.clickFindInBundles());
+  await sourceCommand(() => page.waitForTimeout(500));
 
   // Should be back at bundle list with find-in-bundles filter active
-  await bundleList.expectHeadingVisible();
-  await bundleList.expectFindInBundlesFilterActive("t001 - deeply nested");
+  await sourceCommand(() => bundleList.expectHeadingVisible());
+  await sourceCommand(() => bundleList.expectFindInBundlesFilterActive("t001 - deeply nested"));
 
   // Only the small bundle should be in the main (current) list —
   // the example bundle is filtered out because it doesn't track this page
-  await bundleList.expectBundleVisible(Bundle.Small);
-  await bundleList.expectBundleNotVisible(Bundle.Big);
-  await bundleList.expectBundleNotVisible(Bundle.Example);
-  await addKeyFrame(findInBundles);
-  await addKeyFrame(multiBundle);
-  await checkpoint("current tab shows only small bundle");
+  await sourceCommand(() => bundleList.expectBundleVisible(Bundle.Small));
+  await sourceCommand(() => bundleList.expectBundleNotVisible(Bundle.Big));
+  await sourceCommand(() => bundleList.expectBundleNotVisible(Bundle.Example));
+  await sourceCommand(() => addKeyFrame(findInBundles));
+  await sourceCommand(() => addKeyFrame(multiBundle));
+  await sourceCommand(() => checkpoint("current tab shows only small bundle"));
 
   // Check the archived match count.
-  await bundleList.expectArchivedTabBadge(1);
-  await checkpoint("archived tab badge shows 1 match");
+  await sourceCommand(() => bundleList.expectArchivedTabBadge(1));
+  await sourceCommand(() => checkpoint("archived tab badge shows 1 match"));
 
   // Open the archived matches.
-  await bundleList.clickArchivedTab();
-  await page.waitForTimeout(250);
-  await bundleList.expectBundleVisible(Bundle.Big);
-  await addKeyFrame(archived);
-  await checkpoint("archived tab shows big bundle match");
+  await sourceCommand(() => bundleList.clickArchivedTab());
+  await sourceCommand(() => page.waitForTimeout(250));
+  await sourceCommand(() => bundleList.expectBundleVisible(Bundle.Big));
+  await sourceCommand(() => addKeyFrame(archived));
+  await sourceCommand(() => checkpoint("archived tab shows big bundle match"));
 
   // Clear the page filter.
   // Clearing Find in Bundles ends the mode instead of offering to apply the
   // same filter a second time.
-  await bundleList.clearFindInBundlesFilter("t001 - deeply nested");
-  await bundleList.expectFindInBundlesFilterCleared("t001 - deeply nested");
-  await checkpoint("find in bundles cleared");
+  await sourceCommand(() => bundleList.clearFindInBundlesFilter("t001 - deeply nested"));
+  await sourceCommand(() => bundleList.expectFindInBundlesFilterCleared("t001 - deeply nested"));
+  await sourceCommand(() => checkpoint("find in bundles cleared"));
 
   void bigBundle;
   void smallBundle;
   void exampleBundle;
 
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

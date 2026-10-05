@@ -56,7 +56,7 @@ test.use({ recordVideo: false });
  * through the CLI. Check retries, stale saves, sensitive-page protection, and the
  * resulting files.
  */
-test("CLI creates a page bundle and safely tracks its working graph", async ({
+test("CLI creates a page bundle and safely tracks its working graph", { annotation: { type: 'scenario-id', description: '5d8ab79c-23c5-4af5-8d25-7dcde499ddfe' } }, async ({ sourceCommand,
   assertMeadowHomeState,
   meadowCli,
   page,
@@ -66,18 +66,18 @@ test("CLI creates a page bundle and safely tracks its working graph", async ({
   // --- Setup ---
   const source = materializeCreateSafeBundleSource({ readOnly: true });
   try {
-    await checkpoint("a read-only source is ready");
+    await sourceCommand(() => checkpoint("a read-only source is ready"));
 
     // --- Test start ---
     // Create the bundle.
-    const created = await meadowCli.runJson<CreateBundleCliResult>([
+    const created = await sourceCommand(() => meadowCli.runJson<CreateBundleCliResult>([
       "bundles",
       "create",
       "--source",
       source.directory,
       "--entry",
       "Notable Mental Models.md",
-    ], { artifactName: "create-notable-mental-models" });
+    ], { artifactName: "create-notable-mental-models" }));
     expect(created).toMatchObject({
       schemaVersion: 1,
       operation: "bundles.create",
@@ -100,24 +100,24 @@ test("CLI creates a page bundle and safely tracks its working graph", async ({
       displayCommand: "meadow bundle track notable-mental-models --all-safe",
     });
 
-    await checkpoint("creation tracks the entry page");
+    await sourceCommand(() => checkpoint("creation tracks the entry page"));
 
     // Retry creation and check slug conflicts.
-    const retried = await meadowCli.runJson<CreateBundleCliResult>([
+    const retried = await sourceCommand(() => meadowCli.runJson<CreateBundleCliResult>([
       "bundles",
       "create",
       "--source",
       source.directory,
       "--entry",
       "Notable Mental Models.md",
-    ], { artifactName: "retry-create-notable-mental-models" });
+    ], { artifactName: "retry-create-notable-mental-models" }));
     expect(retried).toMatchObject({
       slug: "notable-mental-models",
       created: false,
       changed: false,
     });
 
-    const conflict = await meadowCli.runFailure([
+    const conflict = await sourceCommand(() => meadowCli.runFailure([
       "bundles",
       "create",
       "--source",
@@ -126,21 +126,21 @@ test("CLI creates a page bundle and safely tracks its working graph", async ({
       "Notable Mental Models.md",
       "--slug",
       "notable-mental-models",
-    ], { artifactName: "reject-conflicting-explicit-slug" });
+    ], { artifactName: "reject-conflicting-explicit-slug" }));
     expect(conflict.exitCode).toBe(1);
     expect(conflict.stdout).toBe("");
     expect(conflict.stderr).toContain("Bundle slug 'notable-mental-models' already exists");
     expect(conflict.stderr).toContain("Choose a different --slug");
 
-    await checkpoint("creation retries safely and rejects conflicting slugs");
+    await sourceCommand(() => checkpoint("creation retries safely and rejects conflicting slugs"));
 
     // Track safe content.
-    const trackedSafe = await meadowCli.runJson<TrackBundleNodesCliResult>([
+    const trackedSafe = await sourceCommand(() => meadowCli.runJson<TrackBundleNodesCliResult>([
       "bundle",
       "track",
       "notable-mental-models",
       "--all-safe",
-    ], { artifactName: "track-all-safe" });
+    ], { artifactName: "track-all-safe" }));
     expect(trackedSafe).toMatchObject({
       schemaVersion: 1,
       operation: "bundle.track",
@@ -170,25 +170,25 @@ test("CLI creates a page bundle and safely tracks its working graph", async ({
       displayCommand: "meadow bundle generate notable-mental-models",
     });
 
-    const retriedSafe = await meadowCli.runJson<TrackBundleNodesCliResult>([
+    const retriedSafe = await sourceCommand(() => meadowCli.runJson<TrackBundleNodesCliResult>([
       "bundle",
       "track",
       "notable-mental-models",
       "--all-safe",
-    ], { artifactName: "retry-track-all-safe" });
+    ], { artifactName: "retry-track-all-safe" }));
     expect(retriedSafe.changed).toBe(false);
     expect(retriedSafe.newlyTracked).toEqual([]);
     expect(retriedSafe.alreadyTracked).toHaveLength(32);
     expect(retriedSafe.sensitiveSkipped).toHaveLength(3);
 
-    await checkpoint("safe tracking skips sensitive content and is repeatable");
+    await sourceCommand(() => checkpoint("safe tracking skips sensitive content and is repeatable"));
 
     // Generate and inspect the preview.
-    const generated = await meadowCli.runJson<GenerateBundleCliResult>([
+    const generated = await sourceCommand(() => meadowCli.runJson<GenerateBundleCliResult>([
       "bundle",
       "generate",
       "notable-mental-models",
-    ], { artifactName: "generate-bundle" });
+    ], { artifactName: "generate-bundle" }));
     expect(generated).toMatchObject({
       schemaVersion: 1,
       operation: "bundle.generate",
@@ -215,38 +215,38 @@ test("CLI creates a page bundle and safely tracks its working graph", async ({
       ],
       displayCommand: `meadow bundle save-generation notable-mental-models --version ${generated.versionId}`,
     });
-    const previewResponse = await page.goto(generated.previewUrl);
+    const previewResponse = await sourceCommand(() => page.goto(generated.previewUrl));
     expect(previewResponse?.ok()).toBe(true);
-    await expect(page.getByRole("heading", { name: "Notable Mental Models", exact: true })).toBeVisible();
+    await sourceCommand(() => expect(page.getByRole("heading", { name: "Notable Mental Models", exact: true })).toBeVisible());
 
-    const regenerated = await meadowCli.runJson<GenerateBundleCliResult>([
+    const regenerated = await sourceCommand(() => meadowCli.runJson<GenerateBundleCliResult>([
       "bundle",
       "generate",
       "notable-mental-models",
-    ], { artifactName: "retry-generate-bundle" });
+    ], { artifactName: "retry-generate-bundle" }));
     expect(regenerated.versionId).toBe(generated.versionId);
     expect(regenerated.saved).toBe(false);
 
-    const staleSave = await meadowCli.runFailure([
+    const staleSave = await sourceCommand(() => meadowCli.runFailure([
       "bundle",
       "save-generation",
       "notable-mental-models",
       "--version",
       "vAAAAAA",
-    ], { artifactName: "refuse-stale-version-save" });
+    ], { artifactName: "refuse-stale-version-save" }));
     expect(staleSave.stderr).toContain("is not the current generated version");
     expect(staleSave.stderr).toContain(`Save ${generated.versionId}`);
 
-    await checkpoint("regeneration preserves identity and refuses stale saves");
+    await sourceCommand(() => checkpoint("regeneration preserves identity and refuses stale saves"));
 
     // Save the current generation.
-    const saved = await meadowCli.runJson<SaveGenerationCliResult>([
+    const saved = await sourceCommand(() => meadowCli.runJson<SaveGenerationCliResult>([
       "bundle",
       "save-generation",
       "notable-mental-models",
       "--version",
       generated.versionId,
-    ], { artifactName: "save-generation" });
+    ], { artifactName: "save-generation" }));
     expect(saved).toMatchObject({
       schemaVersion: 1,
       operation: "bundle.save-generation",
@@ -270,17 +270,17 @@ test("CLI creates a page bundle and safely tracks its working graph", async ({
         displayCommand: expect.any(String),
       }],
     });
-    const savedPreview = await page.goto(saved.previewUrl!);
+    const savedPreview = await sourceCommand(() => page.goto(saved.previewUrl!));
     expect(savedPreview?.ok()).toBe(true);
-    await expect(page.getByRole("heading", { name: "Notable Mental Models", exact: true }))
-      .toBeVisible();
-    const savedAgain = await meadowCli.runJson<SaveGenerationCliResult>([
+    await sourceCommand(() => expect(page.getByRole("heading", { name: "Notable Mental Models", exact: true }))
+      .toBeVisible());
+    const savedAgain = await sourceCommand(() => meadowCli.runJson<SaveGenerationCliResult>([
       "bundle",
       "save-generation",
       "notable-mental-models",
       "--version",
       generated.versionId,
-    ], { artifactName: "retry-save-generation" });
+    ], { artifactName: "retry-save-generation" }));
     expect(savedAgain).toMatchObject({
       changed: false,
       versionId: generated.versionId,
@@ -300,10 +300,10 @@ test("CLI creates a page bundle and safely tracks its working graph", async ({
     expect(generatedFiles.some(file => file.includes("2026-02-10"))).toBe(false);
     expect(generatedFiles.some(file => file.toLowerCase().includes("thoughts on munger"))).toBe(false);
 
-    await checkpoint("saved output includes safe pages and assets");
+    await sourceCommand(() => checkpoint("saved output includes safe pages and assets"));
 
     // Create a copy and track selected pages.
-    const explicitDuplicate = await meadowCli.runJson<CreateBundleCliResult>([
+    const explicitDuplicate = await sourceCommand(() => meadowCli.runJson<CreateBundleCliResult>([
       "bundles",
       "create",
       "--source",
@@ -312,26 +312,26 @@ test("CLI creates a page bundle and safely tracks its working graph", async ({
       "Notable Mental Models.md",
       "--slug",
       "notable-mental-models-copy",
-    ], { artifactName: "create-explicit-duplicate" });
+    ], { artifactName: "create-explicit-duplicate" }));
     expect(explicitDuplicate).toMatchObject({
       slug: "notable-mental-models-copy",
       created: true,
       changed: true,
     });
 
-    const copyGraph = await meadowCli.runJson<GraphDescription>([
+    const copyGraph = await sourceCommand(() => meadowCli.runJson<GraphDescription>([
       "bundle",
       "nodes",
       "notable-mental-models-copy",
       "--scope",
       "all",
-    ], { artifactName: "inspect-copy-node-keys" });
+    ], { artifactName: "inspect-copy-node-keys" }));
     const keyFor = (name: string): string => {
       const node = copyGraph.nodes.find(candidate => candidate.bundleNodeName === name);
       expect(node, `Expected ${name} in the working graph`).toBeDefined();
       return node!.bundleNodeKey;
     };
-    const targeted = await meadowCli.runJson<TrackBundleNodesCliResult>([
+    const targeted = await sourceCommand(() => meadowCli.runJson<TrackBundleNodesCliResult>([
       "bundle",
       "track",
       "notable-mental-models-copy",
@@ -339,7 +339,7 @@ test("CLI creates a page bundle and safely tracks its working graph", async ({
       keyFor("Charlie Munger"),
       "--node-key",
       keyFor("Warren Buffett"),
-    ], { artifactName: "targeted-track-repeatable-node-key" });
+    ], { artifactName: "targeted-track-repeatable-node-key" }));
     expect(targeted).toMatchObject({
       mode: "targeted",
       changed: true,
@@ -349,20 +349,20 @@ test("CLI creates a page bundle and safely tracks its working graph", async ({
       "Warren Buffett",
     ]);
 
-    await checkpoint("explicit page selection tracks only the requested pages");
+    await sourceCommand(() => checkpoint("explicit page selection tracks only the requested pages"));
 
     // Try to track sensitive content.
-    const sensitiveRefusal = await meadowCli.runFailure([
+    const sensitiveRefusal = await sourceCommand(() => meadowCli.runFailure([
       "bundle",
       "track",
       "notable-mental-models-copy",
       "--node-key",
       keyFor("2026-02-02"),
-    ], { artifactName: "targeted-track-refuses-sensitive" });
+    ], { artifactName: "targeted-track-refuses-sensitive" }));
     expect(sensitiveRefusal.stderr).toContain("Refusing to track sensitive node");
     expect(sensitiveRefusal.stderr).toContain("No sensitive-content override is available");
 
-    await checkpoint("sensitive tracking is refused");
+    await sourceCommand(() => checkpoint("sensitive tracking is refused"));
 
     // Inspect saved configuration and content.
     const bundleConfig = YAML.parse(readFileSync(
@@ -399,60 +399,60 @@ test("CLI creates a page bundle and safely tracks its working graph", async ({
       "utf8",
     )).toThrow();
 
-    await checkpoint("saved files agree with the accepted graph");
+    await sourceCommand(() => checkpoint("saved files agree with the accepted graph"));
 
     // Check command help.
-    const topHelp = await meadowCli.run(["--help"], { artifactName: "top-level-create-help" });
+    const topHelp = await sourceCommand(() => meadowCli.run(["--help"], { artifactName: "top-level-create-help" }));
     expect(topHelp).toContain("meadow bundles create --source <directory> --entry <relative-page>");
     expect(topHelp).toContain("meadow bundle node track <bundle-slug> --path <node-path>");
-    const createHelp = await meadowCli.run(
+    const createHelp = await sourceCommand(() => meadowCli.run(
       ["bundles", "create", "--help"],
       { artifactName: "nested-create-help" },
-    );
+    ));
     expect(createHelp).toContain("Implicit creation is safe to retry");
     expect(createHelp).toContain("The entry page is tracked automatically");
     expect(createHelp).toContain("--slug <slug>");
-    const trackHelp = await meadowCli.run(
+    const trackHelp = await sourceCommand(() => meadowCli.run(
       ["bundle", "track", "--help"],
       { artifactName: "nested-track-help" },
-    );
+    ));
     expect(trackHelp).toContain("--all-safe");
     expect(trackHelp).toContain("--node-key <bundle-node-key>");
     expect(trackHelp).toContain("For explicit one-at-a-time curation");
     expect(trackHelp).toContain("It never tracks sensitive nodes");
-    const nodeHelp = await meadowCli.run(
+    const nodeHelp = await sourceCommand(() => meadowCli.run(
       ["bundle", "node", "--help"],
       { artifactName: "nested-node-help" },
-    );
+    ));
     expect(nodeHelp).toContain('meadow bundle node track my-site --path "Charlie Munger.md"');
     expect(nodeHelp).toContain("bundle node set-depths");
-    const nodeHelpAlias = await meadowCli.run(
+    const nodeHelpAlias = await sourceCommand(() => meadowCli.run(
       ["help", "bundle", "node"],
       { artifactName: "nested-node-help-alias" },
-    );
+    ));
     expect(nodeHelpAlias).toBe(nodeHelp);
-    const generateHelp = await meadowCli.run(
+    const generateHelp = await sourceCommand(() => meadowCli.run(
       ["bundle", "generate", "--help"],
       { artifactName: "nested-generate-help" },
-    );
+    ));
     expect(generateHelp).toContain("bundle-scoped read-only previewUrl");
-    const generateHelpAlias = await meadowCli.run(
+    const generateHelpAlias = await sourceCommand(() => meadowCli.run(
       ["help", "bundle", "generate"],
       { artifactName: "nested-generate-help-alias" },
-    );
+    ));
     expect(generateHelpAlias).toBe(generateHelp);
-    const saveHelp = await meadowCli.run(
+    const saveHelp = await sourceCommand(() => meadowCli.run(
       ["bundle", "save-generation", "--help"],
       { artifactName: "nested-save-generation-help" },
-    );
+    ));
     expect(saveHelp).toContain("savedGenerationId");
     expect(saveHelp).toContain("safe to retry");
     void cli;
     void bundles;
 
-    await checkpoint("help documents creation tracking generation and saving");
+    await sourceCommand(() => checkpoint("help documents creation tracking generation and saving"));
 
-    await assertMeadowHomeState();
+    await sourceCommand(() => assertMeadowHomeState());
   } finally {
     source.cleanup();
   }

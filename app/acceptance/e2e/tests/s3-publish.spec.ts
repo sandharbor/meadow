@@ -34,7 +34,7 @@ test.use({ bundleMode: "single-file" });
  * cleanup choices. Check version links, remote files, publication history, and deletion
  * behavior.
  */
-test("R02 R04 R05 R06 R07 R08 P02 P06 D02 L01 S3 version publication and reader awareness lifecycle", async ({
+test("R02 R04 R05 R06 R07 R08 P02 P06 D02 L01 S3 version publication and reader awareness lifecycle", { annotation: { type: 'scenario-id', description: 'f133eb45-0c07-4621-bf2a-b753ee1038b7' } }, async ({ sourceCommand,
   page,
   checkpoint,
   skipMeadowHomeStateCheck,
@@ -46,42 +46,42 @@ test("R02 R04 R05 R06 R07 R08 P02 P06 D02 L01 S3 version publication and reader 
   // --- Setup ---
   // Swap the active provider to S3PublishingProvider before the frontend
   // fetches /api/sharing/publishing-providers.
-  await testServer.activateS3Provider();
+  await sourceCommand(() => testServer.activateS3Provider());
 
   const wf = new Workflows(page, expect);
-  await wf.navigateToBigBundleShareTab();
+  await sourceCommand(() => wf.navigateToBigBundleShareTab());
 
   const publishPage = new PublishToS3Tab(page, expect);
-  await publishPage.expectVisible();
+  await sourceCommand(() => publishPage.expectVisible());
 
-  await expect(page.getByTestId('s3-config-summary')).toContainText('credentials saved');
-  await page.getByTestId('s3-config-toggle').click();
-  await expect(page.getByTestId('s3-access-key-id')).toHaveValue('••••••••');
-  await expect(page.getByTestId('s3-secret-access-key')).toHaveValue('••••••••••••••••');
-  await expect(page.getByText(/saved values cannot be shown/i)).toBeVisible();
-  expect(await page.content()).not.toContain(E2E_S3_ACCESS_KEY_ID);
-  expect(await page.content()).not.toContain(E2E_S3_SECRET_ACCESS_KEY);
-  await checkpoint('saved S3 credentials represented only by presence');
+  await sourceCommand(() => expect(page.getByTestId('s3-config-summary')).toContainText('credentials saved'));
+  await sourceCommand(() => page.getByTestId('s3-config-toggle').click());
+  await sourceCommand(() => expect(page.getByTestId('s3-access-key-id')).toHaveValue('••••••••'));
+  await sourceCommand(() => expect(page.getByTestId('s3-secret-access-key')).toHaveValue('••••••••••••••••'));
+  await sourceCommand(() => expect(page.getByText(/saved values cannot be shown/i)).toBeVisible());
+  expect(await sourceCommand(() => page.content())).not.toContain(E2E_S3_ACCESS_KEY_ID);
+  expect(await sourceCommand(() => page.content())).not.toContain(E2E_S3_SECRET_ACCESS_KEY);
+  await sourceCommand(() => checkpoint('saved S3 credentials represented only by presence'));
 
   // --- Test start ---
   // Choose a publication slug.
-  await page.getByTestId('s3-secret-access-key').scrollIntoViewIfNeeded();
-  await addKeyFrame(s3);
-  await page.getByTestId('s3-config-toggle').click();
+  await sourceCommand(() => page.getByTestId('s3-secret-access-key').scrollIntoViewIfNeeded());
+  await sourceCommand(() => addKeyFrame(s3));
+  await sourceCommand(() => page.getByTestId('s3-config-toggle').click());
 
   const publishSlug = `${Bundle.Big}-s3`;
-  await publishPage.setPublishSlug(publishSlug);
-  await checkpoint("S3 publish slug saved");
+  await sourceCommand(() => publishPage.setPublishSlug(publishSlug));
+  await sourceCommand(() => checkpoint("S3 publish slug saved"));
 
   // Publish to S3.
-  await minioS3.expectEmpty(`${publishSlug}-`);
+  await sourceCommand(() => minioS3.expectEmpty(`${publishSlug}-`));
 
-  await publishPage.clickPublish();
-  const publishedUrl = await publishPage.expectPublishSuccess();
-  await publishPage.expectNoError();
-  await addKeyFrame(publishing);
-  await addKeyFrame(s3);
-  await checkpoint("S3 publish succeeded");
+  await sourceCommand(() => publishPage.clickPublish());
+  const publishedUrl = await sourceCommand(() => publishPage.expectPublishSuccess());
+  await sourceCommand(() => publishPage.expectNoError());
+  await sourceCommand(() => addKeyFrame(publishing));
+  await sourceCommand(() => addKeyFrame(s3));
+  await sourceCommand(() => checkpoint("S3 publish succeeded"));
 
   // Inspect and browse the publication.
   expect(publishedUrl.startsWith("http://localhost")).toBe(true);
@@ -90,23 +90,23 @@ test("R02 R04 R05 R06 R07 R08 P02 P06 D02 L01 S3 version publication and reader 
   const versionId = versionMatch![1];
   const versionNamespace = `${publishSlug}-${versionId}`;
 
-  await minioS3.expectHasFiles(`${versionNamespace}/`);
-  await minioS3.expectHasHtmlFiles(`${versionNamespace}/`);
+  await sourceCommand(() => minioS3.expectHasFiles(`${versionNamespace}/`));
+  await sourceCommand(() => minioS3.expectHasHtmlFiles(`${versionNamespace}/`));
   const successorManifestKey = `${publishSlug}-versions.json`;
-  expect(await minioS3.listKeys(successorManifestKey)).toEqual([successorManifestKey]);
-  expect(JSON.parse(await minioS3.getObjectContent(successorManifestKey))).toEqual({
+  expect(await sourceCommand(() => minioS3.listKeys(successorManifestKey))).toEqual([successorManifestKey]);
+  expect(JSON.parse(await sourceCommand(() => minioS3.getObjectContent(successorManifestKey)))).toEqual({
     schemaVersion: 1,
     successors: {},
   });
 
   // The same saved generation at the same address remains one revision.
-  await publishPage.expectPublishButtonLabel("Republish");
-  await publishPage.clickPublish();
-  expect(await publishPage.expectPublishSuccess()).toBe(publishedUrl);
+  await sourceCommand(() => publishPage.expectPublishButtonLabel("Republish"));
+  await sourceCommand(() => publishPage.clickPublish());
+  expect(await sourceCommand(() => publishPage.expectPublishSuccess())).toBe(publishedUrl);
   const providerApi = `/api/sharing/publishing-providers/S3PublishingProvider/bundles/${encodeURIComponent(Bundle.Big)}`;
-  const publicationStateResponse = await page.request.get(`${providerApi}/publication-state?versionId=${versionId}`);
+  const publicationStateResponse = await sourceCommand(() => page.request.get(`${providerApi}/publication-state?versionId=${versionId}`));
   expect(publicationStateResponse.ok()).toBe(true);
-  const publicationState = await publicationStateResponse.json() as {
+  const publicationState = await sourceCommand(() => publicationStateResponse.json()) as {
     status: { kind: string };
     revisions: Array<{ generatedVersionId: string; publishSlug: string; remoteState: string }>;
   };
@@ -116,56 +116,56 @@ test("R02 R04 R05 R06 R07 R08 P02 P06 D02 L01 S3 version publication and reader 
   ]);
 
   const changedPublishSlug = `${publishSlug}-changed`;
-  const changedDestinationResponse = await page.request.put(`${providerApi}/provider-config`, {
+  const changedDestinationResponse = await sourceCommand(() => page.request.put(`${providerApi}/provider-config`, {
     data: {
       publishSlug: changedPublishSlug,
       readerConnectionToPredecessor: "connected",
       predecessorCleanupPolicy: "keep",
     },
-  });
+  }));
   expect(changedDestinationResponse.ok()).toBe(true);
-  const plannedSlugState = await (await page.request.get(`${providerApi}/publication-state?versionId=${versionId}`)).json() as {
+  const plannedSlugState = await sourceCommand(async () => (await page.request.get(`${providerApi}/publication-state?versionId=${versionId}`)).json()) as {
     pendingRevisionId: string;
     revisions: Array<{ publicationRevisionId: string; generatedVersionId: string; publishSlug: string; remoteState: string }>;
   };
   expect(plannedSlugState.revisions.find(revision => revision.publicationRevisionId === plannedSlugState.pendingRevisionId))
     .toMatchObject({ generatedVersionId: versionId, publishSlug: changedPublishSlug, remoteState: "pending" });
-  expect((await page.request.put(`${providerApi}/provider-config`, {
+  expect((await sourceCommand(() => page.request.put(`${providerApi}/provider-config`, {
     data: {
       publishSlug,
       readerConnectionToPredecessor: "connected",
       predecessorCleanupPolicy: "keep",
     },
-  })).ok()).toBe(true);
+  }))).ok()).toBe(true);
 
   // Keep the Meadow page open while checking the published site. Navigating
   // the only app page away correctly closes its browser-session heartbeat,
   // which would make the later authenticated API setup depend on close-grace
   // timing rather than the publication behavior under test.
-  const readerPage = await page.context().newPage();
+  const readerPage = await sourceCommand(() => page.context().newPage());
   const publishedBundle = new PublishedBundlePage(readerPage, expect);
-  await publishedBundle.goto(publishedUrl);
-  await publishedBundle.expectMainHeadingVisible();
-  await publishedBundle.expectNoNewerVersionNotice();
-  await checkpoint("browsed S3-published bundle");
+  await sourceCommand(() => publishedBundle.goto(publishedUrl));
+  await sourceCommand(() => publishedBundle.expectMainHeadingVisible());
+  await sourceCommand(() => publishedBundle.expectNoNewerVersionNotice());
+  await sourceCommand(() => checkpoint("browsed S3-published bundle"));
 
   // Publish a connected successor.
-  const createSuccessorResponse = await page.request.post(
+  const createSuccessorResponse = await sourceCommand(() => page.request.post(
     `/api/bundles/${encodeURIComponent(Bundle.Big)}/generation/versions`,
     { data: { notes: "Connected reader successor", confirmedNoGeneratedChanges: true } },
-  );
+  ));
   expect(createSuccessorResponse.ok()).toBe(true);
-  const successorVersionId = (await createSuccessorResponse.json() as { versionId: string }).versionId;
-  const saveSuccessorResponse = await page.request.get(`/api/bundles/${encodeURIComponent(Bundle.Big)}/review/save-changes`);
+  const successorVersionId = (await sourceCommand(() => createSuccessorResponse.json()) as { versionId: string }).versionId;
+  const saveSuccessorResponse = await sourceCommand(() => page.request.get(`/api/bundles/${encodeURIComponent(Bundle.Big)}/review/save-changes`));
   expect(saveSuccessorResponse.ok()).toBe(true);
-  const publishSuccessorResponse = await page.request.post(`${providerApi}/publish`, {
+  const publishSuccessorResponse = await sourceCommand(() => page.request.post(`${providerApi}/publish`, {
     data: { versionId: successorVersionId },
-  });
+  }));
   expect(publishSuccessorResponse.ok()).toBe(true);
-  const successorUrl = (await publishSuccessorResponse.json() as { publishedUrl: string }).publishedUrl;
+  const successorUrl = (await sourceCommand(() => publishSuccessorResponse.json()) as { publishedUrl: string }).publishedUrl;
   const successorNamespace = `${publishSlug}-${successorVersionId}`;
-  await minioS3.expectHasHtmlFiles(`${successorNamespace}/`);
-  const successorManifest = JSON.parse(await minioS3.getObjectContent(successorManifestKey)) as {
+  await sourceCommand(() => minioS3.expectHasHtmlFiles(`${successorNamespace}/`));
+  const successorManifest = JSON.parse(await sourceCommand(() => minioS3.getObjectContent(successorManifestKey))) as {
     successors: Record<string, { versionId: string; versionRoot: string; entryPath: string }>;
   };
   expect(successorManifest.successors[versionId]).toMatchObject({
@@ -173,16 +173,16 @@ test("R02 R04 R05 R06 R07 R08 P02 P06 D02 L01 S3 version publication and reader 
     versionRoot: successorNamespace,
   });
 
-  await publishedBundle.goto(publishedUrl);
-  await publishedBundle.expectNewerPageLink(successorUrl);
-  await checkpoint("older page links to its connected successor");
+  await sourceCommand(() => publishedBundle.goto(publishedUrl));
+  await sourceCommand(() => publishedBundle.expectNewerPageLink(successorUrl));
+  await sourceCommand(() => checkpoint("older page links to its connected successor"));
 
   // Check the successor route mapping.
   // Remove the stable identity from the successor route index: the old page
   // must offer only the successor entry page, never a nonexistent equivalent.
-  const successorRouteKey = (await minioS3.listKeys(`${successorNamespace}/_mw_assets/versioning/routes.`))[0];
+  const successorRouteKey = (await sourceCommand(() => minioS3.listKeys(`${successorNamespace}/_mw_assets/versioning/routes.`)))[0];
   expect(successorRouteKey).toBeTruthy();
-  const routeIndex = JSON.parse(await minioS3.getObjectContent(successorRouteKey)) as {
+  const routeIndex = JSON.parse(await sourceCommand(() => minioS3.getObjectContent(successorRouteKey))) as {
     schemaVersion: 1;
     entryPath: string;
     routesByBundleNodeId: Record<string, string>;
@@ -192,122 +192,122 @@ test("R02 R04 R05 R06 R07 R08 P02 P06 D02 L01 S3 version publication and reader 
     .find(([, generatedPath]) => generatedPath === routeIndex.entryPath);
   expect(stableEntry).toBeTruthy();
   const movedPath = "moved-reader-entry.html";
-  await minioS3.putObjectContent(
+  await sourceCommand(async () => minioS3.putObjectContent(
     `${successorNamespace}/${movedPath}`,
     await minioS3.getObjectContent(`${successorNamespace}/${routeIndex.entryPath}`),
     "text/html",
-  );
-  await minioS3.putObjectContent(successorRouteKey, JSON.stringify({
+  ));
+  await sourceCommand(() => minioS3.putObjectContent(successorRouteKey, JSON.stringify({
     ...routeIndex,
     routesByBundleNodeId: {
       ...routeIndex.routesByBundleNodeId,
       [stableEntry![0]]: movedPath,
     },
     generatedPagePaths: [...routeIndex.generatedPagePaths, movedPath],
-  }));
+  })));
   const movedUrl = new URL(movedPath, successorUrl).toString();
-  await publishedBundle.goto(publishedUrl);
-  await publishedBundle.expectNewerPageLink(movedUrl);
-  await checkpoint("stable page identity follows a moved successor route");
+  await sourceCommand(() => publishedBundle.goto(publishedUrl));
+  await sourceCommand(() => publishedBundle.expectNewerPageLink(movedUrl));
+  await sourceCommand(() => checkpoint("stable page identity follows a moved successor route"));
 
   // Remove the matching successor page.
-  await minioS3.putObjectContent(successorRouteKey, JSON.stringify({
+  await sourceCommand(() => minioS3.putObjectContent(successorRouteKey, JSON.stringify({
     ...routeIndex,
     routesByBundleNodeId: {},
-  }));
-  await publishedBundle.goto(publishedUrl);
-  await publishedBundle.expectMissingPageNotice(successorUrl);
-  await checkpoint("missing-page reader callout links only to successor entry");
+  })));
+  await sourceCommand(() => publishedBundle.goto(publishedUrl));
+  await sourceCommand(() => publishedBundle.expectMissingPageNotice(successorUrl));
+  await sourceCommand(() => checkpoint("missing-page reader callout links only to successor entry"));
 
   // Delete the successor publication.
-  await readerPage.screenshot({
+  await sourceCommand(() => readerPage.screenshot({
     path: path.join(artifactDir, "missing-page-reader-callout.png"),
     fullPage: true,
-  });
+  }));
 
   // Lookup failures are deliberately silent and recover when the destination
   // manifest becomes readable again.
-  await minioS3.putObjectContent(successorManifestKey, "{invalid-json");
-  await publishedBundle.goto(publishedUrl);
-  await publishedBundle.expectNoNewerVersionNotice();
-  await minioS3.putObjectContent(successorManifestKey, JSON.stringify(successorManifest));
+  await sourceCommand(() => minioS3.putObjectContent(successorManifestKey, "{invalid-json"));
+  await sourceCommand(() => publishedBundle.goto(publishedUrl));
+  await sourceCommand(() => publishedBundle.expectNoNewerVersionNotice());
+  await sourceCommand(() => minioS3.putObjectContent(successorManifestKey, JSON.stringify(successorManifest)));
 
   // A published but disconnected third version must not notify the second
   // lineage even though it is later in manifest order.
-  const createDisconnectedResponse = await page.request.post(
+  const createDisconnectedResponse = await sourceCommand(() => page.request.post(
     `/api/bundles/${encodeURIComponent(Bundle.Big)}/generation/versions`,
     {
       data: { notes: "Disconnected reader release", confirmedNoGeneratedChanges: true },
     },
-  );
+  ));
   expect(createDisconnectedResponse.ok()).toBe(true);
-  const disconnectedVersionId = (await createDisconnectedResponse.json() as { versionId: string }).versionId;
-  expect((await page.request.get(`/api/bundles/${encodeURIComponent(Bundle.Big)}/review/save-changes`)).ok()).toBe(true);
-  expect((await page.request.post(`${providerApi}/publication-revisions/plan`, {
+  const disconnectedVersionId = (await sourceCommand(() => createDisconnectedResponse.json()) as { versionId: string }).versionId;
+  expect((await sourceCommand(() => page.request.get(`/api/bundles/${encodeURIComponent(Bundle.Big)}/review/save-changes`))).ok()).toBe(true);
+  expect((await sourceCommand(() => page.request.post(`${providerApi}/publication-revisions/plan`, {
     data: {
       versionId: disconnectedVersionId,
       readerConnectionToPredecessor: "disconnected",
       predecessorCleanupPolicy: "keep",
     },
-  })).ok()).toBe(true);
-  const publishDisconnectedResponse = await page.request.post(`${providerApi}/publish`, {
+  }))).ok()).toBe(true);
+  const publishDisconnectedResponse = await sourceCommand(() => page.request.post(`${providerApi}/publish`, {
     data: { versionId: disconnectedVersionId },
-  });
+  }));
   expect(publishDisconnectedResponse.ok()).toBe(true);
   const disconnectedNamespace = `${publishSlug}-${disconnectedVersionId}`;
-  await publishedBundle.goto(successorUrl);
-  await publishedBundle.expectNoNewerVersionNotice();
-  expect((await page.request.delete(`${providerApi}/published`, {
+  await sourceCommand(() => publishedBundle.goto(successorUrl));
+  await sourceCommand(() => publishedBundle.expectNoNewerVersionNotice());
+  expect((await sourceCommand(() => page.request.delete(`${providerApi}/published`, {
     data: { versionId: disconnectedVersionId },
-  })).ok()).toBe(true);
-  await minioS3.expectEmpty(`${disconnectedNamespace}/`);
+  }))).ok()).toBe(true);
+  await sourceCommand(() => minioS3.expectEmpty(`${disconnectedNamespace}/`));
 
   // Return to the app to exercise the Settings → Delete Published flow.
-  await wf.navigateToBigBundleShareTab();
+  await sourceCommand(() => wf.navigateToBigBundleShareTab());
   const modal = new PreviewPublishModal(page, expect);
-  await modal.selectShareVersion(successorVersionId);
-  await publishPage.expectVisible();
+  await sourceCommand(() => modal.selectShareVersion(successorVersionId));
+  await sourceCommand(() => publishPage.expectVisible());
 
-  await publishPage.openSettingsDropdown();
-  await publishPage.clickDeletePublished();
-  await checkpoint("S3 delete confirm shown");
+  await sourceCommand(() => publishPage.openSettingsDropdown());
+  await sourceCommand(() => publishPage.clickDeletePublished());
+  await sourceCommand(() => checkpoint("S3 delete confirm shown"));
 
   // Confirm remote deletion.
-  await publishPage.confirmDelete();
-  await addKeyFrame(deletion);
-  await checkpoint("S3 published files deleted");
+  await sourceCommand(() => publishPage.confirmDelete());
+  await sourceCommand(() => addKeyFrame(deletion));
+  await sourceCommand(() => checkpoint("S3 published files deleted"));
 
   // Check the retained history.
-  await minioS3.expectEmpty(`${successorNamespace}/`);
-  await minioS3.expectHasFiles(`${versionNamespace}/`);
-  expect(JSON.parse(await minioS3.getObjectContent(successorManifestKey))).toEqual({
+  await sourceCommand(() => minioS3.expectEmpty(`${successorNamespace}/`));
+  await sourceCommand(() => minioS3.expectHasFiles(`${versionNamespace}/`));
+  expect(JSON.parse(await sourceCommand(() => minioS3.getObjectContent(successorManifestKey)))).toEqual({
     schemaVersion: 1,
     successors: {},
   });
 
-  const alreadyAbsentResponse = await page.request.delete(`${providerApi}/published`, {
+  const alreadyAbsentResponse = await sourceCommand(() => page.request.delete(`${providerApi}/published`, {
     data: { versionId: successorVersionId },
-  });
+  }));
   expect(alreadyAbsentResponse.ok()).toBe(true);
-  expect(await alreadyAbsentResponse.json()).toMatchObject({ success: true, alreadyAbsent: true });
-  const deleteOriginalResponse = await page.request.delete(`${providerApi}/published`, {
+  expect(await sourceCommand(() => alreadyAbsentResponse.json())).toMatchObject({ success: true, alreadyAbsent: true });
+  const deleteOriginalResponse = await sourceCommand(() => page.request.delete(`${providerApi}/published`, {
     data: { versionId },
-  });
+  }));
   expect(deleteOriginalResponse.ok()).toBe(true);
-  await minioS3.expectEmpty(`${versionNamespace}/`);
-  const historyAfterDeletion = await page.request.get(`${providerApi}/publication-state?versionId=${successorVersionId}`);
-  const deletedState = await historyAfterDeletion.json() as {
+  await sourceCommand(() => minioS3.expectEmpty(`${versionNamespace}/`));
+  const historyAfterDeletion = await sourceCommand(() => page.request.get(`${providerApi}/publication-state?versionId=${successorVersionId}`));
+  const deletedState = await sourceCommand(() => historyAfterDeletion.json()) as {
     status: { kind: string };
     revisions: Array<{ remoteState: string }>;
   };
   expect(deletedState.status.kind).toBe("removed");
   expect(deletedState.revisions.map(revision => revision.remoteState)).toEqual(["deleted", "deleted", "deleted"]);
 
-  await expect.poll(() => fs.readFileSync(path.join(testServer.configDir, "logs", "meadow.log"), "utf8"))
-    .toMatch(/\[operation ([0-9a-f-]+)] \[s3-publish] Started[\s\S]*\[operation \1] \[s3-publish] Published version/);
+  await sourceCommand(() => expect.poll(() => fs.readFileSync(path.join(testServer.configDir, "logs", "meadow.log"), "utf8"))
+    .toMatch(/\[operation ([0-9a-f-]+)] \[s3-publish] Started[\s\S]*\[operation \1] \[s3-publish] Published version/));
   void bigBundle;
 
-  await checkpoint("the deleted successor retains its history and the older publication survives");
+  await sourceCommand(() => checkpoint("the deleted successor retains its history and the older publication survives"));
 
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

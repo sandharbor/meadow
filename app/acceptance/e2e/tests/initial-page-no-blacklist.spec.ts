@@ -28,7 +28,7 @@ test.use({ fixtureHome: Fixture.Minimal });
  * Select the bundle's starting page and inspect its actions. Meadow should prevent
  * blacklisting the page that anchors the bundle.
  */
-test("a publisher should not be able to blacklist the initial page", async ({
+test("a publisher should not be able to blacklist the initial page", { annotation: { type: 'scenario-id', description: '4cf8d25d-1de3-4074-a122-225250114627' } }, async ({ sourceCommand,
   page, checkpoint, assertMeadowHomeState, addKeyFrame,
 }) => {
   // --- Setup ---
@@ -36,28 +36,28 @@ test("a publisher should not be able to blacklist the initial page", async ({
   const editor = new BundleEditorPage(page, expect);
 
   // Add the example bundle and switch to list view
-  await bundleList.goto();
-  await bundleList.clickAddExampleBundleLink();
-  await editor.waitForLoad("example-bundle");
-  await editor.switchToListView();
-  await page.waitForTimeout(250);
+  await sourceCommand(() => bundleList.goto());
+  await sourceCommand(() => bundleList.clickAddExampleBundleLink());
+  await sourceCommand(() => editor.waitForLoad("example-bundle"));
+  await sourceCommand(() => editor.switchToListView());
+  await sourceCommand(() => page.waitForTimeout(250));
 
   // Right-click the initial page — Blacklist should NOT appear
-  await editor.rightClickRow(exampleBundleInitialPageTitle);
-  await editor.expectContextMenuItemNotVisible("Blacklist");
-  await addKeyFrame(initialPage);
-  await checkpoint("initial page context menu has no blacklist");
+  await sourceCommand(() => editor.rightClickRow(exampleBundleInitialPageTitle));
+  await sourceCommand(() => editor.expectContextMenuItemNotVisible("Blacklist"));
+  await sourceCommand(() => addKeyFrame(initialPage));
+  await sourceCommand(() => checkpoint("initial page context menu has no blacklist"));
 
   // --- Test start ---
   // Compare a regular page.
-  await page.keyboard.press("Escape");
+  await sourceCommand(() => page.keyboard.press("Escape"));
 
   // Right-click a non-initial page — Blacklist SHOULD appear
-  await editor.rightClickRow("Cognitive Biases");
-  await editor.expectContextMenuItemVisible("Blacklist");
-  await checkpoint("non-initial page context menu has blacklist");
+  await sourceCommand(() => editor.rightClickRow("Cognitive Biases"));
+  await sourceCommand(() => editor.expectContextMenuItemVisible("Blacklist"));
+  await sourceCommand(() => checkpoint("non-initial page context menu has blacklist"));
 
   void exampleBundle;
 
-  await assertMeadowHomeState();
+  await sourceCommand(() => assertMeadowHomeState());
 });

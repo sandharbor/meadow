@@ -19,37 +19,37 @@ test.use({ bundleMode: "single-file" });
  * Replace a source page while a saved generation exists. Generated material should remain
  * unchanged until the source replacement is accepted and regenerated.
  */
-test('Sourcing keeps generated material stable until a full-page source replacement is accepted', async ({ page, sourceChanges, testServer, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+test('Sourcing keeps generated material stable until a full-page source replacement is accepted', { annotation: { type: 'scenario-id', description: '7fcae7e6-194d-4a16-99bd-326d24679ee5' } }, async ({ sourceCommand, page, sourceChanges, testServer, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   const wf = new Workflows(page, expect);
   const editor = new BundleEditorPage(page, expect);
   const previewModal = new PreviewPublishModal(page, expect);
-  await wf.navigateToBigBundlePreview();
+  await sourceCommand(() => wf.navigateToBigBundlePreview());
   const retainedPath = path.join(testServer.configDir, 'bundles', slug, 'raw/tracked_page_content', `${originalTitle}.md`);
   const before = fs.readFileSync(retainedPath, 'utf8');
-  await checkpoint('the accepted source state is established before changing files');
+  await sourceCommand(() => checkpoint('the accepted source state is established before changing files'));
 
   // --- Test start ---
   // Replace the source page.
-  await sourceChanges.apply('replace-section-page');
+  await sourceCommand(() => sourceChanges.apply('replace-section-page'));
   // Reopening preview exercises the public generation path with changed live bytes.
-  await previewModal.closeModal();
-  await editor.clickPreview();
-  await previewModal.waitForPreviewComplete();
+  await sourceCommand(() => previewModal.closeModal());
+  await sourceCommand(() => editor.clickPreview());
+  await sourceCommand(() => previewModal.waitForPreviewComplete());
   expect(fs.readFileSync(retainedPath, 'utf8')).toBe(before);
-  await addKeyFrame(sourceSnapshot);
-  await checkpoint('generation continues using the accepted checkpoint while live source differs');
+  await sourceCommand(() => addKeyFrame(sourceSnapshot));
+  await sourceCommand(() => checkpoint('generation continues using the accepted checkpoint while live source differs'));
 
   // Accept the update and regenerate.
-  await previewModal.closeModal();
-  await editor.checkSourceChanges();
-  await editor.sourceReview.open();
-  await checkpoint('the replacement is ready for source review');
+  await sourceCommand(() => previewModal.closeModal());
+  await sourceCommand(() => editor.checkSourceChanges());
+  await sourceCommand(() => editor.sourceReview.open());
+  await sourceCommand(() => checkpoint('the replacement is ready for source review'));
 
   // Accept and regenerate.
-  await editor.sourceReview.accept();
-  await editor.clickPreview();
-  await previewModal.waitForPreviewComplete();
+  await sourceCommand(() => editor.sourceReview.accept());
+  await sourceCommand(() => editor.clickPreview());
+  await sourceCommand(() => previewModal.waitForPreviewComplete());
   expect(fs.readFileSync(retainedPath, 'utf8')).not.toBe(before);
   const generationInputs = path.join(testServer.configDir, 'bundles', slug, 'raw/generation_inputs');
   const record = JSON.parse(fs.readFileSync(path.join(generationInputs, fs.readdirSync(generationInputs)[0]), 'utf8'));
@@ -58,9 +58,9 @@ test('Sourcing keeps generated material stable until a full-page source replacem
   // The complete replacement page carries an ordinary, unconditional NodeSpec.
   const replacement = fileURLToPath(new URL('../../../shared_data/source_changes/meadow-test-bundles-data/replace-section-page/replacement.md', import.meta.url));
   const nodeSpec = getNodespecForBundle(getNodespecBlock(replacement).block!, slug)!;
-  const graphResponse = await page.request.get(`/api/bundles/${slug}/curation/working-graph`);
+  const graphResponse = await sourceCommand(() => page.request.get(`/api/bundles/${slug}/curation/working-graph`));
   expect(graphResponse.ok()).toBe(true);
-  const graph = await graphResponse.json();
+  const graph = await sourceCommand(() => graphResponse.json());
   const node = graph.nodes.find((item: { bundleNodeName: string }) => item.bundleNodeName === originalTitle);
   expect(Boolean(node)).toBe(nodeSpec.sourcing.isInWorkingGraph);
   expect(node.tracked).toBe(nodeSpec.curation.isTracked);
@@ -68,8 +68,8 @@ test('Sourcing keeps generated material stable until a full-page source replacem
   const html = fs.readFileSync(path.join(versionsRoot, fs.readdirSync(versionsRoot).find(name => /^v[A-Za-z0-9]{6}$/.test(name))!, `${originalTitle}.html`), 'utf8');
   expect(extractMainSectionLinkPaths(html).sort()).toEqual(nodeSpec.generation.htmlRenderedLinks.mainSectionLinks.map(link => link.relativeLinkPath).sort());
   expect(extractFooterBacklinkPaths(html).sort()).toEqual(nodeSpec.generation.htmlRenderedLinks.footerSectionBacklinks.map(link => link.relativeLinkPath).sort());
-  await addKeyFrame(sourceSnapshot);
-  await checkpoint('generation adopts replaced source only after checkpoint acceptance');
+  await sourceCommand(() => addKeyFrame(sourceSnapshot));
+  await sourceCommand(() => checkpoint('generation adopts replaced source only after checkpoint acceptance'));
 
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

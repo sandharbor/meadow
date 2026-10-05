@@ -26,6 +26,8 @@ import {
   scenarioDisplayName,
 } from '../helpers.ts'
 import HealthGraph from './HealthGraph.tsx'
+import { useScenarioReviews, ScenarioReviewMenu, ReviewLog } from './ScenarioReview.tsx'
+import { findReview } from '../../scenarioReviews.js'
 import { CopyReferenceButton } from './CopyReferenceButton.tsx'
 import { ScenarioFilterPill, type ScenarioFilterAction } from './ScenarioFilterPill.tsx'
 import { categorizeScenarios, SectionHeader, StatusBadge } from './scenarioCategories.tsx'
@@ -80,6 +82,7 @@ interface KeyFrame {
 }
 
 interface Scenario {
+  scenarioId?: string
   slug: string
   testName: string
   description?: string
@@ -228,6 +231,14 @@ export default function RunDetail() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [data, setData] = useState<RunData | null>(null)
+  const reviews = useScenarioReviews()
+  const reviewMode = searchParams.get('review')
+  const reviewSort = searchParams.get('reviewSort') ?? 'added-desc'
+  const setReviewMode = (mode: string) => {
+    const next = createSearchParams(searchParams)
+    if (mode) next.set('review', mode); else next.delete('review')
+    setSearchParams(next)
+  }
   const [healthMap, setHealthMap] = useState<Record<string, HealthSummary>>({})
   const [docs, setDocs] = useState<ConceptView[]>([])
   const [conceptsExpanded, setConceptsExpanded] = useState(false)
@@ -390,7 +401,14 @@ export default function RunDetail() {
   }
 
   // Sort scenarios by slug descending (higher t-numbers = newer scenarios first)
-  const sortedScenarios = [...data.scenarios].sort((a, b) => b.slug.localeCompare(a.slug))
+  const sortedScenarios = [...data.scenarios].sort((a, b) => {
+    if (reviewMode === 'incomplete' || reviewMode === 'completed') {
+      const field = reviewSort.startsWith('completed') ? 'completedAt' : 'addedAt'
+      const difference = (findReview(reviews.data, a)?.[field] ?? '').localeCompare(findReview(reviews.data, b)?.[field] ?? '')
+      if (difference) return reviewSort.endsWith('asc') ? difference : -difference
+    }
+    return b.slug.localeCompare(a.slug)
+  })
 
   const matchesFilters = (scenario: Scenario, except?: FilterGroup) =>
     (except === 'surface' || selectedExecutionSurfaces.length === 0 || selectedExecutionSurfaces.some(surface => executionSurfacesFor(scenario).includes(surface)))
@@ -399,7 +417,9 @@ export default function RunDetail() {
     && (except === 'area' || selectedAreas.length === 0 || selectedAreas.some(area => scenario.appAreaDocIds.includes(area.id)))
     && (selectedDocs.length === 0 || selectedDocs.some(doc => scenario.conceptIds.includes(doc.id)))
 
-  const filteredScenarios = sortedScenarios.filter(scenario => matchesFilters(scenario))
+  const matchesReview = (scenario: Scenario) => !reviewMode || reviewMode === 'logs'
+    || findReview(reviews.data, scenario)?.status === (reviewMode === 'incomplete' ? 'TOREVIEW' : 'REVIEWED')
+  const filteredScenarios = sortedScenarios.filter(scenario => matchesFilters(scenario) && matchesReview(scenario))
 
   // The primary rows keep alternatives to their own selection available.
   const surfaceMatches = sortedScenarios.filter(scenario => matchesFilters(scenario, 'surface'))
@@ -466,6 +486,19 @@ export default function RunDetail() {
 
   return (
     <div className="mx-auto px-6 py-3 max-w-[90vw]">
+      {(reviews.data.reviews.length > 0 || reviewMode) && <section aria-label="To review" className="mb-2 flex flex-wrap items-center gap-2 rounded-md bg-violet-50 px-3 py-2 text-xs">
+        <span className="font-semibold text-neutral-600">To review:</span>
+        {(['', 'incomplete', 'completed', 'logs'] as const).map(mode => <button key={mode} aria-pressed={(reviewMode ?? '') === mode}
+          className={`cursor-pointer rounded px-2 py-1 ${(reviewMode ?? '') === mode ? 'bg-violet-100 text-violet-800' : 'text-neutral-600 hover:bg-violet-100'}`}
+          onClick={() => setReviewMode(mode)}>{mode === '' ? 'All' : mode === 'incomplete' ? `Incomplete (${data.scenarios.filter(scenario => findReview(reviews.data, scenario)?.status === 'TOREVIEW').length})` : mode === 'completed' ? 'Completed' : 'Logs'}</button>)}
+        {(reviewMode === 'incomplete' || reviewMode === 'completed') && <label className="ml-auto">Sort <select aria-label="Review sort" value={reviewSort} onChange={event => {
+          const next = createSearchParams(searchParams); next.set('reviewSort', event.target.value); setSearchParams(next)
+        }} className="ml-1 rounded border bg-white px-1 py-1">
+          <option value="added-desc">Added — newest first</option><option value="added-asc">Added — oldest first</option>
+          <option value="completed-desc">Completed — newest first</option><option value="completed-asc">Completed — oldest first</option>
+        </select></label>}
+      </section>}
+      {reviews.error && <p role="alert" className="text-xs text-red-700">{reviews.error}</p>}
       {/* Execution surface filter */}
       <div className="filter-section filter-interface mb-1 w-full rounded-md px-3 py-1.5">
         <div className="filter-row" role="group" aria-label="Interface">
@@ -765,6 +798,7 @@ export default function RunDetail() {
         )
       })()}
 
+      {reviewMode === 'logs' ? <ReviewLog data={reviews.data} /> : <>
       {/* Tab bar */}
       <div className="flex flex-wrap items-center bg-neutral-100 border-b border-neutral-200 mb-4">
         <div className="flex">
@@ -1048,10 +1082,12 @@ export default function RunDetail() {
                               </Link>
                               <CopyReferenceButton text={`E2E scenario ${scenario.slug}`} label="Copy scenario reference" />
                             </div>
+                            <ScenarioReviewMenu runId={runId!} scenario={scenario} reviews={reviews.data} update={reviews.update} />
                             <span className="shrink-0 text-xs text-neutral-500 tabular-nums">
                               {scenario.duration == null ? '—' : `${scenario.duration.toFixed(1)}s`}
                             </span>
                           </div>
+                          {findReview(reviews.data, scenario)?.note && <p className="mb-2 whitespace-pre-wrap break-words text-xs text-violet-800">Review note: {findReview(reviews.data, scenario)?.note}</p>}
                           {scenario.failureReason && <p className="mb-2 break-words text-xs text-red-600">{scenario.failureReason}</p>}
                           {scenario.description ? (
                             <p className="whitespace-pre-line break-words leading-relaxed text-neutral-700">{scenario.description}</p>
@@ -1134,6 +1170,7 @@ export default function RunDetail() {
           </div>
         )
       })()}
+      </>}
     </div>
   )
 }

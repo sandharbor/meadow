@@ -29,7 +29,7 @@ test.use({ fixtureHome: Fixture.Minimal });
  * Create the example bundle and inspect MeadowHome's Git repository. It should be a normal
  * working repository with the expected saved files.
  */
-test("MeadowHome is a real (non-bare) git repo after creating the example bundle", async ({
+test("MeadowHome is a real (non-bare) git repo after creating the example bundle", { annotation: { type: 'scenario-id', description: '2288b7fe-637e-48aa-984f-762ae66da6ff' } }, async ({ sourceCommand,
   page, checkpoint, assertMeadowHomeState, addKeyFrame, testServer,
 }) => {
   // --- Setup ---
@@ -38,14 +38,14 @@ test("MeadowHome is a real (non-bare) git repo after creating the example bundle
 
   // Empty-state path: no fixture, click the "add the example bundle" link
   // in the empty bundle list, then land in the editor for example-bundle.
-  await bundleList.goto();
-  await checkpoint("empty bundle list");
+  await sourceCommand(() => bundleList.goto());
+  await sourceCommand(() => checkpoint("empty bundle list"));
 
   // --- Test start ---
   // Add the example bundle.
-  await bundleList.clickAddExampleBundleLink();
-  await editor.waitForLoad("example-bundle");
-  await checkpoint("example bundle editor loaded");
+  await sourceCommand(() => bundleList.clickAddExampleBundleLink());
+  await sourceCommand(() => editor.waitForLoad("example-bundle"));
+  await sourceCommand(() => checkpoint("example bundle editor loaded"));
 
   // Inspect the repository with system Git.
   // Use the system `git` CLI (not fast_git_ops) to confirm MeadowHome is
@@ -80,7 +80,7 @@ test("MeadowHome is a real (non-bare) git repo after creating the example bundle
   for (let attempt = 0; attempt <= 10; attempt++) {
     status = runRealGitStatus().trim();
     if (status === "") break;
-    if (attempt < 10) await new Promise((r) => setTimeout(r, 1000));
+    if (attempt < 10) await sourceCommand(() => new Promise((r) => setTimeout(r, 1000)));
   }
 
   expect(
@@ -89,10 +89,10 @@ test("MeadowHome is a real (non-bare) git repo after creating the example bundle
     `creating the example bundle, but \`git status --porcelain\` reports:\n${status}`,
   ).toBe("");
 
-  await addKeyFrame(git);
-  await checkpoint("MeadowHome clean via real git status");
+  await sourceCommand(() => addKeyFrame(git));
+  await sourceCommand(() => checkpoint("MeadowHome clean via real git status"));
 
   void exampleBundle;
 
-  await assertMeadowHomeState();
+  await sourceCommand(() => assertMeadowHomeState());
 });

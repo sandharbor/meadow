@@ -33,7 +33,7 @@ test.use({ fixtureHome: Fixture.Minimal });
  * Track a native HTML page and explore its linked graph. Generate the bundle and verify
  * that the HTML content is browsable.
  */
-test("tracks and browses a native HTML node graph", async ({
+test("tracks and browses a native HTML node graph", { annotation: { type: 'scenario-id', description: '721b46f5-299e-4185-a676-d773b7b95308' } }, async ({ sourceCommand,
   page,
   testServer,
   checkpoint,
@@ -47,62 +47,62 @@ test("tracks and browses a native HTML node graph", async ({
   const previewModal = new PreviewPublishModal(page, expect);
   const generatedBundle = previewModal.generatedBundle;
 
-  await bundleList.goto();
-  await bundleList.clickCreateBundleLink();
+  await sourceCommand(() => bundleList.goto());
+  await sourceCommand(() => bundleList.clickCreateBundleLink());
 
   const sourceDir = path.join(testServer.sourceGraphsDir, "meadow-test-bundles-data");
-  await createModal.fillSourceDirectory(sourceDir);
-  await createModal.typeInitialPageTitle("t026 - HTML node");
-  await createModal.selectSuggestion("t026 - HTML node");
-  await createModal.fillDefaultTraversalDepths(3, 0);
-  await createModal.clickCreateBundle();
+  await sourceCommand(() => createModal.fillSourceDirectory(sourceDir));
+  await sourceCommand(() => createModal.typeInitialPageTitle("t026 - HTML node"));
+  await sourceCommand(() => createModal.selectSuggestion("t026 - HTML node"));
+  await sourceCommand(() => createModal.fillDefaultTraversalDepths(3, 0));
+  await sourceCommand(() => createModal.clickCreateBundle());
 
-  await editor.waitForLoad("t026-html-node");
-  await editor.switchToListView();
-  await editor.expectListViewRowByTitleAndFileTypePresent("t026 ---- first HTML page", "html");
-  await editor.expectListViewRowByTitleAndFileTypePresent("t026 ---- second HTML page", "html");
-  await editor.expectListViewRowByTitleAndFileTypePresent("t026 ---- shared style", "css");
-  await editor.expectListViewRowByTitleAndFileTypePresent("t026 ---- shared behavior", "js");
-  await editor.expectListViewRowByTitleAndFileTypePresent("t026 ---- shared image", "svg");
-  await editor.expectListViewRowByTitleAndFileTypePresent("t026 ---- nested markdown", "md");
+  await sourceCommand(() => editor.waitForLoad("t026-html-node"));
+  await sourceCommand(() => editor.switchToListView());
+  await sourceCommand(() => editor.expectListViewRowByTitleAndFileTypePresent("t026 ---- first HTML page", "html"));
+  await sourceCommand(() => editor.expectListViewRowByTitleAndFileTypePresent("t026 ---- second HTML page", "html"));
+  await sourceCommand(() => editor.expectListViewRowByTitleAndFileTypePresent("t026 ---- shared style", "css"));
+  await sourceCommand(() => editor.expectListViewRowByTitleAndFileTypePresent("t026 ---- shared behavior", "js"));
+  await sourceCommand(() => editor.expectListViewRowByTitleAndFileTypePresent("t026 ---- shared image", "svg"));
+  await sourceCommand(() => editor.expectListViewRowByTitleAndFileTypePresent("t026 ---- nested markdown", "md"));
 
-  await editor.clickSelectAll();
-  await page.waitForTimeout(500);
-  await editor.clickDeselectSensitivePagesIfVisible();
-  await page.waitForTimeout(250);
-  await addKeyFrame(htmlNode);
-  await checkpoint("HTML node - source graph nodes selected");
+  await sourceCommand(() => editor.clickSelectAll());
+  await sourceCommand(() => page.waitForTimeout(500));
+  await sourceCommand(() => editor.clickDeselectSensitivePagesIfVisible());
+  await sourceCommand(() => page.waitForTimeout(250));
+  await sourceCommand(() => addKeyFrame(htmlNode));
+  await sourceCommand(() => checkpoint("HTML node - source graph nodes selected"));
 
   // --- Test start ---
   // Track and preview the HTML pages.
-  await editor.clickTrackAll();
-  await editor.clickPreview();
-  await previewModal.waitForPreviewCompleteAllTracked();
+  await sourceCommand(() => editor.clickTrackAll());
+  await sourceCommand(() => editor.clickPreview());
+  await sourceCommand(() => previewModal.waitForPreviewCompleteAllTracked());
 
-  await generatedBundle.expectHeading("t026 - HTML node", 30_000);
-  await generatedBundle.clickPageLink("Open the first HTML page");
-  await generatedBundle.expectHeading("First HTML page");
+  await sourceCommand(() => generatedBundle.expectHeading("t026 - HTML node", 30_000));
+  await sourceCommand(() => generatedBundle.clickPageLink("Open the first HTML page"));
+  await sourceCommand(() => generatedBundle.expectHeading("First HTML page"));
 
-  await generatedBundle.expectNativeHtmlCardColor("rgb(251, 249, 255)");
-  await generatedBundle.expectNativeHtmlSharedImageVisible();
-  await generatedBundle.expectNativeHtmlSharedScriptLoaded();
-  await addKeyFrame(htmlNode);
-  await checkpoint("HTML node - first generated page");
+  await sourceCommand(() => generatedBundle.expectNativeHtmlCardColor("rgb(251, 249, 255)"));
+  await sourceCommand(() => generatedBundle.expectNativeHtmlSharedImageVisible());
+  await sourceCommand(() => generatedBundle.expectNativeHtmlSharedScriptLoaded());
+  await sourceCommand(() => addKeyFrame(htmlNode));
+  await sourceCommand(() => checkpoint("HTML node - first generated page"));
 
   // Follow the link to the second HTML page.
-  await generatedBundle.clickPageLink("Continue to the second HTML page");
-  await generatedBundle.expectHeading("Second HTML page");
-  await generatedBundle.expectNativeHtmlCardColor("rgb(245, 239, 255)");
-  await generatedBundle.expectNativeHtmlSharedScriptLoaded();
-  await addKeyFrame(htmlNode);
-  await checkpoint("HTML node - second generated page");
+  await sourceCommand(() => generatedBundle.clickPageLink("Continue to the second HTML page"));
+  await sourceCommand(() => generatedBundle.expectHeading("Second HTML page"));
+  await sourceCommand(() => generatedBundle.expectNativeHtmlCardColor("rgb(245, 239, 255)"));
+  await sourceCommand(() => generatedBundle.expectNativeHtmlSharedScriptLoaded());
+  await sourceCommand(() => addKeyFrame(htmlNode));
+  await sourceCommand(() => checkpoint("HTML node - second generated page"));
 
   // Follow the link into Markdown.
-  await generatedBundle.clickPageLink("Open the nested Markdown note");
-  await generatedBundle.expectHeading("t026 ---- nested markdown");
-  await addKeyFrame(htmlNode);
-  await checkpoint("HTML node - nested Markdown reached from HTML");
+  await sourceCommand(() => generatedBundle.clickPageLink("Open the nested Markdown note"));
+  await sourceCommand(() => generatedBundle.expectHeading("t026 ---- nested markdown"));
+  await sourceCommand(() => addKeyFrame(htmlNode));
+  await sourceCommand(() => checkpoint("HTML node - nested Markdown reached from HTML"));
 
   void customBundle;
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

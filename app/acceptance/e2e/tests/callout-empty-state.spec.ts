@@ -27,19 +27,19 @@ test.use({ fixtureHome: "home_fixture_minimal" });
  * Open an empty MeadowHome. The welcome callout should explain how to turn notes into a
  * bundle.
  */
-test("Callout turn your notes into bundles shown on empty state", async ({ page, checkpoint, assertMeadowHomeState, addKeyFrame }) => {
+test("Callout turn your notes into bundles shown on empty state", { annotation: { type: 'scenario-id', description: 'dbc2cba3-81b2-4fc8-9f2b-886298b8a570' } }, async ({ sourceCommand, page, checkpoint, assertMeadowHomeState, addKeyFrame }) => {
   // --- Setup ---
   const bundleList = new BundleListPage(page, expect);
-  await bundleList.goto();
-  await checkpoint("empty bundle list loaded");
+  await sourceCommand(() => bundleList.goto());
+  await sourceCommand(() => checkpoint("empty bundle list loaded"));
 
   // --- Test start ---
   // Check the invitation to create a bundle.
-  await bundleList.expectCalloutVisible("Turn your notes into bundles");
-  await addKeyFrame(callout);
-  await checkpoint("turn your notes into bundles callout visible");
+  await sourceCommand(() => bundleList.expectCalloutVisible("Turn your notes into bundles"));
+  await sourceCommand(() => addKeyFrame(callout));
+  await sourceCommand(() => checkpoint("turn your notes into bundles callout visible"));
 
   void bundles;
 
-  await assertMeadowHomeState();
+  await sourceCommand(() => assertMeadowHomeState());
 });

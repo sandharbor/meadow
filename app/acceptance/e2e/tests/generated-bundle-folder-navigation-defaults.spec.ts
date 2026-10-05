@@ -26,7 +26,7 @@ test.use({ bundleMode: "single-file" });
  * Set global and per-bundle folder navigation defaults. Reader choices should persist for
  * each bundle without leaking into another bundle on the same host.
  */
-test("folder navigation defaults can be global or per bundle and reader choices stay isolated on one host", async ({
+test("folder navigation defaults can be global or per bundle and reader choices stay isolated on one host", { annotation: { type: 'scenario-id', description: 'ed1db37f-0e07-43db-af7c-bda2a5d6fdee' } }, async ({ sourceCommand,
   page, browser, checkpoint, skipMeadowHomeStateCheck, addKeyFrame,
 }) => {
   // --- Setup ---
@@ -35,84 +35,84 @@ test("folder navigation defaults can be global or per bundle and reader choices 
   const options = new CustomizeTab(page, expect).generationOptions;
   const navigation = modal.generatedBundle.folderNavigation;
 
-  await workflows.navigateToSmallBundlePreview();
-  await modal.openCustomizeSidebar();
-  await options.enableFolderNavigation();
-  await options.openFolderNavigationSettings();
-  await options.setFolderNavigationDefaults('closed', 'inherit');
-  await addKeyFrame(customize);
-  await options.saveFolderNavigationSettings();
-  await navigation.expectClosed();
-  await options.openFolderNavigationSettings();
-  await options.expectFolderNavigationDefaults('closed', 'inherit');
-  await options.cancelFolderNavigationSettings();
-  await navigation.open();
-  await navigation.reload();
-  await navigation.expectOpen();
-  await checkpoint('small bundle remembers the reader opening navigation');
+  await sourceCommand(() => workflows.navigateToSmallBundlePreview());
+  await sourceCommand(() => modal.openCustomizeSidebar());
+  await sourceCommand(() => options.enableFolderNavigation());
+  await sourceCommand(() => options.openFolderNavigationSettings());
+  await sourceCommand(() => options.setFolderNavigationDefaults('closed', 'inherit'));
+  await sourceCommand(() => addKeyFrame(customize));
+  await sourceCommand(() => options.saveFolderNavigationSettings());
+  await sourceCommand(() => navigation.expectClosed());
+  await sourceCommand(() => options.openFolderNavigationSettings());
+  await sourceCommand(() => options.expectFolderNavigationDefaults('closed', 'inherit'));
+  await sourceCommand(() => options.cancelFolderNavigationSettings());
+  await sourceCommand(() => navigation.open());
+  await sourceCommand(() => navigation.reload());
+  await sourceCommand(() => navigation.expectOpen());
+  await sourceCommand(() => checkpoint('small bundle remembers the reader opening navigation'));
 
   // --- Test start ---
   // Check another bundle with no reader preference.
-  await workflows.navigateToBigBundlePreview();
-  await modal.openCustomizeSidebar();
-  await options.enableFolderNavigation();
-  await navigation.expectClosed();
-  await options.openFolderNavigationSettings();
-  await options.expectFolderNavigationDefaults('closed', 'inherit');
-  await options.setFolderNavigationDefaults('closed', 'open');
-  await options.saveFolderNavigationSettings();
-  await navigation.expectOpen();
-  const bigUrl = await modal.generatedBundle.getUrl();
-  await navigation.close();
-  await checkpoint('big bundle override opens navigation without borrowing the small bundle preference');
+  await sourceCommand(() => workflows.navigateToBigBundlePreview());
+  await sourceCommand(() => modal.openCustomizeSidebar());
+  await sourceCommand(() => options.enableFolderNavigation());
+  await sourceCommand(() => navigation.expectClosed());
+  await sourceCommand(() => options.openFolderNavigationSettings());
+  await sourceCommand(() => options.expectFolderNavigationDefaults('closed', 'inherit'));
+  await sourceCommand(() => options.setFolderNavigationDefaults('closed', 'open'));
+  await sourceCommand(() => options.saveFolderNavigationSettings());
+  await sourceCommand(() => navigation.expectOpen());
+  const bigUrl = await sourceCommand(() => modal.generatedBundle.getUrl());
+  await sourceCommand(() => navigation.close());
+  await sourceCommand(() => checkpoint('big bundle override opens navigation without borrowing the small bundle preference'));
 
   // Reopen the first bundle.
-  await workflows.navigateToSmallBundlePreview();
-  await navigation.expectOpen();
-  const smallUrl = await modal.generatedBundle.getUrl();
+  await sourceCommand(() => workflows.navigateToSmallBundlePreview());
+  await sourceCommand(() => navigation.expectOpen());
+  const smallUrl = await sourceCommand(() => modal.generatedBundle.getUrl());
   expect(new URL(smallUrl).origin).toBe(new URL(bigUrl).origin);
-  await modal.openCustomizeSidebar();
-  await options.openFolderNavigationSettings();
-  await options.setFolderNavigationDefaults('open', 'closed');
-  await options.saveFolderNavigationSettings();
+  await sourceCommand(() => modal.openCustomizeSidebar());
+  await sourceCommand(() => options.openFolderNavigationSettings());
+  await sourceCommand(() => options.setFolderNavigationDefaults('open', 'closed'));
+  await sourceCommand(() => options.saveFolderNavigationSettings());
   // A publisher changing the default does not override a returning reader.
-  await navigation.expectOpen();
-  await options.openFolderNavigationSettings();
-  await options.expectFolderNavigationDefaults('open', 'closed');
-  await options.cancelFolderNavigationSettings();
-  await addKeyFrame(htmlGeneration);
-  await checkpoint('returning reader choice takes precedence over the new closed default');
+  await sourceCommand(() => navigation.expectOpen());
+  await sourceCommand(() => options.openFolderNavigationSettings());
+  await sourceCommand(() => options.expectFolderNavigationDefaults('open', 'closed'));
+  await sourceCommand(() => options.cancelFolderNavigationSettings());
+  await sourceCommand(() => addKeyFrame(htmlGeneration));
+  await sourceCommand(() => checkpoint('returning reader choice takes precedence over the new closed default'));
 
   // Check a new reader session.
-  const newVisitor = await browser.newContext();
+  const newVisitor = await sourceCommand(() => browser.newContext());
   try {
     // Local previews require read-only access cookies. Leave local storage
     // empty so this browser still represents a first-time bundle reader.
-    await newVisitor.addCookies((await page.context().cookies()).filter(cookie => cookie.name === 'meadow-preview-v1'));
-    const reader = await newVisitor.newPage();
+    await sourceCommand(async () => newVisitor.addCookies((await page.context().cookies()).filter(cookie => cookie.name === 'meadow-preview-v1')));
+    const reader = await sourceCommand(() => newVisitor.newPage());
     const freshNavigation = GeneratedBundle.onPage(reader, expect).folderNavigation;
-    const smallResponse = await reader.goto(smallUrl);
+    const smallResponse = await sourceCommand(() => reader.goto(smallUrl));
     expect(smallResponse?.ok()).toBe(true);
-    await freshNavigation.expectClosed();
-    await reader.setViewportSize({ width: 390, height: 844 });
-    await freshNavigation.expectClosed();
-    await freshNavigation.open();
-    await reader.setViewportSize({ width: 1200, height: 800 });
-    await freshNavigation.expectOpen();
-    await reader.reload();
-    await freshNavigation.expectOpen();
-    await freshNavigation.close();
-    await reader.goto(bigUrl);
-    await freshNavigation.expectOpen();
-    await reader.setViewportSize({ width: 390, height: 844 });
-    await reader.reload();
-    await freshNavigation.expectOpen();
+    await sourceCommand(() => freshNavigation.expectClosed());
+    await sourceCommand(() => reader.setViewportSize({ width: 390, height: 844 }));
+    await sourceCommand(() => freshNavigation.expectClosed());
+    await sourceCommand(() => freshNavigation.open());
+    await sourceCommand(() => reader.setViewportSize({ width: 1200, height: 800 }));
+    await sourceCommand(() => freshNavigation.expectOpen());
+    await sourceCommand(() => reader.reload());
+    await sourceCommand(() => freshNavigation.expectOpen());
+    await sourceCommand(() => freshNavigation.close());
+    await sourceCommand(() => reader.goto(bigUrl));
+    await sourceCommand(() => freshNavigation.expectOpen());
+    await sourceCommand(() => reader.setViewportSize({ width: 390, height: 844 }));
+    await sourceCommand(() => reader.reload());
+    await sourceCommand(() => freshNavigation.expectOpen());
   } finally {
-    await newVisitor.close();
+    await sourceCommand(() => newVisitor.close());
   }
   void bigBundle;
   void smallBundle;
-  await checkpoint("a new reader receives the bundle default while returning readers retain their choice");
+  await sourceCommand(() => checkpoint("a new reader receives the bundle default while returning readers retain their choice"));
 
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

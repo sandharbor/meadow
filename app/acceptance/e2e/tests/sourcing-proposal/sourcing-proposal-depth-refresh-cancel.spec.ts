@@ -15,56 +15,56 @@ test.use({ fixtureHome: Fixture.Example });
  * whether to incorporate that newer material. Cancel and check that the captured identity, displayed
  * bytes, depth, and existing tracking choice remain unchanged, including after Later and reopening.
  */
-test('Cancelling a depth change that needs newer sources preserves the reviewed proposal', async ({ page, sourceChanges, testServer, checkpoint, addKeyFrame, assertMeadowHomeState, expectLogErrors }) => {
+test('Cancelling a depth change that needs newer sources preserves the reviewed proposal', { annotation: { type: 'scenario-id', description: 'aac78272-d544-432b-ad5d-9945ba2c6515' } }, async ({ sourceCommand, page, sourceChanges, testServer, checkpoint, addKeyFrame, assertMeadowHomeState, expectLogErrors }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);
   const sourcing = new SourcingWorkspacePage(page, expect);
   const proposal = new SourcingProposalState(testServer, 'example-bundle');
-  await list.goto();
-  await list.clickBundle('example-bundle');
-  await editor.waitForLoad('example-bundle');
-  await sourcing.open();
-  await sourcing.select('Inversion');
-  await sourcing.untrackSelected();
-  await sourcing.select('Cognitive Biases');
+  await sourceCommand(() => list.goto());
+  await sourceCommand(() => list.clickBundle('example-bundle'));
+  await sourceCommand(() => editor.waitForLoad('example-bundle'));
+  await sourceCommand(() => sourcing.open());
+  await sourceCommand(() => sourcing.select('Inversion'));
+  await sourceCommand(() => sourcing.untrackSelected());
+  await sourceCommand(() => sourcing.select('Cognitive Biases'));
   const before = proposal.current;
-  await checkpoint('the reviewed capture retains its depth stop and a staged untrack choice');
+  await sourceCommand(() => checkpoint('the reviewed capture retains its depth stop and a staged untrack choice'));
 
   // --- Test start ---
   // Changing live links must not be silently folded into a depth edit.
-  await sourceChanges.apply('redirect-biases-link', 'example-bundle-data');
+  await sourceCommand(() => sourceChanges.apply('redirect-biases-link', 'example-bundle-data'));
   const endConsentErrors = expectLogErrors(/This boundary change needs newer source material|server responded with a status of 409/);
-  await sourcing.setSelectedOutlinkDepth(1);
+  await sourceCommand(() => sourcing.setSelectedOutlinkDepth(1));
   const confirmation = page.getByRole('dialog', { name: 'Update sources for this change?', exact: true });
-  await expect(confirmation).toBeVisible();
+  await sourceCommand(() => expect(confirmation).toBeVisible());
   endConsentErrors();
-  await expect(confirmation).toContainText('Newer source material is available');
+  await sourceCommand(() => expect(confirmation).toContainText('Newer source material is available'));
   expect(proposal.current.candidateSnapshotId).toBe(before.candidateSnapshotId);
   expect(proposal.current.proposed).toEqual(before.proposed);
-  await addKeyFrame(sourceChangesDuringReview);
-  await checkpoint('the depth refresh confirmation is open with the original proposal preserved');
+  await sourceCommand(() => addKeyFrame(sourceChangesDuringReview));
+  await sourceCommand(() => checkpoint('the depth refresh confirmation is open with the original proposal preserved'));
 
   // Cancel preserves the old capture and the displayed depth as well as the durable draft.
-  await confirmation.getByRole('button', { name: 'Cancel', exact: true }).click();
-  await expect(confirmation).toBeHidden();
+  await sourceCommand(() => confirmation.getByRole('button', { name: 'Cancel', exact: true }).click());
+  await sourceCommand(() => expect(confirmation).toBeHidden());
   expect(proposal.current.proposed).toEqual(before.proposed);
   expect(proposal.current.tracking).toEqual(before.tracking);
-  await sourcing.select('Inversion');
-  await expect(sourcing.selectedPage.getByText('Not Tracked', { exact: true })).toBeVisible();
-  await sourcing.compare('Cognitive Biases');
-  await sourcing.comparison.getByRole('button', { name: 'Expand all', exact: true }).click();
-  await expect(sourcing.comparison).toContainText('[[Availability Bias]]');
-  await expect(sourcing.comparison).toContainText('No content changes');
-  await sourcing.closeComparison();
-  await sourcing.later();
-  await sourcing.open();
+  await sourceCommand(() => sourcing.select('Inversion'));
+  await sourceCommand(() => expect(sourcing.selectedPage.getByText('Not Tracked', { exact: true })).toBeVisible());
+  await sourceCommand(() => sourcing.compare('Cognitive Biases'));
+  await sourceCommand(() => sourcing.comparison.getByRole('button', { name: 'Expand all', exact: true }).click());
+  await sourceCommand(() => expect(sourcing.comparison).toContainText('[[Availability Bias]]'));
+  await sourceCommand(() => expect(sourcing.comparison).toContainText('No content changes'));
+  await sourceCommand(() => sourcing.closeComparison());
+  await sourceCommand(() => sourcing.later());
+  await sourceCommand(() => sourcing.open());
   expect(proposal.current.candidateSnapshotId).toBe(before.candidateSnapshotId);
   expect(proposal.current.proposed).toEqual(before.proposed);
   expect(proposal.current.tracking).toEqual(before.tracking);
-  await checkpoint('cancelled depth and the earlier untrack decision survive deferral');
+  await sourceCommand(() => checkpoint('cancelled depth and the earlier untrack decision survive deferral'));
 
   // The pending proposal and the two external source edits intentionally remain for manual review.
-  await assertMeadowHomeState({ allowedUntracked: [proposal.relativePath, 'source_graphs/.source-changes.jsonl'],
-    allowedModified: ['source_graphs/example-bundle-data/Cognitive Biases.md', 'source_graphs/example-bundle-data/Confirmation Bias.md'] });
+  await sourceCommand(() => assertMeadowHomeState({ allowedUntracked: [proposal.relativePath, 'source_graphs/.source-changes.jsonl'],
+    allowedModified: ['source_graphs/example-bundle-data/Cognitive Biases.md', 'source_graphs/example-bundle-data/Confirmation Bias.md'] }));
 });

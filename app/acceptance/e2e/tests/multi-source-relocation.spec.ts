@@ -15,56 +15,56 @@ test.use({ fixtureHome: 'home_fixture_multi_source' });
  * survive the missing directory. Saving the repaired location should close source
  * management with a success message and no material review.
  */
-test('Multi-source relocation saves the repaired location without reviewing unchanged material', async ({ page, testServer, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
+test('Multi-source relocation saves the repaired location without reviewing unchanged material', { annotation: { type: 'scenario-id', description: '9e553a56-7e3c-408c-ab79-53e03fae54c0' } }, async ({ sourceCommand, page, testServer, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
-  await list.goto();
-  await list.clickBundle('multi-source-page');
+  await sourceCommand(() => list.goto());
+  await sourceCommand(() => list.clickBundle('multi-source-page'));
   const editor = new BundleEditorPage(page, expect);
-  await editor.waitForLoad('multi-source-page');
-  await editor.waitForSourceCheck();
+  await sourceCommand(() => editor.waitForLoad('multi-source-page'));
+  await sourceCommand(() => editor.waitForSourceCheck());
   const sources = new SourcesControl(page, expect);
   const bundleConfig = new MeadowHomeBundleConfig(testServer.configDir, 'multi-source-page', expect);
   const beforeNodes = bundleConfig.readNodesText();
-  await checkpoint('the accepted source state is established before changing files');
+  await sourceCommand(() => checkpoint('the accepted source state is established before changing files'));
 
   // --- Test start ---
   // Relocate the research source.
-  await sourceChanges.apply('relocate-research', 'multi-source');
-  await sources.open();
-  await sources.expectDisconnected('source000002');
-  await addKeyFrame(bundleSource);
-  await checkpoint('the disconnected source keeps its accepted captured pages');
+  await sourceCommand(() => sourceChanges.apply('relocate-research', 'multi-source'));
+  await sourceCommand(() => sources.open());
+  await sourceCommand(() => sources.expectDisconnected('source000002'));
+  await sourceCommand(() => addKeyFrame(bundleSource));
+  await sourceCommand(() => checkpoint('the disconnected source keeps its accepted captured pages'));
 
   // Verify the captured pages and repair the source.
-  await sources.close();
-  await editor.switchToListView();
-  await editor.expectListViewNodeVisible('file:_mw_sources/source000002/Overview.md', true);
-  await sources.open();
+  await sourceCommand(() => sources.close());
+  await sourceCommand(() => editor.switchToListView());
+  await sourceCommand(() => editor.expectListViewNodeVisible('file:_mw_sources/source000002/Overview.md', true));
+  await sourceCommand(() => sources.open());
   const relocated = path.join(testServer.sourceGraphsDir, 'multi-source/research-relocated');
-  await sources.setDirectory('research', relocated);
-  const [draftStatus] = await Promise.all([
+  await sourceCommand(() => sources.setDirectory('research', relocated));
+  const [draftStatus] = await sourceCommand(() => Promise.all([
     page.waitForResponse(response => response.url().endsWith('/curation/bundle-config-draft-status') && response.ok()),
     page.waitForResponse(response => response.url().includes('/curation/bundle-config') && response.ok()),
     page.waitForResponse(response => response.url().includes('/obsidian-info') && response.ok()),
     sources.saveWithoutMaterialChanges(),
-  ]);
+  ]));
   expect(bundleConfig.read().sources?.find(source => source.id === 'source000002')?.directory).toBe(relocated);
   expect(bundleConfig.readNodesText()).toBe(beforeNodes);
-  await addKeyFrame(bundleSource);
-  await checkpoint('reconnecting the source closes management with Sources updated and no material review');
+  await sourceCommand(() => addKeyFrame(bundleSource));
+  await sourceCommand(() => checkpoint('reconnecting the source closes management with Sources updated and no material review'));
 
   // Reload the repaired location.
   // The graph's configuration read starts a dependent draft-status request.
   // Finish that request before reload; networkidle may still describe the
   // earlier document load when this request has only just been scheduled.
-  await draftStatus.finished();
-  await page.reload();
-  await editor.waitForLoad('multi-source-page');
-  await editor.waitForSourceCheck();
-  await editor.switchToListView();
-  await editor.expectListViewLocation('file:_mw_sources/source000002/Overview.md', 'research', '/');
-  await checkpoint('the accepted source location survives reloading the bundle');
+  await sourceCommand(() => draftStatus.finished());
+  await sourceCommand(() => page.reload());
+  await sourceCommand(() => editor.waitForLoad('multi-source-page'));
+  await sourceCommand(() => editor.waitForSourceCheck());
+  await sourceCommand(() => editor.switchToListView());
+  await sourceCommand(() => editor.expectListViewLocation('file:_mw_sources/source000002/Overview.md', 'research', '/'));
+  await sourceCommand(() => checkpoint('the accepted source location survives reloading the bundle'));
 
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

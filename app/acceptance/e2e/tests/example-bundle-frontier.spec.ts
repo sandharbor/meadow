@@ -28,7 +28,7 @@ test.use({ fixtureHome: Fixture.Minimal });
  * Open the example bundle and enable the frontier filter. Check that pages beyond the
  * normal traversal boundary appear in the graph.
  */
-test("example bundle frontier pages show in graph view with frontier filter", async ({
+test("example bundle frontier pages show in graph view with frontier filter", { annotation: { type: 'scenario-id', description: 'c0c45455-93e3-4e43-9a7e-ff6d7660d483' } }, async ({ sourceCommand,
   page, checkpoint, assertMeadowHomeState, addKeyFrame,
 }) => {
   // --- Setup ---
@@ -37,35 +37,35 @@ test("example bundle frontier pages show in graph view with frontier filter", as
   const filterPanel = new FilterPanelComponent(page, expect);
 
   // Start at empty bundle list and add the example bundle
-  await bundleList.goto();
-  await bundleList.clickAddExampleBundleLink();
-  await editor.waitForLoad("example-bundle");
-  await checkpoint("example bundle editor loaded");
+  await sourceCommand(() => bundleList.goto());
+  await sourceCommand(() => bundleList.clickAddExampleBundleLink());
+  await sourceCommand(() => editor.waitForLoad("example-bundle"));
+  await sourceCommand(() => checkpoint("example bundle editor loaded"));
 
   // --- Test start ---
-  await editor.sourceReview.open();
+  await sourceCommand(() => editor.sourceReview.open());
 
   // Enable frontier pages.
-  await filterPanel.enableFilter("Frontier");
-  await page.waitForTimeout(500);
-  await addKeyFrame(frontier);
-  await checkpoint("frontier filter visible");
+  await sourceCommand(() => filterPanel.enableFilter("Frontier"));
+  await sourceCommand(() => page.waitForTimeout(500));
+  await sourceCommand(() => addKeyFrame(frontier));
+  await sourceCommand(() => checkpoint("frontier filter visible"));
 
   // Solo the frontier.
-  await filterPanel.clickSoloOnFilter("Frontier");
-  await page.waitForTimeout(250);
+  await sourceCommand(() => filterPanel.clickSoloOnFilter("Frontier"));
+  await sourceCommand(() => page.waitForTimeout(250));
 
   // Switch to list view and verify multiple frontier pages are visible
-  await editor.switchToListView();
-  await page.waitForTimeout(250);
-  const frontierPageCount = await editor.getListViewPageCount();
+  await sourceCommand(() => editor.switchToListView());
+  await sourceCommand(() => page.waitForTimeout(250));
+  const frontierPageCount = await sourceCommand(() => editor.getListViewPageCount());
   expect(frontierPageCount).toBeGreaterThan(1);
-  await addKeyFrame(filters);
-  await checkpoint("frontier filter soloed with multiple pages");
+  await sourceCommand(() => addKeyFrame(filters));
+  await sourceCommand(() => checkpoint("frontier filter soloed with multiple pages"));
 
   void exampleBundle;
 
-  await editor.sourceReview.discard();
-  await checkpoint("frontier exploration leaves accepted material unchanged");
-  await assertMeadowHomeState();
+  await sourceCommand(() => editor.sourceReview.discard());
+  await sourceCommand(() => checkpoint("frontier exploration leaves accepted material unchanged"));
+  await sourceCommand(() => assertMeadowHomeState());
 });

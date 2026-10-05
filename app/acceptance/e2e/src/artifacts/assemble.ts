@@ -241,6 +241,9 @@ interface TickData {
 }
 
 interface Manifest {
+  scenarioId?: string;
+  codeRevision?: string;
+  uncommittedCode?: boolean;
   testName: string;
   description: string;
   status: string;
@@ -1074,7 +1077,7 @@ function computeScenarioReportMeta(
     ? readFileSync(failureReasonPath, "utf8").trim()
     : undefined;
 
-  const scenarioInfo = { testName, description, duration, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, keyFrames, ...(failureReason && { failureReason }) };
+  const scenarioInfo = { scenarioId: manifest.scenarioId, testName, description, duration, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, keyFrames, ...(failureReason && { failureReason }) };
 
   // Load expected error windows (written by the expectLogErrors fixture)
   const expectedWindowsPath = path.join(testDir, "expected-error-windows.json");
@@ -1388,7 +1391,9 @@ export function assembleTestArtifacts(testDir: string, options: { dropTickLog?: 
   );
 
   // Write manifest
-  const manifest: Manifest = { testName, description, status, startTime, endTime, homeCommits, homeCommitMeta, minioCommitMeta, extensionCommitMeta, uncommittedEntries, logs, testSourceFile, testSource, testSourceFixtures, testSourceChanges, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, keyFrames, ...tickData };
+  const identityPath = path.join(testDir, 'scenario-identity.json');
+  const identity = existsSync(identityPath) ? JSON.parse(readFileSync(identityPath, 'utf8')) : {};
+  const manifest: Manifest = { ...identity, testName, description, status, startTime, endTime, homeCommits, homeCommitMeta, minioCommitMeta, extensionCommitMeta, uncommittedEntries, logs, testSourceFile, testSource, testSourceFixtures, testSourceChanges, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, keyFrames, ...tickData };
   // On disk the manifest leaves out what the report viewer rebuilds, and
   // skips indentation; see manifestEncoding.ts.
   const blobGitDir = contentBlobGitDir(testDir);

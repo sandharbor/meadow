@@ -30,7 +30,7 @@ test.use({ bundleMode: "single-file" });
  * Remove a link that leaves previously captured pages orphaned. Review the existing and
  * proposed orphans, then confirm that acceptance removes the chosen configuration.
  */
-test("Sourcing reviews existing and candidate orphans with removal on acceptance", async ({
+test("Sourcing reviews existing and candidate orphans with removal on acceptance", { annotation: { type: 'scenario-id', description: 'fc541bcb-6df3-4c55-90f6-6c5dd6cf7871' } }, async ({ sourceCommand,
   page,
   sourceChanges,
   checkpoint,
@@ -39,50 +39,50 @@ test("Sourcing reviews existing and candidate orphans with removal on acceptance
 }) => {
   // --- Setup ---
   const wf = new Workflows(page, expect);
-  await wf.navigateToBigBundle();
-  await checkpoint("bundle editor loaded");
+  await sourceCommand(() => wf.navigateToBigBundle());
+  await sourceCommand(() => checkpoint("bundle editor loaded"));
 
   // --- Test start ---
   // Inspect the orphan summary.
   const editor = new BundleEditorPage(page, expect);
-  await editor.expectSourceOrphanCount(EXPECTED_ORPHAN_COUNT);
-  await addKeyFrame(sourceSnapshot);
-  await checkpoint("source toolbar counts existing orphans without a separate banner");
+  await sourceCommand(() => editor.expectSourceOrphanCount(EXPECTED_ORPHAN_COUNT));
+  await sourceCommand(() => addKeyFrame(sourceSnapshot));
+  await sourceCommand(() => checkpoint("source toolbar counts existing orphans without a separate banner"));
 
   // Open source review.
   const review = editor.sourceReview;
-  const orphansModal = await review.reviewOrphans();
-  await orphansModal.expectOrphanCount(EXPECTED_ORPHAN_COUNT);
-  await orphansModal.expectOrphanListed(CHILD_OF_BLACKLISTED);
-  await addKeyFrame(orphan);
-  await checkpoint("orphans review modal lists unreachable config pages");
+  const orphansModal = await sourceCommand(() => review.reviewOrphans());
+  await sourceCommand(() => orphansModal.expectOrphanCount(EXPECTED_ORPHAN_COUNT));
+  await sourceCommand(() => orphansModal.expectOrphanListed(CHILD_OF_BLACKLISTED));
+  await sourceCommand(() => addKeyFrame(orphan));
+  await sourceCommand(() => checkpoint("orphans review modal lists unreachable config pages"));
 
   // Defer, then accept the orphan cleanup.
-  await review.defer();
-  await editor.expectSourceOrphanCount(EXPECTED_ORPHAN_COUNT);
-  await review.reviewOrphans();
-  await addKeyFrame(orphan);
-  await review.applyOrphanRemovals();
-  await editor.expectSourceOrphanCount(0);
-  await checkpoint("source review applies all configuration removals");
+  await sourceCommand(() => review.defer());
+  await sourceCommand(() => editor.expectSourceOrphanCount(EXPECTED_ORPHAN_COUNT));
+  await sourceCommand(() => review.reviewOrphans());
+  await sourceCommand(() => addKeyFrame(orphan));
+  await sourceCommand(() => review.applyOrphanRemovals());
+  await sourceCommand(() => editor.expectSourceOrphanCount(0));
+  await sourceCommand(() => checkpoint("source review applies all configuration removals"));
 
   // Remove the incoming link.
-  await sourceChanges.apply('remove-incoming-link');
-  await editor.checkSourceChanges();
-  await expect(page.getByTestId('sourcing-status').getByRole('button', { name: /source changes? available.*Review/i })).toHaveText('2 source changes available – Review');
-  await review.reviewOrphans();
-  await orphansModal.showExplanation('t001 ---- child 2');
-  await orphansModal.expectExplanation('t001 ---- child 2', 'no longer links to');
-  await review.expectNoLongerIncluded('t001/deeper/t001 ---- child 2.md');
-  await addKeyFrame(orphan);
-  await checkpoint('candidate orphan is listed once and removed by default with its broken link');
+  await sourceCommand(() => sourceChanges.apply('remove-incoming-link'));
+  await sourceCommand(() => editor.checkSourceChanges());
+  await sourceCommand(() => expect(page.getByTestId('sourcing-status').getByRole('button', { name: /source changes? available.*Review/i })).toHaveText('2 source changes available – Review'));
+  await sourceCommand(() => review.reviewOrphans());
+  await sourceCommand(() => orphansModal.showExplanation('t001 ---- child 2'));
+  await sourceCommand(() => orphansModal.expectExplanation('t001 ---- child 2', 'no longer links to'));
+  await sourceCommand(() => review.expectNoLongerIncluded('t001/deeper/t001 ---- child 2.md'));
+  await sourceCommand(() => addKeyFrame(orphan));
+  await sourceCommand(() => checkpoint('candidate orphan is listed once and removed by default with its broken link'));
 
   // Accept the source update.
-  await review.accept();
-  await editor.expectSourceOrphanCount(0);
-  await checkpoint('acceptance removes the newly orphaned page');
+  await sourceCommand(() => review.accept());
+  await sourceCommand(() => editor.expectSourceOrphanCount(0));
+  await sourceCommand(() => checkpoint('acceptance removes the newly orphaned page'));
 
   void bigBundle;
 
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

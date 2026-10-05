@@ -1,25 +1,29 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
-
-import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import assert from 'node:assert/strict';
 import { SourceCommandTracker } from '../../src/run/SourceCommandTracker.js';
 
-test('source commands retain the scenario callsite and identify repeated executions', async () => {
+test('source commands retain their position, repeated execution identity, result, and completion status', async () => {
   const tracker = new SourceCommandTracker(import.meta.filename);
   const sourceCommand = tracker.run;
-  const locations: number[] = [];
-  for (let iteration = 0; iteration < 2; iteration++) {
-    const result = await sourceCommand(() => {
+  for (let index = 0; index < 2; index++) {
+    const result = await sourceCommand(async () => {
       assert.equal(tracker.current?.status, 'running');
-      assert.equal(tracker.current?.id, iteration);
-      locations.push(tracker.current!.line);
-      assert.ok(tracker.current!.endLine > tracker.current!.line);
-      return iteration;
+      return 42;
     });
-    assert.equal(result, iteration);
+    assert.equal(result, 42);
+    assert.equal(tracker.current?.id, index);
     assert.equal(tracker.current?.status, 'completed');
+    assert.equal(tracker.current?.file, import.meta.filename);
+    assert.equal(tracker.current?.line, 10);
+    assert.match(tracker.current?.text ?? '', /return 42/);
   }
-  assert.equal(locations[0], locations[1]);
-  await assert.rejects(sourceCommand(() => { throw new Error('expected failure'); }), /expected failure/);
+});
+
+test('failed commands retain their source marker and propagate their original error', async () => {
+  const tracker = new SourceCommandTracker(import.meta.filename);
+  const sourceCommand = tracker.run;
+  const failure = new Error('command failed');
+  await assert.rejects(sourceCommand(() => { throw failure; }), error => error === failure);
   assert.equal(tracker.current?.status, 'failed');
 });

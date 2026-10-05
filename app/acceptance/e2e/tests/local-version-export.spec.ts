@@ -32,7 +32,7 @@ function recursiveFiles(directory: string): string[] {
  * own export, while deleted local versions should remain in the inventory without
  * misleading output folders.
  */
-test("D01 E01 E02 E03 selected and All Versions exports enforce saved and tombstone boundaries", async ({
+test("D01 E01 E02 E03 selected and All Versions exports enforce saved and tombstone boundaries", { annotation: { type: 'scenario-id', description: '88cdda07-2ad1-4f28-9a3b-ed7ef17a4275' } }, async ({ sourceCommand,
   page,
   artifactDir,
   checkpoint,
@@ -41,30 +41,30 @@ test("D01 E01 E02 E03 selected and All Versions exports enforce saved and tombst
 }) => {
   // --- Setup ---
   const wf = new Workflows(page, expect);
-  await wf.navigateToBigBundleShareTab();
+  await sourceCommand(() => wf.navigateToBigBundleShareTab());
   const bundleApi = `/api/bundles/${encodeURIComponent(Bundle.Big)}`;
 
-  const firstState = await page.request.get(`${bundleApi}/review/versions`);
-  const firstVersionId = ((await firstState.json()) as { versions: Array<{ versionId: string }> }).versions[0].versionId;
-  const createResponse = await page.request.post(`${bundleApi}/generation/versions`, {
+  const firstState = await sourceCommand(() => page.request.get(`${bundleApi}/review/versions`));
+  const firstVersionId = ((await sourceCommand(() => firstState.json())) as { versions: Array<{ versionId: string }> }).versions[0].versionId;
+  const createResponse = await sourceCommand(() => page.request.post(`${bundleApi}/generation/versions`, {
     data: {
       notes: "private editorial note that must never be exported",
       confirmedNoGeneratedChanges: true,
     },
-  });
+  }));
   expect(createResponse.ok()).toBe(true);
-  const secondVersionId = ((await createResponse.json()) as { versionId: string }).versionId;
-  const saveResponse = await page.request.get(`${bundleApi}/review/save-changes`);
+  const secondVersionId = ((await sourceCommand(() => createResponse.json())) as { versionId: string }).versionId;
+  const saveResponse = await sourceCommand(() => page.request.get(`${bundleApi}/review/save-changes`));
   expect(saveResponse.ok()).toBe(true);
 
   // Reopen the modal so the common selector and Local Export tab see both versions.
-  await wf.navigateToBigBundleShareTab();
+  await sourceCommand(() => wf.navigateToBigBundleShareTab());
   const modal = new PreviewPublishModal(page, expect);
-  await page.getByRole("button", { name: "Local Export" }).click();
-  await expect(page.getByText("All Versions (Rendered Bundle only)", { exact: true })).toBeVisible();
-  await modal.expectShareVersionPurpose("export");
-  await modal.expectShareVersionSelected(secondVersionId);
-  await checkpoint("local export offers the selected saved version and All Versions");
+  await sourceCommand(() => page.getByRole("button", { name: "Local Export" }).click());
+  await sourceCommand(() => expect(page.getByText("All Versions (Rendered Bundle only)", { exact: true })).toBeVisible());
+  await sourceCommand(() => modal.expectShareVersionPurpose("export"));
+  await sourceCommand(() => modal.expectShareVersionSelected(secondVersionId));
+  await sourceCommand(() => checkpoint("local export offers the selected saved version and All Versions"));
 
   // --- Test start ---
   // Export the selected versions.
@@ -76,13 +76,13 @@ test("D01 E01 E02 E03 selected and All Versions exports enforce saved and tombst
   };
 
   const selectedDirectory = path.join(artifactDir, "selected-version-export");
-  const selectedResponse = await exportTo(selectedDirectory, { versionId: firstVersionId });
+  const selectedResponse = await sourceCommand(() => exportTo(selectedDirectory, { versionId: firstVersionId }));
   expect(selectedResponse.ok()).toBe(true);
   expect(recursiveFiles(selectedDirectory).some(file => file.endsWith(".html"))).toBe(true);
   expect(fs.existsSync(path.join(selectedDirectory, `${Bundle.Big}-${firstVersionId}`))).toBe(false);
 
   const allDirectory = path.join(artifactDir, "all-versions-export");
-  const allResponse = await exportTo(allDirectory, { allVersions: true });
+  const allResponse = await sourceCommand(() => exportTo(allDirectory, { allVersions: true }));
   expect(allResponse.ok()).toBe(true);
   expect(fs.existsSync(path.join(allDirectory, `${Bundle.Big}-${firstVersionId}`))).toBe(true);
   expect(fs.existsSync(path.join(allDirectory, `${Bundle.Big}-${secondVersionId}`))).toBe(true);
@@ -91,7 +91,7 @@ test("D01 E01 E02 E03 selected and All Versions exports enforce saved and tombst
   expect(allManifestText).not.toContain("private editorial note");
   expect(allManifestText).not.toContain(testServer.sourceGraphsDir);
 
-  await checkpoint("selected and all-version exports contain only shareable data");
+  await sourceCommand(() => checkpoint("selected and all-version exports contain only shareable data"));
 
   // Modify the current generated files.
   const currentDirectory = path.join(
@@ -108,18 +108,18 @@ test("D01 E01 E02 E03 selected and All Versions exports enforce saved and tombst
   const savedBytes = fs.readFileSync(currentHtmlPath);
   fs.appendFileSync(currentHtmlPath, "\n<!-- dirty current -->\n");
 
-  expect((await exportTo(path.join(artifactDir, "dirty-current-export"), { versionId: secondVersionId })).status()).toBe(409);
-  expect((await exportTo(path.join(artifactDir, "dirty-all-export"), { allVersions: true })).status()).toBe(409);
-  expect((await exportTo(path.join(artifactDir, "frozen-while-current-dirty"), { versionId: firstVersionId })).ok()).toBe(true);
+  expect((await sourceCommand(() => exportTo(path.join(artifactDir, "dirty-current-export"), { versionId: secondVersionId }))).status()).toBe(409);
+  expect((await sourceCommand(() => exportTo(path.join(artifactDir, "dirty-all-export"), { allVersions: true }))).status()).toBe(409);
+  expect((await sourceCommand(() => exportTo(path.join(artifactDir, "frozen-while-current-dirty"), { versionId: firstVersionId }))).ok()).toBe(true);
 
-  await checkpoint("dirty current files block their export while frozen files remain exportable");
+  await sourceCommand(() => checkpoint("dirty current files block their export while frozen files remain exportable"));
 
   // Restore current files and delete the frozen version.
   fs.writeFileSync(currentHtmlPath, savedBytes);
-  const deleteLocalResponse = await page.request.delete(`${bundleApi}/review/versions/${firstVersionId}`);
+  const deleteLocalResponse = await sourceCommand(() => page.request.delete(`${bundleApi}/review/versions/${firstVersionId}`));
   expect(deleteLocalResponse.ok()).toBe(true);
   const tombstoneDirectory = path.join(artifactDir, "all-versions-with-tombstone");
-  expect((await exportTo(tombstoneDirectory, { allVersions: true })).ok()).toBe(true);
+  expect((await sourceCommand(() => exportTo(tombstoneDirectory, { allVersions: true }))).ok()).toBe(true);
   const tombstoneManifest = JSON.parse(
     fs.readFileSync(path.join(tombstoneDirectory, `${Bundle.Big}-versions.json`), "utf8"),
   ) as { versions: Array<{ versionId: string; localFilesState: string }> };
@@ -127,10 +127,10 @@ test("D01 E01 E02 E03 selected and All Versions exports enforce saved and tombst
   expect(fs.existsSync(path.join(tombstoneDirectory, `${Bundle.Big}-${firstVersionId}`))).toBe(false);
   expect(fs.existsSync(path.join(tombstoneDirectory, `${Bundle.Big}-${secondVersionId}`))).toBe(true);
 
-  await modal.clickStep1Review();
-  await modal.clickVersionsTab();
-  await expect(page.getByText("Locally Deleted", { exact: true })).toBeVisible();
-  await checkpoint("local tombstone retained in version history");
+  await sourceCommand(() => modal.clickStep1Review());
+  await sourceCommand(() => modal.clickVersionsTab());
+  await sourceCommand(() => expect(page.getByText("Locally Deleted", { exact: true })).toBeVisible());
+  await sourceCommand(() => checkpoint("local tombstone retained in version history"));
 
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

@@ -40,7 +40,7 @@ const commonDiagnostic: Omit<StartupFailureDiagnostic, 'category' | 'title' | 's
  * Start with known Runtime session blockers. The recovery screen should explain the active
  * session and offer the appropriate direct recovery action.
  */
-test('Known Runtime blockers explain the active session and offer direct recovery', async ({
+test('Known Runtime blockers explain the active session and offer direct recovery', { annotation: { type: 'scenario-id', description: '02011ac3-f228-454b-8be1-3bb2acbbf912' } }, async ({ sourceCommand,
   page,
   checkpoint,
   addKeyFrame,
@@ -53,7 +53,7 @@ test('Known Runtime blockers explain the active session and offer direct recover
     await expect(page.getByText('Your Home is safe.', { exact: false })).toBeVisible();
   };
 
-  await show({
+  await sourceCommand(() => show({
     ...commonDiagnostic,
     category: 'runtime-busy',
     title: 'Meadow is already open in your browser',
@@ -68,17 +68,17 @@ test('Known Runtime blockers explain the active session and offer direct recover
       operationLeases: 0,
       sessionAvailable: true,
     },
-  });
-  await expect(page.getByText('Browser session', { exact: true })).toBeVisible();
-  await expect(page.getByText('Meadow 0.5.40 · 1 browser window')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Open here instead' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Return to browser' })).toBeVisible();
-  await addKeyFrame(startupRecovery, callout);
-  await checkpoint('browser session blocks a Runtime handoff');
+  }));
+  await sourceCommand(() => expect(page.getByText('Browser session', { exact: true })).toBeVisible());
+  await sourceCommand(() => expect(page.getByText('Meadow 0.5.40 · 1 browser window')).toBeVisible());
+  await sourceCommand(() => expect(page.getByRole('button', { name: 'Open here instead' })).toBeVisible());
+  await sourceCommand(() => expect(page.getByRole('button', { name: 'Return to browser' })).toBeVisible());
+  await sourceCommand(() => addKeyFrame(startupRecovery, callout));
+  await sourceCommand(() => checkpoint('browser session blocks a Runtime handoff'));
 
   // --- Test start ---
   // Check a running-operation blocker.
-  await show({
+  await sourceCommand(() => show({
     ...commonDiagnostic,
     category: 'runtime-busy',
     title: 'Meadow is finishing work in another session',
@@ -93,15 +93,15 @@ test('Known Runtime blockers explain the active session and offer direct recover
       operationLeases: 1,
       sessionAvailable: true,
     },
-  });
-  await expect(page.getByText('Background operation', { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Stop other session and open here' })).toBeVisible();
-  await addKeyFrame(startupRecovery, callout);
-  await checkpoint('active operation blocks a Runtime handoff');
+  }));
+  await sourceCommand(() => expect(page.getByText('Background operation', { exact: true })).toBeVisible());
+  await sourceCommand(() => expect(page.getByRole('button', { name: 'Try again' })).toBeVisible());
+  await sourceCommand(() => expect(page.getByRole('button', { name: 'Stop other session and open here' })).toBeVisible());
+  await sourceCommand(() => addKeyFrame(startupRecovery, callout));
+  await sourceCommand(() => checkpoint('active operation blocks a Runtime handoff'));
 
   // Check delayed ownership release.
-  await show({
+  await sourceCommand(() => show({
     ...commonDiagnostic,
     category: 'runtime-unavailable',
     title: 'A previous Meadow session is still closing',
@@ -116,11 +116,11 @@ test('Known Runtime blockers explain the active session and offer direct recover
       operationLeases: 0,
       sessionAvailable: false,
     },
-  });
-  await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Open here instead' })).toHaveCount(0);
-  await addKeyFrame(startupRecovery, callout);
-  await checkpoint('previous Runtime is still releasing Home ownership');
+  }));
+  await sourceCommand(() => expect(page.getByRole('button', { name: 'Try again' })).toBeVisible());
+  await sourceCommand(() => expect(page.getByRole('button', { name: 'Open here instead' })).toHaveCount(0));
+  await sourceCommand(() => addKeyFrame(startupRecovery, callout));
+  await sourceCommand(() => checkpoint('previous Runtime is still releasing Home ownership'));
 
-  await assertMeadowHomeState();
+  await sourceCommand(() => assertMeadowHomeState());
 });

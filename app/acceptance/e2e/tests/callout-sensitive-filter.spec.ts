@@ -26,7 +26,7 @@ test.use({ bundleMode: "single-file" });
  * Hover over the sensitive filter's help icon. Its callout should explain which pages the
  * filter includes.
  */
-test("Callout tooltip shown when hovering sensitive filter question mark", async ({
+test("Callout tooltip shown when hovering sensitive filter question mark", { annotation: { type: 'scenario-id', description: 'd7b5274b-db40-4d62-a90d-228408b96202' } }, async ({ sourceCommand,
   page,
   checkpoint,
   assertMeadowHomeState,
@@ -34,32 +34,32 @@ test("Callout tooltip shown when hovering sensitive filter question mark", async
 }) => {
   // --- Setup ---
   const wf = new Workflows(page, expect);
-  await wf.navigateToBigBundle();
-  await checkpoint("bundle editor loaded");
+  await sourceCommand(() => wf.navigateToBigBundle());
+  await sourceCommand(() => checkpoint("bundle editor loaded"));
 
   // --- Test start ---
   // Enable the sensitive filter.
   const filterPanel = new FilterPanelComponent(page, expect);
-  await filterPanel.enableFilter("Sensitive");
-  await page.waitForTimeout(250);
-  await checkpoint("sensitive filter enabled");
+  await sourceCommand(() => filterPanel.enableFilter("Sensitive"));
+  await sourceCommand(() => page.waitForTimeout(250));
+  await sourceCommand(() => checkpoint("sensitive filter enabled"));
 
   // Read the filter explanation.
-  await filterPanel.hoverFilterQuestionIcon("Sensitive");
-  await page.waitForTimeout(300);
+  await sourceCommand(() => filterPanel.hoverFilterQuestionIcon("Sensitive"));
+  await sourceCommand(() => page.waitForTimeout(300));
 
   // Verify the tooltip/callout is visible
-  await filterPanel.expectFilterTooltipVisible(
+  await sourceCommand(() => filterPanel.expectFilterTooltipVisible(
     "Sensitive",
     "Pages with",
     "meadow-sensitive: true",
-  );
+  ));
 
-  await addKeyFrame(callout);
-  await addKeyFrame(sensitive);
-  await checkpoint("sensitive filter callout tooltip visible");
+  await sourceCommand(() => addKeyFrame(callout));
+  await sourceCommand(() => addKeyFrame(sensitive));
+  await sourceCommand(() => checkpoint("sensitive filter callout tooltip visible"));
 
   void bigBundle;
 
-  await assertMeadowHomeState();
+  await sourceCommand(() => assertMeadowHomeState());
 });

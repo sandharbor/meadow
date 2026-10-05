@@ -16,7 +16,7 @@ limitations under the License.
 
 import React, { useEffect, useRef, useState } from 'react'
 import ReactDOM from 'react-dom/client'
-import { BrowserRouter, Routes, Route, Link, useNavigate, useParams } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Link, useNavigate, useParams, useMatch } from 'react-router-dom'
 import ConceptPage from './components/ConceptPage.tsx'
 import RunsList from './components/RunsList.tsx'
 import RunDetail from './components/RunDetail.tsx'
@@ -27,6 +27,8 @@ import AgentTrialViewer from './components/AgentTrialViewer.tsx'
 import { CopyReferenceButton } from './components/CopyReferenceButton.tsx'
 import { scenarioDisplayName } from './helpers.ts'
 import './index.css'
+import { useScenarioReviews, ReviewActions } from './components/ScenarioReview.tsx'
+import { findReview } from '../scenarioReviews.js'
 
 const FIXTURE_RUN_ID = '__fixture'
 const FIXTURE_TEST_SLUG = 'canonical'
@@ -112,8 +114,19 @@ const AgentBreadcrumbs: React.FC = () => {
 // scenario artifact" is reachable from anywhere so the user can jump to the
 // regenerable fixture from the runs list, a run detail, or another scenario.
 const AppActionsMenu: React.FC = () => {
-  const { runId, testSlug } = useParams<{ runId: string; testSlug: string }>()
+  const match = useMatch('/:runId/:testSlug')
+  const { runId, testSlug } = match && !['agents', 'concepts'].includes(match.params.runId ?? '') ? match.params : {}
   const onScenario = Boolean(runId && testSlug)
+  const reviews = useScenarioReviews()
+  const [reviewScenario, setReviewScenario] = useState<{ testName: string; scenarioId?: string } | null>(null)
+  useEffect(() => {
+    setReviewScenario(null)
+    if (!runId || !testSlug) return
+    let mounted = true
+    fetch(`/api/${runId}/${testSlug}/manifest`).then(response => response.ok ? response.json() : null)
+      .then(manifest => { if (mounted && manifest) setReviewScenario(manifest) }).catch(() => {})
+    return () => { mounted = false }
+  }, [runId, testSlug])
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [feedback, setFeedback] = useState<string | null>(null)
@@ -148,9 +161,11 @@ const AppActionsMenu: React.FC = () => {
     setOpen(false)
     navigate(`/${FIXTURE_RUN_ID}/${FIXTURE_TEST_SLUG}`)
   }
+  const reviewNote = reviewScenario ? findReview(reviews.data, reviewScenario)?.note : undefined
 
   return (
     <div ref={ref} className="ml-auto relative flex items-center">
+      {reviewNote && <button title={reviewNote} onClick={() => setOpen(true)} className="mr-2 max-w-64 cursor-pointer truncate text-xs text-violet-800">Review note: {reviewNote}</button>}
       {feedback && (
         <span className="text-[11px] text-neutral-500 mr-2">{feedback}</span>
       )}
@@ -171,6 +186,8 @@ const AppActionsMenu: React.FC = () => {
               Copy path
             </button>
           )}
+          {onScenario && reviewScenario && <ReviewActions runId={runId!} scenario={{ ...reviewScenario, slug: testSlug! }} reviews={reviews.data} update={reviews.update} onDone={() => setOpen(false)} />}
+          {reviews.error && <p role="alert" className="px-3 text-xs text-red-700">{reviews.error}</p>}
           <button
             className="w-full text-left px-3 py-1 text-xs hover:bg-neutral-50 cursor-pointer"
             onClick={openFixtureScenario}

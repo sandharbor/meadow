@@ -26,65 +26,65 @@ test.use({ bundleMode: "single-file" });
  * Save a generated bundle and customize its HTML output. The section-change filter should
  * distinguish the resulting changes from the saved baseline.
  */
-test("HTML section changes filter correctly reflects changes after save and customization", async ({ page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame }) => {
+test("HTML section changes filter correctly reflects changes after save and customization", { annotation: { type: 'scenario-id', description: 'e5b729ec-8d8d-4a05-acad-1822d0cc963c' } }, async ({ sourceCommand, page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame }) => {
   // --- Setup ---
   // Navigate to big bundle preview (starts on step 1 — Review)
   const wf = new Workflows(page, expect);
-  await wf.navigateToBigBundlePreview();
+  await sourceCommand(() => wf.navigateToBigBundlePreview());
   const modal = new PreviewPublishModal(page, expect);
   const changesTab = new ChangesTab(page, expect);
-  await checkpoint("step 1 - preview loaded");
+  await sourceCommand(() => checkpoint("step 1 - preview loaded"));
 
   // --- Test start ---
   // Check the initial change count.
-  await changesTab.expectBadgeVisible();
-  await checkpoint("changes tab has positive badge");
+  await sourceCommand(() => changesTab.expectBadgeVisible());
+  await sourceCommand(() => checkpoint("changes tab has positive badge"));
 
   // Save the generated version.
-  await modal.clickSaveChanges();
-  await modal.waitForSaveComplete();
-  await checkpoint("save completed - on step 2");
+  await sourceCommand(() => modal.clickSaveChanges());
+  await sourceCommand(() => modal.waitForSaveComplete());
+  await sourceCommand(() => checkpoint("save completed - on step 2"));
 
   // Return to review.
-  await modal.clickStep1Review();
-  await checkpoint("back on step 1");
+  await sourceCommand(() => modal.clickStep1Review());
+  await sourceCommand(() => checkpoint("back on step 1"));
 
   // Check that the changes are cleared.
-  await changesTab.expectNoBadge();
-  await addKeyFrame(htmlGeneration);
-  await checkpoint("changes tab has no badge after save");
+  await sourceCommand(() => changesTab.expectNoBadge());
+  await sourceCommand(() => addKeyFrame(htmlGeneration));
+  await sourceCommand(() => checkpoint("changes tab has no badge after save"));
 
   // Disable breadcrumbs.
-  await modal.openCustomizeSidebar();
+  await sourceCommand(() => modal.openCustomizeSidebar());
   const customizeTab = new CustomizeTab(page, expect);
-  await customizeTab.generationOptions.disableBreadcrumbs();
-  await checkpoint("breadcrumbs disabled at bundle level");
+  await sourceCommand(() => customizeTab.generationOptions.disableBreadcrumbs());
+  await sourceCommand(() => checkpoint("breadcrumbs disabled at bundle level"));
 
   // Wait for the regenerated output.
-  await changesTab.waitForRegenerationComplete();
+  await sourceCommand(() => changesTab.waitForRegenerationComplete());
 
   // Changes tab indicator should show a positive number again
-  await changesTab.expectBadgeVisible();
-  await checkpoint("changes tab has badge after customization change");
+  await sourceCommand(() => changesTab.expectBadgeVisible());
+  await sourceCommand(() => checkpoint("changes tab has badge after customization change"));
 
   // Inspect the modified files.
-  await modal.clickChangesTab();
+  await sourceCommand(() => modal.clickChangesTab());
 
   // Only modified files should be shown (no new or deleted)
-  await changesTab.expectOnlyModifiedFiles();
-  await checkpoint("only modified files in changes tab");
+  await sourceCommand(() => changesTab.expectOnlyModifiedFiles());
+  await sourceCommand(() => checkpoint("only modified files in changes tab"));
 
   // Open the section filter.
-  await changesTab.openHtmlSectionChangesFilter();
-  await checkpoint("html section changes filter opened");
+  await sourceCommand(() => changesTab.openHtmlSectionChangesFilter());
+  await sourceCommand(() => checkpoint("html section changes filter opened"));
 
   // Check which section changed.
-  await changesTab.expectOnlySectionsWithChanges(["<header>"]);
-  await addKeyFrame(customize);
-  await addKeyFrame(changesTabDoc);
-  await checkpoint("only header section has changes");
+  await sourceCommand(() => changesTab.expectOnlySectionsWithChanges(["<header>"]));
+  await sourceCommand(() => addKeyFrame(customize));
+  await sourceCommand(() => addKeyFrame(changesTabDoc));
+  await sourceCommand(() => checkpoint("only header section has changes"));
 
   void bigBundle;
 
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

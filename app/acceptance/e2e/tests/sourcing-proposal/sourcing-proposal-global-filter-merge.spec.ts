@@ -17,7 +17,7 @@ test.use({ fixtureHome: Fixture.SourcingReview });
  * curation independently changes another field and creates/deletes filters, then competes on one
  * definition. Resolve that conflict without replacing unrelated global edits or default metadata.
  */
-test('Sourcing global filter drafts preserve unrelated edits and resolve competing shared changes', async ({ page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+test('Sourcing global filter drafts preserve unrelated edits and resolve competing shared changes', { annotation: { type: 'scenario-id', description: 'fe6156b8-57d9-4872-81f7-a9ce26abbe8e' } }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);
@@ -29,59 +29,59 @@ test('Sourcing global filter drafts preserve unrelated edits and resolve competi
     await panel.clickAddCustomFilter();
     await panel.fillAndSaveCustomFilter({ name, field: 'title', matchType: 'substring', value: 'Reference', scope: 'global' });
   };
-  await list.goto();
-  await list.clickBundle('sourcing-review');
-  await editor.waitForLoad('sourcing-review');
-  for (const name of ['Shared review', 'Independent review', 'Obsolete review']) await create(name);
+  await sourceCommand(() => list.goto());
+  await sourceCommand(() => list.clickBundle('sourcing-review'));
+  await sourceCommand(() => editor.waitForLoad('sourcing-review'));
+  for (const name of ['Shared review', 'Independent review', 'Obsolete review']) await sourceCommand(() => create(name));
   const defaultId = globals().find(filter => filter.name === 'Daily Notes (Sensitive)')!.id;
   const original = fs.readFileSync(globalPath, 'utf8');
-  await checkpoint('accepted global filters are available to both editor modes');
+  await sourceCommand(() => checkpoint('accepted global filters are available to both editor modes'));
 
   // --- Test start ---
-  await sourcing.open();
-  await panel.editCustomFilter('Shared review');
-  await expect(page.getByRole('dialog', { name: 'Edit Custom Filter', exact: true })).toContainText('Applies to all bundles in sourcing and curation after this proposal is accepted');
-  await panel.saveCustomFilterEdits({ note: 'Proposed shared definition' });
-  await panel.editCustomFilter('Independent review');
-  await panel.saveCustomFilterEdits({ enabled: false });
-  await create('Created in proposal');
-  await panel.deleteCustomFilter('Daily Notes (Sensitive)');
+  await sourceCommand(() => sourcing.open());
+  await sourceCommand(() => panel.editCustomFilter('Shared review'));
+  await sourceCommand(() => expect(page.getByRole('dialog', { name: 'Edit Custom Filter', exact: true })).toContainText('Applies to all bundles in sourcing and curation after this proposal is accepted'));
+  await sourceCommand(() => panel.saveCustomFilterEdits({ note: 'Proposed shared definition' }));
+  await sourceCommand(() => panel.editCustomFilter('Independent review'));
+  await sourceCommand(() => panel.saveCustomFilterEdits({ enabled: false }));
+  await sourceCommand(() => create('Created in proposal'));
+  await sourceCommand(() => panel.deleteCustomFilter('Daily Notes (Sensitive)'));
   expect(fs.readFileSync(globalPath, 'utf8')).toBe(original);
-  await addKeyFrame(proposalConfigurationDraft);
-  await checkpoint('global definition enablement creation and default deletion remain isolated in the proposal');
-  await sourcing.later();
-  await panel.editCustomFilter('Independent review');
-  await panel.saveCustomFilterEdits({ note: 'Independent accepted description' });
-  await panel.editCustomFilter('Shared review');
-  await panel.saveCustomFilterEdits({ note: 'Competing accepted definition' });
-  await create('Created in curation');
-  await panel.deleteCustomFilter('Obsolete review');
-  await checkpoint('accepted curation has independent global changes and one competing definition');
+  await sourceCommand(() => addKeyFrame(proposalConfigurationDraft));
+  await sourceCommand(() => checkpoint('global definition enablement creation and default deletion remain isolated in the proposal'));
+  await sourceCommand(() => sourcing.later());
+  await sourceCommand(() => panel.editCustomFilter('Independent review'));
+  await sourceCommand(() => panel.saveCustomFilterEdits({ note: 'Independent accepted description' }));
+  await sourceCommand(() => panel.editCustomFilter('Shared review'));
+  await sourceCommand(() => panel.saveCustomFilterEdits({ note: 'Competing accepted definition' }));
+  await sourceCommand(() => create('Created in curation'));
+  await sourceCommand(() => panel.deleteCustomFilter('Obsolete review'));
+  await sourceCommand(() => checkpoint('accepted curation has independent global changes and one competing definition'));
 
   // The field-level conflict names the shared definition while preserving compatible changes.
-  await sourcing.open();
-  await sourcing.root.getByRole('button', { name: 'Resolve 1 configuration conflicts', exact: true }).click();
+  await sourceCommand(() => sourcing.open());
+  await sourceCommand(() => sourcing.root.getByRole('button', { name: 'Resolve 1 configuration conflicts', exact: true }).click());
   const dialog = page.getByRole('dialog', { name: 'Resolve configuration conflicts', exact: true });
-  await expect(dialog).toContainText('Shared review');
-  await expect(dialog).toContainText('Competing accepted definition');
-  await expect(dialog).toContainText('Proposed shared definition');
-  await addKeyFrame(sourceReviewConfigurationMerge);
-  await checkpoint('the global definition conflict is open and unresolved');
-  await dialog.getByRole('button', { name: 'Use proposed', exact: true }).click();
-  await expect(dialog).toContainText('All conflicts resolved.');
-  await dialog.getByRole('button', { name: 'Close', exact: true }).click();
-  await sourcing.accept();
+  await sourceCommand(() => expect(dialog).toContainText('Shared review'));
+  await sourceCommand(() => expect(dialog).toContainText('Competing accepted definition'));
+  await sourceCommand(() => expect(dialog).toContainText('Proposed shared definition'));
+  await sourceCommand(() => addKeyFrame(sourceReviewConfigurationMerge));
+  await sourceCommand(() => checkpoint('the global definition conflict is open and unresolved'));
+  await sourceCommand(() => dialog.getByRole('button', { name: 'Use proposed', exact: true }).click());
+  await sourceCommand(() => expect(dialog).toContainText('All conflicts resolved.'));
+  await sourceCommand(() => dialog.getByRole('button', { name: 'Close', exact: true }).click());
+  await sourceCommand(() => sourcing.accept());
   expect(globals().find(filter => filter.name === 'Shared review')?.note).toBe('Proposed shared definition');
   expect(globals().find(filter => filter.name === 'Independent review')).toMatchObject({ note: 'Independent accepted description', enabled: false });
   for (const name of ['Created in proposal', 'Created in curation']) expect(globals().some(filter => filter.name === name)).toBe(true);
   for (const name of ['Obsolete review', 'Daily Notes (Sensitive)']) expect(globals().some(filter => filter.name === name)).toBe(false);
   const config = YAML.parse(fs.readFileSync(path.join(testServer.configDir, 'app/app_config.yaml'), 'utf8'));
   expect(config.deletedDefaultFilterIds).toContain(defaultId);
-  await page.reload();
-  await editor.waitForLoad('sourcing-review');
-  await panel.expectFilterVisible('Created in proposal');
-  await panel.expectFilterVisible('Created in curation');
-  await expect(page.getByRole('checkbox', { name: /^Daily Notes/ })).toHaveCount(0);
-  await checkpoint('merged acceptance preserves both creations independent fields deletion and default metadata');
-  await assertMeadowHomeState();
+  await sourceCommand(() => page.reload());
+  await sourceCommand(() => editor.waitForLoad('sourcing-review'));
+  await sourceCommand(() => panel.expectFilterVisible('Created in proposal'));
+  await sourceCommand(() => panel.expectFilterVisible('Created in curation'));
+  await sourceCommand(() => expect(page.getByRole('checkbox', { name: /^Daily Notes/ })).toHaveCount(0));
+  await sourceCommand(() => checkpoint('merged acceptance preserves both creations independent fields deletion and default metadata'));
+  await sourceCommand(() => assertMeadowHomeState());
 });

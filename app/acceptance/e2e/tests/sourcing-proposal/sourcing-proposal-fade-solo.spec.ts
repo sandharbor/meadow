@@ -14,41 +14,41 @@ test.use({ fixtureHome: Fixture.SourcingReview });
  * ordinary Untracked filter. Solo brings that context to full prominence without rewriting Fade,
  * selection remains usable, and leaving Solo restores the remembered presentation.
  */
-test('Solo temporarily restores full prominence for faded unchanged context without rewriting Fade', async ({ page, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+test('Solo temporarily restores full prominence for faded unchanged context without rewriting Fade', { annotation: { type: 'scenario-id', description: '3b2016ed-f843-43a3-830f-0088eeb5f0df' } }, async ({ sourceCommand, page, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);
   const sourcing = new SourcingWorkspacePage(page, expect);
   const filters = new FilterPanelComponent(page, expect);
-  await list.goto();
-  await list.clickBundle('sourcing-review');
-  await editor.waitForLoad('sourcing-review');
-  await sourcing.open();
-  await sourcing.expectGraphOpacity('file:Routes/Reference.md', 0.5);
-  await expect(sourcing.root.getByRole('button', { name: /^Fade / })).toHaveCount(0);
-  await checkpoint('the full source comparison begins with unchanged context faded');
+  await sourceCommand(() => list.goto());
+  await sourceCommand(() => list.clickBundle('sourcing-review'));
+  await sourceCommand(() => editor.waitForLoad('sourcing-review'));
+  await sourceCommand(() => sourcing.open());
+  await sourceCommand(() => sourcing.expectGraphOpacity('file:Routes/Reference.md', 0.5));
+  await sourceCommand(() => expect(sourcing.root.getByRole('button', { name: /^Fade / })).toHaveCount(0));
+  await sourceCommand(() => checkpoint('the full source comparison begins with unchanged context faded'));
 
   // --- Test start ---
-  await sourcing.select('Reference');
-  await sourcing.untrackSelected();
-  await sourcing.clearSelection();
-  await sourcing.expectListOpacity('Reference', 0.45);
-  await filters.enableAndSoloFilter('Untracked');
-  await sourcing.expectListOpacity('Reference', 1);
-  await sourcing.expectNodeVisible('Start', false);
-  await sourcing.select('Reference');
-  await expect(sourcing.evidence).toContainText('Unchanged source material');
-  await expect(sourcing.selectedPage.getByText('Not Tracked', { exact: true })).toBeVisible();
-  await addKeyFrame(graphFade);
-  await checkpoint('soloed untracked context has full prominence while Fade remains configured');
-  await sourcing.clearSelection();
-  await filters.clickSoloOnFilter('Untracked');
-  await sourcing.expectListOpacity('Reference', 0.45);
-  await sourcing.expectNodeVisible('Start');
-  await sourcing.root.getByRole('button', { name: 'Graph View', exact: true }).click();
-  await sourcing.expectGraphOpacity('file:Routes/Reference.md', 0.5);
-  await checkpoint('leaving Solo restores the original Fade in graph and list');
-  await sourcing.root.getByRole('button', { name: 'Discard proposal', exact: true }).click();
-  await expect(sourcing.root).toBeHidden();
-  await assertMeadowHomeState();
+  await sourceCommand(() => sourcing.select('Reference'));
+  await sourceCommand(() => sourcing.untrackSelected());
+  await sourceCommand(() => sourcing.clearSelection());
+  await sourceCommand(() => sourcing.expectListOpacity('Reference', 0.45));
+  await sourceCommand(() => filters.enableAndSoloFilter('Untracked'));
+  await sourceCommand(() => sourcing.expectListOpacity('Reference', 1));
+  await sourceCommand(() => sourcing.expectNodeVisible('Start', false));
+  await sourceCommand(() => sourcing.select('Reference'));
+  await sourceCommand(() => expect(sourcing.evidence).toContainText('Unchanged source material'));
+  await sourceCommand(() => expect(sourcing.selectedPage.getByText('Not Tracked', { exact: true })).toBeVisible());
+  await sourceCommand(() => addKeyFrame(graphFade));
+  await sourceCommand(() => checkpoint('soloed untracked context has full prominence while Fade remains configured'));
+  await sourceCommand(() => sourcing.clearSelection());
+  await sourceCommand(() => filters.clickSoloOnFilter('Untracked'));
+  await sourceCommand(() => sourcing.expectListOpacity('Reference', 0.45));
+  await sourceCommand(() => sourcing.expectNodeVisible('Start'));
+  await sourceCommand(() => sourcing.root.getByRole('button', { name: 'Graph View', exact: true }).click());
+  await sourceCommand(() => sourcing.expectGraphOpacity('file:Routes/Reference.md', 0.5));
+  await sourceCommand(() => checkpoint('leaving Solo restores the original Fade in graph and list'));
+  await sourceCommand(() => sourcing.root.getByRole('button', { name: 'Discard proposal', exact: true }).click());
+  await sourceCommand(() => expect(sourcing.root).toBeHidden());
+  await sourceCommand(() => assertMeadowHomeState());
 });

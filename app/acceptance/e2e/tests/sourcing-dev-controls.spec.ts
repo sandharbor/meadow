@@ -24,10 +24,10 @@ test.use({ bundleMode: "single-file" });
  * this scenario's own running home. The application should review the same move
  * used by the automated test, and fixture menus that share the graph agree.
  */
-test('Sourcing dev controls apply the same shared move to the running application', async ({ page, testServer, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }, testInfo) => {
+test('Sourcing dev controls apply the same shared move to the running application', { annotation: { type: 'scenario-id', description: 'e990e4cb-3410-43f9-9054-f3f40ce902e7' } }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }, testInfo) => {
   // --- Setup ---
-  await new Workflows(page, expect).navigateToBigBundle();
-  await new BundleEditorPage(page, expect).waitForSourceCheck();
+  await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
+  await sourceCommand(() => new BundleEditorPage(page, expect).waitForSourceCheck());
   const reports = path.join(testInfo.outputDir, 'source-change-reports');
   for (const [run, slug, spec, title] of [
     ['2026-09-20_10-00-00', 'old-move', 'sourcing-move-page.spec.ts', 'Older move scenario'],
@@ -52,97 +52,97 @@ test('Sourcing dev controls apply the same shared move to the running applicatio
     currentCode: { revision: 'unknown', uncommitted: false },
     serviceEnvironment: {},
   }));
-  const devTools = await startDevTools(expect, {
+  const devTools = await sourceCommand(() => startDevTools(expect, {
     MEADOW_HOME_DIRECTORY_OVERRIDE: path.join(devHomes, 'normal-home'),
     MEADOW_DEV_HOMES_DIRECTORY: devHomes,
     MEADOW_E2E_RUNS_DIRECTORY: reports,
     MEADOW_REPORT_VIEWER_URL: 'http://localhost:5175',
-  });
+  }));
   try {
-    await page.goto(devTools.clientUrl);
-    await new DevSavedStatesPage(page, expect).expectOpen({ origin: 'Home fixture big_and_small', services: 'Hosted Development' });
-    await addKeyFrame(savedState);
+    await sourceCommand(() => page.goto(devTools.clientUrl));
+    await sourceCommand(() => new DevSavedStatesPage(page, expect).expectOpen({ origin: 'Home fixture big_and_small', services: 'Hosted Development' }));
+    await sourceCommand(() => addKeyFrame(savedState));
     const fixture = page.getByTestId('fixture-card-home_fixture_big_and_small');
     const controls = new DevSourceChangesControl(fixture, expect);
-    await controls.checkHelpWhileClosed();
-    await checkpoint('dev controls are ready on the open saved state');
+    await sourceCommand(() => controls.checkHelpWhileClosed());
+    await sourceCommand(() => checkpoint('dev controls are ready on the open saved state'));
 
     // --- Test start ---
     // Apply the shared move.
-    await controls.open();
-    await expect(fixture.getByRole('tab', { name: 'add', exact: true })).toHaveAttribute('aria-selected', 'true');
-    await fixture.getByRole('tab', { name: 'move', exact: true }).click();
+    await sourceCommand(() => controls.open());
+    await sourceCommand(() => expect(fixture.getByRole('tab', { name: 'add', exact: true })).toHaveAttribute('aria-selected', 'true'));
+    await sourceCommand(() => fixture.getByRole('tab', { name: 'move', exact: true }).click());
     const move = fixture.getByTestId('source-change-move-nested-page');
-    await controls.expandChange('move-nested-page',
+    await sourceCommand(() => controls.expandChange('move-nested-page',
       'Move child 2 to a new directory, preserving its filename and content.',
-      'Review proposes a move, and existing name-only links still resolve.');
-    await controls.expectE2eRun('move-nested-page', 'Shared move regression', 'http://localhost:5175/2026-09-21_10-00-00/shared-move');
-    await expect(move.getByRole('button', { name: 'Apply', exact: true })).toBeEnabled();
-    await Promise.all([page.waitForResponse('**/source-changes/move-nested-page'), move.getByRole('button', { name: 'Apply', exact: true }).click()]);
-    await expect(fixture.getByTestId('source-changes-control')).toHaveAttribute('aria-busy', 'false');
-    await expect(move.getByRole('button', { name: 'Apply', exact: true })).toBeDisabled();
-    await expect(move).not.toContainText('Applied to the current fixture');
+      'Review proposes a move, and existing name-only links still resolve.'));
+    await sourceCommand(() => controls.expectE2eRun('move-nested-page', 'Shared move regression', 'http://localhost:5175/2026-09-21_10-00-00/shared-move'));
+    await sourceCommand(() => expect(move.getByRole('button', { name: 'Apply', exact: true })).toBeEnabled());
+    await sourceCommand(() => Promise.all([page.waitForResponse('**/source-changes/move-nested-page'), move.getByRole('button', { name: 'Apply', exact: true }).click()]));
+    await sourceCommand(() => expect(fixture.getByTestId('source-changes-control')).toHaveAttribute('aria-busy', 'false'));
+    await sourceCommand(() => expect(move.getByRole('button', { name: 'Apply', exact: true })).toBeDisabled());
+    await sourceCommand(() => expect(move).not.toContainText('Applied to the current fixture'));
     expect(fs.existsSync(path.join(testServer.sourceGraphsDir, 'meadow-test-bundles-data/t001/deeper/t001 ---- child 2.md'))).toBe(false);
-    await addKeyFrame(sourceChange);
-    await expect(sourceChanges.apply('move-nested-page')).rejects.toThrow(/already applied/);
-    await checkpoint('dev controls apply a real source move to the isolated big graph');
+    await sourceCommand(() => addKeyFrame(sourceChange));
+    await sourceCommand(() => expect(sourceChanges.apply('move-nested-page')).rejects.toThrow(/already applied/));
+    await sourceCommand(() => checkpoint('dev controls apply a real source move to the isolated big graph'));
 
     // Inspect multi-source actions.
     const multiFixture = page.getByTestId('fixture-card-home_fixture_multi_source');
     const multiControls = new DevSourceChangesControl(multiFixture, expect);
-    await multiControls.open();
-    await expect(multiFixture.getByRole('tab', { name: 'add', exact: true })).toBeDisabled();
-    await expect(multiFixture.getByRole('tab', { name: 'rename', exact: true })).toBeDisabled();
+    await sourceCommand(() => multiControls.open());
+    await sourceCommand(() => expect(multiFixture.getByRole('tab', { name: 'add', exact: true })).toBeDisabled());
+    await sourceCommand(() => expect(multiFixture.getByRole('tab', { name: 'rename', exact: true })).toBeDisabled());
     const moveTab = multiFixture.getByRole('tab', { name: 'move', exact: true });
-    await expect(moveTab).toHaveAttribute('aria-selected', 'true');
-    await moveTab.press('ArrowRight');
-    await expect(multiFixture.getByRole('tab', { name: 'modify', exact: true })).toBeFocused();
-    await multiFixture.getByRole('tab', { name: 'modify', exact: true }).press('ArrowRight');
-    await expect(multiFixture.getByTestId('source-change-competing-cross-source-moves')).toHaveCount(0);
-    await multiFixture.getByRole('tab', { name: 'remove', exact: true }).press('Home');
-    await expect(moveTab).toBeFocused();
-    const competing = await multiControls.expandChange('competing-cross-source-moves',
+    await sourceCommand(() => expect(moveTab).toHaveAttribute('aria-selected', 'true'));
+    await sourceCommand(() => moveTab.press('ArrowRight'));
+    await sourceCommand(() => expect(multiFixture.getByRole('tab', { name: 'modify', exact: true })).toBeFocused());
+    await sourceCommand(() => multiFixture.getByRole('tab', { name: 'modify', exact: true }).press('ArrowRight'));
+    await sourceCommand(() => expect(multiFixture.getByTestId('source-change-competing-cross-source-moves')).toHaveCount(0));
+    await sourceCommand(() => multiFixture.getByRole('tab', { name: 'remove', exact: true }).press('Home'));
+    await sourceCommand(() => expect(moveTab).toBeFocused());
+    const competing = await sourceCommand(() => multiControls.expandChange('competing-cross-source-moves',
       'Replace notes://Same/Inside.md with two identical, reachable files in different sources.',
-      'Review must not silently assign either one the old identity.');
-    await expect(competing).toContainText('No recorded run yet (multi-source-competing-moves)');
-    await multiControls.expectOperations('competing-cross-source-moves', [
+      'Review must not silently assign either one the old identity.'));
+    await sourceCommand(() => expect(competing).toContainText('No recorded run yet (multi-source-competing-moves)'));
+    await sourceCommand(() => multiControls.expectOperations('competing-cross-source-moves', [
       { delete: 'notes://Same/Inside.md' },
       { write: { path: 'research://Moved/Inside.md', contentFile: 'Inside.md' } },
       { write: { path: 'reference://Moved/Inside.md', contentFile: 'Inside.md' } },
       { replaceText: { path: 'notes://Start.md', before: '[[Same/Inside]]', after: '[[Moved/Inside::research]] and [[Moved/Inside::reference]]', count: 1 } },
-    ]);
-    await competing.scrollIntoViewIfNeeded();
-    await addKeyFrame(sourceChange);
-    await checkpoint('multi-source changes have one category home and readable source-qualified operations');
+    ]));
+    await sourceCommand(() => competing.scrollIntoViewIfNeeded());
+    await sourceCommand(() => addKeyFrame(sourceChange));
+    await sourceCommand(() => checkpoint('multi-source changes have one category home and readable source-qualified operations'));
 
     // Check the shared fixture menus.
     for (const fixtureName of ['nested', 'srs']) {
       const sharedFixture = page.getByTestId(`fixture-card-home_fixture_${fixtureName}`);
       const sharedControls = new DevSourceChangesControl(sharedFixture, expect);
-      await sharedControls.open();
-      await sharedFixture.getByRole('tab', { name: 'move', exact: true }).click();
-      await sharedControls.expandChange('move-nested-page',
+      await sourceCommand(() => sharedControls.open());
+      await sourceCommand(() => sharedFixture.getByRole('tab', { name: 'move', exact: true }).click());
+      await sourceCommand(() => sharedControls.expandChange('move-nested-page',
         'Move child 2 to a new directory, preserving its filename and content.',
-        'Review proposes a move, and existing name-only links still resolve.');
-      await sharedControls.expectE2eRun('move-nested-page', 'Shared move regression', 'http://localhost:5175/2026-09-21_10-00-00/shared-move');
+        'Review proposes a move, and existing name-only links still resolve.'));
+      await sourceCommand(() => sharedControls.expectE2eRun('move-nested-page', 'Shared move regression', 'http://localhost:5175/2026-09-21_10-00-00/shared-move'));
     }
-    await checkpoint('nested and SRS expose the same source-change coverage');
+    await sourceCommand(() => checkpoint('nested and SRS expose the same source-change coverage'));
 
     // Review the move in the application.
     // Leaving the app for Dev Tools closes its browser session. Exchange a new
     // launch token before returning, including when this review takes longer.
     const runtimeSession = readRuntimeSessionDescriptor(testServer.runtimeSessionPath);
-    await page.goto(await createBrowserLaunchUrl(runtimeSession));
-    await new Workflows(page, expect).navigateToBigBundle();
+    await sourceCommand(async () => page.goto(await createBrowserLaunchUrl(runtimeSession)));
+    await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
     const review = new BundleEditorPage(page, expect).sourceReview;
-    await review.open();
-    await review.expectMove('Moved', 't001/deeper/t001 ---- child 2.md', 'source-changes/moved/t001 ---- child 2.md');
-    await addKeyFrame(sourceSnapshot);
-    await checkpoint('the running application discovers the move made through dev controls');
+    await sourceCommand(() => review.open());
+    await sourceCommand(() => review.expectMove('Moved', 't001/deeper/t001 ---- child 2.md', 'source-changes/moved/t001 ---- child 2.md'));
+    await sourceCommand(() => addKeyFrame(sourceSnapshot));
+    await sourceCommand(() => checkpoint('the running application discovers the move made through dev controls'));
   } finally {
-    await devTools.stop();
-    await testInfo.attach('dev-tools-processes.log', { body: devTools.logs(), contentType: 'text/plain' });
+    await sourceCommand(() => devTools.stop());
+    await sourceCommand(() => testInfo.attach('dev-tools-processes.log', { body: devTools.logs(), contentType: 'text/plain' }));
     fs.rmSync(devHomes, { recursive: true, force: true });
   }
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

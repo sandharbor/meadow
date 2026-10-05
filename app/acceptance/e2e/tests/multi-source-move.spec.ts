@@ -12,45 +12,45 @@ test.use({ fixtureHome: 'home_fixture_multi_source' });
  * Move a captured page into another source and review the proposed match. Accepting the
  * move should preserve its stable identity and curation.
  */
-test('Multi-source move review preserves the accepted page identity and its curation', async ({ page, testServer, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
+test('Multi-source move review preserves the accepted page identity and its curation', { annotation: { type: 'scenario-id', description: '25840ba8-3533-4257-8e57-ecd39d614a23' } }, async ({ sourceCommand, page, testServer, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
-  await list.goto();
-  await list.clickBundle('multi-source-page');
+  await sourceCommand(() => list.goto());
+  await sourceCommand(() => list.clickBundle('multi-source-page'));
   const editor = new BundleEditorPage(page, expect);
-  await editor.waitForLoad('multi-source-page');
-  await editor.waitForSourceCheck();
+  await sourceCommand(() => editor.waitForLoad('multi-source-page'));
+  await sourceCommand(() => editor.waitForSourceCheck());
   const bundleConfig = new MeadowHomeBundleConfig(testServer.configDir, 'multi-source-page', expect);
   const original = bundleConfig.requireNode({ sourceId: 'source000001', bundleNodeName: 'Inside' });
-  await checkpoint('the accepted source state is established before changing files');
+  await sourceCommand(() => checkpoint('the accepted source state is established before changing files'));
 
   // --- Test start ---
   // Move the page into another source.
-  await sourceChanges.apply('move-between-sources', 'multi-source');
-  await editor.checkSourceChanges();
-  await editor.sourceReview.open();
-  await editor.sourceReview.expectMoveCount(1);
-  await editor.sourceReview.expectMoveListed(original.bundleNodeId);
-  await editor.sourceReview.expectMove('Moved', 'notes://Same/Inside.md', 'research://Moved/Inside.md');
-  await editor.sourceReview.confirmSuggestedIdentities();
-  await editor.sourceReview.continueToGraph();
-  await editor.sourceReview.orphans.expectNotListed('Inside');
-  await addKeyFrame(sourceMove);
-  await checkpoint('content and link context support a move into another source');
+  await sourceCommand(() => sourceChanges.apply('move-between-sources', 'multi-source'));
+  await sourceCommand(() => editor.checkSourceChanges());
+  await sourceCommand(() => editor.sourceReview.open());
+  await sourceCommand(() => editor.sourceReview.expectMoveCount(1));
+  await sourceCommand(() => editor.sourceReview.expectMoveListed(original.bundleNodeId));
+  await sourceCommand(() => editor.sourceReview.expectMove('Moved', 'notes://Same/Inside.md', 'research://Moved/Inside.md'));
+  await sourceCommand(() => editor.sourceReview.confirmSuggestedIdentities());
+  await sourceCommand(() => editor.sourceReview.continueToGraph());
+  await sourceCommand(() => editor.sourceReview.orphans.expectNotListed('Inside'));
+  await sourceCommand(() => addKeyFrame(sourceMove));
+  await sourceCommand(() => checkpoint('content and link context support a move into another source'));
 
   // Accept the source update.
-  await editor.sourceReview.accept();
+  await sourceCommand(() => editor.sourceReview.accept());
   const updated = bundleConfig.findNode({ bundleNodeId: original.bundleNodeId });
   expect(updated).toEqual({ ...original, sourceId: 'source000002', sourceGraphSubdirectory: 'Moved' });
-  await editor.switchToListView();
-  await editor.expectListViewLocation('file:_mw_sources/source000002/Moved/Inside.md', 'research', 'Moved');
-  await editor.clickListViewRowByNodeKey('file:_mw_sources/source000002/Moved/Inside.md');
-  await editor.switchToGraphView();
+  await sourceCommand(() => editor.switchToListView());
+  await sourceCommand(() => editor.expectListViewLocation('file:_mw_sources/source000002/Moved/Inside.md', 'research', 'Moved'));
+  await sourceCommand(() => editor.clickListViewRowByNodeKey('file:_mw_sources/source000002/Moved/Inside.md'));
+  await sourceCommand(() => editor.switchToGraphView());
   const details = new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect);
-  await details.openDetails();
-  await details.expectFolder('research://Moved');
-  await addKeyFrame(sourceSnapshot);
-  await checkpoint('the moved page retains its durable identity and tracking');
+  await sourceCommand(() => details.openDetails());
+  await sourceCommand(() => details.expectFolder('research://Moved'));
+  await sourceCommand(() => addKeyFrame(sourceSnapshot));
+  await sourceCommand(() => checkpoint('the moved page retains its durable identity and tracking'));
 
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

@@ -17,49 +17,49 @@ test.use({ fixtureHome: Fixture.SourcingReview });
  * page. Sourcing preserves the departing pages and their prior connections for inspection. Removing
  * the staged exclusion restores the saved settings; accepted curation remains unchanged throughout.
  */
-test('Sourcing previews page blacklist effects beyond the selected page', async ({ page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+test('Sourcing previews page blacklist effects beyond the selected page', { annotation: { type: 'scenario-id', description: 'ba79e6c7-4b50-4a72-882a-de0230a677f0' } }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);
   const sourcing = new SourcingWorkspacePage(page, expect);
   const proposal = new SourcingProposalState(testServer, 'sourcing-review');
-  await list.goto();
-  await list.clickBundle('sourcing-review');
-  await editor.waitForLoad('sourcing-review');
-  await editor.switchToListView();
-  await editor.expectListViewRowByExactNamePresent('Outside');
+  await sourceCommand(() => list.goto());
+  await sourceCommand(() => list.clickBundle('sourcing-review'));
+  await sourceCommand(() => editor.waitForLoad('sourcing-review'));
+  await sourceCommand(() => editor.switchToListView());
+  await sourceCommand(() => editor.expectListViewRowByExactNamePresent('Outside'));
   const configPath = path.join(testServer.configDir, 'bundles/sourcing-review/config/bundle_node_config.yaml');
   const saved = fs.readFileSync(configPath, 'utf8');
-  await checkpoint('the bridge supplies the sole route to configured pages outside its folder');
+  await sourceCommand(() => checkpoint('the bridge supplies the sole route to configured pages outside its folder'));
 
   // --- Test start ---
   // The complete impact automatically enters sourcing instead of saving the exclusion in curation.
-  await editor.rightClickRow('Bridge');
-  await page.getByRole('button', { name: 'Blacklist', exact: true }).click();
-  await expect(sourcing.root).toBeVisible();
+  await sourceCommand(() => editor.rightClickRow('Bridge'));
+  await sourceCommand(() => page.getByRole('button', { name: 'Blacklist', exact: true }).click());
+  await sourceCommand(() => expect(sourcing.root).toBeVisible());
   expect(fs.readFileSync(configPath, 'utf8')).toBe(saved);
-  await sourcing.select('Outside');
-  await expect(sourcing.evidence).toContainText('departing');
-  await expect(sourcing.evidence).toContainText('Orphaned configuration');
-  await expect(sourcing.evidence).toContainText('Start → Bridge → Departing');
-  await sourcing.select('Retained');
-  await expect(sourcing.evidence).toContainText('Unchanged source material');
-  await expect(sourcing.evidence).toContainText('Reference');
-  await addKeyFrame(sourceReviewWorkspace);
-  await checkpoint('wider departures remain inspectable while an independent route retains its page');
+  await sourceCommand(() => sourcing.select('Outside'));
+  await sourceCommand(() => expect(sourcing.evidence).toContainText('departing'));
+  await sourceCommand(() => expect(sourcing.evidence).toContainText('Orphaned configuration'));
+  await sourceCommand(() => expect(sourcing.evidence).toContainText('Start → Bridge → Departing'));
+  await sourceCommand(() => sourcing.select('Retained'));
+  await sourceCommand(() => expect(sourcing.evidence).toContainText('Unchanged source material'));
+  await sourceCommand(() => expect(sourcing.evidence).toContainText('Reference'));
+  await sourceCommand(() => addKeyFrame(sourceReviewWorkspace));
+  await sourceCommand(() => checkpoint('wider departures remain inspectable while an independent route retains its page'));
 
   // Reverse the pending exclusion and inspect the restored configuration before accepting anything.
-  await sourcing.select('Bridge');
-  await sourcing.setSelectedBlacklisted(false);
-  await sourcing.select('Departing');
-  await expect(sourcing.evidence).toContainText('Unchanged source material');
-  await expect(sourcing.evidence).not.toContainText('Orphaned configuration');
+  await sourceCommand(() => sourcing.select('Bridge'));
+  await sourceCommand(() => sourcing.setSelectedBlacklisted(false));
+  await sourceCommand(() => sourcing.select('Departing'));
+  await sourceCommand(() => expect(sourcing.evidence).toContainText('Unchanged source material'));
+  await sourceCommand(() => expect(sourcing.evidence).not.toContainText('Orphaned configuration'));
   expect(proposal.current.proposed.nodes.find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Departing')?.outlinksDepth).toBe(1);
   expect(fs.readFileSync(configPath, 'utf8')).toBe(saved);
-  await checkpoint('reversing the exclusion restores the page and its saved depth setting');
+  await sourceCommand(() => checkpoint('reversing the exclusion restores the page and its saved depth setting'));
 
-  await sourcing.root.getByRole('button', { name: 'Discard proposal', exact: true }).click();
-  await expect(sourcing.root).toBeHidden();
-  await checkpoint('accepted curation has kept its original source scope and configuration');
-  await assertMeadowHomeState();
+  await sourceCommand(() => sourcing.root.getByRole('button', { name: 'Discard proposal', exact: true }).click());
+  await sourceCommand(() => expect(sourcing.root).toBeHidden());
+  await sourceCommand(() => checkpoint('accepted curation has kept its original source scope and configuration'));
+  await sourceCommand(() => assertMeadowHomeState());
 });

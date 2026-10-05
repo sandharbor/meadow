@@ -15,7 +15,7 @@ test.use({ fixtureHome: Fixture.FolderStructureSingle });
  * to relink the folder first; after relinking to its new location, the bundle opens
  * with its pages.
  */
-test("relinks a folder bundle whose selected folder moved", async ({
+test("relinks a folder bundle whose selected folder moved", { annotation: { type: 'scenario-id', description: '61372431-391b-49d5-a228-243d2052d98b' } }, async ({ sourceCommand,
   page,
   testServer,
   checkpoint,
@@ -28,25 +28,25 @@ test("relinks a folder bundle whose selected folder moved", async ({
   const sourceDir = path.join(testServer.sourceGraphsDir, "folder-structure-test");
   const moved = path.join(sourceDir, "Alpha moved");
   fs.renameSync(path.join(sourceDir, "Alpha"), moved);
-  await bundleList.goto();
-  await checkpoint("the bundle's selected folder has moved");
+  await sourceCommand(() => bundleList.goto());
+  await sourceCommand(() => checkpoint("the bundle's selected folder has moved"));
 
   // --- Test start ---
   // Opening the bundle asks for the folder's new location.
-  await bundleList.clickBundle(Bundle.FolderStructureSingle);
-  await bundleList.expectRelinkRequired("Alpha");
-  await addKeyFrame(folderBundles);
-  await checkpoint("opening the bundle asks to relink its missing folder");
+  await sourceCommand(() => bundleList.clickBundle(Bundle.FolderStructureSingle));
+  await sourceCommand(() => bundleList.expectRelinkRequired("Alpha"));
+  await sourceCommand(() => addKeyFrame(folderBundles));
+  await sourceCommand(() => checkpoint("opening the bundle asks to relink its missing folder"));
 
   // Relink it and open the bundle.
-  await bundleList.relinkSelectedFolder(moved);
-  await bundleList.clickBundle(Bundle.FolderStructureSingle);
-  await editor.waitForLoad(Bundle.FolderStructureSingle);
-  await editor.expectGraphViewHasPages();
-  await checkpoint("the relinked bundle opens with its pages");
+  await sourceCommand(() => bundleList.relinkSelectedFolder(moved));
+  await sourceCommand(() => bundleList.clickBundle(Bundle.FolderStructureSingle));
+  await sourceCommand(() => editor.waitForLoad(Bundle.FolderStructureSingle));
+  await sourceCommand(() => editor.expectGraphViewHasPages());
+  await sourceCommand(() => checkpoint("the relinked bundle opens with its pages"));
 
   // The moved folder is a source change; relinking records the folder's new scope.
-  await assertMeadowHomeState({
+  await sourceCommand(() => assertMeadowHomeState({
     allowedUntracked: [
       "bundles/single-folder-bundle/raw/folder_scope_snapshot.json",
       "source_graphs/folder-structure-test/Alpha moved/",
@@ -56,5 +56,5 @@ test("relinks a folder bundle whose selected folder moved", async ({
       "source_graphs/folder-structure-test/Alpha/Nested/Nested note.md",
       "source_graphs/folder-structure-test/Alpha/Visual map.svg",
     ],
-  });
+  }));
 });

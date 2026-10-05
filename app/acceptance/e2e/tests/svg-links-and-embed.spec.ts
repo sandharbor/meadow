@@ -26,7 +26,7 @@ test.use({ bundleMode: "single-file" });
  * Preview a directed SVG embed, open it fullscreen, and follow one of its links. The
  * drawing and its link targets should work in the generated bundle.
  */
-test("SVG links work in a directed embed", async ({
+test("SVG links work in a directed embed", { annotation: { type: 'scenario-id', description: 'f414fbce-32af-4a36-a75f-d5c514c9993c' } }, async ({ sourceCommand,
   page,
   checkpoint,
   addKeyFrame,
@@ -38,48 +38,48 @@ test("SVG links work in a directed embed", async ({
   const previewModal = new PreviewPublishModal(page, expect);
   const generatedBundle = previewModal.generatedBundle;
 
-  await workflows.navigateToBigBundle();
-  await editor.clickPreview();
-  await previewModal.waitForPreviewComplete();
+  await sourceCommand(() => workflows.navigateToBigBundle());
+  await sourceCommand(() => editor.clickPreview());
+  await sourceCommand(() => previewModal.waitForPreviewComplete());
 
-  await checkpoint("the generated bundle preview is ready");
+  await sourceCommand(() => checkpoint("the generated bundle preview is ready"));
 
   // --- Test start ---
   // Inspect the directed SVG embed.
-  await generatedBundle.clickPageLink("t006 - embedded media");
-  await generatedBundle.expectHeading("t006 - embedded media");
+  await sourceCommand(() => generatedBundle.clickPageLink("t006 - embedded media"));
+  await sourceCommand(() => generatedBundle.expectHeading("t006 - embedded media"));
 
-  await generatedBundle.svg.expectOrdinaryImageEmbeds(3);
-  await generatedBundle.svg.expectDirectedEmbedVisible();
+  await sourceCommand(() => generatedBundle.svg.expectOrdinaryImageEmbeds(3));
+  await sourceCommand(() => generatedBundle.svg.expectDirectedEmbedVisible());
   const textLink =
     "t006%20---%20page%20that%20embeds%20Excalidraw%20in%20another%20directory.html";
-  await generatedBundle.svg.expectDirectedTextLink(
+  await sourceCommand(() => generatedBundle.svg.expectDirectedTextLink(
     textLink,
     "t006 --- page that embeds Excalidraw in another directory",
-  );
-  await generatedBundle.svg.expectDirectedShapeLink(
+  ));
+  await sourceCommand(() => generatedBundle.svg.expectDirectedShapeLink(
     "../t006%20-%20embedded%20media.html",
-  );
-  await generatedBundle.svg.expectDirectedStandaloneLinkAbsent();
-  await addKeyFrame(svg);
-  await checkpoint("directed SVG embed rendered with live links");
+  ));
+  await sourceCommand(() => generatedBundle.svg.expectDirectedStandaloneLinkAbsent());
+  await sourceCommand(() => addKeyFrame(svg));
+  await sourceCommand(() => checkpoint("directed SVG embed rendered with live links"));
 
   // Open the SVG fullscreen.
-  await generatedBundle.svg.openDirectedFullscreen();
-  await checkpoint("directed SVG embed fullscreen open");
+  await sourceCommand(() => generatedBundle.svg.openDirectedFullscreen());
+  await sourceCommand(() => checkpoint("directed SVG embed fullscreen open"));
 
   // Follow an SVG link.
-  await generatedBundle.svg.closeDirectedFullscreen();
+  await sourceCommand(() => generatedBundle.svg.closeDirectedFullscreen());
 
-  await generatedBundle.svg.clickDirectedLink(textLink);
-  await generatedBundle.expectHeading(
+  await sourceCommand(() => generatedBundle.svg.clickDirectedLink(textLink));
+  await sourceCommand(() => generatedBundle.expectHeading(
     "t006 --- page that embeds Excalidraw in another directory",
-  );
-  await addKeyFrame(svg);
-  await checkpoint("directed SVG embed link opened target");
+  ));
+  await sourceCommand(() => addKeyFrame(svg));
+  await sourceCommand(() => checkpoint("directed SVG embed link opened target"));
 
   void bigBundle;
-  await assertMeadowHomeState({
+  await sourceCommand(() => assertMeadowHomeState({
     allowedUntracked: [
       "bundles/meadow-test-bundle-big/raw/generation_inputs/",
       "bundles/meadow-test-bundle-big/raw/tracked_page_content/",
@@ -89,5 +89,5 @@ test("SVG links work in a directed embed", async ({
       "bundles/meadow-test-bundle-big/html/",
       "bundles/meadow-test-bundle-big/raw/",
     ],
-  });
+  }));
 });

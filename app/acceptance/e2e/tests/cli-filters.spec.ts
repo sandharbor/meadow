@@ -28,36 +28,36 @@ test.use({ recordVideo: false });
  * Read the available filters through the CLI, then query nodes with default and explicit
  * combinations. Each JSON result should match the expected set of pages.
  */
-test("CLI lists filters and applies default and explicit set operations as exact JSON", async ({
+test("CLI lists filters and applies default and explicit set operations as exact JSON", { annotation: { type: 'scenario-id', description: 'a2b621ca-663b-4ca5-a6a8-432abbbe713e' } }, async ({ sourceCommand,
   assertMeadowHomeState,
   meadowCli,
   checkpoint,
 }) => {
   // --- Test start ---
   // Inspect available filters.
-  const filters = await meadowCli.run(
+  const filters = await sourceCommand(() => meadowCli.run(
     ["bundle", "filters", "meadow-test-bundle-big"],
     { artifactName: "big-bundle-filters" },
-  );
+  ));
   expect(filters).toBe(readCliFixture("big-bundle-filters.json"));
 
-  await checkpoint("available filters match the expected definitions");
+  await sourceCommand(() => checkpoint("available filters match the expected definitions"));
 
   // Apply the default combination.
-  const defaultFilteredNodes = await meadowCli.run(
+  const defaultFilteredNodes = await sourceCommand(() => meadowCli.run(
     [
       "bundle", "nodes", "meadow-test-bundle-big", "--scope", "all",
       "--filter", "untracked-filter=solo",
       "--filter", "sensitive-filter=exclude",
     ],
     { artifactName: "big-bundle-default-filtered-nodes" },
-  );
+  ));
   expect(defaultFilteredNodes).toBe(readCliFixture("big-bundle-default-filtered-nodes.json"));
 
-  await checkpoint("default filters return the expected nodes");
+  await sourceCommand(() => checkpoint("default filters return the expected nodes"));
 
   // Apply an explicit intersection.
-  const explicitlyFilteredNodes = await meadowCli.run(
+  const explicitlyFilteredNodes = await sourceCommand(() => meadowCli.run(
     [
       "bundle", "nodes", "meadow-test-bundle-big", "--scope", "all",
       "--filter", "custom-filter-1750826014295-r7b2079ch=solo",
@@ -65,13 +65,13 @@ test("CLI lists filters and applies default and explicit set operations as exact
       "--combine", "intersection",
     ],
     { artifactName: "big-bundle-intersection-filtered-nodes" },
-  );
+  ));
   expect(explicitlyFilteredNodes).toBe(readCliFixture("big-bundle-intersection-filtered-nodes.json"));
 
   void cli;
   void bundles;
   void bigBundle;
-  await checkpoint("explicit intersection returns the expected nodes");
+  await sourceCommand(() => checkpoint("explicit intersection returns the expected nodes"));
 
-  await assertMeadowHomeState();
+  await sourceCommand(() => assertMeadowHomeState());
 });

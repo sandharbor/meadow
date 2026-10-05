@@ -55,7 +55,7 @@ test.use({ bundleMode: "single-file" });
  * Start Meadow with a test migration installed. Verify that startup applies the migration
  * and records its result.
  */
-test("Migration runner applies an E2E-only migration at startup", async ({
+test("Migration runner applies an E2E-only migration at startup", { annotation: { type: 'scenario-id', description: 'ec8d200b-55aa-49e5-894f-8c6145d1865c' } }, async ({ sourceCommand,
   page,
   checkpoint,
   assertMeadowHomeState,
@@ -67,7 +67,7 @@ test("Migration runner applies an E2E-only migration at startup", async ({
 
   // --- Test start ---
   // Verify the startup migration and open the app.
-  await migrations.expectCompleted(MIGRATION_ID);
+  await sourceCommand(() => migrations.expectCompleted(MIGRATION_ID));
 
   const markerPath = path.join(testServer.configDir, "migration-system-e2e.yaml");
   expect(YAML.parse(fs.readFileSync(markerPath, "utf8"))).toEqual({
@@ -78,13 +78,13 @@ test("Migration runner applies an E2E-only migration at startup", async ({
   expect(fs.existsSync(path.join(testServer.configDir, ".meadow-migration-recovery"))).toBe(false);
 
   const bundleList = new BundleListPage(page, expect);
-  await bundleList.goto();
-  await bundleList.expectHeadingVisible();
-  await addKeyFrame(migration);
-  await checkpoint("app ready after E2E-only startup migration");
+  await sourceCommand(() => bundleList.goto());
+  await sourceCommand(() => bundleList.expectHeadingVisible());
+  await sourceCommand(() => addKeyFrame(migration));
+  await sourceCommand(() => checkpoint("app ready after E2E-only startup migration"));
 
   void bigBundle;
   void bundles;
 
-  await assertMeadowHomeState();
+  await sourceCommand(() => assertMeadowHomeState());
 });

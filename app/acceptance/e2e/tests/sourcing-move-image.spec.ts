@@ -12,38 +12,38 @@ test.use({ bundleMode: 'single-file' });
  * Move a tracked image and review the proposed match. Accepting it should preserve both
  * the image's identity and tracking state.
  */
-test('Sourcing moves a tracked image while preserving its identity and tracking', async ({ page, testServer, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+test('Sourcing moves a tracked image while preserving its identity and tracking', { annotation: { type: 'scenario-id', description: 'd9e784cb-3a46-431c-bdb7-e93cd91739e3' } }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
-  await new Workflows(page, expect).navigateToBigBundle();
+  await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
   const editor = new BundleEditorPage(page, expect);
-  await editor.waitForSourceCheck();
+  await sourceCommand(() => editor.waitForSourceCheck());
   const bundleConfig = new MeadowHomeBundleConfig(testServer.configDir, 'meadow-test-bundle-big', expect);
   const original = bundleConfig.requireNode({ bundleNodeName: 't024 ---- test image' });
   expect(original.listType).toBe('whitelist');
-  await checkpoint('the accepted source state is established before changing files');
+  await sourceCommand(() => checkpoint('the accepted source state is established before changing files'));
 
   // --- Test start ---
   // Move the tracked image.
-  await sourceChanges.apply('move-tracked-image');
-  await editor.checkSourceChanges();
-  await editor.sourceReview.open();
-  await editor.sourceReview.expectMoveCount(1);
-  await editor.sourceReview.expectMove('Moved', 't024/t024 ---- test image.png', 't024/images/t024 ---- test image.png');
-  await editor.sourceReview.expectMoveListed(original.bundleNodeId);
-  await editor.sourceReview.confirmSuggestedIdentities();
-  await editor.sourceReview.continueToGraph();
-  await editor.sourceReview.orphans.expectNotListed(original.bundleNodeName);
-  await addKeyFrame(sourceMove);
-  await checkpoint('review identifies the move through the shared source change');
+  await sourceCommand(() => sourceChanges.apply('move-tracked-image'));
+  await sourceCommand(() => editor.checkSourceChanges());
+  await sourceCommand(() => editor.sourceReview.open());
+  await sourceCommand(() => editor.sourceReview.expectMoveCount(1));
+  await sourceCommand(() => editor.sourceReview.expectMove('Moved', 't024/t024 ---- test image.png', 't024/images/t024 ---- test image.png'));
+  await sourceCommand(() => editor.sourceReview.expectMoveListed(original.bundleNodeId));
+  await sourceCommand(() => editor.sourceReview.confirmSuggestedIdentities());
+  await sourceCommand(() => editor.sourceReview.continueToGraph());
+  await sourceCommand(() => editor.sourceReview.orphans.expectNotListed(original.bundleNodeName));
+  await sourceCommand(() => addKeyFrame(sourceMove));
+  await sourceCommand(() => checkpoint('review identifies the move through the shared source change'));
 
   // Accept the source update.
-  await editor.sourceReview.accept();
+  await sourceCommand(() => editor.sourceReview.accept());
   expect(bundleConfig.findNode({ bundleNodeId: original.bundleNodeId })).toEqual({ ...original, sourceGraphSubdirectory: 't024/images' });
-  await editor.switchToListView();
-  await editor.expectListViewNodeVisible('file:t024/images/t024 ---- test image.png', true);
-  await editor.expectListViewNodeVisible('file:t024/t024 ---- test image.png', false);
-  await addKeyFrame(sourceSnapshot);
-  await checkpoint('the moved file remains reachable with the same identity and tracking');
+  await sourceCommand(() => editor.switchToListView());
+  await sourceCommand(() => editor.expectListViewNodeVisible('file:t024/images/t024 ---- test image.png', true));
+  await sourceCommand(() => editor.expectListViewNodeVisible('file:t024/t024 ---- test image.png', false));
+  await sourceCommand(() => addKeyFrame(sourceSnapshot));
+  await sourceCommand(() => checkpoint('the moved file remains reachable with the same identity and tracking'));
 
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

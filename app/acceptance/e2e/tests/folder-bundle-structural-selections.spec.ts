@@ -26,7 +26,7 @@ test.use({ fixtureHome: Fixture.FolderStructureMultiple });
  * Select a folder's direct children, then its deeper paths. Confirm that structural
  * descendants and linked pages are selected in the list and graph.
  */
-test("folder context selections include structural children and deeper paths", async ({
+test("folder context selections include structural children and deeper paths", { annotation: { type: 'scenario-id', description: '7d68931a-2d3c-403f-b1d4-293f0dd5f124' } }, async ({ sourceCommand,
   page,
   checkpoint,
   addKeyFrame,
@@ -36,31 +36,31 @@ test("folder context selections include structural children and deeper paths", a
   const bundleList = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);
 
-  await bundleList.goto();
-  await bundleList.clickBundle(Bundle.FolderStructureMultiple);
-  await editor.waitForLoad(Bundle.FolderStructureMultiple);
-  await editor.switchToListView();
-  await checkpoint("the folder graph is ready for structural selection");
+  await sourceCommand(() => bundleList.goto());
+  await sourceCommand(() => bundleList.clickBundle(Bundle.FolderStructureMultiple));
+  await sourceCommand(() => editor.waitForLoad(Bundle.FolderStructureMultiple));
+  await sourceCommand(() => editor.switchToListView());
+  await sourceCommand(() => checkpoint("the folder graph is ready for structural selection"));
 
   // --- Test start ---
   // Select direct children.
-  await editor.rightClickListViewRowByNodeKey("folder:Alpha");
-  await editor.clickContextMenuItem("Select Children");
+  await sourceCommand(() => editor.rightClickListViewRowByNodeKey("folder:Alpha"));
+  await sourceCommand(() => editor.clickContextMenuItem("Select Children"));
 
-  expect((await editor.getSelectedPageTitles()).sort()).toEqual([
+  expect((await sourceCommand(() => editor.getSelectedPageTitles())).sort()).toEqual([
     "Alpha",
     "Alpha note",
     "Nested",
     "Visual map",
   ].sort());
-  await addKeyFrame(folderBundles);
-  await checkpoint("Select Children includes every direct Alpha child");
+  await sourceCommand(() => addKeyFrame(folderBundles));
+  await sourceCommand(() => checkpoint("Select Children includes every direct Alpha child"));
 
   // Select all deeper paths.
-  await editor.rightClickListViewRowByNodeKey("folder:Alpha");
-  await editor.clickContextMenuItem("Select Deeper Paths from Here");
+  await sourceCommand(() => editor.rightClickListViewRowByNodeKey("folder:Alpha"));
+  await sourceCommand(() => editor.clickContextMenuItem("Select Deeper Paths from Here"));
 
-  expect((await editor.getSelectedPageTitles()).sort()).toEqual([
+  expect((await sourceCommand(() => editor.getSelectedPageTitles())).sort()).toEqual([
     "Alpha",
     "Alpha note",
     "Beyond outside",
@@ -70,14 +70,14 @@ test("folder context selections include structural children and deeper paths", a
     "Outside note",
     "Visual map",
   ].sort());
-  await editor.switchToGraphView();
-  await editor.expectGraphViewActive();
-  await addKeyFrame(paths);
-  await checkpoint("Select Deeper Paths highlights structural and linked descendants in the graph");
+  await sourceCommand(() => editor.switchToGraphView());
+  await sourceCommand(() => editor.expectGraphViewActive());
+  await sourceCommand(() => addKeyFrame(paths));
+  await sourceCommand(() => checkpoint("Select Deeper Paths highlights structural and linked descendants in the graph"));
 
-  await assertMeadowHomeState({
+  await sourceCommand(() => assertMeadowHomeState({
     allowedUntracked: [
       "bundles/ordered-folders/raw/folder_scope_snapshot.json",
 "bundles/ordered-folders/raw/"],
-  });
+  }));
 });

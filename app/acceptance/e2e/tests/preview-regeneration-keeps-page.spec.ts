@@ -25,32 +25,32 @@ test.use({ bundleMode: 'single-file' });
  * Change a generation option while viewing a child page. The new generated
  * output should apply the option and keep that child page in the preview.
  */
-test('regenerating from Customize keeps the current preview page', async ({
+test('regenerating from Customize keeps the current preview page', { annotation: { type: 'scenario-id', description: 'beb448bf-8830-4679-ab10-8b55d20306d5' } }, async ({ sourceCommand,
   page, checkpoint, addKeyFrame, skipMeadowHomeStateCheck,
 }) => {
   // --- Setup ---
   const modal = new PreviewPublishModal(page, expect);
-  await new Workflows(page, expect).navigateToBigBundlePreview();
-  await modal.generatedBundle.clickPageLink('t001 - deeply nested');
-  await modal.generatedBundle.clickPageLink('t001 ---- child 1');
-  await modal.generatedBundle.expectSingleHeading('t001 ---- child 1');
-  const originalUrl = await modal.generatedBundle.getUrl();
-  await modal.openCustomizeSidebar();
+  await sourceCommand(() => new Workflows(page, expect).navigateToBigBundlePreview());
+  await sourceCommand(() => modal.generatedBundle.clickPageLink('t001 - deeply nested'));
+  await sourceCommand(() => modal.generatedBundle.clickPageLink('t001 ---- child 1'));
+  await sourceCommand(() => modal.generatedBundle.expectSingleHeading('t001 ---- child 1'));
+  const originalUrl = await sourceCommand(() => modal.generatedBundle.getUrl());
+  await sourceCommand(() => modal.openCustomizeSidebar());
   const options = new CustomizeTab(page, expect).generationOptions;
-  await options.expectOptionsHeading();
-  await checkpoint('child page is open before changing a generation option');
+  await sourceCommand(() => options.expectOptionsHeading());
+  await sourceCommand(() => checkpoint('child page is open before changing a generation option'));
 
   // --- Test start ---
   // Disable Search and confirm both the option and page location changed as intended.
-  await options.disableSearch();
-  await modal.generatedBundle.expectSingleHeading('t001 ---- child 1');
-  await modal.generatedBundle.search.expectUnavailable();
-  const regeneratedUrl = await modal.generatedBundle.getUrl();
+  await sourceCommand(() => options.disableSearch());
+  await sourceCommand(() => modal.generatedBundle.expectSingleHeading('t001 ---- child 1'));
+  await sourceCommand(() => modal.generatedBundle.search.expectUnavailable());
+  const regeneratedUrl = await sourceCommand(() => modal.generatedBundle.getUrl());
   expect(new URL(regeneratedUrl).pathname).toBe(new URL(originalUrl).pathname);
   expect(regeneratedUrl).not.toBe(originalUrl);
-  await modal.expectPreviewNavigation(true, false);
-  await addKeyFrame(htmlGeneration);
-  await checkpoint('Search is disabled and regeneration retains the child page');
+  await sourceCommand(() => modal.expectPreviewNavigation(true, false));
+  await sourceCommand(() => addKeyFrame(htmlGeneration));
+  await sourceCommand(() => checkpoint('Search is disabled and regeneration retains the child page'));
 
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

@@ -11,20 +11,20 @@ test.use({ fixtureHome: 'home_fixture_multi_source' });
  * Sort a multi-source bundle by its Source column in flat and structural lists. Source
  * names should remain separate from folders and stay visible when filtering to one source.
  */
-test('Multi-source list view sorts canonical source names in flat and structural views', async ({ page, addKeyFrame, skipMeadowHomeStateCheck, checkpoint }) => {
+test('Multi-source list view sorts canonical source names in flat and structural views', { annotation: { type: 'scenario-id', description: '47643e99-1c78-4bf4-8431-3f8bc651479e' } }, async ({ sourceCommand, page, addKeyFrame, skipMeadowHomeStateCheck, checkpoint }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
-  await list.goto();
-  await list.clickBundle('multi-source-mixed');
+  await sourceCommand(() => list.goto());
+  await sourceCommand(() => list.clickBundle('multi-source-mixed'));
   const editor = new BundleEditorPage(page, expect);
-  await editor.waitForLoad('multi-source-mixed');
-  await editor.waitForSourceCheck();
-  await editor.switchToListView();
-  await editor.expectListViewSourceColumn(true);
-  await editor.expectListViewLocation('file:_mw_sources/source000001/Overview.md', 'notes', '/');
-  await editor.expectListViewLocation('file:_mw_sources/source000002/Overview.md', 'research', '/');
-  await editor.expectListViewLocation('file:_mw_sources/source000002/Same/Inside.md', 'research', 'Same');
-  await checkpoint("the flat list identifies each source separately from its folder");
+  await sourceCommand(() => editor.waitForLoad('multi-source-mixed'));
+  await sourceCommand(() => editor.waitForSourceCheck());
+  await sourceCommand(() => editor.switchToListView());
+  await sourceCommand(() => editor.expectListViewSourceColumn(true));
+  await sourceCommand(() => editor.expectListViewLocation('file:_mw_sources/source000001/Overview.md', 'notes', '/'));
+  await sourceCommand(() => editor.expectListViewLocation('file:_mw_sources/source000002/Overview.md', 'research', '/'));
+  await sourceCommand(() => editor.expectListViewLocation('file:_mw_sources/source000002/Same/Inside.md', 'research', 'Same'));
+  await sourceCommand(() => checkpoint("the flat list identifies each source separately from its folder"));
 
   // --- Test start ---
   // Sort sources in the flat list.
@@ -34,41 +34,41 @@ test('Multi-source list view sorts canonical source names in flat and structural
     ...Array<string>(2).fill('reference'),
     ...Array<string>(6).fill('research'),
   ];
-  await editor.clickListSort('Source');
-  await editor.expectListViewSourceOrder(ascendingSources, 'ascending');
-  await addKeyFrame(bundleSource);
-  await checkpoint("flat rows are sorted by ascending source name");
+  await sourceCommand(() => editor.clickListSort('Source'));
+  await sourceCommand(() => editor.expectListViewSourceOrder(ascendingSources, 'ascending'));
+  await sourceCommand(() => addKeyFrame(bundleSource));
+  await sourceCommand(() => checkpoint("flat rows are sorted by ascending source name"));
 
   // Reverse the source order.
-  await editor.clickListSort('Source');
-  await editor.expectListViewSourceOrder([...ascendingSources].reverse(), 'descending');
+  await sourceCommand(() => editor.clickListSort('Source'));
+  await sourceCommand(() => editor.expectListViewSourceOrder([...ascendingSources].reverse(), 'descending'));
 
-  await checkpoint("flat rows are sorted by descending source name");
+  await sourceCommand(() => checkpoint("flat rows are sorted by descending source name"));
 
   // Check the structural list.
-  await editor.switchToStructuralListView();
-  await editor.expectListViewLocation('file:_mw_sources/source000002/Same/Inside.md', 'research', 'Same');
-  await editor.expectListViewSourceOrder(['—', 'research', 'research', 'notes'], 'descending', 'selected-folders');
+  await sourceCommand(() => editor.switchToStructuralListView());
+  await sourceCommand(() => editor.expectListViewLocation('file:_mw_sources/source000002/Same/Inside.md', 'research', 'Same'));
+  await sourceCommand(() => editor.expectListViewSourceOrder(['—', 'research', 'research', 'notes'], 'descending', 'selected-folders'));
   const outsideSources = [
     ...Array<string>(4).fill('notes'),
     ...Array<string>(2).fill('reference'),
     ...Array<string>(4).fill('research'),
   ];
-  await editor.expectListViewSourceOrder([...outsideSources].reverse(), 'descending', 'outside');
-  await editor.clickListSort('Source');
-  await editor.expectListViewSourceOrder(['—', 'notes', 'research', 'research'], 'ascending', 'selected-folders');
-  await editor.expectListViewSourceOrder(outsideSources, 'ascending', 'outside');
-  await addKeyFrame(bundleSource, folderBundles);
+  await sourceCommand(() => editor.expectListViewSourceOrder([...outsideSources].reverse(), 'descending', 'outside'));
+  await sourceCommand(() => editor.clickListSort('Source'));
+  await sourceCommand(() => editor.expectListViewSourceOrder(['—', 'notes', 'research', 'research'], 'ascending', 'selected-folders'));
+  await sourceCommand(() => editor.expectListViewSourceOrder(outsideSources, 'ascending', 'outside'));
+  await sourceCommand(() => addKeyFrame(bundleSource, folderBundles));
 
-  await checkpoint("both structural groups sort by canonical source name");
+  await sourceCommand(() => checkpoint("both structural groups sort by canonical source name"));
 
   // Filter to one source.
   const filters = new FilterPanelComponent(page, expect);
-  await filters.expandFilterGroup('Folders');
-  await filters.soloFolder('notes://');
-  await editor.expectListViewSourceColumn(true);
-  await editor.expectListViewSourceOrder(Array<string>(5).fill('notes'), 'ascending');
-  await checkpoint("the source column stays visible when filtering a multi-source bundle");
+  await sourceCommand(() => filters.expandFilterGroup('Folders'));
+  await sourceCommand(() => filters.soloFolder('notes://'));
+  await sourceCommand(() => editor.expectListViewSourceColumn(true));
+  await sourceCommand(() => editor.expectListViewSourceOrder(Array<string>(5).fill('notes'), 'ascending'));
+  await sourceCommand(() => checkpoint("the source column stays visible when filtering a multi-source bundle"));
 
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

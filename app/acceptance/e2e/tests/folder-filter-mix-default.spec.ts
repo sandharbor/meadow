@@ -26,7 +26,7 @@ test.use({ bundleMode: "single-file" });
  * Hide one folder and solo another. The default filter mix should combine those choices
  * and show only the expected pages.
  */
-test("hidden folders are intersected with soloed folders by default", async ({
+test("hidden folders are intersected with soloed folders by default", { annotation: { type: 'scenario-id', description: '4fa68df7-a9cd-48a7-b397-a7138cb61106' } }, async ({ sourceCommand,
   page,
   checkpoint,
   assertMeadowHomeState,
@@ -37,41 +37,41 @@ test("hidden folders are intersected with soloed folders by default", async ({
   const editor = new BundleEditorPage(page, expect);
   const filterPanel = new FilterPanelComponent(page, expect);
 
-  await workflows.navigateToBigBundle();
-  await filterPanel.enableFilter("Folders");
-  await filterPanel.expectFolderCount("t024", 4);
-  await filterPanel.expectFolderCount("t023", 4);
+  await sourceCommand(() => workflows.navigateToBigBundle());
+  await sourceCommand(() => filterPanel.enableFilter("Folders"));
+  await sourceCommand(() => filterPanel.expectFolderCount("t024", 4));
+  await sourceCommand(() => filterPanel.expectFolderCount("t023", 4));
 
-  await checkpoint("the folder counts are visible before filtering");
+  await sourceCommand(() => checkpoint("the folder counts are visible before filtering"));
 
   // --- Test start ---
   // Hide and solo folders.
-  await filterPanel.hideFolder("t024");
-  await filterPanel.soloFolder("t023");
-  await editor.expectGraphViewPageCount(4);
-  await filterPanel.expectFilterGroupActive("Folders");
-  await filterPanel.collapseFilterGroup("Folders");
-  await filterPanel.expectFilterGroupActive("Folders");
-  await filterPanel.expectMixFiltersCustomized(false);
-  await filterPanel.expectMixFiltersLeftAlignedWithAddCustomFilterOnRight();
+  await sourceCommand(() => filterPanel.hideFolder("t024"));
+  await sourceCommand(() => filterPanel.soloFolder("t023"));
+  await sourceCommand(() => editor.expectGraphViewPageCount(4));
+  await sourceCommand(() => filterPanel.expectFilterGroupActive("Folders"));
+  await sourceCommand(() => filterPanel.collapseFilterGroup("Folders"));
+  await sourceCommand(() => filterPanel.expectFilterGroupActive("Folders"));
+  await sourceCommand(() => filterPanel.expectMixFiltersCustomized(false));
+  await sourceCommand(() => filterPanel.expectMixFiltersLeftAlignedWithAddCustomFilterOnRight());
 
-  await filterPanel.openMixFilters();
-  await filterPanel.expectDefaultHideAndSoloMix({
+  await sourceCommand(() => filterPanel.openMixFilters());
+  await sourceCommand(() => filterPanel.expectDefaultHideAndSoloMix({
     hides: ["Folder: t024"],
     solos: ["Folder: t023"],
-  });
-  await addKeyFrame(filters);
-  await addKeyFrame(folderFilter);
-  await checkpoint("hidden and soloed folders use the default grouped mix");
+  }));
+  await sourceCommand(() => addKeyFrame(filters));
+  await sourceCommand(() => addKeyFrame(folderFilter));
+  await sourceCommand(() => checkpoint("hidden and soloed folders use the default grouped mix"));
 
   // Check the resulting list.
-  await filterPanel.closeMixFilters();
+  await sourceCommand(() => filterPanel.closeMixFilters());
 
-  await editor.switchToListView();
-  expect(await editor.getListViewPageCount()).toBe(4);
-  await checkpoint("only the soloed folder remains visible");
+  await sourceCommand(() => editor.switchToListView());
+  expect(await sourceCommand(() => editor.getListViewPageCount())).toBe(4);
+  await sourceCommand(() => checkpoint("only the soloed folder remains visible"));
 
   void bigBundle;
 
-  await assertMeadowHomeState();
+  await sourceCommand(() => assertMeadowHomeState());
 });

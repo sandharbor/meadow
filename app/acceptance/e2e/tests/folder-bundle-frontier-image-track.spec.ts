@@ -34,7 +34,7 @@ test.use({ fixtureHome: Fixture.FolderStructureSingle });
  * Find an image beyond a folder bundle's normal traversal boundary and track it. The
  * tracked image should become part of the generated bundle.
  */
-test("tracks a depth-three frontier image in a folder-derived bundle", async ({
+test("tracks a depth-three frontier image in a folder-derived bundle", { annotation: { type: 'scenario-id', description: '78112a8f-5b71-4770-b9e2-e33a205bef9f' } }, async ({ sourceCommand,
   page,
   checkpoint,
   addKeyFrame,
@@ -45,40 +45,40 @@ test("tracks a depth-three frontier image in a folder-derived bundle", async ({
   const editor = new BundleEditorPage(page, expect);
   const previewModal = new PreviewPublishModal(page, expect);
 
-  await bundleList.goto();
-  await bundleList.clickBundle(Bundle.FolderStructureSingle);
-  await editor.waitForLoad(Bundle.FolderStructureSingle);
-  await editor.switchToListView();
-  await editor.expectListViewRowByTitleAndFileTypePresent("Frontier image", "png");
-  await editor.expectListViewThumbnailVisible("Frontier image", "png");
-  await editor.clickListViewRowByExactName("Frontier image");
+  await sourceCommand(() => bundleList.goto());
+  await sourceCommand(() => bundleList.clickBundle(Bundle.FolderStructureSingle));
+  await sourceCommand(() => editor.waitForLoad(Bundle.FolderStructureSingle));
+  await sourceCommand(() => editor.switchToListView());
+  await sourceCommand(() => editor.expectListViewRowByTitleAndFileTypePresent("Frontier image", "png"));
+  await sourceCommand(() => editor.expectListViewThumbnailVisible("Frontier image", "png"));
+  await sourceCommand(() => editor.clickListViewRowByExactName("Frontier image"));
 
   const detail = new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect);
-  await detail.expectPill(Pill.FrontierImage);
-  await detail.expectNoPill(Pill.Frontier);
-  await detail.expectNoPill(Pill.Tracked);
-  await detail.expectButtonEnabled(ActionButton.Track);
-  await addKeyFrame(frontier);
-  await checkpoint("depth-three frontier image is available to track");
+  await sourceCommand(() => detail.expectPill(Pill.FrontierImage));
+  await sourceCommand(() => detail.expectNoPill(Pill.Frontier));
+  await sourceCommand(() => detail.expectNoPill(Pill.Tracked));
+  await sourceCommand(() => detail.expectButtonEnabled(ActionButton.Track));
+  await sourceCommand(() => addKeyFrame(frontier));
+  await sourceCommand(() => checkpoint("depth-three frontier image is available to track"));
 
   // --- Test start ---
   // Track the frontier image.
-  await detail.clickAction(ActionButton.Track, page);
-  await detail.expectPill(Pill.FrontierImage);
-  await detail.expectPill(Pill.Tracked);
-  await addKeyFrame(tracking);
-  await checkpoint("depth-three frontier image tracked in the folder bundle");
+  await sourceCommand(() => detail.clickAction(ActionButton.Track, page));
+  await sourceCommand(() => detail.expectPill(Pill.FrontierImage));
+  await sourceCommand(() => detail.expectPill(Pill.Tracked));
+  await sourceCommand(() => addKeyFrame(tracking));
+  await sourceCommand(() => checkpoint("depth-three frontier image tracked in the folder bundle"));
 
   // Preview the tracked image.
-  await editor.clickPreview();
-  await previewModal.waitForPreviewComplete();
-  await previewModal.generatedBundle.expectSingleHeading("Alpha", 60_000);
-  await addKeyFrame(htmlGeneration);
-  await checkpoint("folder preview succeeds with the tracked frontier image");
+  await sourceCommand(() => editor.clickPreview());
+  await sourceCommand(() => previewModal.waitForPreviewComplete());
+  await sourceCommand(() => previewModal.generatedBundle.expectSingleHeading("Alpha", 60_000));
+  await sourceCommand(() => addKeyFrame(htmlGeneration));
+  await sourceCommand(() => checkpoint("folder preview succeeds with the tracked frontier image"));
 
   void customBundle;
 
-  await assertMeadowHomeState({
+  await sourceCommand(() => assertMeadowHomeState({
     allowedModified: [
       "bundles/single-folder-bundle/config/generated_bundle_versions.yaml",
     ],
@@ -94,5 +94,5 @@ test("tracks a depth-three frontier image in a folder-derived bundle", async ({
       "bundles/single-folder-bundle/raw/tracked_page_content/Outside/Beyond outside.md",
       "bundles/single-folder-bundle/raw/tracked_page_content/Outside/Outside note.md",
     ],
-  });
+  }));
 });

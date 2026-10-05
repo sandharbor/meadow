@@ -28,32 +28,32 @@ test.use({ recordVideo: false });
  * Request both the working graph and final graph through the CLI. Compare their JSON
  * output with the expected node inventories.
  */
-test("CLI describes all and final nodes in the big bundle as exact JSON", async ({
+test("CLI describes all and final nodes in the big bundle as exact JSON", { annotation: { type: 'scenario-id', description: '380064ce-e016-4815-8cc4-752cbd3c35fa' } }, async ({ sourceCommand,
   assertMeadowHomeState,
   meadowCli,
   checkpoint,
 }) => {
   // --- Test start ---
   // Inspect the working graph.
-  const allNodes = await meadowCli.run(
+  const allNodes = await sourceCommand(() => meadowCli.run(
     ["bundle", "nodes", "meadow-test-bundle-big", "--scope", "all"],
     { artifactName: "big-bundle-all-nodes" },
-  );
+  ));
   expect(allNodes).toBe(readCliFixture("big-bundle-all-nodes.json"));
 
-  await checkpoint("all nodes match the expected graph");
+  await sourceCommand(() => checkpoint("all nodes match the expected graph"));
 
   // Inspect the final graph.
-  const finalNodes = await meadowCli.run(
+  const finalNodes = await sourceCommand(() => meadowCli.run(
     ["bundle", "nodes", "meadow-test-bundle-big", "--scope", "final"],
     { artifactName: "big-bundle-final-nodes" },
-  );
+  ));
   expect(finalNodes).toBe(readCliFixture("big-bundle-final-nodes.json"));
 
   void cli;
   void bundles;
   void bigBundle;
-  await checkpoint("final nodes match the expected export");
+  await sourceCommand(() => checkpoint("final nodes match the expected export"));
 
-  await assertMeadowHomeState();
+  await sourceCommand(() => assertMeadowHomeState());
 });

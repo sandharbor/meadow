@@ -16,6 +16,8 @@ limitations under the License.
 */
 
 import express from "express";
+import { ScenarioReviewStore } from './scenarioReviewStore.js';
+import { scenarioIdFromSpec } from './scenarioIdentity.js';
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync } from "fs";
 import { execFileSync, execSync } from "child_process";
 import os from "os";
@@ -80,6 +82,33 @@ const CURRENT_AGENT_EVAL_ARTIFACTS_ROOT = path.join(
 );
 
 const app = express();
+app.use(express.json({ limit: '16kb' }));
+const scenarioReviews = new ScenarioReviewStore(path.join(ARTIFACTS_ROOT, 'scenario-reviews.json'));
+app.get('/api/scenario-reviews', (_req, res) => {
+  try { res.json(scenarioReviews.read()); }
+  catch (error) { res.status(500).json({ error: String(error) }); }
+});
+app.post('/api/:runId/:testSlug/review', (req, res) => {
+  const dir = safeScenarioDir(req.params.runId, req.params.testSlug);
+  if (!dir) return res.status(404).json({ error: 'Scenario not found' });
+  const action = req.body?.action;
+  if (action !== 'TOREVIEW' && action !== 'REVIEWED' && action !== 'NOTE') return res.status(400).json({ error: 'Invalid review action' });
+  const note = req.body?.note;
+  if (note !== undefined && (typeof note !== 'string' || note.length > 500)) return res.status(400).json({ error: 'Review notes must be at most 500 characters' });
+  try {
+    const manifest = JSON.parse(readFileSync(path.join(dir, 'manifest.json'), 'utf8'));
+    const identityPath = path.join(dir, 'scenario-identity.json');
+    const identity = existsSync(identityPath) ? JSON.parse(readFileSync(identityPath, 'utf8')) : {};
+    const revision = (manifest.homeCommitMeta ?? manifest.homeCommits)?.find((commit: { codeRevision?: string }) => commit.codeRevision) ?? manifest.keyFrames?.[0];
+    res.json(scenarioReviews.update({
+      scenarioId: identity.scenarioId ?? manifest.scenarioId ?? scenarioIdFromSpec(manifest.testSourceFile, manifest.testName),
+      testName: manifest.testName ?? req.params.testSlug, slug: req.params.testSlug, runId: req.params.runId,
+      testFile: identity.testFile ?? manifest.testSourceFile,
+      codeRevision: identity.codeRevision ?? manifest.codeRevision ?? revision?.codeRevision,
+      uncommittedCode: identity.uncommittedCode ?? manifest.uncommittedCode ?? revision?.uncommittedCode,
+    }, action, note));
+  } catch (error) { res.status(500).json({ error: String(error) }); }
+});
 
 // Read timeline.jsonl and return a map of commitHash → { timestamp, message }
 // for millisecond-precision timestamps (git author dates are only second-precision).
@@ -671,6 +700,7 @@ app.get("/api/runs/:runId", (req, res) => {
       const statusFile = path.join(scenarioDir, "status.txt");
       let status = "unknown";
       let testName = slug;
+      let scenarioId: string | undefined;
       let description = "";
       let duration: number | null = null;
       let bundleMode: BundleMode | null = null;
@@ -695,6 +725,7 @@ app.get("/api/runs/:runId", (req, res) => {
           const meta = JSON.parse(readFileSync(reportMetaPath, "utf8"));
           if (meta.version === 1 && meta.scenarioInfo) {
             testName = meta.scenarioInfo.testName || slug;
+            scenarioId = meta.scenarioInfo.scenarioId;
             description = meta.scenarioInfo.description || "";
             duration = meta.scenarioInfo.duration ?? null;
             bundleMode = isBundleMode(meta.scenarioInfo.bundleMode)
@@ -724,6 +755,7 @@ app.get("/api/runs/:runId", (req, res) => {
           try {
             const manifest = JSON.parse(readFileSync(manifestFile, "utf8"));
             testName = manifest.testName || slug;
+            scenarioId = manifest.scenarioId;
             description = manifest.description || "";
             bundleMode = isBundleMode(manifest.bundleMode) ? manifest.bundleMode : null;
             executionSurface = isExecutionSurface(manifest.executionSurface)
@@ -761,6 +793,7 @@ app.get("/api/runs/:runId", (req, res) => {
       if (existsSync(testFilePath)) {
         try {
           const src = readFileSync(testFilePath, "utf8").trim();
+          scenarioId ??= scenarioIdFromSpec(src, testName);
           const base = path.basename(src).replace(/\.spec\.ts$/, "");
           if (base) testBasename = base;
         } catch {
@@ -768,7 +801,7 @@ app.get("/api/runs/:runId", (req, res) => {
         }
       }
 
-      return { slug, testName, description, testBasename, status, duration, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, keyFrames, failureReason, hasIssues };
+      return { scenarioId, slug, testName, description, testBasename, status, duration, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, keyFrames, failureReason, hasIssues };
     });
 
   // Read concept targeting metadata, with a fallback for historical runs.
@@ -1060,6 +1093,7 @@ app.get("/api/:runId/:testSlug/manifest", (req, res) => {
   const manifestPath = path.join(dir, "manifest.json");
   if (existsSync(manifestPath)) {
     const manifest = expandManifest(JSON.parse(readFileSync(manifestPath, "utf8")), dir);
+    manifest.scenarioId ??= scenarioIdFromSpec(manifest.testSourceFile, manifest.testName);
     res.json(normalizeLegacyManifest(manifest));
   } else {
     res.status(404).json({ error: "No manifest found" });

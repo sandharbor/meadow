@@ -18,54 +18,54 @@ test.use({ fixtureHome: Fixture.Example });
  * proposed depth. Required checkpoints: accepted baseline; expanded candidate; reopened deferred
  * proposal.
  */
-test('Sourcing depth edits preview the proposal while accepted curation stays stable', async ({ page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+test('Sourcing depth edits preview the proposal while accepted curation stays stable', { annotation: { type: 'scenario-id', description: '75df4c30-b7f7-4342-9330-77af9f6eca5d' } }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);
-  await list.goto();
-  await list.clickBundle('example-bundle');
-  await editor.waitForLoad('example-bundle');
-  await editor.switchToListView();
-  await editor.expectListViewRowByExactNameNotPresent('Availability Bias');
-  await editor.clickListViewRowByExactName('Cognitive Biases');
+  await sourceCommand(() => list.goto());
+  await sourceCommand(() => list.clickBundle('example-bundle'));
+  await sourceCommand(() => editor.waitForLoad('example-bundle'));
+  await sourceCommand(() => editor.switchToListView());
+  await sourceCommand(() => editor.expectListViewRowByExactNameNotPresent('Availability Bias'));
+  await sourceCommand(() => editor.clickListViewRowByExactName('Cognitive Biases'));
   const detail = new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect);
-  await detail.openDetails();
+  await sourceCommand(() => detail.openDetails());
   const configPath = path.join(testServer.configDir, 'bundles/example-bundle/config/bundle_node_config.yaml');
   const saved = fs.readFileSync(configPath, 'utf8');
-  await checkpoint('accepted scope excludes the pages behind the Cognitive Biases stop');
+  await sourceCommand(() => checkpoint('accepted scope excludes the pages behind the Cognitive Biases stop'));
 
   // --- Test start ---
   // Expand the stop and inspect the captured proposal without changing accepted settings.
-  await editor.getSelectedPageRoot().getByTitle('Edit outlink depth override', { exact: true }).click();
-  await detail.setOutlinksDepth(1);
+  await sourceCommand(() => editor.getSelectedPageRoot().getByTitle('Edit outlink depth override', { exact: true }).click());
+  await sourceCommand(() => detail.setOutlinksDepth(1));
   const sourcing = new SourcingWorkspacePage(page, expect);
   const workspace = sourcing.root;
-  await expect(workspace).toBeVisible();
-  await expect(workspace.getByRole('button', { name: 'Accept source changes', exact: true })).toBeEnabled();
-  await workspace.getByRole('button', { name: 'List View', exact: true }).click();
-  await sourcing.expectNodeVisible('Availability Bias');
+  await sourceCommand(() => expect(workspace).toBeVisible());
+  await sourceCommand(() => expect(workspace.getByRole('button', { name: 'Accept source changes', exact: true })).toBeEnabled());
+  await sourceCommand(() => workspace.getByRole('button', { name: 'List View', exact: true }).click());
+  await sourceCommand(() => sourcing.expectNodeVisible('Availability Bias'));
   expect(fs.readFileSync(configPath, 'utf8')).toBe(saved);
-  await addKeyFrame(sourceReviewWorkspace);
-  await checkpoint('expanded candidate includes Availability Bias while accepted configuration stays unchanged');
+  await sourceCommand(() => addKeyFrame(sourceReviewWorkspace));
+  await sourceCommand(() => checkpoint('expanded candidate includes Availability Bias while accepted configuration stays unchanged'));
 
   // Later and reload retain the original curation graph and the durable proposal.
-  await workspace.getByRole('button', { name: 'Later', exact: true }).click();
-  await expect(workspace).toBeHidden();
-  await page.reload();
-  await editor.waitForLoad('example-bundle');
-  await editor.switchToListView();
-  await editor.expectListViewRowByExactNameNotPresent('Availability Bias');
-  await page.getByTestId('sourcing-status').getByRole('button', { name: /source changes? available.*Review/i }).click();
-  await expect(workspace).toBeVisible();
-  await workspace.getByRole('button', { name: 'List View', exact: true }).click();
-  await sourcing.expectNodeVisible('Availability Bias');
+  await sourceCommand(() => workspace.getByRole('button', { name: 'Later', exact: true }).click());
+  await sourceCommand(() => expect(workspace).toBeHidden());
+  await sourceCommand(() => page.reload());
+  await sourceCommand(() => editor.waitForLoad('example-bundle'));
+  await sourceCommand(() => editor.switchToListView());
+  await sourceCommand(() => editor.expectListViewRowByExactNameNotPresent('Availability Bias'));
+  await sourceCommand(() => page.getByTestId('sourcing-status').getByRole('button', { name: /source changes? available.*Review/i }).click());
+  await sourceCommand(() => expect(workspace).toBeVisible());
+  await sourceCommand(() => workspace.getByRole('button', { name: 'List View', exact: true }).click());
+  await sourceCommand(() => sourcing.expectNodeVisible('Availability Bias'));
   expect(fs.readFileSync(configPath, 'utf8')).toBe(saved);
-  await checkpoint('reopened deferred proposal retains the expanded capture and staged depth');
+  await sourceCommand(() => checkpoint('reopened deferred proposal retains the expanded capture and staged depth'));
 
   // Discard leaves the accepted fixture exactly as it was.
-  await workspace.getByRole('button', { name: 'Discard proposal', exact: true }).click();
-  await expect(workspace).toBeHidden();
+  await sourceCommand(() => workspace.getByRole('button', { name: 'Discard proposal', exact: true }).click());
+  await sourceCommand(() => expect(workspace).toBeHidden());
   expect(fs.readFileSync(configPath, 'utf8')).toBe(saved);
-  await checkpoint('discard returned to the unchanged accepted scope');
-  await assertMeadowHomeState();
+  await sourceCommand(() => checkpoint('discard returned to the unchanged accepted scope'));
+  await sourceCommand(() => assertMeadowHomeState());
 });

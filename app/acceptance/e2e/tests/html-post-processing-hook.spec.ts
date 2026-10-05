@@ -26,55 +26,55 @@ test.use({ bundleMode: "single-file" });
  * Create and validate an HTML post-processing hook, then save it. Review the generated
  * diff to confirm that the hook changed the output.
  */
-test("HTML post-processing hook: create, validate, save, and verify diff", async ({ page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame }) => {
+test("HTML post-processing hook: create, validate, save, and verify diff", { annotation: { type: 'scenario-id', description: '6e16ca6b-afe5-492d-9627-37c1aac8f45e' } }, async ({ sourceCommand, page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame }) => {
   // --- Setup ---
   // Navigate to big bundle preview
   const wf = new Workflows(page, expect);
-  await wf.navigateToBigBundlePreview();
+  await sourceCommand(() => wf.navigateToBigBundlePreview());
   const modal = new PreviewPublishModal(page, expect);
   const changesTab = new ChangesTab(page, expect);
-  await checkpoint("preview loaded");
+  await sourceCommand(() => checkpoint("preview loaded"));
 
   // --- Test start ---
   // Save the baseline.
-  await modal.clickSaveChanges();
-  await modal.waitForSaveComplete();
-  await checkpoint("baseline saved");
+  await sourceCommand(() => modal.clickSaveChanges());
+  await sourceCommand(() => modal.waitForSaveComplete());
+  await sourceCommand(() => checkpoint("baseline saved"));
 
   // Open customization.
-  await modal.clickStep1Review();
-  await modal.openCustomizeSidebar();
+  await sourceCommand(() => modal.clickStep1Review());
+  await sourceCommand(() => modal.openCustomizeSidebar());
   const customizeTab = new CustomizeTab(page, expect);
-  await checkpoint("customize tab open");
+  await sourceCommand(() => checkpoint("customize tab open"));
 
   // Create an HTML hook.
   const htmlHook = customizeTab.hooks.getHook("HTML");
-  await htmlHook.clickCreate();
-  await checkpoint("hook editor opened with template");
+  await sourceCommand(() => htmlHook.clickCreate());
+  await sourceCommand(() => checkpoint("hook editor opened with template"));
 
   // Save the hook.
-  await changesTab.expectNoBadge();
+  await sourceCommand(() => changesTab.expectNoBadge());
 
   // Save the hook (triggers preview regeneration), then close the floating editor
-  await htmlHook.save();
-  await htmlHook.close();
-  await changesTab.waitForRegenerationComplete();
-  await checkpoint("hook saved and regeneration complete");
+  await sourceCommand(() => htmlHook.save());
+  await sourceCommand(() => htmlHook.close());
+  await sourceCommand(() => changesTab.waitForRegenerationComplete());
+  await sourceCommand(() => checkpoint("hook saved and regeneration complete"));
 
   // Review the generated diff.
-  await changesTab.expectBadgeVisible();
+  await sourceCommand(() => changesTab.expectBadgeVisible());
 
   // Go to Changes tab and inspect the diff
-  await modal.clickChangesTab();
-  await changesTab.clickFirstHtmlFile();
-  await changesTab.fileDetails.ensureOnDiffTab();
-  await changesTab.fileDetails.clickCodeSubTab();
-  await changesTab.fileDetails.expectDiffContainsText("Hello from Meadow");
-  await addKeyFrame(hooks);
-  await addKeyFrame(customize);
-  await checkpoint("diff shows Hello from Meadow");
+  await sourceCommand(() => modal.clickChangesTab());
+  await sourceCommand(() => changesTab.clickFirstHtmlFile());
+  await sourceCommand(() => changesTab.fileDetails.ensureOnDiffTab());
+  await sourceCommand(() => changesTab.fileDetails.clickCodeSubTab());
+  await sourceCommand(() => changesTab.fileDetails.expectDiffContainsText("Hello from Meadow"));
+  await sourceCommand(() => addKeyFrame(hooks));
+  await sourceCommand(() => addKeyFrame(customize));
+  await sourceCommand(() => checkpoint("diff shows Hello from Meadow"));
 
   void bigBundle;
 
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

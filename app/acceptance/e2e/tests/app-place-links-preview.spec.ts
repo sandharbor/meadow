@@ -11,13 +11,13 @@ test.use({ bundleMode: "single-file" });
  * one fresh load each, and require the app to report reaching exactly that
  * place with no shortfall callout.
  */
-test("Preview and the dialogs inside it open from their links", async ({ page, testServer, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+test("Preview and the dialogs inside it open from their links", { annotation: { type: 'scenario-id', description: '1baee1d2-da77-4add-8f14-a935966d01aa' } }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Test start ---
   // Follow each link in turn.
   const places = placesFor(placeExamples({ sourceGraphsDir: testServer.sourceGraphsDir }), key => key === "bundle:preview");
-  await checkPlaceLinks(page, expect, places);
-  await addKeyFrame(appPlace);
-  await checkpoint("every Preview and the dialogs inside it surface opened from its link");
+  await sourceCommand(() => checkPlaceLinks(page, expect, places));
+  await sourceCommand(() => addKeyFrame(appPlace));
+  await sourceCommand(() => checkpoint("every Preview and the dialogs inside it surface opened from its link"));
 
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

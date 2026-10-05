@@ -29,7 +29,7 @@ test.use({ bundleMode: "single-file" });
  * Open a nested generated page and hover over a link to a root page. Links inside the
  * preview should resolve against that root page and navigate correctly.
  */
-test("generated-bundle hover preview links navigate from nested pages", async ({
+test("generated-bundle hover preview links navigate from nested pages", { annotation: { type: 'scenario-id', description: '6f8a8ed1-f84c-4753-b987-cef81539b2d8' } }, async ({ sourceCommand,
   page,
   checkpoint,
   skipMeadowHomeStateCheck,
@@ -37,52 +37,52 @@ test("generated-bundle hover preview links navigate from nested pages", async ({
 }) => {
   // --- Setup ---
   const workflows = new Workflows(page, expect);
-  await workflows.navigateToBigBundlePreview();
+  await sourceCommand(() => workflows.navigateToBigBundlePreview());
 
   const modal = new PreviewPublishModal(page, expect);
   const generatedBundle = modal.generatedBundle;
   const customizeTab = new CustomizeTab(page, expect);
 
-  await modal.openCustomizeSidebar();
+  await sourceCommand(() => modal.openCustomizeSidebar());
   const previewDone = page.waitForResponse(response =>
     response.url().includes("/preview-stream"),
   );
-  await customizeTab.generationOptions.enableHoverPreview();
-  await previewDone;
-  await generatedBundle.hoverPreview.expectAvailable();
-  await generatedBundle.expectHeading("main page", 60_000);
-  await addKeyFrame(customize);
-  await modal.closeCustomizeSidebar();
+  await sourceCommand(() => customizeTab.generationOptions.enableHoverPreview());
+  await sourceCommand(() => previewDone);
+  await sourceCommand(() => generatedBundle.hoverPreview.expectAvailable());
+  await sourceCommand(() => generatedBundle.expectHeading("main page", 60_000));
+  await sourceCommand(() => addKeyFrame(customize));
+  await sourceCommand(() => modal.closeCustomizeSidebar());
 
-  await checkpoint("the generated bundle has hover previews enabled");
+  await sourceCommand(() => checkpoint("the generated bundle has hover previews enabled"));
 
   // --- Test start ---
   // Inspect a root backlink from a nested page.
-  await generatedBundle.clickPageLink("t001 - deeply nested");
-  await generatedBundle.expectHeading("t001 - deeply nested");
-  await generatedBundle.clickPageLink("t001 ---- child 1");
-  await generatedBundle.expectHeading("t001 ---- child 1");
+  await sourceCommand(() => generatedBundle.clickPageLink("t001 - deeply nested"));
+  await sourceCommand(() => generatedBundle.expectHeading("t001 - deeply nested"));
+  await sourceCommand(() => generatedBundle.clickPageLink("t001 ---- child 1"));
+  await sourceCommand(() => generatedBundle.expectHeading("t001 ---- child 1"));
 
   // This backlink fetches a root page while the current page is nested under
   // t001/. Its preview links must resolve against the fetched root page, not
   // against the nested page displaying the popup.
-  await generatedBundle.hoverPreview.hoverFooterLink("t001 - deeply nested");
-  await generatedBundle.hoverPreview.expectLinkHref(
+  await sourceCommand(() => generatedBundle.hoverPreview.hoverFooterLink("t001 - deeply nested"));
+  await sourceCommand(() => generatedBundle.hoverPreview.expectLinkHref(
     "t001 ---- child 2",
     /\/t001\/deeper\/t001%20----%20child%202\.html$/,
-  );
-  await generatedBundle.hoverPreview.expectLinkDecorationMatchesFooterLink(
+  ));
+  await sourceCommand(() => generatedBundle.hoverPreview.expectLinkDecorationMatchesFooterLink(
     "t001 ---- child 2",
     "t001 - deeply nested",
-  );
-  await addKeyFrame(htmlGeneration);
-  await checkpoint("hover preview exposes a navigable nested-page link");
+  ));
+  await sourceCommand(() => addKeyFrame(htmlGeneration));
+  await sourceCommand(() => checkpoint("hover preview exposes a navigable nested-page link"));
 
   // Follow the link in the hover preview.
-  await generatedBundle.hoverPreview.clickLink("t001 ---- child 2");
-  await generatedBundle.expectHeading("t001 ---- child 2");
-  await checkpoint("navigated through hover preview link");
+  await sourceCommand(() => generatedBundle.hoverPreview.clickLink("t001 ---- child 2"));
+  await sourceCommand(() => generatedBundle.expectHeading("t001 ---- child 2"));
+  await sourceCommand(() => checkpoint("navigated through hover preview link"));
 
   void bigBundle;
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

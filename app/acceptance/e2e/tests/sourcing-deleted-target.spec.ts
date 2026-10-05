@@ -14,13 +14,13 @@ test.use({ bundleMode: 'single-file' });
  * Delete a file while leaving a section link that points to it. Review should identify the
  * missing file and optionally show the previously accepted route.
  */
-test('Sourcing explains a surviving section link to a deleted file with file pills and an optional previous route', async ({ page, meadowCli, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+test('Sourcing explains a surviving section link to a deleted file with file pills and an optional previous route', { annotation: { type: 'scenario-id', description: 'b6e58804-dcbc-44fa-9777-326aa3855648' } }, async ({ sourceCommand, page, meadowCli, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   let command = 0;
-  const destination = await prepareSourceScenario(
+  const destination = await sourceCommand(() => prepareSourceScenario(
     args => meadowCli.run(args, { artifactName: `source-setup-${++command}` }),
     'meadow-test-bundle-big', () => sourceChanges.apply('delete-linked-section'),
-  );
+  ));
   const navigationMutations: string[] = [];
   page.on('request', request => {
     if (request.method() === 'POST' && /\/sourcing\/(scan|accept)$/.test(request.url())) navigationMutations.push(request.url());
@@ -39,9 +39,9 @@ test('Sourcing explains a surviving section link to a deleted file with file pil
       ['bundle', 'open', 'meadow-test-bundle-big', '--surface', 'source-review'],
       { artifactName: 'open-source-review' },
     );
-    await expect.poll(() => fs.existsSync(launched), { timeout: 30_000 }).toBe(true);
-    await page.goto(fs.readFileSync(launched, 'utf8'));
-    opened = await command;
+    await sourceCommand(() => expect.poll(() => fs.existsSync(launched), { timeout: 30_000 }).toBe(true));
+    await sourceCommand(() => page.goto(fs.readFileSync(launched, 'utf8')));
+    opened = await sourceCommand(() => command);
   } finally {
     if (previousOpener === undefined) delete process.env.MEADOW_BROWSER_OPEN_EXECUTABLE;
     else process.env.MEADOW_BROWSER_OPEN_EXECUTABLE = previousOpener;
@@ -51,38 +51,38 @@ test('Sourcing explains a surviving section link to a deleted file with file pil
   expect(opened.reached).toBe(destination.replace('?surface=', '?editorMode=sourcing&surface='));
   const editor = new BundleEditorPage(page, expect);
   const review = editor.sourceReview;
-  await expect(page.getByTestId('sourcing-workspace')).toBeVisible();
-  await editor.expectSourceOrphanCount(1);
-  await checkpoint('the prepared deletion opens directly in source review');
+  await sourceCommand(() => expect(page.getByTestId('sourcing-workspace')).toBeVisible());
+  await sourceCommand(() => editor.expectSourceOrphanCount(1));
+  await sourceCommand(() => checkpoint('the prepared deletion opens directly in source review'));
 
   // --- Test start ---
   // Inspect the missing target.
-  const orphans = await review.reviewOrphans();
+  const orphans = await sourceCommand(() => review.reviewOrphans());
   const title = 't003 ---- page with section to link to';
-  await orphans.expectSummaryCount(1);
-  await orphans.expectCollapsedFile(title);
-  await orphans.checkHelp();
-  await orphans.showHelp();
-  await addKeyFrame(orphan);
-  await orphans.toggleExplanationWithKeyboard(title);
-  await orphans.toggleExplanationWithKeyboard(title);
-  await orphans.expectCollapsedFile(title);
-  await orphans.showExplanation(title);
-  await orphans.expectMissingLinkedFile(title, 't003 - link to section.md', `${title}.md`);
-  await addKeyFrame(orphan);
+  await sourceCommand(() => orphans.expectSummaryCount(1));
+  await sourceCommand(() => orphans.expectCollapsedFile(title));
+  await sourceCommand(() => orphans.checkHelp());
+  await sourceCommand(() => orphans.showHelp());
+  await sourceCommand(() => addKeyFrame(orphan));
+  await sourceCommand(() => orphans.toggleExplanationWithKeyboard(title));
+  await sourceCommand(() => orphans.toggleExplanationWithKeyboard(title));
+  await sourceCommand(() => orphans.expectCollapsedFile(title));
+  await sourceCommand(() => orphans.showExplanation(title));
+  await sourceCommand(() => orphans.expectMissingLinkedFile(title, 't003 - link to section.md', `${title}.md`));
+  await sourceCommand(() => addKeyFrame(orphan));
   expect(navigationMutations).toEqual([]);
-  await checkpoint('a surviving section link explains the missing file without showing the full route');
+  await sourceCommand(() => checkpoint('a surviving section link explains the missing file without showing the full route'));
 
   // Show the previous route.
-  await orphans.showPreviousRoute(title);
-  await orphans.expectExplanation(title, 'main page.md');
-  await addKeyFrame(orphan);
-  await checkpoint('the previous route is available when requested');
+  await sourceCommand(() => orphans.showPreviousRoute(title));
+  await sourceCommand(() => orphans.expectExplanation(title, 'main page.md'));
+  await sourceCommand(() => addKeyFrame(orphan));
+  await sourceCommand(() => checkpoint('the previous route is available when requested'));
 
   // Accept the source update.
-  await review.accept();
-  await editor.expectSourceOrphanCount(0);
-  await checkpoint('acceptance removes the deleted target configuration');
+  await sourceCommand(() => review.accept());
+  await sourceCommand(() => editor.expectSourceOrphanCount(0));
+  await sourceCommand(() => checkpoint('acceptance removes the deleted target configuration'));
 
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

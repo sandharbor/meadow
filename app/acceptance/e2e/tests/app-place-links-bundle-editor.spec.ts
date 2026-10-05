@@ -11,13 +11,13 @@ test.use({ bundleMode: "single-file" });
  * one fresh load each, and require the app to report reaching exactly that
  * place with no shortfall callout.
  */
-test("Every bundle editor surface opens from its link", async ({ page, testServer, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+test("Every bundle editor surface opens from its link", { annotation: { type: 'scenario-id', description: '74506a75-c49f-4ba1-aba8-fd3146b023df' } }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Test start ---
   // Follow each link in turn.
   const places = placesFor(placeExamples({ sourceGraphsDir: testServer.sourceGraphsDir }), key => key.startsWith("bundle:") && key !== "bundle:preview");
-  await checkPlaceLinks(page, expect, places);
-  await addKeyFrame(appPlace);
-  await checkpoint("every bundle editor surface opened from its link");
+  await sourceCommand(() => checkPlaceLinks(page, expect, places));
+  await sourceCommand(() => addKeyFrame(appPlace));
+  await sourceCommand(() => checkpoint("every bundle editor surface opened from its link"));
 
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

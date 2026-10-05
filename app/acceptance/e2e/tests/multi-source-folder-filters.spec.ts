@@ -12,53 +12,53 @@ test.use({ fixtureHome: 'home_fixture_multi_source' });
  * Hide one of two equally named folders in different sources, then rename that source. The
  * filter should keep affecting only the original source and remain resettable.
  */
-test('Multi-source folder filters distinguish equal folder names and retain independent settings', async ({ page, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
+test('Multi-source folder filters distinguish equal folder names and retain independent settings', { annotation: { type: 'scenario-id', description: 'ed923b4e-3481-433a-91e3-b9adb3190594' } }, async ({ sourceCommand, page, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
-  await list.goto();
-  await list.clickBundle('multi-source-page');
+  await sourceCommand(() => list.goto());
+  await sourceCommand(() => list.clickBundle('multi-source-page'));
   const editor = new BundleEditorPage(page, expect);
-  await editor.waitForLoad('multi-source-page');
-  await editor.waitForSourceCheck();
-  await editor.switchToListView();
-  await editor.expectListViewLocation('file:_mw_sources/source000001/Overview.md', 'notes', '/');
-  await editor.expectListViewLocation('file:_mw_sources/source000002/Overview.md', 'research', '/');
+  await sourceCommand(() => editor.waitForLoad('multi-source-page'));
+  await sourceCommand(() => editor.waitForSourceCheck());
+  await sourceCommand(() => editor.switchToListView());
+  await sourceCommand(() => editor.expectListViewLocation('file:_mw_sources/source000001/Overview.md', 'notes', '/'));
+  await sourceCommand(() => editor.expectListViewLocation('file:_mw_sources/source000002/Overview.md', 'research', '/'));
   const filters = new FilterPanelComponent(page, expect);
-  await filters.expandFilterGroup('Folders');
-  await filters.expectFolderCount('notes://', 5);
-  await filters.expectFolderCount('research://', 5);
-  await filters.expectFolderCount('reference://', 2);
-  await filters.expandFolder('notes://');
-  await filters.expandFolder('research://');
-  await filters.expectFolderCount('notes://Same', 1);
-  await filters.expectFolderCount('research://Same', 1);
-  await addKeyFrame(bundleSource, folderFilter);
-  await checkpoint('namesake pages and folders display their canonical source');
+  await sourceCommand(() => filters.expandFilterGroup('Folders'));
+  await sourceCommand(() => filters.expectFolderCount('notes://', 5));
+  await sourceCommand(() => filters.expectFolderCount('research://', 5));
+  await sourceCommand(() => filters.expectFolderCount('reference://', 2));
+  await sourceCommand(() => filters.expandFolder('notes://'));
+  await sourceCommand(() => filters.expandFolder('research://'));
+  await sourceCommand(() => filters.expectFolderCount('notes://Same', 1));
+  await sourceCommand(() => filters.expectFolderCount('research://Same', 1));
+  await sourceCommand(() => addKeyFrame(bundleSource, folderFilter));
+  await sourceCommand(() => checkpoint('namesake pages and folders display their canonical source'));
 
   // --- Test start ---
   // Change the source-folder filters.
-  await filters.hideFolder('notes://Same');
-  await editor.expectListViewNodeVisible('file:_mw_sources/source000001/Same/Inside.md', false);
-  await editor.expectListViewNodeVisible('file:_mw_sources/source000002/Same/Inside.md', true);
-  await checkpoint("hiding one namesake folder leaves the other source visible");
+  await sourceCommand(() => filters.hideFolder('notes://Same'));
+  await sourceCommand(() => editor.expectListViewNodeVisible('file:_mw_sources/source000001/Same/Inside.md', false));
+  await sourceCommand(() => editor.expectListViewNodeVisible('file:_mw_sources/source000002/Same/Inside.md', true));
+  await sourceCommand(() => checkpoint("hiding one namesake folder leaves the other source visible"));
 
   // Rename the filtered source.
   const sources = new SourcesControl(page, expect);
-  await sources.open();
-  await sources.rename('notes', 'notebook');
-  await sources.saveWithoutMaterialChanges();
-  await editor.expectListViewNodeVisible('file:_mw_sources/source000001/Same/Inside.md', false);
-  await editor.expectListViewNodeVisible('file:_mw_sources/source000002/Same/Inside.md', true);
-  await editor.expectListViewLocation('file:_mw_sources/source000001/Overview.md', 'notebook', '/');
-  await filters.expectFolderVisible('notebook://Same');
-  await addKeyFrame(folderFilter);
-  await checkpoint("the renamed source retains its folder filter");
+  await sourceCommand(() => sources.open());
+  await sourceCommand(() => sources.rename('notes', 'notebook'));
+  await sourceCommand(() => sources.saveWithoutMaterialChanges());
+  await sourceCommand(() => editor.expectListViewNodeVisible('file:_mw_sources/source000001/Same/Inside.md', false));
+  await sourceCommand(() => editor.expectListViewNodeVisible('file:_mw_sources/source000002/Same/Inside.md', true));
+  await sourceCommand(() => editor.expectListViewLocation('file:_mw_sources/source000001/Overview.md', 'notebook', '/'));
+  await sourceCommand(() => filters.expectFolderVisible('notebook://Same'));
+  await sourceCommand(() => addKeyFrame(folderFilter));
+  await sourceCommand(() => checkpoint("the renamed source retains its folder filter"));
 
   // Reset the folder filters.
-  await filters.resetFolderFilters();
-  await editor.expectListViewNodeVisible('file:_mw_sources/source000001/Same/Inside.md', true);
-  await editor.expectListViewNodeVisible('file:_mw_sources/source000002/Same/Inside.md', true);
-  await checkpoint("resetting the folder filter restores both namesake pages");
+  await sourceCommand(() => filters.resetFolderFilters());
+  await sourceCommand(() => editor.expectListViewNodeVisible('file:_mw_sources/source000001/Same/Inside.md', true));
+  await sourceCommand(() => editor.expectListViewNodeVisible('file:_mw_sources/source000002/Same/Inside.md', true));
+  await sourceCommand(() => checkpoint("resetting the folder filter restores both namesake pages"));
 
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

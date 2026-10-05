@@ -34,7 +34,7 @@ test.use({ fixtureHome: Fixture.Minimal });
  * Create a bundle whose starting page is an Excalidraw drawing. Generate its preview and
  * follow a drawing link to another page.
  */
-test("create a custom bundle with an excalidraw initial page and follow a drawing link", async ({
+test("create a custom bundle with an excalidraw initial page and follow a drawing link", { annotation: { type: 'scenario-id', description: '05e433b3-03e3-46b3-82c9-99271d27b813' } }, async ({ sourceCommand,
   page,
   testServer,
   checkpoint,
@@ -53,56 +53,56 @@ test("create a custom bundle with an excalidraw initial page and follow a drawin
   const previewModal = new PreviewPublishModal(page, expect);
   const generatedBundle = previewModal.generatedBundle;
 
-  await bundleList.goto();
-  await bundleList.expectCalloutVisible("Turn your notes into bundles");
-  await bundleList.clickCreateBundleLink();
+  await sourceCommand(() => bundleList.goto());
+  await sourceCommand(() => bundleList.expectCalloutVisible("Turn your notes into bundles"));
+  await sourceCommand(() => bundleList.clickCreateBundleLink());
 
   const sourceDir = path.join(testServer.sourceGraphsDir, "meadow-test-bundles-data");
-  await createModal.fillSourceDirectory(sourceDir);
-  await createModal.typeInitialPageTitle("t006 --- meadow-flower");
-  await createModal.selectSuggestion("t006 --- meadow-flower");
-  await createModal.clickCreateBundle();
+  await sourceCommand(() => createModal.fillSourceDirectory(sourceDir));
+  await sourceCommand(() => createModal.typeInitialPageTitle("t006 --- meadow-flower"));
+  await sourceCommand(() => createModal.selectSuggestion("t006 --- meadow-flower"));
+  await sourceCommand(() => createModal.clickCreateBundle());
 
-  await editor.waitForLoad("t006-meadow-flower");
-  await addKeyFrame(initialPage);
-  await addKeyFrame(excalidraw);
-  await checkpoint("graph view loaded with excalidraw initial page");
+  await sourceCommand(() => editor.waitForLoad("t006-meadow-flower"));
+  await sourceCommand(() => addKeyFrame(initialPage));
+  await sourceCommand(() => addKeyFrame(excalidraw));
+  await sourceCommand(() => checkpoint("graph view loaded with excalidraw initial page"));
 
   // --- Test start ---
   // Inspect and preview the drawing.
-  await editor.switchToListView();
-  await editor.expectListViewRowByTitleAndFileTypePresent(
+  await sourceCommand(() => editor.switchToListView());
+  await sourceCommand(() => editor.expectListViewRowByTitleAndFileTypePresent(
     "t006 --- meadow-flower",
     "excalidraw",
-  );
-  await editor.clickSelectAll();
-  await page.waitForTimeout(500);
-  await editor.clickDeselectSensitivePagesIfVisible();
-  await page.waitForTimeout(250);
-  await editor.clickTrackAll();
+  ));
+  await sourceCommand(() => editor.clickSelectAll());
+  await sourceCommand(() => page.waitForTimeout(500));
+  await sourceCommand(() => editor.clickDeselectSensitivePagesIfVisible());
+  await sourceCommand(() => page.waitForTimeout(250));
+  await sourceCommand(() => editor.clickTrackAll());
 
-  await editor.clickPreview();
-  await previewModal.waitForPreviewCompleteAllTracked();
+  await sourceCommand(() => editor.clickPreview());
+  await sourceCommand(() => previewModal.waitForPreviewCompleteAllTracked());
 
-  await generatedBundle.expectHeading("t006 --- meadow-flower", 30_000);
-  await generatedBundle.excalidraw.expectStandaloneDrawingVisible();
-  await addKeyFrame(excalidraw);
-  await checkpoint("preview shows excalidraw initial page");
+  await sourceCommand(() => generatedBundle.expectHeading("t006 --- meadow-flower", 30_000));
+  await sourceCommand(() => generatedBundle.excalidraw.expectStandaloneDrawingVisible());
+  await sourceCommand(() => addKeyFrame(excalidraw));
+  await sourceCommand(() => checkpoint("preview shows excalidraw initial page"));
 
   // Follow a link inside the drawing.
   const firstDrawingLinkHref =
     "t006%20---%20linked-from-excalidraw.html";
-  await generatedBundle.excalidraw.expectStandaloneDrawingLink(
+  await sourceCommand(() => generatedBundle.excalidraw.expectStandaloneDrawingLink(
     firstDrawingLinkHref,
-  );
-  await generatedBundle.excalidraw.clickStandaloneDrawingLink(firstDrawingLinkHref);
+  ));
+  await sourceCommand(() => generatedBundle.excalidraw.clickStandaloneDrawingLink(firstDrawingLinkHref));
 
-  await generatedBundle.expectHeading("t006 --- linked-from-excalidraw");
-  await addKeyFrame(excalidraw);
-  await checkpoint("preview after clicking first excalidraw link");
+  await sourceCommand(() => generatedBundle.expectHeading("t006 --- linked-from-excalidraw"));
+  await sourceCommand(() => addKeyFrame(excalidraw));
+  await sourceCommand(() => checkpoint("preview after clicking first excalidraw link"));
 
   void customBundle;
 
   releaseWorkerWarning();
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

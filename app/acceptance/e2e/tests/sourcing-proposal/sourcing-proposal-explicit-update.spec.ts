@@ -18,7 +18,7 @@ test.use({ fixtureHome: Fixture.SourcingReview });
  * exposes the now-unavailable tracked target. A disconnected-source failure preserves that complete
  * proposal; the user can leave the unavailable page untracked and accept the reviewed capture.
  */
-test('Updating a sourcing proposal preserves applicable decisions and exposes invalidated decisions', async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState, expectLogErrors }) => {
+test('Updating a sourcing proposal preserves applicable decisions and exposes invalidated decisions', { annotation: { type: 'scenario-id', description: '47eff446-9951-43f2-9c24-e60fea06abfc' } }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState, expectLogErrors }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);

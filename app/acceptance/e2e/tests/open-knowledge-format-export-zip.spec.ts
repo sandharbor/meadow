@@ -45,7 +45,7 @@ test.use({
  * Enable Open Knowledge Format and review its reserved-name changes. Save, export a ZIP,
  * and browse the resulting bundle index.
  */
-test("OKF: enable, inspect reserved rename indicator, save, export ZIP, and browse bundle index", async ({
+test("OKF: enable, inspect reserved rename indicator, save, export ZIP, and browse bundle index", { annotation: { type: 'scenario-id', description: '0da48f7e-6325-4dad-879a-53665bd280c7' } }, async ({ sourceCommand,
   page,
   checkpoint,
   skipMeadowHomeStateCheck,
@@ -54,81 +54,81 @@ test("OKF: enable, inspect reserved rename indicator, save, export ZIP, and brow
 }) => {
   // --- Setup ---
   const wf = new Workflows(page, expect);
-  await wf.navigateToBigBundlePreview();
+  await sourceCommand(() => wf.navigateToBigBundlePreview());
   const modal = new PreviewPublishModal(page, expect);
   const generatedBundle = modal.generatedBundle;
-  await checkpoint("preview loaded");
+  await sourceCommand(() => checkpoint("preview loaded"));
 
   // --- Test start ---
   // Configure sources and knowledge exports.
-  await modal.openCustomizeSidebar();
+  await sourceCommand(() => modal.openCustomizeSidebar());
   const customizeTab = new CustomizeTab(page, expect);
-  await customizeTab.generationOptions.enableSourcesExport();
-  const okf = await customizeTab.generationOptions.openOpenKnowledgeFormatSettings();
-  await okf.expectAutomaticLog(rootLogPageName, "root");
-  await okf.chooseGeneratedIndex();
-  await checkpoint("okf settings default to root log");
+  await sourceCommand(() => customizeTab.generationOptions.enableSourcesExport());
+  const okf = await sourceCommand(() => customizeTab.generationOptions.openOpenKnowledgeFormatSettings());
+  await sourceCommand(() => okf.expectAutomaticLog(rootLogPageName, "root"));
+  await sourceCommand(() => okf.chooseGeneratedIndex());
+  await sourceCommand(() => checkpoint("okf settings default to root log"));
 
   // Save the export settings.
-  await okf.save();
-  await addKeyFrame(customize);
-  await checkpoint("sources zip and okf enabled");
+  await sourceCommand(() => okf.save());
+  await sourceCommand(() => addKeyFrame(customize));
+  await sourceCommand(() => checkpoint("sources zip and okf enabled"));
 
   // Wait for package generation.
   const changesTab = new ChangesTab(page, expect);
-  await changesTab.waitForRegenerationComplete();
-  await addKeyFrame(sourcesExport);
-  await customizeTab.generationOptions.expectOpenKnowledgeFormatRenameIndicatorVisible(2);
-  await addKeyFrame(openKnowledgeFormat);
-  await checkpoint("okf generation complete with reserved rename indicator");
+  await sourceCommand(() => changesTab.waitForRegenerationComplete());
+  await sourceCommand(() => addKeyFrame(sourcesExport));
+  await sourceCommand(() => customizeTab.generationOptions.expectOpenKnowledgeFormatRenameIndicatorVisible(2));
+  await sourceCommand(() => addKeyFrame(openKnowledgeFormat));
+  await sourceCommand(() => checkpoint("okf generation complete with reserved rename indicator"));
 
   // Inspect reserved-name handling.
-  await customizeTab.generationOptions.openOpenKnowledgeFormatRenameDetails(2);
-  await modal.expectOkfRenameDetails([
+  await sourceCommand(() => customizeTab.generationOptions.openOpenKnowledgeFormatRenameDetails(2));
+  await sourceCommand(() => modal.expectOkfRenameDetails([
     "index.md",
     "index-original.md",
     "t001/log.md",
     "t001/log-original.md",
-  ]);
-  await checkpoint("okf reserved rename details");
+  ]));
+  await sourceCommand(() => checkpoint("okf reserved rename details"));
 
   // Review the generated files.
-  await modal.closeOkfRenameDetails();
+  await sourceCommand(() => modal.closeOkfRenameDetails());
 
-  await modal.clickChangesTab();
-  await changesTab.expectFolderCollapsed("_mw_assets");
-  await changesTab.expandFolder("_mw_assets");
-  await changesTab.expectFileInChanges("okf-download-manifest.json");
-  await changesTab.expectFileInChanges("index-original.md");
-  await addKeyFrame(changesTabDoc);
-  await checkpoint("changes include okf files");
+  await sourceCommand(() => modal.clickChangesTab());
+  await sourceCommand(() => changesTab.expectFolderCollapsed("_mw_assets"));
+  await sourceCommand(() => changesTab.expandFolder("_mw_assets"));
+  await sourceCommand(() => changesTab.expectFileInChanges("okf-download-manifest.json"));
+  await sourceCommand(() => changesTab.expectFileInChanges("index-original.md"));
+  await sourceCommand(() => addKeyFrame(changesTabDoc));
+  await sourceCommand(() => checkpoint("changes include okf files"));
 
   // Save the generated version.
-  await modal.clickBundlePreviewTab();
-  await modal.clickSaveChanges();
-  await modal.waitForSaveComplete();
-  await checkpoint("save completed");
+  await sourceCommand(() => modal.clickBundlePreviewTab());
+  await sourceCommand(() => modal.clickSaveChanges());
+  await sourceCommand(() => modal.waitForSaveComplete());
+  await sourceCommand(() => checkpoint("save completed"));
 
   // Open the reader download menu.
   const bundleDir = path.join(testServer.configDir, "bundles", Bundle.Big);
   const meadowGit = new MeadowHomeGit(testServer.configDir, expect);
-  await meadowGit.expectDirFullyCommitted(bundleDir);
-  await addKeyFrame(git);
+  await sourceCommand(() => meadowGit.expectDirFullyCommitted(bundleDir));
+  await sourceCommand(() => addKeyFrame(git));
 
-  await modal.clickStep1Review();
-  await modal.clickBundlePreviewTab();
-  await generatedBundle.sources.expectControlsAligned();
-  await generatedBundle.sources.openOkfMenuWithoutShiftingPage();
-  await generatedBundle.sources.dismissOkfMenu();
-  await generatedBundle.sources.openOkfMenu();
-  await checkpoint("okf website package menu open");
+  await sourceCommand(() => modal.clickStep1Review());
+  await sourceCommand(() => modal.clickBundlePreviewTab());
+  await sourceCommand(() => generatedBundle.sources.expectControlsAligned());
+  await sourceCommand(() => generatedBundle.sources.openOkfMenuWithoutShiftingPage());
+  await sourceCommand(() => generatedBundle.sources.dismissOkfMenu());
+  await sourceCommand(() => generatedBundle.sources.openOkfMenu());
+  await sourceCommand(() => checkpoint("okf website package menu open"));
 
   // Download the knowledge package.
-  const download = await generatedBundle.sources.downloadOkfZip();
+  const download = await sourceCommand(() => generatedBundle.sources.downloadOkfZip());
   expect(download.suggestedFilename()).toBe("meadow-test-bundle-big-okf.zip");
-  const okfZipPath = await download.path();
+  const okfZipPath = await sourceCommand(() => download.path());
   expect(okfZipPath).toBeTruthy();
-  await checkpoint("okf zip downloaded from website button");
+  await sourceCommand(() => checkpoint("okf zip downloaded from website button"));
 
   // Inspect and browse the package.
   const zipContents = execFileSync("unzip", ["-l", okfZipPath!], { encoding: "utf8" });
@@ -137,11 +137,11 @@ test("OKF: enable, inspect reserved rename indicator, save, export ZIP, and brow
   expect(zipContents).toContain("meadow-test-bundle-big/log.md");
   expect(zipContents).toContain("meadow-test-bundle-big/t001/log-original.md");
 
-  await generatedBundle.sources.openOkfBundleIndex();
-  await modal.expectPreviewIframeUrlContains("_mw_assets/cust/okf/bundle/index.md");
-  await checkpoint("okf bundle index browsed from website button");
+  await sourceCommand(() => generatedBundle.sources.openOkfBundleIndex());
+  await sourceCommand(() => modal.expectPreviewIframeUrlContains("_mw_assets/cust/okf/bundle/index.md"));
+  await sourceCommand(() => checkpoint("okf bundle index browsed from website button"));
 
   void bigBundle;
 
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

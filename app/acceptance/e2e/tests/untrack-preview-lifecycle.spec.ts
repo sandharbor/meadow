@@ -36,7 +36,7 @@ test.use({ bundleMode: "single-file" });
  * Untrack a page from a saved bundle and regenerate, then track it again. Review should
  * first show its removal and then its return before each save.
  */
-test("untracking a saved page deletes it from the next preview and retracking adds it back", async ({
+test("untracking a saved page deletes it from the next preview and retracking adds it back", { annotation: { type: 'scenario-id', description: '09f3977f-b9a3-4467-af26-51cc5f4423f3' } }, async ({ sourceCommand,
   page,
   checkpoint,
   assertMeadowHomeState,
@@ -52,67 +52,67 @@ test("untracking a saved page deletes it from the next preview and retracking ad
 
   // Establish a saved generation baseline, matching a publisher who previews
   // the already-curated bundle, saves its generated files, and closes Review.
-  await workflows.navigateToBigBundlePreview();
-  await modal.clickSaveChanges();
-  await modal.waitForSaveComplete();
-  await modal.closeModal();
+  await sourceCommand(() => workflows.navigateToBigBundlePreview());
+  await sourceCommand(() => modal.clickSaveChanges());
+  await sourceCommand(() => modal.waitForSaveComplete());
+  await sourceCommand(() => modal.closeModal());
 
-  await checkpoint("the tracked page is included in a saved generation");
+  await sourceCommand(() => checkpoint("the tracked page is included in a saved generation"));
 
   // --- Test start ---
   // Untrack the page.
-  await editor.switchToListView();
-  await editor.rightClickRow(pageTitle);
-  await editor.clickContextMenuItemAndAwaitAutoSave("Untrack");
-  await editor.expectUndoNotVisible();
-  await checkpoint("tracked page untracked and auto-saved");
+  await sourceCommand(() => editor.switchToListView());
+  await sourceCommand(() => editor.rightClickRow(pageTitle));
+  await sourceCommand(() => editor.clickContextMenuItemAndAwaitAutoSave("Untrack"));
+  await sourceCommand(() => editor.expectUndoNotVisible());
+  await sourceCommand(() => checkpoint("tracked page untracked and auto-saved"));
 
   // Preview the removed page.
   // The next preview must remove the page's generated HTML and modify other
   // generated files that previously linked to it.
-  await editor.clickPreview();
-  await modal.waitForPreviewComplete();
-  await modal.clickChangesTab();
-  await changesTab.openHtmlSectionChangesFilter();
-  expect(await changesTab.getChangeTypeCount("Deleted")).toBeGreaterThan(0);
-  expect(await changesTab.getChangeTypeCount("Modified")).toBeGreaterThan(0);
-  await changesTab.expectFileInChanges(generatedFilename);
-  await addKeyFrame(tracking);
-  await addKeyFrame(changesTabDoc);
-  await addKeyFrame(htmlGeneration);
-  await checkpoint("preview deletes the untracked page");
+  await sourceCommand(() => editor.clickPreview());
+  await sourceCommand(() => modal.waitForPreviewComplete());
+  await sourceCommand(() => modal.clickChangesTab());
+  await sourceCommand(() => changesTab.openHtmlSectionChangesFilter());
+  expect(await sourceCommand(() => changesTab.getChangeTypeCount("Deleted"))).toBeGreaterThan(0);
+  expect(await sourceCommand(() => changesTab.getChangeTypeCount("Modified"))).toBeGreaterThan(0);
+  await sourceCommand(() => changesTab.expectFileInChanges(generatedFilename));
+  await sourceCommand(() => addKeyFrame(tracking));
+  await sourceCommand(() => addKeyFrame(changesTabDoc));
+  await sourceCommand(() => addKeyFrame(htmlGeneration));
+  await sourceCommand(() => checkpoint("preview deletes the untracked page"));
 
   // Save and track the page again.
-  await modal.clickBundlePreviewTab();
-  await modal.clickSaveChanges();
-  await modal.waitForSaveComplete();
-  await modal.closeModal();
+  await sourceCommand(() => modal.clickBundlePreviewTab());
+  await sourceCommand(() => modal.clickSaveChanges());
+  await sourceCommand(() => modal.waitForSaveComplete());
+  await sourceCommand(() => modal.closeModal());
 
   // Track the same page again and prove the reverse transition is generated.
-  await editor.clickListViewRowByName(pageTitle);
+  await sourceCommand(() => editor.clickListViewRowByName(pageTitle));
   const selectedPage = new SelectedPageDetailComponent(
     editor.getSelectedPageRoot(),
     expect,
   );
-  await selectedPage.clickAction(ActionButton.Track, page);
-  await editor.expectUndoNotVisible();
+  await sourceCommand(() => selectedPage.clickAction(ActionButton.Track, page));
+  await sourceCommand(() => editor.expectUndoNotVisible());
 
-  await editor.clickPreview();
-  await modal.waitForPreviewComplete();
-  await modal.clickChangesTab();
-  await changesTab.openHtmlSectionChangesFilter();
-  expect(await changesTab.getChangeTypeCount("Added")).toBeGreaterThan(0);
-  expect(await changesTab.getChangeTypeCount("Modified")).toBeGreaterThan(0);
-  await changesTab.expectFileInChanges(generatedFilename);
-  await checkpoint("preview adds the retracked page back");
+  await sourceCommand(() => editor.clickPreview());
+  await sourceCommand(() => modal.waitForPreviewComplete());
+  await sourceCommand(() => modal.clickChangesTab());
+  await sourceCommand(() => changesTab.openHtmlSectionChangesFilter());
+  expect(await sourceCommand(() => changesTab.getChangeTypeCount("Added"))).toBeGreaterThan(0);
+  expect(await sourceCommand(() => changesTab.getChangeTypeCount("Modified"))).toBeGreaterThan(0);
+  await sourceCommand(() => changesTab.expectFileInChanges(generatedFilename));
+  await sourceCommand(() => checkpoint("preview adds the retracked page back"));
 
   // Save the restored page.
-  await modal.clickBundlePreviewTab();
-  await modal.clickSaveChanges();
-  await modal.waitForSaveComplete();
+  await sourceCommand(() => modal.clickBundlePreviewTab());
+  await sourceCommand(() => modal.clickSaveChanges());
+  await sourceCommand(() => modal.waitForSaveComplete());
   void bigBundle;
 
-  await checkpoint("the restored page is saved in the generated version");
+  await sourceCommand(() => checkpoint("the restored page is saved in the generated version"));
 
-  await assertMeadowHomeState();
+  await sourceCommand(() => assertMeadowHomeState());
 });

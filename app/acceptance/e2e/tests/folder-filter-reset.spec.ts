@@ -26,7 +26,7 @@ test.use({ bundleMode: "single-file" });
  * Hide a nested folder and collapse its parent. The parent should indicate the hidden
  * activity, and Reset should restore every page.
  */
-test("folder filter exposes collapsed activity and reset restores all pages", async ({
+test("folder filter exposes collapsed activity and reset restores all pages", { annotation: { type: 'scenario-id', description: 'd05dc908-cb6a-4963-89c8-f1ec7b8a8bf9' } }, async ({ sourceCommand,
   page,
   checkpoint,
   assertMeadowHomeState,
@@ -37,33 +37,33 @@ test("folder filter exposes collapsed activity and reset restores all pages", as
   const editor = new BundleEditorPage(page, expect);
   const filterPanel = new FilterPanelComponent(page, expect);
 
-  await workflows.navigateToBigBundle();
-  await filterPanel.enableFilter("Folders");
-  await editor.switchToListView();
-  const initialPageCount = await editor.getListViewPageCount();
+  await sourceCommand(() => workflows.navigateToBigBundle());
+  await sourceCommand(() => filterPanel.enableFilter("Folders"));
+  await sourceCommand(() => editor.switchToListView());
+  const initialPageCount = await sourceCommand(() => editor.getListViewPageCount());
   expect(initialPageCount).toBeGreaterThan(1);
 
-  await checkpoint("the unfiltered list is ready");
+  await sourceCommand(() => checkpoint("the unfiltered list is ready"));
 
   // --- Test start ---
   // Hide a nested folder.
-  await filterPanel.expandFolder("t024");
-  await filterPanel.hideFolder("t024/deeper");
-  await expect.poll(() => editor.getListViewPageCount()).toBe(initialPageCount - 1);
-  await filterPanel.collapseFolder("t024");
-  await filterPanel.expectDescendantActivity("t024");
-  await addKeyFrame(filters);
-  await addKeyFrame(folderFilter);
-  await checkpoint("collapsed folder shows nested hide activity");
+  await sourceCommand(() => filterPanel.expandFolder("t024"));
+  await sourceCommand(() => filterPanel.hideFolder("t024/deeper"));
+  await sourceCommand(() => expect.poll(() => editor.getListViewPageCount()).toBe(initialPageCount - 1));
+  await sourceCommand(() => filterPanel.collapseFolder("t024"));
+  await sourceCommand(() => filterPanel.expectDescendantActivity("t024"));
+  await sourceCommand(() => addKeyFrame(filters));
+  await sourceCommand(() => addKeyFrame(folderFilter));
+  await sourceCommand(() => checkpoint("collapsed folder shows nested hide activity"));
 
   // Reset the folder filters.
-  await filterPanel.resetFolderFilters();
-  await expect.poll(() => editor.getListViewPageCount()).toBe(initialPageCount);
-  await filterPanel.expectNoDescendantActivity("t024");
-  await filterPanel.expectFolderResetHidden();
-  await checkpoint("folder filters reset");
+  await sourceCommand(() => filterPanel.resetFolderFilters());
+  await sourceCommand(() => expect.poll(() => editor.getListViewPageCount()).toBe(initialPageCount));
+  await sourceCommand(() => filterPanel.expectNoDescendantActivity("t024"));
+  await sourceCommand(() => filterPanel.expectFolderResetHidden());
+  await sourceCommand(() => checkpoint("folder filters reset"));
 
   void bigBundle;
 
-  await assertMeadowHomeState();
+  await sourceCommand(() => assertMeadowHomeState());
 });

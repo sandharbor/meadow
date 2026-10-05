@@ -27,7 +27,7 @@ test.use({ bundleMode: "single-file" });
  * Publish two revisions, remove S3 credentials, and try deleting the bundle. Failed
  * cleanup must preserve local files; restoring credentials should make the retry complete.
  */
-test("D04 D05 L02 provider cleanup failure preserves the whole local bundle and retry completes", async ({
+test("D04 D05 L02 provider cleanup failure preserves the whole local bundle and retry completes", { annotation: { type: 'scenario-id', description: 'd81c197a-003f-471d-a728-1a6a91d1479c' } }, async ({ sourceCommand,
   page,
   checkpoint,
   skipMeadowHomeStateCheck,
@@ -36,30 +36,30 @@ test("D04 D05 L02 provider cleanup failure preserves the whole local bundle and 
   expectLogErrors,
 }) => {
   // --- Setup ---
-  await testServer.activateS3Provider();
+  await sourceCommand(() => testServer.activateS3Provider());
   const wf = new Workflows(page, expect);
-  await wf.navigateToBigBundleShareTab();
+  await sourceCommand(() => wf.navigateToBigBundleShareTab());
   const publishPage = new PublishToS3Tab(page, expect);
   const publishSlug = `${Bundle.Big}-delete-gate`;
-  await publishPage.setPublishSlug(publishSlug);
-  await publishPage.clickPublish();
-  const firstPublishedUrl = await publishPage.expectPublishSuccess();
+  await sourceCommand(() => publishPage.setPublishSlug(publishSlug));
+  await sourceCommand(() => publishPage.clickPublish());
+  const firstPublishedUrl = await sourceCommand(() => publishPage.expectPublishSuccess());
   const firstVersionId = firstPublishedUrl.match(/-(v[A-Za-z0-9]{6})\//)?.[1];
   expect(firstVersionId).toBeTruthy();
   const bundleApi = `/api/bundles/${encodeURIComponent(Bundle.Big)}`;
-  const createResponse = await page.request.post(`${bundleApi}/generation/versions`, {
+  const createResponse = await sourceCommand(() => page.request.post(`${bundleApi}/generation/versions`, {
     data: { confirmedNoGeneratedChanges: true },
-  });
+  }));
   expect(createResponse.ok()).toBe(true);
-  const secondVersionId = ((await createResponse.json()) as { versionId: string }).versionId;
-  expect((await page.request.get(`${bundleApi}/review/save-changes`)).ok()).toBe(true);
+  const secondVersionId = ((await sourceCommand(() => createResponse.json())) as { versionId: string }).versionId;
+  expect((await sourceCommand(() => page.request.get(`${bundleApi}/review/save-changes`))).ok()).toBe(true);
   const providerApi = `/api/sharing/publishing-providers/S3PublishingProvider/bundles/${encodeURIComponent(Bundle.Big)}`;
-  expect((await page.request.post(`${providerApi}/publish`, { data: { versionId: secondVersionId } })).ok()).toBe(true);
-  await minioS3.expectHasFiles(`${publishSlug}-`);
-  await minioS3.expectHasFiles(`${publishSlug}-${firstVersionId}/`);
-  await minioS3.expectHasFiles(`${publishSlug}-${secondVersionId}/`);
+  expect((await sourceCommand(() => page.request.post(`${providerApi}/publish`, { data: { versionId: secondVersionId } }))).ok()).toBe(true);
+  await sourceCommand(() => minioS3.expectHasFiles(`${publishSlug}-`));
+  await sourceCommand(() => minioS3.expectHasFiles(`${publishSlug}-${firstVersionId}/`));
+  await sourceCommand(() => minioS3.expectHasFiles(`${publishSlug}-${secondVersionId}/`));
 
-  await checkpoint("two published revisions have remote files");
+  await sourceCommand(() => checkpoint("two published revisions have remote files"));
 
   // --- Test start ---
   // Remove credentials and try deleting the bundle.
@@ -81,26 +81,26 @@ test("D04 D05 L02 provider cleanup failure preserves the whole local bundle and 
   }));
 
   const list = new BundleListPage(page, expect);
-  await list.goto();
-  await list.clickDeleteBundle(Bundle.Big);
-  await list.expectPublishedDeleteWarningVisible();
+  await sourceCommand(() => list.goto());
+  await sourceCommand(() => list.clickDeleteBundle(Bundle.Big));
+  await sourceCommand(() => list.expectPublishedDeleteWarningVisible());
   const stopExpectedErrors = expectLogErrors(/cleanup failed|credentials are required|local bundle was preserved/i);
-  await list.confirmDelete();
-  await expect(page.getByText(/credentials are required to confirm remote cleanup/i)).toBeVisible({ timeout: 30_000 });
+  await sourceCommand(() => list.confirmDelete());
+  await sourceCommand(() => expect(page.getByText(/credentials are required to confirm remote cleanup/i)).toBeVisible({ timeout: 30_000 }));
   stopExpectedErrors();
 
   expect(fs.existsSync(bundleDirectory)).toBe(true);
   expect(fs.readFileSync(path.join(bundleDirectory, "config", "bundle_config.yaml"))).toEqual(sentinelConfig);
-  await minioS3.expectHasFiles(`${publishSlug}-`);
-  await checkpoint("provider cleanup failure preserves every local bundle file");
+  await sourceCommand(() => minioS3.expectHasFiles(`${publishSlug}-`));
+  await sourceCommand(() => checkpoint("provider cleanup failure preserves every local bundle file"));
 
   // Restore credentials and retry deletion.
   fs.writeFileSync(secretsPath, originalSecrets);
-  await list.confirmDelete();
-  await list.waitForBundleGone(Bundle.Big);
+  await sourceCommand(() => list.confirmDelete());
+  await sourceCommand(() => list.waitForBundleGone(Bundle.Big));
   expect(fs.existsSync(bundleDirectory)).toBe(false);
-  await minioS3.expectEmpty(`${publishSlug}-`);
-  await checkpoint("cleanup retry succeeds before local bundle deletion");
+  await sourceCommand(() => minioS3.expectEmpty(`${publishSlug}-`));
+  await sourceCommand(() => checkpoint("cleanup retry succeeds before local bundle deletion"));
 
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

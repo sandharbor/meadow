@@ -25,48 +25,48 @@ test.use({ bundleMode: 'single-file' });
  * Follow links inside the generated preview, then use the editor's Back and Forward
  * controls. A new link after going back should discard the forward branch.
  */
-test('preview history navigates back and forward through generated pages', async ({
+test('preview history navigates back and forward through generated pages', { annotation: { type: 'scenario-id', description: '862fa2d0-3ce1-4398-a5cc-821eb8ba8549' } }, async ({ sourceCommand,
   page, checkpoint, addKeyFrame, skipMeadowHomeStateCheck,
 }) => {
   // --- Setup ---
   const modal = new PreviewPublishModal(page, expect);
-  await new Workflows(page, expect).navigateToBigBundlePreview();
-  await modal.generatedBundle.expectSingleHeading('main page');
-  await modal.expectPreviewNavigation(false, false);
-  await checkpoint('generated preview starts at the main page with empty history');
+  await sourceCommand(() => new Workflows(page, expect).navigateToBigBundlePreview());
+  await sourceCommand(() => modal.generatedBundle.expectSingleHeading('main page'));
+  await sourceCommand(() => modal.expectPreviewNavigation(false, false));
+  await sourceCommand(() => checkpoint('generated preview starts at the main page with empty history'));
 
   // --- Test start ---
   // Follow two generated links to build a three-page history.
-  await modal.generatedBundle.clickPageLink('t001 - deeply nested');
-  await modal.generatedBundle.expectSingleHeading('t001 - deeply nested');
-  await modal.expectPreviewNavigation(true, false);
-  await modal.generatedBundle.clickPageLink('t001 ---- child 1');
-  await modal.generatedBundle.expectSingleHeading('t001 ---- child 1');
-  await addKeyFrame(htmlGeneration);
-  await checkpoint('two followed links appear in preview history');
+  await sourceCommand(() => modal.generatedBundle.clickPageLink('t001 - deeply nested'));
+  await sourceCommand(() => modal.generatedBundle.expectSingleHeading('t001 - deeply nested'));
+  await sourceCommand(() => modal.expectPreviewNavigation(true, false));
+  await sourceCommand(() => modal.generatedBundle.clickPageLink('t001 ---- child 1'));
+  await sourceCommand(() => modal.generatedBundle.expectSingleHeading('t001 ---- child 1'));
+  await sourceCommand(() => addKeyFrame(htmlGeneration));
+  await sourceCommand(() => checkpoint('two followed links appear in preview history'));
 
   // Return through history and then move forward again.
-  await modal.goBackInPreview();
-  await modal.generatedBundle.expectSingleHeading('t001 - deeply nested');
-  await modal.expectPreviewNavigation(true, true);
-  await modal.goBackInPreview();
-  await modal.generatedBundle.expectSingleHeading('main page');
-  await modal.expectPreviewNavigation(false, true);
-  await modal.goForwardInPreview();
-  await modal.generatedBundle.expectSingleHeading('t001 - deeply nested');
-  await modal.goForwardInPreview();
-  await modal.generatedBundle.expectSingleHeading('t001 ---- child 1');
-  await modal.expectPreviewNavigation(true, false);
-  await addKeyFrame(htmlGeneration);
-  await checkpoint('back and forward restore the expected generated pages');
+  await sourceCommand(() => modal.goBackInPreview());
+  await sourceCommand(() => modal.generatedBundle.expectSingleHeading('t001 - deeply nested'));
+  await sourceCommand(() => modal.expectPreviewNavigation(true, true));
+  await sourceCommand(() => modal.goBackInPreview());
+  await sourceCommand(() => modal.generatedBundle.expectSingleHeading('main page'));
+  await sourceCommand(() => modal.expectPreviewNavigation(false, true));
+  await sourceCommand(() => modal.goForwardInPreview());
+  await sourceCommand(() => modal.generatedBundle.expectSingleHeading('t001 - deeply nested'));
+  await sourceCommand(() => modal.goForwardInPreview());
+  await sourceCommand(() => modal.generatedBundle.expectSingleHeading('t001 ---- child 1'));
+  await sourceCommand(() => modal.expectPreviewNavigation(true, false));
+  await sourceCommand(() => addKeyFrame(htmlGeneration));
+  await sourceCommand(() => checkpoint('back and forward restore the expected generated pages'));
 
   // A different link from the middle replaces the old forward branch.
-  await modal.goBackInPreview();
-  await modal.generatedBundle.expectSingleHeading('t001 - deeply nested');
-  await modal.generatedBundle.clickPageLink('t001 ---- child 2');
-  await modal.generatedBundle.expectSingleHeading('t001 ---- child 2');
-  await modal.expectPreviewNavigation(true, false);
-  await checkpoint('following a new link clears the old forward branch');
+  await sourceCommand(() => modal.goBackInPreview());
+  await sourceCommand(() => modal.generatedBundle.expectSingleHeading('t001 - deeply nested'));
+  await sourceCommand(() => modal.generatedBundle.clickPageLink('t001 ---- child 2'));
+  await sourceCommand(() => modal.generatedBundle.expectSingleHeading('t001 ---- child 2'));
+  await sourceCommand(() => modal.expectPreviewNavigation(true, false));
+  await sourceCommand(() => checkpoint('following a new link clears the old forward branch'));
 
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

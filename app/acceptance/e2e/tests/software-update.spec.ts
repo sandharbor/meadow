@@ -23,7 +23,7 @@ test.use({ bundleMode: 'single-file' });
  * Open the software update dialog after a checksum failure. The error should explain that
  * the installed app was preserved and offer retry without offering installation.
  */
-test('Verified update failure remains retryable without offering installation', async ({
+test('Verified update failure remains retryable without offering installation', { annotation: { type: 'scenario-id', description: '08283c70-2042-4ae9-a2e3-39709b66458c' } }, async ({ sourceCommand,
   page,
   testServer,
   checkpoint,
@@ -34,7 +34,7 @@ test('Verified update failure remains retryable without offering installation', 
   const pageErrors: string[] = [];
   page.on('pageerror', (error) => pageErrors.push(error.message));
   const backendConnection = testServer.getBackendConnectionForRendererTest();
-  await page.addInitScript(({ backendConnection: connection }) => {
+  await sourceCommand(() => page.addInitScript(({ backendConnection: connection }) => {
     const target = window as unknown as {
       electronAPI?: Record<string, unknown>;
       openUpdateModalForTest?: () => void;
@@ -65,30 +65,30 @@ test('Verified update failure remains retryable without offering installation', 
       },
       offOpenUpdateModal: () => undefined,
     };
-  }, { backendConnection });
-  await page.goto('/');
-  await expect.poll(async () => ({
+  }, { backendConnection }));
+  await sourceCommand(() => page.goto('/'));
+  await sourceCommand(() => expect.poll(async () => ({
     registered: await page.evaluate(() => Boolean(
       (window as unknown as { openUpdateModalForTest?: () => void }).openUpdateModalForTest,
     )),
     pageErrors,
-  })).toEqual({ registered: true, pageErrors: [] });
-  await checkpoint("the update callback is registered without renderer errors");
+  })).toEqual({ registered: true, pageErrors: [] }));
+  await sourceCommand(() => checkpoint("the update callback is registered without renderer errors"));
 
   // --- Test start ---
   // Open the failed update details.
-  await page.evaluate(() => {
+  await sourceCommand(() => page.evaluate(() => {
     (window as unknown as { openUpdateModalForTest?: () => void }).openUpdateModalForTest?.();
-  });
+  }));
 
-  await expect(page.getByRole('heading', { name: 'Software Update' })).toBeVisible();
-  await expect(page.getByText('Update Error')).toBeVisible();
-  await expect(page.getByText(/checksum did not match signed metadata/i)).toBeVisible();
-  await expect(page.getByText(/installed Meadow app was preserved/i)).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Try Again' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Restart to Update' })).toHaveCount(0);
-  await addKeyFrame(softwareUpdate);
-  await checkpoint('verified update checksum failure preserved installed app');
+  await sourceCommand(() => expect(page.getByRole('heading', { name: 'Software Update' })).toBeVisible());
+  await sourceCommand(() => expect(page.getByText('Update Error')).toBeVisible());
+  await sourceCommand(() => expect(page.getByText(/checksum did not match signed metadata/i)).toBeVisible());
+  await sourceCommand(() => expect(page.getByText(/installed Meadow app was preserved/i)).toBeVisible());
+  await sourceCommand(() => expect(page.getByRole('button', { name: 'Try Again' })).toBeVisible());
+  await sourceCommand(() => expect(page.getByRole('button', { name: 'Restart to Update' })).toHaveCount(0));
+  await sourceCommand(() => addKeyFrame(softwareUpdate));
+  await sourceCommand(() => checkpoint('verified update checksum failure preserved installed app'));
 
-  await assertMeadowHomeState();
+  await sourceCommand(() => assertMeadowHomeState());
 });

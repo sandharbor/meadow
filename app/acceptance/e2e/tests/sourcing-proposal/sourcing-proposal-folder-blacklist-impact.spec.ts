@@ -17,58 +17,58 @@ test.use({ fixtureHome: Fixture.SourcingReview });
  * outside its subtree and requires a proposal, while Reference retains its independently reached
  * page. Accept the exclusion, then remove it in curation and review the returning material.
  */
-test('Sourcing previews folder blacklist and unblacklist reachability consequences', async ({ page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+test('Sourcing previews folder blacklist and unblacklist reachability consequences', { annotation: { type: 'scenario-id', description: 'c18a4909-4dec-4cd5-8755-beee93dceaa2' } }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);
   const sourcing = new SourcingWorkspacePage(page, expect);
-  await list.goto();
-  await list.clickBundle('sourcing-folders');
-  await editor.waitForLoad('sourcing-folders');
-  await editor.switchToListView();
+  await sourceCommand(() => list.goto());
+  await sourceCommand(() => list.clickBundle('sourcing-folders'));
+  await sourceCommand(() => editor.waitForLoad('sourcing-folders'));
+  await sourceCommand(() => editor.switchToListView());
   const configPath = path.join(testServer.configDir, 'bundles/sourcing-folders/config/bundle_node_config.yaml');
   const configuration = () => YAML.parse(fs.readFileSync(configPath, 'utf8'));
   const original = configuration();
-  await checkpoint('the folder graph has an empty folder and a branch reaching outside its subtree');
+  await sourceCommand(() => checkpoint('the folder graph has an empty folder and a branch reaching outside its subtree'));
 
   // --- Test start ---
-  await editor.rightClickListViewRowByNodeKey('folder:Routes/Empty');
-  await page.getByRole('button', { name: 'Blacklist', exact: true }).click();
+  await sourceCommand(() => editor.rightClickListViewRowByNodeKey('folder:Routes/Empty'));
+  await sourceCommand(() => page.getByRole('button', { name: 'Blacklist', exact: true }).click());
   const undo = page.getByRole('button', { name: 'Undo blacklist change', exact: true });
-  await expect(undo).toBeVisible();
-  await expect(sourcing.root).toBeHidden();
-  await checkpoint('blacklisting the empty folder changes only that folder and offers Undo');
-  await undo.click();
-  await expect(undo).toBeHidden();
+  await sourceCommand(() => expect(undo).toBeVisible());
+  await sourceCommand(() => expect(sourcing.root).toBeHidden());
+  await sourceCommand(() => checkpoint('blacklisting the empty folder changes only that folder and offers Undo'));
+  await sourceCommand(() => undo.click());
+  await sourceCommand(() => expect(undo).toBeHidden());
   expect(configuration()).toEqual(original);
 
-  await editor.rightClickListViewRowByNodeKey('folder:Routes/Branch');
-  await page.getByRole('button', { name: 'Blacklist', exact: true }).click();
-  await expect(sourcing.root).toBeVisible();
+  await sourceCommand(() => editor.rightClickListViewRowByNodeKey('folder:Routes/Branch'));
+  await sourceCommand(() => page.getByRole('button', { name: 'Blacklist', exact: true }).click());
+  await sourceCommand(() => expect(sourcing.root).toBeVisible());
   expect(configuration()).toEqual(original);
-  await sourcing.select('Outside');
-  await expect(sourcing.evidence).toContainText('departing');
-  await expect(sourcing.evidence).toContainText('Orphaned configuration');
-  await sourcing.select('Retained');
-  await expect(sourcing.evidence).toContainText('Reference');
-  await expect(sourcing.evidence).toContainText('Unchanged source material');
-  await addKeyFrame(sourceReviewWorkspace);
-  await checkpoint('folder exclusion previews departures outside its subtree and the independent route');
-  await sourcing.accept();
-  await editor.switchToListView();
-  await editor.expectListViewRowByExactNameNotPresent('Outside');
-  await editor.expectListViewRowByExactNameNotPresent('Departing');
+  await sourceCommand(() => sourcing.select('Outside'));
+  await sourceCommand(() => expect(sourcing.evidence).toContainText('departing'));
+  await sourceCommand(() => expect(sourcing.evidence).toContainText('Orphaned configuration'));
+  await sourceCommand(() => sourcing.select('Retained'));
+  await sourceCommand(() => expect(sourcing.evidence).toContainText('Reference'));
+  await sourceCommand(() => expect(sourcing.evidence).toContainText('Unchanged source material'));
+  await sourceCommand(() => addKeyFrame(sourceReviewWorkspace));
+  await sourceCommand(() => checkpoint('folder exclusion previews departures outside its subtree and the independent route'));
+  await sourceCommand(() => sourcing.accept());
+  await sourceCommand(() => editor.switchToListView());
+  await sourceCommand(() => editor.expectListViewRowByExactNameNotPresent('Outside'));
+  await sourceCommand(() => editor.expectListViewRowByExactNameNotPresent('Departing'));
   expect(configuration().nodes.some((node: { bundleNodeName: string }) => node.bundleNodeName === 'Departing')).toBe(false);
 
-  await editor.rightClickListViewRowByNodeKey('folder:Routes/Branch');
-  await page.getByRole('button', { name: 'Remove from Blacklist', exact: true }).click();
-  await expect(sourcing.root).toBeVisible();
-  await sourcing.select('Outside');
-  await expect(sourcing.evidence).toContainText('Newly included');
-  await checkpoint('unblacklisting the folder stages the returning pages as a proposed expansion');
-  await sourcing.accept();
-  await editor.switchToListView();
-  await editor.expectListViewRowByExactNamePresent('Outside');
-  await checkpoint('accepted expansion includes the outside pages with fresh curation settings');
-  await assertMeadowHomeState({ allowedUntracked: ['bundles/sourcing-folders/raw/folder_scope_snapshot.json'] });
+  await sourceCommand(() => editor.rightClickListViewRowByNodeKey('folder:Routes/Branch'));
+  await sourceCommand(() => page.getByRole('button', { name: 'Remove from Blacklist', exact: true }).click());
+  await sourceCommand(() => expect(sourcing.root).toBeVisible());
+  await sourceCommand(() => sourcing.select('Outside'));
+  await sourceCommand(() => expect(sourcing.evidence).toContainText('Newly included'));
+  await sourceCommand(() => checkpoint('unblacklisting the folder stages the returning pages as a proposed expansion'));
+  await sourceCommand(() => sourcing.accept());
+  await sourceCommand(() => editor.switchToListView());
+  await sourceCommand(() => editor.expectListViewRowByExactNamePresent('Outside'));
+  await sourceCommand(() => checkpoint('accepted expansion includes the outside pages with fresh curation settings'));
+  await sourceCommand(() => assertMeadowHomeState({ allowedUntracked: ['bundles/sourcing-folders/raw/folder_scope_snapshot.json'] }));
 });

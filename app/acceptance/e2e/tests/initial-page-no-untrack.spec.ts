@@ -28,7 +28,7 @@ test.use({ fixtureHome: Fixture.Minimal });
  * Select the bundle's starting page and inspect tracking actions. Meadow should prevent
  * untracking the page that anchors the bundle.
  */
-test("a publisher should not be able to untrack the initial page", async ({
+test("a publisher should not be able to untrack the initial page", { annotation: { type: 'scenario-id', description: '4fa96a5b-e698-4f24-b93f-756e0f05bea5' } }, async ({ sourceCommand,
   page, checkpoint, assertMeadowHomeState, addKeyFrame,
 }) => {
   // --- Setup ---
@@ -36,28 +36,28 @@ test("a publisher should not be able to untrack the initial page", async ({
   const editor = new BundleEditorPage(page, expect);
 
   // Add the example bundle and switch to list view
-  await bundleList.goto();
-  await bundleList.clickAddExampleBundleLink();
-  await editor.waitForLoad("example-bundle");
-  await editor.switchToListView();
-  await page.waitForTimeout(250);
+  await sourceCommand(() => bundleList.goto());
+  await sourceCommand(() => bundleList.clickAddExampleBundleLink());
+  await sourceCommand(() => editor.waitForLoad("example-bundle"));
+  await sourceCommand(() => editor.switchToListView());
+  await sourceCommand(() => page.waitForTimeout(250));
 
   // Right-click the initial page — Untrack should be visible but disabled
-  await editor.rightClickRow(exampleBundleInitialPageTitle);
-  await editor.expectContextMenuItemDisabled("Untrack");
-  await addKeyFrame(initialPage);
-  await checkpoint("initial page untrack is grayed out");
+  await sourceCommand(() => editor.rightClickRow(exampleBundleInitialPageTitle));
+  await sourceCommand(() => editor.expectContextMenuItemDisabled("Untrack"));
+  await sourceCommand(() => addKeyFrame(initialPage));
+  await sourceCommand(() => checkpoint("initial page untrack is grayed out"));
 
   // --- Test start ---
   // Compare a regular tracked page.
-  await page.keyboard.press("Escape");
+  await sourceCommand(() => page.keyboard.press("Escape"));
 
   // Right-click a non-initial tracked page — Untrack should be enabled
-  await editor.rightClickRow("Cognitive Biases");
-  await editor.expectContextMenuItemEnabled("Untrack");
-  await checkpoint("non-initial page untrack is enabled");
+  await sourceCommand(() => editor.rightClickRow("Cognitive Biases"));
+  await sourceCommand(() => editor.expectContextMenuItemEnabled("Untrack"));
+  await sourceCommand(() => checkpoint("non-initial page untrack is enabled"));
 
   void exampleBundle;
 
-  await assertMeadowHomeState();
+  await sourceCommand(() => assertMeadowHomeState());
 });

@@ -11,30 +11,30 @@ test.use({ bundleMode: 'single-file' });
  * Replace an accepted image with a different picture. Compare both images in review before
  * accepting the replacement.
  */
-test('Sourcing compares accepted and replacement images before accepting the new picture', async ({ page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+test('Sourcing compares accepted and replacement images before accepting the new picture', { annotation: { type: 'scenario-id', description: 'ce0a8ba1-a5a2-4c97-a497-fa64407013bb' } }, async ({ sourceCommand, page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
-  await new Workflows(page, expect).navigateToBigBundle();
+  await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
   const editor = new BundleEditorPage(page, expect);
-  await editor.waitForSourceCheck();
-  await checkpoint('the accepted source state is established before changing files');
+  await sourceCommand(() => editor.waitForSourceCheck());
+  await sourceCommand(() => checkpoint('the accepted source state is established before changing files'));
 
   // --- Test start ---
   // Replace the image content.
-  await sourceChanges.apply('modify-embedded-image');
-  await editor.checkSourceChanges();
-  await editor.sourceReview.open();
+  await sourceCommand(() => sourceChanges.apply('modify-embedded-image'));
+  await sourceCommand(() => editor.checkSourceChanges());
+  await sourceCommand(() => editor.sourceReview.open());
   const filename = 't006/t006 --- meadow.png';
-  await editor.sourceReview.expectModified(filename);
-  await editor.sourceReview.expandDetails(filename);
-  await editor.sourceReview.expectImageComparison(filename);
-  await addKeyFrame(sourceSnapshot);
-  await checkpoint('both snapshots render their different image bytes for review');
+  await sourceCommand(() => editor.sourceReview.expectModified(filename));
+  await sourceCommand(() => editor.sourceReview.expandDetails(filename));
+  await sourceCommand(() => editor.sourceReview.expectImageComparison(filename));
+  await sourceCommand(() => addKeyFrame(sourceSnapshot));
+  await sourceCommand(() => checkpoint('both snapshots render their different image bytes for review'));
 
   // Accept the source update.
-  await editor.sourceReview.accept();
-  await editor.checkSourceChanges();
-  await expect(page.getByTestId('sourcing-status').getByRole('button', { name: /source changes? available.*Review/i })).not.toBeVisible();
-  await checkpoint('the replacement image is accepted and a fresh scan stays clear');
+  await sourceCommand(() => editor.sourceReview.accept());
+  await sourceCommand(() => editor.checkSourceChanges());
+  await sourceCommand(() => expect(page.getByTestId('sourcing-status').getByRole('button', { name: /source changes? available.*Review/i })).not.toBeVisible());
+  await sourceCommand(() => checkpoint('the replacement image is accepted and a fresh scan stays clear'));
 
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

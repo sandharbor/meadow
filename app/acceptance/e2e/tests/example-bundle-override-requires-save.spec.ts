@@ -37,7 +37,7 @@ test.use({ fixtureHome: Fixture.Minimal });
  * Add a depth override to a child page. Unlike simple tracking changes, the override
  * should remain pending until explicitly saved.
  */
-test("adding a depth override on a child page requires proposal acceptance", async ({
+test("adding a depth override on a child page requires proposal acceptance", { annotation: { type: 'scenario-id', description: '37d9c264-c863-4ac7-8b91-402f52ef1ffb' } }, async ({ sourceCommand,
   page,
   checkpoint,
   assertMeadowHomeState,
@@ -49,54 +49,54 @@ test("adding a depth override on a child page requires proposal acceptance", asy
   const filterPanel = new FilterPanelComponent(page, expect);
 
   // Add the example bundle from the empty state
-  await bundleList.goto();
-  await bundleList.clickAddExampleBundleLink();
-  await editor.waitForLoad("example-bundle");
-  await checkpoint("example bundle loaded");
+  await sourceCommand(() => bundleList.goto());
+  await sourceCommand(() => bundleList.clickAddExampleBundleLink());
+  await sourceCommand(() => editor.waitForLoad("example-bundle"));
+  await sourceCommand(() => checkpoint("example bundle loaded"));
 
   // --- Test start ---
   // Select a page without an override.
-  await editor.expectUndoNotVisible();
+  await sourceCommand(() => editor.expectUndoNotVisible());
 
   // Select a non-initial child page that has no existing override
-  await editor.switchToListView();
-  await page.waitForTimeout(250);
-  await editor.clickListViewRowByExactName("First Principles Thinking");
-  await page.waitForTimeout(500);
+  await sourceCommand(() => editor.switchToListView());
+  await sourceCommand(() => page.waitForTimeout(250));
+  await sourceCommand(() => editor.clickListViewRowByExactName("First Principles Thinking"));
+  await sourceCommand(() => page.waitForTimeout(500));
 
   // Expand the page's details to reach the outlink depth override controls
   const detail = new SelectedPageDetailComponent(
     editor.getSelectedPageRoot(),
     expect,
   );
-  await detail.openDetails();
-  await checkpoint("child page selected with details open");
+  await sourceCommand(() => detail.openDetails());
+  await sourceCommand(() => checkpoint("child page selected with details open"));
 
   // Stage a traversal override without changing accepted curation.
-  await detail.addOutlinksDepthOverride(0);
-  await expect(editor.sourceReview.root).toBeVisible();
-  await addKeyFrame(bundleConfig);
-  await checkpoint("override is captured in the sourcing proposal");
-  await editor.sourceReview.defer();
-  await editor.expectUndoNotVisible();
-  await editor.sourceReview.open();
-  await editor.sourceReview.accept();
-  await checkpoint("accepted override is now available to curation");
+  await sourceCommand(() => detail.addOutlinksDepthOverride(0));
+  await sourceCommand(() => expect(editor.sourceReview.root).toBeVisible());
+  await sourceCommand(() => addKeyFrame(bundleConfig));
+  await sourceCommand(() => checkpoint("override is captured in the sourcing proposal"));
+  await sourceCommand(() => editor.sourceReview.defer());
+  await sourceCommand(() => editor.expectUndoNotVisible());
+  await sourceCommand(() => editor.sourceReview.open());
+  await sourceCommand(() => editor.sourceReview.accept());
+  await sourceCommand(() => checkpoint("accepted override is now available to curation"));
 
   // Find the page using the override filter.
   // Verify the override persisted: the Depth Override filter should now
   // include "First Principles Thinking".
-  await filterPanel.enableFilter("Depth Override");
-  await filterPanel.clickSoloOnFilter("Depth Override");
-  await page.waitForTimeout(250);
-  await editor.switchToListView();
-  await page.waitForTimeout(250);
+  await sourceCommand(() => filterPanel.enableFilter("Depth Override"));
+  await sourceCommand(() => filterPanel.clickSoloOnFilter("Depth Override"));
+  await sourceCommand(() => page.waitForTimeout(250));
+  await sourceCommand(() => editor.switchToListView());
+  await sourceCommand(() => page.waitForTimeout(250));
 
-  await editor.expectListViewRowByExactNamePresent("First Principles Thinking");
-  await addKeyFrame(overrides);
-  await checkpoint("override page appears under Depth Override filter");
+  await sourceCommand(() => editor.expectListViewRowByExactNamePresent("First Principles Thinking"));
+  await sourceCommand(() => addKeyFrame(overrides));
+  await sourceCommand(() => checkpoint("override page appears under Depth Override filter"));
 
   void exampleBundle;
 
-  await assertMeadowHomeState();
+  await sourceCommand(() => assertMeadowHomeState());
 });

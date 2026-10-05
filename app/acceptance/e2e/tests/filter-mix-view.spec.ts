@@ -26,7 +26,7 @@ test.use({ bundleMode: "single-file" });
  * Solo the untracked and sensitive filters, then intersect them in Mix Filters. Graph and
  * list views should show the same intersection.
  */
-test("mix filters intersects soloed untracked and sensitive filters in graph and list views", async ({
+test("mix filters intersects soloed untracked and sensitive filters in graph and list views", { annotation: { type: 'scenario-id', description: '388a726c-11f7-42d8-b6a4-8d683cb01277' } }, async ({ sourceCommand,
   page,
   checkpoint,
   assertMeadowHomeState,
@@ -34,48 +34,48 @@ test("mix filters intersects soloed untracked and sensitive filters in graph and
 }) => {
   // --- Setup ---
   const workflows = new Workflows(page, expect);
-  await workflows.navigateToBigBundle();
-  await checkpoint("big bundle loaded");
+  await sourceCommand(() => workflows.navigateToBigBundle());
+  await sourceCommand(() => checkpoint("big bundle loaded"));
 
   // --- Test start ---
   // Solo untracked pages.
   const editor = new BundleEditorPage(page, expect);
   const filterPanel = new FilterPanelComponent(page, expect);
 
-  await filterPanel.enableAndSoloFilter("Untracked");
-  await editor.expectGraphViewPageCount(10);
-  await filterPanel.expectMixFiltersHidden();
-  await checkpoint("untracked filter soloed without mix filters");
+  await sourceCommand(() => filterPanel.enableAndSoloFilter("Untracked"));
+  await sourceCommand(() => editor.expectGraphViewPageCount(10));
+  await sourceCommand(() => filterPanel.expectMixFiltersHidden());
+  await sourceCommand(() => checkpoint("untracked filter soloed without mix filters"));
 
   // Add sensitive pages to the mix.
-  await filterPanel.clickSoloOnFilter("Sensitive");
-  await filterPanel.expectMixFiltersCustomized(false);
-  await filterPanel.openMixFilters();
-  await filterPanel.moveMixFiltersBy(80, 50);
-  await addKeyFrame(filters);
-  await checkpoint("mix filters defaults to any and can move aside");
+  await sourceCommand(() => filterPanel.clickSoloOnFilter("Sensitive"));
+  await sourceCommand(() => filterPanel.expectMixFiltersCustomized(false));
+  await sourceCommand(() => filterPanel.openMixFilters());
+  await sourceCommand(() => filterPanel.moveMixFiltersBy(80, 50));
+  await sourceCommand(() => addKeyFrame(filters));
+  await sourceCommand(() => checkpoint("mix filters defaults to any and can move aside"));
 
   // Intersect the two filters.
-  await filterPanel.chooseMixOperator("All");
-  await filterPanel.closeMixFilters();
-  await filterPanel.expectMixFiltersCustomized(true);
-  await editor.expectGraphViewPageCount(1);
-  await checkpoint("graph view shows sensitive untracked intersection");
+  await sourceCommand(() => filterPanel.chooseMixOperator("All"));
+  await sourceCommand(() => filterPanel.closeMixFilters());
+  await sourceCommand(() => filterPanel.expectMixFiltersCustomized(true));
+  await sourceCommand(() => editor.expectGraphViewPageCount(1));
+  await sourceCommand(() => checkpoint("graph view shows sensitive untracked intersection"));
 
   // Compare the list view.
-  await editor.switchToListView();
-  expect(await editor.getListViewPageCount()).toBe(1);
-  await addKeyFrame(filters);
-  await checkpoint("list view shows the same intersection");
+  await sourceCommand(() => editor.switchToListView());
+  expect(await sourceCommand(() => editor.getListViewPageCount())).toBe(1);
+  await sourceCommand(() => addKeyFrame(filters));
+  await sourceCommand(() => checkpoint("list view shows the same intersection"));
 
   // Reset the filter mix.
-  await filterPanel.openMixFilters();
-  await filterPanel.resetMixFilters();
-  await filterPanel.expectMixFiltersCustomized(false);
-  await filterPanel.closeMixFilters();
-  await checkpoint("reset mix restores the default view");
+  await sourceCommand(() => filterPanel.openMixFilters());
+  await sourceCommand(() => filterPanel.resetMixFilters());
+  await sourceCommand(() => filterPanel.expectMixFiltersCustomized(false));
+  await sourceCommand(() => filterPanel.closeMixFilters());
+  await sourceCommand(() => checkpoint("reset mix restores the default view"));
 
   void bigBundle;
 
-  await assertMeadowHomeState();
+  await sourceCommand(() => assertMeadowHomeState());
 });

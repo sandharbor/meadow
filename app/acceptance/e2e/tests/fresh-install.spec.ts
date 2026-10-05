@@ -16,14 +16,14 @@ test.use({ fixtureHome: "empty" });
  * application creates the home, records its format, makes the initial Meadow Home
  * commit, and opens an empty bundle list that invites the first bundle.
  */
-test("Fresh install creates the Meadow Home and opens an empty bundle list", async ({ page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+test("Fresh install creates the Meadow Home and opens an empty bundle list", { annotation: { type: 'scenario-id', description: '793de8b7-8389-4f34-a9ad-6c9f4a3fa593' } }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
   // --- Test start ---
   // Open the application against a home that did not exist before launch.
   const bundleList = new BundleListPage(page, expect);
-  await bundleList.goto();
-  await bundleList.expectCalloutVisible("Turn your notes into bundles");
-  await addKeyFrame(emptyHome);
-  await checkpoint("a fresh install opens the empty bundle list");
+  await sourceCommand(() => bundleList.goto());
+  await sourceCommand(() => bundleList.expectCalloutVisible("Turn your notes into bundles"));
+  await sourceCommand(() => addKeyFrame(emptyHome));
+  await sourceCommand(() => checkpoint("a fresh install opens the empty bundle list"));
 
   // Check the home the application created.
   const home = testServer.configDir;
@@ -32,8 +32,8 @@ test("Fresh install creates the Meadow Home and opens an empty bundle list", asy
   expect(commits.at(-1)).toBe("meadow_app: initial Meadow Home commit");
   const ignored = fs.readFileSync(path.join(home, ".gitignore"), "utf8");
   expect(ignored).toContain("app/resources.local.yaml");
-  await addKeyFrame(homeCommit);
-  await checkpoint("the application made the initial Meadow Home commit");
+  await sourceCommand(() => addKeyFrame(homeCommit));
+  await sourceCommand(() => checkpoint("the application made the initial Meadow Home commit"));
 
-  await assertMeadowHomeState();
+  await sourceCommand(() => assertMeadowHomeState());
 });

@@ -27,47 +27,47 @@ test.use({ fixtureHome: "home_fixture_hooks" });
  * Preview a page-title hook, edit it, and preview again. The generated title should follow
  * the updated hook.
  */
-test("Hooks preview shows normalized title and editing hook updates it", async ({ page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame }) => {
+test("Hooks preview shows normalized title and editing hook updates it", { annotation: { type: 'scenario-id', description: '5c38a3bb-fff1-466e-b6fe-a03358542cc4' } }, async ({ sourceCommand, page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame }) => {
   // --- Setup ---
   // Navigate to bundle list and click the hooks test bundle
   const bundleList = new BundleListPage(page, expect);
-  await bundleList.goto();
-  await checkpoint("bundle list loaded");
+  await sourceCommand(() => bundleList.goto());
+  await sourceCommand(() => checkpoint("bundle list loaded"));
 
   // --- Test start ---
   // Open the hooks bundle.
-  await bundleList.clickBundle("meadow-test-bundle-for-hooks");
+  await sourceCommand(() => bundleList.clickBundle("meadow-test-bundle-for-hooks"));
   const editor = new BundleEditorPage(page, expect);
-  await editor.waitForLoad("meadow-test-bundle-for-hooks");
-  await checkpoint("bundle editor loaded - graph view, nothing untracked");
+  await sourceCommand(() => editor.waitForLoad("meadow-test-bundle-for-hooks"));
+  await sourceCommand(() => checkpoint("bundle editor loaded - graph view, nothing untracked"));
 
   // Preview the bundle.
-  await editor.clickPreview();
+  await sourceCommand(() => editor.clickPreview());
   const modal = new PreviewPublishModal(page, expect);
-  await modal.waitForPreviewCompleteAllTracked();
-  await checkpoint("preview completed");
+  await sourceCommand(() => modal.waitForPreviewCompleteAllTracked());
+  await sourceCommand(() => checkpoint("preview completed"));
 
   // Check the hook-generated title.
   // Verify the preview iframe shows the page title normalized by the hook:
   // "V Dwarkesh and Anthropic CEO in 2023" → "video - Dwarkesh and Anthropic CEO in 2023"
-  await modal.expectPreviewIframeHeading("video - Dwarkesh and Anthropic CEO in 2023");
-  await addKeyFrame(htmlGeneration);
-  await checkpoint("verified page title with video hook");
+  await sourceCommand(() => modal.expectPreviewIframeHeading("video - Dwarkesh and Anthropic CEO in 2023"));
+  await sourceCommand(() => addKeyFrame(htmlGeneration));
+  await sourceCommand(() => checkpoint("verified page title with video hook"));
 
   // Open the global hooks.
-  await modal.openCustomizeSidebar();
+  await sourceCommand(() => modal.openCustomizeSidebar());
   const customizeTab = new CustomizeTab(page, expect);
-  await customizeTab.hooks.switchScopeToGlobal();
-  await checkpoint("hooks panel in global scope");
+  await sourceCommand(() => customizeTab.hooks.switchScopeToGlobal());
+  await sourceCommand(() => checkpoint("hooks panel in global scope"));
 
   // Edit the page-title hook.
   const pageTitleHook = customizeTab.hooks.getHook("Page Title");
-  await pageTitleHook.clickEdit();
-  await checkpoint("hook editor opened");
+  await sourceCommand(() => pageTitleHook.clickEdit());
+  await sourceCommand(() => checkpoint("hook editor opened"));
 
   // Change the title wording.
-  await pageTitleHook.modifyContent("'video'", "'vulkan'");
-  await checkpoint("hook content modified");
+  await sourceCommand(() => pageTitleHook.modifyContent("'video'", "'vulkan'"));
+  await sourceCommand(() => checkpoint("hook content modified"));
 
   // Save and regenerate.
   // Save the hook — this triggers preview regeneration via SSE stream.
@@ -77,18 +77,18 @@ test("Hooks preview shows normalized title and editing hook updates it", async (
   const previewStreamStarted = page.waitForResponse(
     (resp) => resp.url().includes("/preview-stream")
   );
-  await pageTitleHook.save();
-  await previewStreamStarted;
-  await new ChangesTab(page, expect).waitForRegenerationComplete();
-  await checkpoint("hook saved - preview regenerated");
+  await sourceCommand(() => pageTitleHook.save());
+  await sourceCommand(() => previewStreamStarted);
+  await sourceCommand(() => new ChangesTab(page, expect).waitForRegenerationComplete());
+  await sourceCommand(() => checkpoint("hook saved - preview regenerated"));
 
   // Check the updated title.
   // Verify the updated heading (sidebar is alongside the preview, iframe is already visible)
-  await modal.expectPreviewIframeHeading("vulkan - Dwarkesh and Anthropic CEO in 2023");
-  await addKeyFrame(hooks);
-  await checkpoint("verified updated page title with vulkan hook");
+  await sourceCommand(() => modal.expectPreviewIframeHeading("vulkan - Dwarkesh and Anthropic CEO in 2023"));
+  await sourceCommand(() => addKeyFrame(hooks));
+  await sourceCommand(() => checkpoint("verified updated page title with vulkan hook"));
 
   void hooksBundle;
 
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

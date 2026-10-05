@@ -25,27 +25,27 @@ test.use({ bundleMode: "single-file" });
  * Preview a bundle with untracked pages. Inspect the warning that prompts the user to
  * review those pages before publishing.
  */
-test("Callout preview warns about untracked pages", async ({ page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame }) => {
+test("Callout preview warns about untracked pages", { annotation: { type: 'scenario-id', description: '4ca9ede4-b658-40dc-96e2-487c29608fea' } }, async ({ sourceCommand, page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame }) => {
   // --- Setup ---
   const bundleList = new BundleListPage(page, expect);
-  await bundleList.goto();
-  await checkpoint("bundle list loaded");
+  await sourceCommand(() => bundleList.goto());
+  await sourceCommand(() => checkpoint("bundle list loaded"));
 
   // --- Test start ---
   // Open the big bundle.
-  await bundleList.clickBundle("meadow-test-bundle-big");
+  await sourceCommand(() => bundleList.clickBundle("meadow-test-bundle-big"));
   const editor = new BundleEditorPage(page, expect);
-  await editor.waitForLoad("meadow-test-bundle-big");
-  await checkpoint("bundle editor loaded");
+  await sourceCommand(() => editor.waitForLoad("meadow-test-bundle-big"));
+  await sourceCommand(() => checkpoint("bundle editor loaded"));
 
   // Preview the bundle.
-  await editor.clickPreview();
+  await sourceCommand(() => editor.clickPreview());
   const modal = new PreviewPublishModal(page, expect);
-  await modal.waitForPreviewComplete();
-  await addKeyFrame(callout);
-  await checkpoint("preview shows untracked warning");
+  await sourceCommand(() => modal.waitForPreviewComplete());
+  await sourceCommand(() => addKeyFrame(callout));
+  await sourceCommand(() => checkpoint("preview shows untracked warning"));
 
   void bigBundle;
 
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

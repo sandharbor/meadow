@@ -71,7 +71,7 @@ test.use({ bundleMode: "single-file" });
  * Browse generated pages through the folder navigation. Check normalized filenames and
  * persistence of the reader's navigation settings.
  */
-test("generated-bundle folder navigation uses normalized filenames and persists its UI state", async ({
+test("generated-bundle folder navigation uses normalized filenames and persists its UI state", { annotation: { type: 'scenario-id', description: '9a5da1c5-dbc5-469e-b131-ee051d4de4b4' } }, async ({ sourceCommand,
   page,
   checkpoint,
   skipMeadowHomeStateCheck,
@@ -79,7 +79,7 @@ test("generated-bundle folder navigation uses normalized filenames and persists 
 }) => {
   // --- Setup ---
   const workflows = new Workflows(page, expect);
-  await workflows.navigateToBigBundlePreview();
+  await sourceCommand(() => workflows.navigateToBigBundlePreview());
 
   const modal = new PreviewPublishModal(page, expect);
   const generatedBundle = modal.generatedBundle;
@@ -87,64 +87,64 @@ test("generated-bundle folder navigation uses normalized filenames and persists 
   const customizeTab = new CustomizeTab(page, expect);
 
   // Folder navigation is an opt-in generation customization.
-  await folderNavigation.expectUnavailable();
-  await modal.openCustomizeSidebar();
+  await sourceCommand(() => folderNavigation.expectUnavailable());
+  await sourceCommand(() => modal.openCustomizeSidebar());
 
   // Install a title-normalization hook before enabling the navigation so the
   // test proves its filenames come from final generated output names.
-  await customizeTab.hooks.switchScopeToGlobal();
+  await sourceCommand(() => customizeTab.hooks.switchScopeToGlobal());
   const pageTitleHook = customizeTab.hooks.getHook("Page Title");
-  await pageTitleHook.clickEdit();
-  await pageTitleHook.setContent(NORMALIZATION_HOOK_SOURCE);
+  await sourceCommand(() => pageTitleHook.clickEdit());
+  await sourceCommand(() => pageTitleHook.setContent(NORMALIZATION_HOOK_SOURCE));
   const hookPreviewDone = page.waitForResponse(response =>
     response.url().includes("/preview-stream"),
   );
-  await pageTitleHook.save();
-  await hookPreviewDone;
-  await pageTitleHook.close();
-  await generatedBundle.expectHeading("normalized main page", 60_000);
+  await sourceCommand(() => pageTitleHook.save());
+  await sourceCommand(() => hookPreviewDone);
+  await sourceCommand(() => pageTitleHook.close());
+  await sourceCommand(() => generatedBundle.expectHeading("normalized main page", 60_000));
 
   const sourcesPreviewDone = page.waitForResponse(response =>
     response.url().includes("/preview-stream"),
   );
-  await customizeTab.generationOptions.enableSourcesExport();
-  await sourcesPreviewDone;
+  await sourceCommand(() => customizeTab.generationOptions.enableSourcesExport());
+  await sourceCommand(() => sourcesPreviewDone);
 
   const navigationPreviewDone = page.waitForResponse(response =>
     response.url().includes("/preview-stream"),
   );
-  await customizeTab.generationOptions.enableFolderNavigation();
-  await navigationPreviewDone;
+  await sourceCommand(() => customizeTab.generationOptions.enableFolderNavigation());
+  await sourceCommand(() => navigationPreviewDone);
 
   // The initial default is open at every width. Close it to inspect the
   // compact header controls in the narrow embedded preview.
-  await folderNavigation.expectOpen();
-  await folderNavigation.close();
-  await folderNavigation.expectMobileHeaderControlsAligned();
-  await folderNavigation.expectNoBreadcrumbs();
-  await addKeyFrame(customize);
-  await checkpoint("mobile generated bundle header without breadcrumbs");
+  await sourceCommand(() => folderNavigation.expectOpen());
+  await sourceCommand(() => folderNavigation.close());
+  await sourceCommand(() => folderNavigation.expectMobileHeaderControlsAligned());
+  await sourceCommand(() => folderNavigation.expectNoBreadcrumbs());
+  await sourceCommand(() => addKeyFrame(customize));
+  await sourceCommand(() => checkpoint("mobile generated bundle header without breadcrumbs"));
 
   // --- Test start ---
   // Open and inspect the folder tree.
-  await modal.closeCustomizeSidebar();
+  await sourceCommand(() => modal.closeCustomizeSidebar());
 
   // Direct files in each folder are sorted by their
   // normalized filenames, and clicking one navigates to that generated file.
-  await folderNavigation.open();
-  await folderNavigation.expectOpen();
-  await folderNavigation.expectResizable();
-  await folderNavigation.openFolder("t001");
-  await folderNavigation.expectDirectFileNames("t001", [
+  await sourceCommand(() => folderNavigation.open());
+  await sourceCommand(() => folderNavigation.expectOpen());
+  await sourceCommand(() => folderNavigation.expectResizable());
+  await sourceCommand(() => folderNavigation.openFolder("t001"));
+  await sourceCommand(() => folderNavigation.expectDirectFileNames("t001", [
     "normalized t001 ---- child 1.html",
     "normalized t001 ---- child 3 in same dir as child 1.html",
-  ]);
-  await checkpoint("normalized folder navigation open and sorted");
+  ]));
+  await sourceCommand(() => checkpoint("normalized folder navigation open and sorted"));
 
   // Navigate before the folder tree finishes loading.
   // Hold the deferred data script during navigation. The external controller
   // has already applied persisted state, but DOM hydration cannot start yet.
-  await navigateWithFolderNavigationHydrationPaused(
+  await sourceCommand(() => navigateWithFolderNavigationHydrationPaused(
     page,
     () => folderNavigation.clickFile(
       "t001",
@@ -154,28 +154,28 @@ test("generated-bundle folder navigation uses normalized filenames and persists 
       await folderNavigation.expectOpen();
       await folderNavigation.expectContentAlignedWithSidebar();
     },
-  );
-  await generatedBundle.expectHeading("normalized t001 ---- child 1");
-  await folderNavigation.expectSelectedFile("normalized t001 ---- child 1.html");
-  await addKeyFrame(htmlGeneration);
-  await checkpoint("folder navigation selected page");
+  ));
+  await sourceCommand(() => generatedBundle.expectHeading("normalized t001 ---- child 1"));
+  await sourceCommand(() => folderNavigation.expectSelectedFile("normalized t001 ---- child 1.html"));
+  await sourceCommand(() => addKeyFrame(htmlGeneration));
+  await sourceCommand(() => checkpoint("folder navigation selected page"));
 
   // Reload the selected page.
-  await folderNavigation.reload();
-  await folderNavigation.expectOpen();
-  await folderNavigation.expectFolderOpen("t001");
-  await folderNavigation.expectSelectedFile("normalized t001 ---- child 1.html");
-  await checkpoint("folder and sidebar remain open after refresh");
+  await sourceCommand(() => folderNavigation.reload());
+  await sourceCommand(() => folderNavigation.expectOpen());
+  await sourceCommand(() => folderNavigation.expectFolderOpen("t001"));
+  await sourceCommand(() => folderNavigation.expectSelectedFile("normalized t001 ---- child 1.html"));
+  await sourceCommand(() => checkpoint("folder and sidebar remain open after refresh"));
 
   // Close the navigation panel.
   // An explicit close is also applied before hydration on the next generated
   // page, then remains durable across refreshes.
-  await folderNavigation.close();
-  await folderNavigation.expectDesktopTriggerFixedAtViewportEdge();
-  await checkpoint("desktop folder navigation trigger at viewport edge");
+  await sourceCommand(() => folderNavigation.close());
+  await sourceCommand(() => folderNavigation.expectDesktopTriggerFixedAtViewportEdge());
+  await sourceCommand(() => checkpoint("desktop folder navigation trigger at viewport edge"));
 
   // Navigate with the panel closed.
-  await navigateWithFolderNavigationHydrationPaused(
+  await sourceCommand(() => navigateWithFolderNavigationHydrationPaused(
     page,
     () => folderNavigation.clickFile(
       "t001",
@@ -186,41 +186,41 @@ test("generated-bundle folder navigation uses normalized filenames and persists 
       await folderNavigation.expectClosed();
       await folderNavigation.expectContentNotOffset();
     },
-  );
-  await generatedBundle.expectHeading(
+  ));
+  await sourceCommand(() => generatedBundle.expectHeading(
     "normalized t001 ---- child 3 in same dir as child 1",
-  );
-  await folderNavigation.expectSelectedFile(
+  ));
+  await sourceCommand(() => folderNavigation.expectSelectedFile(
     "normalized t001 ---- child 3 in same dir as child 1.html",
-  );
-  await folderNavigation.reload();
-  await folderNavigation.expectClosed();
-  await folderNavigation.expectSelectedFile(
+  ));
+  await sourceCommand(() => folderNavigation.reload());
+  await sourceCommand(() => folderNavigation.expectClosed());
+  await sourceCommand(() => folderNavigation.expectSelectedFile(
     "normalized t001 ---- child 3 in same dir as child 1.html",
-  );
-  await checkpoint("folder navigation remains closed after refresh");
+  ));
+  await sourceCommand(() => checkpoint("folder navigation remains closed after refresh"));
 
   // Check the mobile header.
   // Reopen the Customize panel to exercise the mobile layout on a child page.
   // The controls share one row, breadcrumbs sit beneath without overlap, and
   // selecting a page closes the overlay before the next page loads.
-  await modal.openCustomizeSidebar();
-  await folderNavigation.expectMobileHeaderControlsAligned();
-  await folderNavigation.expectBreadcrumbsBelowHeaderControls();
-  await checkpoint("mobile generated bundle header with breadcrumbs");
+  await sourceCommand(() => modal.openCustomizeSidebar());
+  await sourceCommand(() => folderNavigation.expectMobileHeaderControlsAligned());
+  await sourceCommand(() => folderNavigation.expectBreadcrumbsBelowHeaderControls());
+  await sourceCommand(() => checkpoint("mobile generated bundle header with breadcrumbs"));
 
   // Select a page from mobile navigation.
-  await folderNavigation.open();
-  await folderNavigation.openFolder("t001");
-  await folderNavigation.clickFile(
+  await sourceCommand(() => folderNavigation.open());
+  await sourceCommand(() => folderNavigation.openFolder("t001"));
+  await sourceCommand(() => folderNavigation.clickFile(
     "t001",
     "normalized t001 ---- child 1.html",
-  );
-  await generatedBundle.expectHeading("normalized t001 ---- child 1");
-  await folderNavigation.expectClosed();
-  await folderNavigation.expectSelectedFile("normalized t001 ---- child 1.html");
-  await checkpoint("mobile folder navigation closes after page selection");
+  ));
+  await sourceCommand(() => generatedBundle.expectHeading("normalized t001 ---- child 1"));
+  await sourceCommand(() => folderNavigation.expectClosed());
+  await sourceCommand(() => folderNavigation.expectSelectedFile("normalized t001 ---- child 1.html"));
+  await sourceCommand(() => checkpoint("mobile folder navigation closes after page selection"));
 
   void bigBundle;
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

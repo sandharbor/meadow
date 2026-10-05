@@ -17,7 +17,7 @@ test.use({ fixtureHome: Fixture.SourcingReview });
  * Defer a proposal, change accepted sensitivity policy, and reopen the same capture. Explicit choices block acceptance until one is reconfirmed and the other is removed.
  * Checkpoints preserve the pending decisions and their current sensitivity evidence.
  */
-test('Deferred proposals revalidate explicit tracking after accepted sensitivity policy changes', async ({ page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+test('Deferred proposals revalidate explicit tracking after accepted sensitivity policy changes', { annotation: { type: 'scenario-id', description: 'c540d2c8-9d88-4810-8960-58e8682e9447' } }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);
@@ -25,59 +25,59 @@ test('Deferred proposals revalidate explicit tracking after accepted sensitivity
   const proposal = new SourcingProposalState(testServer, 'sourcing-review');
   const filters = new FilterPanelComponent(page, expect);
   const directory = path.join(testServer.configDir, 'bundles/sourcing-review');
-  await list.goto();
-  await list.clickBundle('sourcing-review');
-  await editor.waitForLoad('sourcing-review');
-  await sourceChanges.apply('add-review-pages', 'sourcing-review-data');
-  await editor.checkSourceChanges();
-  await sourcing.open();
+  await sourceCommand(() => list.goto());
+  await sourceCommand(() => list.clickBundle('sourcing-review'));
+  await sourceCommand(() => editor.waitForLoad('sourcing-review'));
+  await sourceCommand(() => sourceChanges.apply('add-review-pages', 'sourcing-review-data'));
+  await sourceCommand(() => editor.checkSourceChanges());
+  await sourceCommand(() => sourcing.open());
   for (const name of ['Safe One', 'Safe Two']) {
-    await sourcing.select(name);
-    await expect(sourcing.selectedPage.getByText('Tracked', { exact: true })).toBeVisible();
-    await sourcing.untrackSelected();
-    await sourcing.trackSelected();
+    await sourceCommand(() => sourcing.select(name));
+    await sourceCommand(() => expect(sourcing.selectedPage.getByText('Tracked', { exact: true })).toBeVisible());
+    await sourceCommand(() => sourcing.untrackSelected());
+    await sourceCommand(() => sourcing.trackSelected());
   }
   for (const name of ['Safe One', 'Safe Two']) expect(proposal.current.tracking[`file:Additions/${name}.md`]).toMatchObject({ track: true, origin: 'explicit' });
   const captured = proposal.current.candidateSnapshotId;
-  await checkpoint('safe additions have pending explicit tracking choices');
+  await sourceCommand(() => checkpoint('safe additions have pending explicit tracking choices'));
 
   // --- Test start ---
   // Reopening must assess saved policy against the original capture.
-  await sourcing.later();
-  await filters.clickAddCustomFilter();
-  await filters.fillAndSaveCustomFilter({ name: 'Restricted review material', field: 'title', matchType: 'substring', value: 'Safe', markSensitive: true, scope: 'global' });
-  await checkpoint('accepted global sensitivity policy changes while the proposal is deferred');
-  await page.reload();
-  await editor.waitForLoad('sourcing-review');
-  await sourcing.open();
+  await sourceCommand(() => sourcing.later());
+  await sourceCommand(() => filters.clickAddCustomFilter());
+  await sourceCommand(() => filters.fillAndSaveCustomFilter({ name: 'Restricted review material', field: 'title', matchType: 'substring', value: 'Safe', markSensitive: true, scope: 'global' }));
+  await sourceCommand(() => checkpoint('accepted global sensitivity policy changes while the proposal is deferred'));
+  await sourceCommand(() => page.reload());
+  await sourceCommand(() => editor.waitForLoad('sourcing-review'));
+  await sourceCommand(() => sourcing.open());
   expect(proposal.current.candidateSnapshotId).toBe(captured);
-  await expect(sourcing.root.getByRole('button', { name: 'Accept source changes', exact: true })).toBeDisabled();
+  await sourceCommand(() => expect(sourcing.root.getByRole('button', { name: 'Accept source changes', exact: true })).toBeDisabled());
   for (const name of ['Safe One', 'Safe Two']) expect(proposal.current.tracking[`file:Additions/${name}.md`]).toMatchObject({ origin: 'explicit', needsConfirmation: true });
-  await sourcing.reviewTrackingChoices(2);
-  await expect(sourcing.sensitivityReview).toContainText('Restricted review material');
-  await addKeyFrame(sourceReviewSensitivity);
-  await checkpoint('renewed sensitivity review is open with both explicit choices unresolved');
+  await sourceCommand(() => sourcing.reviewTrackingChoices(2));
+  await sourceCommand(() => expect(sourcing.sensitivityReview).toContainText('Restricted review material'));
+  await sourceCommand(() => addKeyFrame(sourceReviewSensitivity));
+  await sourceCommand(() => checkpoint('renewed sensitivity review is open with both explicit choices unresolved'));
 
   // Exercise both decisions against the current material and policy.
-  await sourcing.resolveSensitiveTracking('Safe One.md', true);
-  await sourcing.resolveSensitiveTracking('Safe Two.md', false);
-  await expect(sourcing.sensitivityReview).toContainText('All tracking choices reviewed.');
-  await sourcing.sensitivityReview.getByRole('button', { name: 'Close', exact: true }).click();
-  await sourcing.select('Safe One');
-  await expect(sourcing.selectedPage.getByText('Tracked', { exact: true })).toBeVisible();
-  await sourcing.select('Safe Two');
-  await expect(sourcing.selectedPage.getByText('Not Tracked', { exact: true })).toBeVisible();
-  await checkpoint('one sensitive page is explicitly reconfirmed and the other is left untracked');
-  await sourcing.accept();
-  await editor.sourceReview.trackingNotice.expectSensitiveSkipped(1);
-  await editor.sourceReview.trackingNotice.close();
+  await sourceCommand(() => sourcing.resolveSensitiveTracking('Safe One.md', true));
+  await sourceCommand(() => sourcing.resolveSensitiveTracking('Safe Two.md', false));
+  await sourceCommand(() => expect(sourcing.sensitivityReview).toContainText('All tracking choices reviewed.'));
+  await sourceCommand(() => sourcing.sensitivityReview.getByRole('button', { name: 'Close', exact: true }).click());
+  await sourceCommand(() => sourcing.select('Safe One'));
+  await sourceCommand(() => expect(sourcing.selectedPage.getByText('Tracked', { exact: true })).toBeVisible());
+  await sourceCommand(() => sourcing.select('Safe Two'));
+  await sourceCommand(() => expect(sourcing.selectedPage.getByText('Not Tracked', { exact: true })).toBeVisible());
+  await sourceCommand(() => checkpoint('one sensitive page is explicitly reconfirmed and the other is left untracked'));
+  await sourceCommand(() => sourcing.accept());
+  await sourceCommand(() => editor.sourceReview.trackingNotice.expectSensitiveSkipped(1));
+  await sourceCommand(() => editor.sourceReview.trackingNotice.close());
   const nodes = YAML.parse(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).nodes;
   expect(nodes.some((node: { bundleNodeName: string }) => node.bundleNodeName === 'Safe One')).toBe(true);
   expect(nodes.some((node: { bundleNodeName: string }) => node.bundleNodeName === 'Safe Two')).toBe(false);
-  await editor.switchToListView();
-  await editor.expectListViewRowByExactNamePresent('Safe One');
-  await editor.expectListViewRowByExactNamePresent('Safe Two');
-  await filters.expectFilterVisible('Restricted review material');
-  await checkpoint('accepted curation contains the reviewed material and the resolved tracking choices');
-  await assertMeadowHomeState({ allowedUntracked: ['source_graphs/.source-changes.jsonl'], allowedModified: ['source_graphs/sourcing-review-data/Start.md'] });
+  await sourceCommand(() => editor.switchToListView());
+  await sourceCommand(() => editor.expectListViewRowByExactNamePresent('Safe One'));
+  await sourceCommand(() => editor.expectListViewRowByExactNamePresent('Safe Two'));
+  await sourceCommand(() => filters.expectFilterVisible('Restricted review material'));
+  await sourceCommand(() => checkpoint('accepted curation contains the reviewed material and the resolved tracking choices'));
+  await sourceCommand(() => assertMeadowHomeState({ allowedUntracked: ['source_graphs/.source-changes.jsonl'], allowedModified: ['source_graphs/sourcing-review-data/Start.md'] }));
 });

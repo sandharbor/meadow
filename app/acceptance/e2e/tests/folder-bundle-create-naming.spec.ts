@@ -28,7 +28,7 @@ test.use({ fixtureHome: Fixture.FolderStructureSingle });
  * Select folders before naming a bundle and its home page. Check invalid source roots, an
  * independently chosen slug, and the resulting preview title.
  */
-test("choose folders before naming a bundle and its published home page", async ({
+test("choose folders before naming a bundle and its published home page", { annotation: { type: 'scenario-id', description: '0c8889cc-f2c8-4006-ba40-06d83037b3b9' } }, async ({ sourceCommand,
   page,
   testServer,
   checkpoint,
@@ -42,59 +42,59 @@ test("choose folders before naming a bundle and its published home page", async 
   const previewModal = new PreviewPublishModal(page, expect);
   const sourceDir = path.join(testServer.sourceGraphsDir, "folder-structure-test");
 
-  await bundleList.goto();
-  await bundleList.clickCreateNewBundle();
-  await createModal.selectFolderEntryStrategy();
-  await createModal.expectFolderSelectionBeforeNaming();
-  await createModal.addFolders([path.join(sourceDir, "Alpha")]);
-  expect(await createModal.getSlugDisplayText()).toBe("alpha");
-  await createModal.expectFolderSelectionValid();
-  await addKeyFrame(folderBundles);
+  await sourceCommand(() => bundleList.goto());
+  await sourceCommand(() => bundleList.clickCreateNewBundle());
+  await sourceCommand(() => createModal.selectFolderEntryStrategy());
+  await sourceCommand(() => createModal.expectFolderSelectionBeforeNaming());
+  await sourceCommand(() => createModal.addFolders([path.join(sourceDir, "Alpha")]));
+  expect(await sourceCommand(() => createModal.getSlugDisplayText())).toBe("alpha");
+  await sourceCommand(() => createModal.expectFolderSelectionValid());
+  await sourceCommand(() => addKeyFrame(folderBundles));
 
-  await checkpoint("the selected folder supplies the initial name");
+  await sourceCommand(() => checkpoint("the selected folder supplies the initial name"));
 
   // --- Test start ---
   // Try a source root outside the selected folder.
-  await createModal.changeSourceDirectory(path.join(sourceDir, "Beta"));
-  await createModal.expectFolderOutsideRoot(path.join(sourceDir, "Alpha"));
-  await addKeyFrame(folderBundles);
-  await createModal.expectCreateDisabledTooltip();
-  await addKeyFrame(folderBundles);
-  await createModal.changeSourceDirectory(sourceDir);
-  await createModal.expectFolderSelectionValid();
+  await sourceCommand(() => createModal.changeSourceDirectory(path.join(sourceDir, "Beta")));
+  await sourceCommand(() => createModal.expectFolderOutsideRoot(path.join(sourceDir, "Alpha")));
+  await sourceCommand(() => addKeyFrame(folderBundles));
+  await sourceCommand(() => createModal.expectCreateDisabledTooltip());
+  await sourceCommand(() => addKeyFrame(folderBundles));
+  await sourceCommand(() => createModal.changeSourceDirectory(sourceDir));
+  await sourceCommand(() => createModal.expectFolderSelectionValid());
 
-  await checkpoint("restoring the source root makes the selection valid");
+  await sourceCommand(() => checkpoint("restoring the source root makes the selection valid"));
 
   // Name a bundle with two folders.
-  await createModal.addFolders([path.join(sourceDir, "Beta")]);
-  await createModal.fillFolderHomePageTitle("Collected Notes");
-  expect(await createModal.getSlugDisplayText()).toBe("collected-notes");
-  await createModal.clickEditSlug();
-  await createModal.fillSlug("reading-room");
-  await addKeyFrame(bundleSlug);
-  await checkpoint("the home title and bundle slug are chosen independently");
+  await sourceCommand(() => createModal.addFolders([path.join(sourceDir, "Beta")]));
+  await sourceCommand(() => createModal.fillFolderHomePageTitle("Collected Notes"));
+  expect(await sourceCommand(() => createModal.getSlugDisplayText())).toBe("collected-notes");
+  await sourceCommand(() => createModal.clickEditSlug());
+  await sourceCommand(() => createModal.fillSlug("reading-room"));
+  await sourceCommand(() => addKeyFrame(bundleSlug));
+  await sourceCommand(() => checkpoint("the home title and bundle slug are chosen independently"));
 
   // Create the folder bundle.
-  await createModal.clickCreateBundle();
-  await editor.waitForLoad("reading-room");
-  await editor.expectGraphViewHasPages();
-  await checkpoint("folder bundle created with a separate list name and home title");
+  await sourceCommand(() => createModal.clickCreateBundle());
+  await sourceCommand(() => editor.waitForLoad("reading-room"));
+  await sourceCommand(() => editor.expectGraphViewHasPages());
+  await sourceCommand(() => checkpoint("folder bundle created with a separate list name and home title"));
 
   // Reopen and preview the named bundle.
-  await editor.clickBackToBundles();
-  await bundleList.clickBundle("reading-room");
-  await editor.waitForLoad("reading-room");
-  await editor.trackAllReachablePages();
-  await editor.clickPreview();
-  await previewModal.waitForPreviewCompleteAllTracked();
-  await previewModal.generatedBundle.expectSingleHeading("Collected Notes", 60_000);
-  await previewModal.generatedBundle.expectStructuralChildNames(["Alpha", "Beta"]);
-  await addKeyFrame(folderBundles);
-  await checkpoint("published home uses the chosen title and folder order");
+  await sourceCommand(() => editor.clickBackToBundles());
+  await sourceCommand(() => bundleList.clickBundle("reading-room"));
+  await sourceCommand(() => editor.waitForLoad("reading-room"));
+  await sourceCommand(() => editor.trackAllReachablePages());
+  await sourceCommand(() => editor.clickPreview());
+  await sourceCommand(() => previewModal.waitForPreviewCompleteAllTracked());
+  await sourceCommand(() => previewModal.generatedBundle.expectSingleHeading("Collected Notes", 60_000));
+  await sourceCommand(() => previewModal.generatedBundle.expectStructuralChildNames(["Alpha", "Beta"]));
+  await sourceCommand(() => addKeyFrame(folderBundles));
+  await sourceCommand(() => checkpoint("published home uses the chosen title and folder order"));
 
   void customBundle;
 
-  await assertMeadowHomeState({
+  await sourceCommand(() => assertMeadowHomeState({
     allowedUntracked: [
       "bundles/reading-room/build/",
       "bundles/reading-room/config/generated_bundle_versions.yaml",
@@ -102,5 +102,5 @@ test("choose folders before naming a bundle and its published home page", async 
       "bundles/reading-room/raw/folder_scope_snapshot.json",
       "bundles/reading-room/raw/generation_inputs/",
     ],
-  });
+  }));
 });

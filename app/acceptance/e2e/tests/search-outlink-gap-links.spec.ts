@@ -31,7 +31,7 @@ test.use({ bundleMode: "single-file" });
  * Search for a page with an outgoing-link gap and inspect its links. Follow an incoming
  * link to verify navigation to the related page.
  */
-test("sourceGraphSearch for outlink gap page, inspect links, and navigate via inlink", async ({
+test("sourceGraphSearch for outlink gap page, inspect links, and navigate via inlink", { annotation: { type: 'scenario-id', description: '5d8213b4-06da-47eb-a6a1-a88f6f18fe4f' } }, async ({ sourceCommand,
   page,
   checkpoint,
   assertMeadowHomeState,
@@ -39,79 +39,79 @@ test("sourceGraphSearch for outlink gap page, inspect links, and navigate via in
 }) => {
   // --- Setup ---
   const wf = new Workflows(page, expect);
-  await wf.navigateToBigBundle();
-  await checkpoint("bundle editor loaded");
+  await sourceCommand(() => wf.navigateToBigBundle());
+  await sourceCommand(() => checkpoint("bundle editor loaded"));
 
   // --- Test start ---
   // Search for the outlink-gap page.
   const filterPanel = new FilterPanelComponent(page, expect);
-  await filterPanel.fillSearch("outlink gap");
-  await page.waitForTimeout(500);
-  await addKeyFrame(sourceGraphSearch);
-  await addKeyFrame(labels);
-  await checkpoint("searched for outlink gap");
+  await sourceCommand(() => filterPanel.fillSearch("outlink gap"));
+  await sourceCommand(() => page.waitForTimeout(500));
+  await sourceCommand(() => addKeyFrame(sourceGraphSearch));
+  await sourceCommand(() => addKeyFrame(labels));
+  await sourceCommand(() => checkpoint("searched for outlink gap"));
 
   // Inspect the search result in list view.
   const editor = new BundleEditorPage(page, expect);
-  await editor.switchToListView();
-  await page.waitForTimeout(250);
-  await checkpoint("list view with sourceGraphSearch results");
+  await sourceCommand(() => editor.switchToListView());
+  await sourceCommand(() => page.waitForTimeout(250));
+  await sourceCommand(() => checkpoint("list view with sourceGraphSearch results"));
 
   // Select the matching page.
-  const listCount = await editor.getListViewPageCount();
+  const listCount = await sourceCommand(() => editor.getListViewPageCount());
   expect(listCount).toBe(1);
 
   // Click the row to select it
-  await editor.clickListViewRow(0);
-  await page.waitForTimeout(250);
-  await checkpoint("outlink gap page selected");
+  await sourceCommand(() => editor.clickListViewRow(0));
+  await sourceCommand(() => page.waitForTimeout(250));
+  await sourceCommand(() => checkpoint("outlink gap page selected"));
 
   // Open its details.
   const selectedPageRoot = editor.getSelectedPageRoot();
   const detail = new SelectedPageDetailComponent(selectedPageRoot, expect);
-  await detail.openDetails();
-  await detail.expectFolder('t021');
-  await page.waitForTimeout(250);
-  await checkpoint("details opened for outlink gap page");
+  await sourceCommand(() => detail.openDetails());
+  await sourceCommand(() => detail.expectFolder('t021'));
+  await sourceCommand(() => page.waitForTimeout(250));
+  await sourceCommand(() => checkpoint("details opened for outlink gap page"));
 
   // Inspect its links.
-  await detail.clickShowLinks();
-  await page.waitForTimeout(250);
-  await checkpoint("links modal open");
+  await sourceCommand(() => detail.clickShowLinks());
+  await sourceCommand(() => page.waitForTimeout(250));
+  await sourceCommand(() => checkpoint("links modal open"));
 
   // Check the outgoing link states.
   const linksModal = new LinksModal(page, expect);
-  await linksModal.expectModalTitle("Links: t021 ---- outlink gap");
+  await sourceCommand(() => linksModal.expectModalTitle("Links: t021 ---- outlink gap"));
 
   // There should be outlinks that are not in the graph
-  await linksModal.expectNotInGraphVisible();
+  await sourceCommand(() => linksModal.expectNotInGraphVisible());
 
   // Keyframe for link-gap — shows the outlinks with gap indicators
-  await addKeyFrame(linkGap);
-  await checkpoint("outlink gap links visible");
+  await sourceCommand(() => addKeyFrame(linkGap));
+  await sourceCommand(() => checkpoint("outlink gap links visible"));
 
   // Read the depth explanation.
-  await linksModal.hoverInfoIcon();
-  await page.waitForTimeout(250);
+  await sourceCommand(() => linksModal.hoverInfoIcon());
+  await sourceCommand(() => page.waitForTimeout(250));
 
   // Expect the tooltip to say the target page is beyond outlinks depth
-  await linksModal.expectBeyondOutlinksDepthTooltip();
-  await addKeyFrame(callout);
-  await checkpoint("tooltip showing beyond outlinks depth");
+  await sourceCommand(() => linksModal.expectBeyondOutlinksDepthTooltip());
+  await sourceCommand(() => addKeyFrame(callout));
+  await sourceCommand(() => checkpoint("tooltip showing beyond outlinks depth"));
 
   // Follow an incoming link.
-  await linksModal.clickInlinkLinks("t021 - link gaps");
-  await page.waitForTimeout(250);
-  await checkpoint("navigated to inlink page links");
+  await sourceCommand(() => linksModal.clickInlinkLinks("t021 - link gaps"));
+  await sourceCommand(() => page.waitForTimeout(250));
+  await sourceCommand(() => checkpoint("navigated to inlink page links"));
 
   // Check the linked page title.
-  await linksModal.expectModalTitle("Links: t021 - link gaps");
+  await sourceCommand(() => linksModal.expectModalTitle("Links: t021 - link gaps"));
 
   // Keyframe for Bundle Page Links.
-  await addKeyFrame(links);
-  await checkpoint("links modal showing t021 link gaps page");
+  await sourceCommand(() => addKeyFrame(links));
+  await sourceCommand(() => checkpoint("links modal showing t021 link gaps page"));
 
   void bigBundle;
 
-  await assertMeadowHomeState();
+  await sourceCommand(() => assertMeadowHomeState());
 });

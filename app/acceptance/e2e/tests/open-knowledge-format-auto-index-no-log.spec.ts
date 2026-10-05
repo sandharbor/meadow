@@ -39,7 +39,7 @@ test.use({
  * Enable Open Knowledge Format for a source with an index but no log page. The index
  * should be detected automatically and no log should be invented.
  */
-test("OKF: auto-detect index.md and omit log.md when no log page exists", async ({
+test("OKF: auto-detect index.md and omit log.md when no log page exists", { annotation: { type: 'scenario-id', description: '7e00589f-d582-413b-a337-02cee8ffe895' } }, async ({ sourceCommand,
   page,
   checkpoint,
   skipMeadowHomeStateCheck,
@@ -48,38 +48,38 @@ test("OKF: auto-detect index.md and omit log.md when no log page exists", async 
 }) => {
   // --- Setup ---
   const wf = new Workflows(page, expect);
-  await wf.navigateToBigBundlePreview();
+  await sourceCommand(() => wf.navigateToBigBundlePreview());
   const modal = new PreviewPublishModal(page, expect);
-  await checkpoint("preview loaded");
+  await sourceCommand(() => checkpoint("preview loaded"));
 
   // --- Test start ---
   // Choose automatic index detection.
-  await modal.openCustomizeSidebar();
+  await sourceCommand(() => modal.openCustomizeSidebar());
   const customizeTab = new CustomizeTab(page, expect);
-  const okf = await customizeTab.generationOptions.openOpenKnowledgeFormatSettings();
-  await okf.expectSelectedIndex(sourceIndexPageName, "root");
-  await okf.expectNoReachableLogPageFound();
-  await okf.chooseNoLog();
-  await addKeyFrame(customize);
-  await checkpoint("auto index and no log selected");
+  const okf = await sourceCommand(() => customizeTab.generationOptions.openOpenKnowledgeFormatSettings());
+  await sourceCommand(() => okf.expectSelectedIndex(sourceIndexPageName, "root"));
+  await sourceCommand(() => okf.expectNoReachableLogPageFound());
+  await sourceCommand(() => okf.chooseNoLog());
+  await sourceCommand(() => addKeyFrame(customize));
+  await sourceCommand(() => checkpoint("auto index and no log selected"));
 
   // Generate the knowledge package.
-  await okf.save();
+  await sourceCommand(() => okf.save());
 
   const changesTab = new ChangesTab(page, expect);
-  await changesTab.waitForRegenerationComplete();
-  await addKeyFrame(openKnowledgeFormat);
-  await checkpoint("okf generation complete with auto index and no log");
+  await sourceCommand(() => changesTab.waitForRegenerationComplete());
+  await sourceCommand(() => addKeyFrame(openKnowledgeFormat));
+  await sourceCommand(() => checkpoint("okf generation complete with auto index and no log"));
 
   // Inspect the generated package files.
   const bundleDir = path.join(testServer.configDir, "bundles", Bundle.Big);
   const okfBundle = new OpenKnowledgeFormatBundle(bundleDir, expect);
-  await okfBundle.expectFileToContain("index.md", "Auto OKF index source page.");
+  await sourceCommand(() => okfBundle.expectFileToContain("index.md", "Auto OKF index source page."));
   okfBundle.expectFileToBeAbsent("log.md");
   okfBundle.expectFileToBeAbsent("index-original.md");
   void bigBundle;
 
-  await checkpoint("the package contains the automatic index and no log page");
+  await sourceCommand(() => checkpoint("the package contains the automatic index and no log page"));
 
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

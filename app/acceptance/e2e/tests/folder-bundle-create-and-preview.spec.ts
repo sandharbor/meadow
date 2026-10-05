@@ -32,7 +32,7 @@ test.use({ fixtureHome: Fixture.FolderStructureSingle });
  * Open a bundle rooted at a recursively scanned folder and generate it. Check that its
  * pages and folder structure appear in the preview.
  */
-test("previews a configured bundle from one recursively scanned folder", async ({
+test("previews a configured bundle from one recursively scanned folder", { annotation: { type: 'scenario-id', description: 'ce4b027f-df25-47e3-b545-f864e40a7890' } }, async ({ sourceCommand,
   page,
   checkpoint,
   addKeyFrame,
@@ -43,108 +43,108 @@ test("previews a configured bundle from one recursively scanned folder", async (
   const editor = new BundleEditorPage(page, expect);
   const previewModal = new PreviewPublishModal(page, expect);
 
-  await bundleList.goto();
-  await bundleList.clickBundle(Bundle.FolderStructureSingle);
-  await editor.waitForLoad(Bundle.FolderStructureSingle);
-  await editor.expectGraphViewHasPages();
-  await editor.expectGraphEdgeKindControlsVisible();
-  await editor.expectGraphTextIsNotSelectable();
-  await editor.expectFolderScopeChangesBannerNotVisible();
-  await addKeyFrame(folderBundles);
-  await checkpoint("single folder graph with two linked depth rows");
+  await sourceCommand(() => bundleList.goto());
+  await sourceCommand(() => bundleList.clickBundle(Bundle.FolderStructureSingle));
+  await sourceCommand(() => editor.waitForLoad(Bundle.FolderStructureSingle));
+  await sourceCommand(() => editor.expectGraphViewHasPages());
+  await sourceCommand(() => editor.expectGraphEdgeKindControlsVisible());
+  await sourceCommand(() => editor.expectGraphTextIsNotSelectable());
+  await sourceCommand(() => editor.expectFolderScopeChangesBannerNotVisible());
+  await sourceCommand(() => addKeyFrame(folderBundles));
+  await sourceCommand(() => checkpoint("single folder graph with two linked depth rows"));
 
   // --- Test start ---
   // Inspect the folder structure.
-  await editor.switchToListView();
-  await editor.expectListViewSourceColumn(false);
-  await editor.switchToStructuralListView();
-  await editor.expectListViewSourceColumn(false);
-  await editor.expectStructuralListHasNoTrackingLabels();
-  await editor.expectListViewRowByExactNamePresent("Alpha note");
-  await editor.expectListViewRowByExactNamePresent("Visual map");
-  await editor.expectListViewRowByExactNamePresent("Nested note");
-  await editor.expectListViewRowByExactNameNotPresent("Beta note");
-  await editor.expectListViewRowByExactNamePresent("Outside note");
-  await editor.expectListViewRowByExactNamePresent("Beyond outside");
-  await editor.expectListViewRowByExactNamePresent("Frontier image");
-  await editor.expectListViewThumbnailVisible("Frontier image", "png");
-  await editor.expectListViewThumbnailVisible("Visual map", "svg");
-  await editor.hoverListViewThumbnail("Visual map", "svg");
-  await editor.expectImageHoverPreviewVisible("Visual map");
-  await addKeyFrame(folderBundles);
-  await editor.clickListSort("Title");
-  await editor.expectStructuralSectionOrder("outside", [
+  await sourceCommand(() => editor.switchToListView());
+  await sourceCommand(() => editor.expectListViewSourceColumn(false));
+  await sourceCommand(() => editor.switchToStructuralListView());
+  await sourceCommand(() => editor.expectListViewSourceColumn(false));
+  await sourceCommand(() => editor.expectStructuralListHasNoTrackingLabels());
+  await sourceCommand(() => editor.expectListViewRowByExactNamePresent("Alpha note"));
+  await sourceCommand(() => editor.expectListViewRowByExactNamePresent("Visual map"));
+  await sourceCommand(() => editor.expectListViewRowByExactNamePresent("Nested note"));
+  await sourceCommand(() => editor.expectListViewRowByExactNameNotPresent("Beta note"));
+  await sourceCommand(() => editor.expectListViewRowByExactNamePresent("Outside note"));
+  await sourceCommand(() => editor.expectListViewRowByExactNamePresent("Beyond outside"));
+  await sourceCommand(() => editor.expectListViewRowByExactNamePresent("Frontier image"));
+  await sourceCommand(() => editor.expectListViewThumbnailVisible("Frontier image", "png"));
+  await sourceCommand(() => editor.expectListViewThumbnailVisible("Visual map", "svg"));
+  await sourceCommand(() => editor.hoverListViewThumbnail("Visual map", "svg"));
+  await sourceCommand(() => editor.expectImageHoverPreviewVisible("Visual map"));
+  await sourceCommand(() => addKeyFrame(folderBundles));
+  await sourceCommand(() => editor.clickListSort("Title"));
+  await sourceCommand(() => editor.expectStructuralSectionOrder("outside", [
     "Beyond outside",
     "Frontier image",
     "Outside note",
-  ]);
-  await editor.clickListSort("Title");
-  await editor.expectStructuralSectionOrder("outside", [
+  ]));
+  await sourceCommand(() => editor.clickListSort("Title"));
+  await sourceCommand(() => editor.expectStructuralSectionOrder("outside", [
     "Outside note",
     "Frontier image",
     "Beyond outside",
-  ]);
-  await editor.clickListSort("Distance");
-  await editor.expectStructuralSectionOrder("outside", [
+  ]));
+  await sourceCommand(() => editor.clickListSort("Distance"));
+  await sourceCommand(() => editor.expectStructuralSectionOrder("outside", [
     "Outside note",
     "Beyond outside",
     "Frontier image",
-  ]);
-  await editor.clickListSort("Distance");
-  await editor.expectStructuralSectionOrder("outside", [
+  ]));
+  await sourceCommand(() => editor.clickListSort("Distance"));
+  await sourceCommand(() => editor.expectStructuralSectionOrder("outside", [
     "Frontier image",
     "Beyond outside",
     "Outside note",
-  ]);
-  await page.mouse.move(0, 0);
-  await checkpoint("single folder recursive structure in the editor");
+  ]));
+  await sourceCommand(() => page.mouse.move(0, 0));
+  await sourceCommand(() => checkpoint("single folder recursive structure in the editor"));
 
   // Track the folder's contents; a folder start tracks only the folder itself.
-  await editor.trackAllReachablePages();
-  await addKeyFrame(tracking);
-  await checkpoint("single folder contents tracked for publishing");
+  await sourceCommand(() => editor.trackAllReachablePages());
+  await sourceCommand(() => addKeyFrame(tracking));
+  await sourceCommand(() => checkpoint("single folder contents tracked for publishing"));
 
   // Preview the folder home.
-  await editor.clickPreview();
-  await previewModal.waitForPreviewCompleteAllTracked();
-  await previewModal.generatedBundle.expectSingleHeading("Alpha", 60_000);
+  await sourceCommand(() => editor.clickPreview());
+  await sourceCommand(() => previewModal.waitForPreviewCompleteAllTracked());
+  await sourceCommand(() => previewModal.generatedBundle.expectSingleHeading("Alpha", 60_000));
   const folderNavigation = previewModal.generatedBundle.folderNavigation;
-  await folderNavigation.expectAvailable();
-  await folderNavigation.open();
-  await folderNavigation.expectRootFolderNames(["Alpha", "Outside"]);
-  await folderNavigation.expectRootFileNames([]);
-  await folderNavigation.openFolder("Alpha");
-  await folderNavigation.expectDirectFileNames("Alpha", ["Alpha note.html"]);
-  await folderNavigation.openFolder("Alpha/Nested");
-  await folderNavigation.expectDirectFileNames("Alpha/Nested", [
+  await sourceCommand(() => folderNavigation.expectAvailable());
+  await sourceCommand(() => folderNavigation.open());
+  await sourceCommand(() => folderNavigation.expectRootFolderNames(["Alpha", "Outside"]));
+  await sourceCommand(() => folderNavigation.expectRootFileNames([]));
+  await sourceCommand(() => folderNavigation.openFolder("Alpha"));
+  await sourceCommand(() => folderNavigation.expectDirectFileNames("Alpha", ["Alpha note.html"]));
+  await sourceCommand(() => folderNavigation.openFolder("Alpha/Nested"));
+  await sourceCommand(() => folderNavigation.expectDirectFileNames("Alpha/Nested", [
     "Nested note.html",
-  ]);
-  await folderNavigation.openFolder("Outside");
-  await folderNavigation.expectDirectFileNames("Outside", [
+  ]));
+  await sourceCommand(() => folderNavigation.openFolder("Outside"));
+  await sourceCommand(() => folderNavigation.expectDirectFileNames("Outside", [
     "Beyond outside.html",
     "Outside note.html",
-  ]);
-  await previewModal.generatedBundle.expectStructuralChildNames([
+  ]));
+  await sourceCommand(() => previewModal.generatedBundle.expectStructuralChildNames([
     "Nested",
     "Alpha note",
     "Visual map",
-  ]);
-  await previewModal.generatedBundle.expectStructuralImagePreview("Visual map");
-  await folderNavigation.close();
-  await addKeyFrame(htmlGeneration);
-  await checkpoint("single folder generated home");
+  ]));
+  await sourceCommand(() => previewModal.generatedBundle.expectStructuralImagePreview("Visual map"));
+  await sourceCommand(() => folderNavigation.close());
+  await sourceCommand(() => addKeyFrame(htmlGeneration));
+  await sourceCommand(() => checkpoint("single folder generated home"));
 
   // Open a linked page outside the folder.
-  await folderNavigation.open();
-  await folderNavigation.clickFile("Outside", "Outside note.html");
-  await previewModal.generatedBundle.expectSingleHeading("Outside note");
-  await folderNavigation.expectSelectedFile("Outside note.html");
-  await folderNavigation.open();
-  await checkpoint("single folder linked page in folder navigation");
+  await sourceCommand(() => folderNavigation.open());
+  await sourceCommand(() => folderNavigation.clickFile("Outside", "Outside note.html"));
+  await sourceCommand(() => previewModal.generatedBundle.expectSingleHeading("Outside note"));
+  await sourceCommand(() => folderNavigation.expectSelectedFile("Outside note.html"));
+  await sourceCommand(() => folderNavigation.open());
+  await sourceCommand(() => checkpoint("single folder linked page in folder navigation"));
 
   void customBundle;
 
-  await assertMeadowHomeState({
+  await sourceCommand(() => assertMeadowHomeState({
     allowedModified: [
       "bundles/single-folder-bundle/config/generated_bundle_versions.yaml",
     ],
@@ -158,5 +158,5 @@ test("previews a configured bundle from one recursively scanned folder", async (
       "bundles/single-folder-bundle/html/",
       "bundles/single-folder-bundle/raw/",
     ],
-  });
+  }));
 });

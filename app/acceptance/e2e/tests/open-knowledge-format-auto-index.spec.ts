@@ -39,7 +39,7 @@ test.use({
  * Enable Open Knowledge Format with an existing source index page. Meadow should use it
  * directly without treating it as a reserved-name rename.
  */
-test("OKF: auto-detect a source index page without reserved rename", async ({
+test("OKF: auto-detect a source index page without reserved rename", { annotation: { type: 'scenario-id', description: 'faf07c58-2ffa-4c39-9942-d575c41bb4cc' } }, async ({ sourceCommand,
   page,
   checkpoint,
   skipMeadowHomeStateCheck,
@@ -48,35 +48,35 @@ test("OKF: auto-detect a source index page without reserved rename", async ({
 }) => {
   // --- Setup ---
   const wf = new Workflows(page, expect);
-  await wf.navigateToBigBundlePreview();
+  await sourceCommand(() => wf.navigateToBigBundlePreview());
   const modal = new PreviewPublishModal(page, expect);
-  await checkpoint("preview loaded");
+  await sourceCommand(() => checkpoint("preview loaded"));
 
   // --- Test start ---
   // Enable automatic index detection.
-  await modal.openCustomizeSidebar();
+  await sourceCommand(() => modal.openCustomizeSidebar());
   const customizeTab = new CustomizeTab(page, expect);
-  const okf = await customizeTab.generationOptions.openOpenKnowledgeFormatSettings();
-  await okf.expectSelectedIndex(sourceIndexPageName, "root");
-  await addKeyFrame(customize);
-  await checkpoint("auto okf index page selected");
+  const okf = await sourceCommand(() => customizeTab.generationOptions.openOpenKnowledgeFormatSettings());
+  await sourceCommand(() => okf.expectSelectedIndex(sourceIndexPageName, "root"));
+  await sourceCommand(() => addKeyFrame(customize));
+  await sourceCommand(() => checkpoint("auto okf index page selected"));
 
   // Generate the knowledge package.
-  await okf.save();
+  await sourceCommand(() => okf.save());
 
   const changesTab = new ChangesTab(page, expect);
-  await changesTab.waitForRegenerationComplete();
-  await addKeyFrame(openKnowledgeFormat);
-  await checkpoint("okf generation complete with source index page");
+  await sourceCommand(() => changesTab.waitForRegenerationComplete());
+  await sourceCommand(() => addKeyFrame(openKnowledgeFormat));
+  await sourceCommand(() => checkpoint("okf generation complete with source index page"));
 
   // Inspect the generated package files.
   const bundleDir = path.join(testServer.configDir, "bundles", Bundle.Big);
   const okfBundle = new OpenKnowledgeFormatBundle(bundleDir, expect);
-  await okfBundle.expectFileToContain("index.md", "Reserved index source page.");
+  await sourceCommand(() => okfBundle.expectFileToContain("index.md", "Reserved index source page."));
   okfBundle.expectFileToBeAbsent("index-original.md");
   void bigBundle;
 
-  await checkpoint("the source index becomes the package entry page");
+  await sourceCommand(() => checkpoint("the source index becomes the package entry page"));
 
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

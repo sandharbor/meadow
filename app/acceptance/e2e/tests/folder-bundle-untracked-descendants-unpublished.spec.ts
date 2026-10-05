@@ -39,7 +39,7 @@ test.use({ fixtureHome: Fixture.FolderStructureSingle });
  * none of the untracked pages or folder names beneath it. Tracking one nested page
  * then publishes exactly that page.
  */
-test("previews a new folder bundle without publishing its untracked descendants", async ({
+test("previews a new folder bundle without publishing its untracked descendants", { annotation: { type: 'scenario-id', description: '51a96f0d-bf07-483a-aa21-c5ca76ab965f' } }, async ({ sourceCommand,
   page,
   testServer,
   checkpoint,
@@ -55,65 +55,65 @@ test("previews a new folder bundle without publishing its untracked descendants"
   const slug = "folder-structure-test";
   const bundleConfig = new MeadowHomeBundleConfig(testServer.configDir, slug, expect);
 
-  await bundleList.goto();
-  await bundleList.clickCreateNewBundle();
-  await createModal.selectFolderEntryStrategy();
-  await createModal.addFolders([sourceDir]);
-  await createModal.changeSourceDirectory(sourceDir);
-  await createModal.expectFolderSelectionValid();
-  await createModal.clickCreateBundle();
-  await editor.waitForLoad(slug);
+  await sourceCommand(() => bundleList.goto());
+  await sourceCommand(() => bundleList.clickCreateNewBundle());
+  await sourceCommand(() => createModal.selectFolderEntryStrategy());
+  await sourceCommand(() => createModal.addFolders([sourceDir]));
+  await sourceCommand(() => createModal.changeSourceDirectory(sourceDir));
+  await sourceCommand(() => createModal.expectFolderSelectionValid());
+  await sourceCommand(() => createModal.clickCreateBundle());
+  await sourceCommand(() => editor.waitForLoad(slug));
   expect(bundleConfig.readNodes().map(node => node.bundleNodeKind)).toEqual(["folder"]);
-  await checkpoint("the new folder bundle tracks only its selected folder");
+  await sourceCommand(() => checkpoint("the new folder bundle tracks only its selected folder"));
 
   // --- Test start ---
   // Preview while only the starting folder is tracked.
-  await editor.clickPreview();
-  await editor.expectStartingSelectionsPreviewWarningVisible();
-  await addKeyFrame(callout);
-  await checkpoint("preview explains that only the starting folder is tracked");
+  await sourceCommand(() => editor.clickPreview());
+  await sourceCommand(() => editor.expectStartingSelectionsPreviewWarningVisible());
+  await sourceCommand(() => addKeyFrame(callout));
+  await sourceCommand(() => checkpoint("preview explains that only the starting folder is tracked"));
 
   // Preview anyway; nothing beneath the folder is published.
-  await editor.clickPreviewAnyway();
-  await previewModal.waitForPreviewComplete();
-  await previewModal.generatedBundle.expectSingleHeading(slug, 60_000);
-  await previewModal.generatedBundle.expectStructuralChildNames([]);
-  await previewModal.generatedBundle.expectStructuralEmptyMessage(
+  await sourceCommand(() => editor.clickPreviewAnyway());
+  await sourceCommand(() => previewModal.waitForPreviewComplete());
+  await sourceCommand(() => previewModal.generatedBundle.expectSingleHeading(slug, 60_000));
+  await sourceCommand(() => previewModal.generatedBundle.expectStructuralChildNames([]));
+  await sourceCommand(() => previewModal.generatedBundle.expectStructuralEmptyMessage(
     "No pages in this folder are included in this bundle.",
-  );
+  ));
   const folderNavigation = previewModal.generatedBundle.folderNavigation;
-  await folderNavigation.open();
-  await folderNavigation.expectRootFolderNames([]);
-  await folderNavigation.expectRootFileNames([]);
+  await sourceCommand(() => folderNavigation.open());
+  await sourceCommand(() => folderNavigation.expectRootFolderNames([]));
+  await sourceCommand(() => folderNavigation.expectRootFileNames([]));
   expect(bundleConfig.generatedPreviewPages()).toEqual(["index.html"]);
-  await addKeyFrame(folderBundles);
-  await checkpoint("the preview contains only the starting folder page");
+  await sourceCommand(() => addKeyFrame(folderBundles));
+  await sourceCommand(() => checkpoint("the preview contains only the starting folder page"));
 
   // Track one nested page and preview again.
-  await previewModal.closeModal();
-  await editor.switchToListView();
-  await editor.clickListViewRowByExactName("Nested note");
+  await sourceCommand(() => previewModal.closeModal());
+  await sourceCommand(() => editor.switchToListView());
+  await sourceCommand(() => editor.clickListViewRowByExactName("Nested note"));
   const detail = new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect);
-  await detail.clickAction(ActionButton.Track, page);
-  await editor.clickPreview();
-  await previewModal.waitForPreviewComplete();
-  await previewModal.generatedBundle.expectSingleHeading(slug, 60_000);
-  await previewModal.generatedBundle.expectStructuralChildNames(["Nested note"]);
+  await sourceCommand(() => detail.clickAction(ActionButton.Track, page));
+  await sourceCommand(() => editor.clickPreview());
+  await sourceCommand(() => previewModal.waitForPreviewComplete());
+  await sourceCommand(() => previewModal.generatedBundle.expectSingleHeading(slug, 60_000));
+  await sourceCommand(() => previewModal.generatedBundle.expectStructuralChildNames(["Nested note"]));
   expect(bundleConfig.generatedPreviewPages()).toEqual([
     "Alpha/Nested/Nested note.html",
     "index.html",
   ]);
-  await addKeyFrame(tracking);
-  await checkpoint("only the explicitly tracked page is published");
+  await sourceCommand(() => addKeyFrame(tracking));
+  await sourceCommand(() => checkpoint("only the explicitly tracked page is published"));
 
   void customBundle;
 
-  await assertMeadowHomeState({
+  await sourceCommand(() => assertMeadowHomeState({
     allowedUntracked: [
       `bundles/${slug}/build/`,
       `bundles/${slug}/html/`,
       `bundles/${slug}/raw/folder_scope_snapshot.json`,
       `bundles/${slug}/raw/generation_inputs/`,
     ],
-  });
+  }));
 });

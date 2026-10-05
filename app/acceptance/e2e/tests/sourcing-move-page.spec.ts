@@ -12,38 +12,38 @@ test.use({ bundleMode: 'single-file' });
  * Move a nested page while leaving name-only links unchanged. Review and acceptance should
  * preserve the page's identity and working links.
  */
-test('Sourcing moves a nested page while preserving its identity and name-only links', async ({ page, testServer, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+test('Sourcing moves a nested page while preserving its identity and name-only links', { annotation: { type: 'scenario-id', description: '53c939c8-a8cf-4d90-b52f-b20924e0b6c1' } }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
-  await new Workflows(page, expect).navigateToBigBundle();
+  await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
   const editor = new BundleEditorPage(page, expect);
-  await editor.waitForSourceCheck();
+  await sourceCommand(() => editor.waitForSourceCheck());
   const bundleConfig = new MeadowHomeBundleConfig(testServer.configDir, 'meadow-test-bundle-big', expect);
   const original = bundleConfig.requireNode({ bundleNodeName: 't001 ---- child 2' });
   expect(original.listType).toBe('whitelist');
-  await checkpoint('the accepted source state is established before changing files');
+  await sourceCommand(() => checkpoint('the accepted source state is established before changing files'));
 
   // --- Test start ---
   // Move the nested page.
-  await sourceChanges.apply('move-nested-page');
-  await editor.checkSourceChanges();
-  await editor.sourceReview.open();
-  await editor.sourceReview.expectMoveCount(1);
-  await editor.sourceReview.expectMove('Moved', 't001/deeper/t001 ---- child 2.md', 'source-changes/moved/t001 ---- child 2.md');
-  await editor.sourceReview.expectMoveListed(original.bundleNodeId);
-  await editor.sourceReview.confirmSuggestedIdentities();
-  await editor.sourceReview.continueToGraph();
-  await editor.sourceReview.orphans.expectNotListed(original.bundleNodeName);
-  await addKeyFrame(sourceMove);
-  await checkpoint('review identifies the move through the shared source change');
+  await sourceCommand(() => sourceChanges.apply('move-nested-page'));
+  await sourceCommand(() => editor.checkSourceChanges());
+  await sourceCommand(() => editor.sourceReview.open());
+  await sourceCommand(() => editor.sourceReview.expectMoveCount(1));
+  await sourceCommand(() => editor.sourceReview.expectMove('Moved', 't001/deeper/t001 ---- child 2.md', 'source-changes/moved/t001 ---- child 2.md'));
+  await sourceCommand(() => editor.sourceReview.expectMoveListed(original.bundleNodeId));
+  await sourceCommand(() => editor.sourceReview.confirmSuggestedIdentities());
+  await sourceCommand(() => editor.sourceReview.continueToGraph());
+  await sourceCommand(() => editor.sourceReview.orphans.expectNotListed(original.bundleNodeName));
+  await sourceCommand(() => addKeyFrame(sourceMove));
+  await sourceCommand(() => checkpoint('review identifies the move through the shared source change'));
 
   // Accept the source update.
-  await editor.sourceReview.accept();
+  await sourceCommand(() => editor.sourceReview.accept());
   expect(bundleConfig.findNode({ bundleNodeId: original.bundleNodeId })).toEqual({ ...original, sourceGraphSubdirectory: 'source-changes/moved' });
-  await editor.switchToListView();
-  await editor.expectListViewNodeVisible('file:source-changes/moved/t001 ---- child 2.md', true);
-  await editor.expectListViewNodeVisible('file:t001/deeper/t001 ---- child 2.md', false);
-  await addKeyFrame(sourceSnapshot);
-  await checkpoint('the moved file remains reachable with the same identity and tracking');
+  await sourceCommand(() => editor.switchToListView());
+  await sourceCommand(() => editor.expectListViewNodeVisible('file:source-changes/moved/t001 ---- child 2.md', true));
+  await sourceCommand(() => editor.expectListViewNodeVisible('file:t001/deeper/t001 ---- child 2.md', false));
+  await sourceCommand(() => addKeyFrame(sourceSnapshot));
+  await sourceCommand(() => checkpoint('the moved file remains reachable with the same identity and tracking'));
 
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

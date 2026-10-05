@@ -35,7 +35,7 @@ test.use({ recordVideo: false });
  * tracking, concurrent edits, depth overrides, blacklisting, sensitivity, and cross-bundle
  * lookup.
  */
-test("CLI supports every single-node inspection and curation operation by path or ID", async ({
+test("CLI supports every single-node inspection and curation operation by path or ID", { annotation: { type: 'scenario-id', description: '03acf875-6cf1-4d17-a98d-a389f02fea68' } }, async ({ sourceCommand,
   assertMeadowHomeState,
   meadowCli,
   checkpoint,
@@ -53,17 +53,17 @@ test("CLI supports every single-node inspection and curation operation by path o
   ], { artifactName: `create-${slug ?? "primary"}` });
 
   try {
-    await create();
-    await create("node-operations-copy");
+    await sourceCommand(() => create());
+    await sourceCommand(() => create("node-operations-copy"));
 
-    await checkpoint("two bundles share the same read-only source");
+    await sourceCommand(() => checkpoint("two bundles share the same read-only source"));
 
     // --- Test start ---
     // Inspect a page and its related paths.
-    const described = await meadowCli.runJson<DescribeBundleNodeCliResult>([
+    const described = await sourceCommand(() => meadowCli.runJson<DescribeBundleNodeCliResult>([
       "bundle", "node", "describe", "notable-mental-models",
       "--path", "Charlie Munger.md",
-    ], { artifactName: "describe-charlie-by-path" });
+    ], { artifactName: "describe-charlie-by-path" }));
     expect(described).toMatchObject({
       schemaVersion: 1,
       operation: "bundle.node.describe",
@@ -98,13 +98,13 @@ test("CLI supports every single-node inspection and curation operation by path o
     expect(described.related.allPathsFromHere[0].bundleNodeKey).toBe("file:Charlie Munger.md");
     expect(described.related.deeperPathsFromHere[0].bundleNodeKey).toBe("file:Charlie Munger.md");
 
-    await checkpoint("page details include related traversal paths");
+    await sourceCommand(() => checkpoint("page details include related traversal paths"));
 
     // Track the page in both bundles.
-    const tracked = await meadowCli.runJson<MutateBundleNodeCliResult>([
+    const tracked = await sourceCommand(() => meadowCli.runJson<MutateBundleNodeCliResult>([
       "bundle", "node", "track", "notable-mental-models",
       "--path", "Charlie Munger.md",
-    ], { artifactName: "track-charlie-by-path" });
+    ], { artifactName: "track-charlie-by-path" }));
     expect(tracked).toMatchObject({
       operation: "bundle.node.track",
       changed: true,
@@ -121,22 +121,22 @@ test("CLI supports every single-node inspection and curation operation by path o
     });
     const nodeId = tracked.node.bundleNodeId!;
 
-    const trackedAgain = await meadowCli.runJson<MutateBundleNodeCliResult>([
+    const trackedAgain = await sourceCommand(() => meadowCli.runJson<MutateBundleNodeCliResult>([
       "bundle", "node", "track", "notable-mental-models", "--id", nodeId,
-    ], { artifactName: "retry-track-charlie-by-id" });
+    ], { artifactName: "retry-track-charlie-by-id" }));
     expect(trackedAgain.changed).toBe(false);
 
-    const copyTracked = await meadowCli.runJson<MutateBundleNodeCliResult>([
+    const copyTracked = await sourceCommand(() => meadowCli.runJson<MutateBundleNodeCliResult>([
       "bundle", "node", "track", "node-operations-copy",
       "--path", "file:Charlie Munger.md",
-    ], { artifactName: "track-charlie-in-copy" });
+    ], { artifactName: "track-charlie-in-copy" }));
     expect(copyTracked.node.bundleNodeId).not.toBe(nodeId);
 
-    await checkpoint("tracking retries preserve identity and copies use separate identities");
+    await sourceCommand(() => checkpoint("tracking retries preserve identity and copies use separate identities"));
 
     // Edit two nodes concurrently.
-    await create("node-operations-concurrent");
-    const [concurrentCharlie, concurrentWarren] = await Promise.all([
+    await sourceCommand(() => create("node-operations-concurrent"));
+    const [concurrentCharlie, concurrentWarren] = await sourceCommand(() => Promise.all([
       meadowCli.runJson<MutateBundleNodeCliResult>([
         "bundle", "node", "track", "node-operations-concurrent",
         "--path", "Charlie Munger.md",
@@ -145,10 +145,10 @@ test("CLI supports every single-node inspection and curation operation by path o
         "bundle", "node", "track", "node-operations-concurrent",
         "--path", "Warren Buffett.md",
       ], { artifactName: "concurrent-track-warren" }),
-    ]);
+    ]));
     const concurrentCharlieId = concurrentCharlie.node.bundleNodeId!;
     const concurrentWarrenId = concurrentWarren.node.bundleNodeId!;
-    await Promise.all([
+    await sourceCommand(() => Promise.all([
       meadowCli.runJson<MutateBundleNodeCliResult>([
         "bundle", "node", "blacklist", "node-operations-concurrent",
         "--id", concurrentCharlieId,
@@ -157,8 +157,8 @@ test("CLI supports every single-node inspection and curation operation by path o
         "bundle", "node", "set-depths", "node-operations-concurrent",
         "--id", concurrentWarrenId, "--outlinks", "1", "--inlinks", "0",
       ], { artifactName: "concurrent-set-warren-depths" }),
-    ]);
-    const [concurrentCharlieState, concurrentWarrenState] = await Promise.all([
+    ]));
+    const [concurrentCharlieState, concurrentWarrenState] = await sourceCommand(() => Promise.all([
       meadowCli.runJson<DescribeBundleNodeCliResult>([
         "bundle", "node", "describe", "node-operations-concurrent",
         "--id", concurrentCharlieId,
@@ -167,100 +167,100 @@ test("CLI supports every single-node inspection and curation operation by path o
         "bundle", "node", "describe", "node-operations-concurrent",
         "--id", concurrentWarrenId,
       ], { artifactName: "describe-concurrent-warren" }),
-    ]);
+    ]));
     expect(concurrentCharlieState.node).toMatchObject({ tracked: true, blacklisted: true });
     expect(concurrentWarrenState.node.config).toMatchObject({ outlinksDepth: 1, inlinksDepth: 0 });
 
-    await checkpoint("concurrent edits preserve both node updates");
+    await sourceCommand(() => checkpoint("concurrent edits preserve both node updates"));
 
     // Find the page across bundles.
-    const found = await meadowCli.runJson<FindBundleNodeCliResult>([
+    const found = await sourceCommand(() => meadowCli.runJson<FindBundleNodeCliResult>([
       "bundle", "node", "find-in-bundles", "notable-mental-models", "--id", nodeId,
-    ], { artifactName: "find-charlie-in-bundles" });
+    ], { artifactName: "find-charlie-in-bundles" }));
     expect(found.bundles.map(bundle => ({ slug: bundle.slug, blacklisted: bundle.blacklisted }))).toEqual([
       { slug: "node-operations-concurrent", blacklisted: true },
       { slug: "node-operations-copy", blacklisted: false },
       { slug: "notable-mental-models", blacklisted: false },
     ]);
 
-    await checkpoint("the page is found in all three bundles");
+    await sourceCommand(() => checkpoint("the page is found in all three bundles"));
 
     // Override and inherit traversal depths.
-    const depths = await meadowCli.runJson<MutateBundleNodeCliResult>([
+    const depths = await sourceCommand(() => meadowCli.runJson<MutateBundleNodeCliResult>([
       "bundle", "node", "set-depths", "notable-mental-models", "--id", nodeId,
       "--outlinks", "5", "--inlinks", "2",
-    ], { artifactName: "set-charlie-depths" });
+    ], { artifactName: "set-charlie-depths" }));
     expect(depths).toMatchObject({
       operation: "bundle.node.set-depths",
       changed: true,
       node: { config: { outlinksDepth: 5, inlinksDepth: 2 } },
     });
 
-    const inheritedDepths = await meadowCli.runJson<MutateBundleNodeCliResult>([
+    const inheritedDepths = await sourceCommand(() => meadowCli.runJson<MutateBundleNodeCliResult>([
       "bundle", "node", "set-depths", "notable-mental-models", "--id", nodeId,
       "--outlinks", "inherit", "--inlinks", "inherit",
-    ], { artifactName: "clear-charlie-depths" });
+    ], { artifactName: "clear-charlie-depths" }));
     expect(inheritedDepths.changed).toBe(true);
     expect(inheritedDepths.node.config).not.toHaveProperty("outlinksDepth");
     expect(inheritedDepths.node.config).not.toHaveProperty("inlinksDepth");
 
-    await checkpoint("depth overrides can return to inherited values");
+    await sourceCommand(() => checkpoint("depth overrides can return to inherited values"));
 
     // Blacklist and restore the page.
-    const blacklisted = await meadowCli.runJson<MutateBundleNodeCliResult>([
+    const blacklisted = await sourceCommand(() => meadowCli.runJson<MutateBundleNodeCliResult>([
       "bundle", "node", "blacklist", "notable-mental-models", "--id", nodeId,
-    ], { artifactName: "blacklist-charlie" });
+    ], { artifactName: "blacklist-charlie" }));
     expect(blacklisted).toMatchObject({ changed: true, node: { tracked: true, blacklisted: true } });
 
-    const unblacklisted = await meadowCli.runJson<MutateBundleNodeCliResult>([
+    const unblacklisted = await sourceCommand(() => meadowCli.runJson<MutateBundleNodeCliResult>([
       "bundle", "node", "unblacklist", "notable-mental-models", "--id", nodeId,
-    ], { artifactName: "unblacklist-charlie" });
+    ], { artifactName: "unblacklist-charlie" }));
     expect(unblacklisted).toMatchObject({ changed: true, node: { tracked: true, blacklisted: false } });
 
-    await checkpoint("blacklisting is reversible");
+    await sourceCommand(() => checkpoint("blacklisting is reversible"));
 
     // Change source sensitivity.
-    const sensitive = await meadowCli.runJson<MutateBundleNodeCliResult>([
+    const sensitive = await sourceCommand(() => meadowCli.runJson<MutateBundleNodeCliResult>([
       "bundle", "node", "mark-sensitive", "notable-mental-models", "--id", nodeId,
-    ], { artifactName: "mark-charlie-sensitive" });
+    ], { artifactName: "mark-charlie-sensitive" }));
     expect(sensitive).toMatchObject({ changed: true, node: { sensitive: false }, sourceUpdate: { sensitive: true, requiresSnapshotAcceptance: true } });
 
-    const notSensitive = await meadowCli.runJson<MutateBundleNodeCliResult>([
+    const notSensitive = await sourceCommand(() => meadowCli.runJson<MutateBundleNodeCliResult>([
       "bundle", "node", "mark-not-sensitive", "notable-mental-models",
       "--path", "Charlie Munger.md",
-    ], { artifactName: "mark-charlie-not-sensitive" });
+    ], { artifactName: "mark-charlie-not-sensitive" }));
     expect(notSensitive).toMatchObject({ changed: true, node: { sensitive: false } });
 
-    await checkpoint("source sensitivity changes require checkpoint acceptance");
+    await sourceCommand(() => checkpoint("source sensitivity changes require checkpoint acceptance"));
 
     // Untrack the page.
-    const untracked = await meadowCli.runJson<MutateBundleNodeCliResult>([
+    const untracked = await sourceCommand(() => meadowCli.runJson<MutateBundleNodeCliResult>([
       "bundle", "node", "untrack", "notable-mental-models", "--id", nodeId,
-    ], { artifactName: "untrack-charlie-by-id" });
+    ], { artifactName: "untrack-charlie-by-id" }));
     expect(untracked).toMatchObject({ changed: true, node: { tracked: false } });
     expect(untracked.node.bundleNodeId).toBeUndefined();
 
-    const untrackedAgain = await meadowCli.runJson<MutateBundleNodeCliResult>([
+    const untrackedAgain = await sourceCommand(() => meadowCli.runJson<MutateBundleNodeCliResult>([
       "bundle", "node", "untrack", "notable-mental-models",
       "--path", "Charlie Munger.md",
-    ], { artifactName: "retry-untrack-charlie-by-path" });
+    ], { artifactName: "retry-untrack-charlie-by-path" }));
     expect(untrackedAgain.changed).toBe(false);
 
-    await checkpoint("untracking removes identity and can be retried");
+    await sourceCommand(() => checkpoint("untracking removes identity and can be retried"));
 
     // Check node command help.
-    const help = await meadowCli.run(
+    const help = await sourceCommand(() => meadowCli.run(
       ["bundle", "node", "--help"],
       { artifactName: "single-node-help" },
-    );
+    ));
     expect(help).toContain("Preferred stable ID returned after a node is tracked");
     expect(help).toContain("--outlinks <depth|inherit>");
     expect(help).toContain("find-in-bundles");
     void cli;
     void bundles;
-    await checkpoint("help documents node identity depth and cross-bundle lookup");
+    await sourceCommand(() => checkpoint("help documents node identity depth and cross-bundle lookup"));
 
-    await assertMeadowHomeState();
+    await sourceCommand(() => assertMeadowHomeState());
   } finally {
     source.cleanup();
   }

@@ -28,7 +28,7 @@ test.use({ fixtureHome: "home_fixture_minimal" });
  * Create a bundle with only its starting page tracked, then preview it. Check that the
  * single-page warning explains how to include more pages.
  */
-test("Callout warns when previewing with only one tracked page", async ({
+test("Callout warns when previewing with only one tracked page", { annotation: { type: 'scenario-id', description: 'f4209c12-21ad-4a3a-8adc-8a858f1dedf0' } }, async ({ sourceCommand,
   page,
   testServer,
   checkpoint,
@@ -37,42 +37,42 @@ test("Callout warns when previewing with only one tracked page", async ({
 }) => {
   // --- Setup ---
   const bundleList = new BundleListPage(page, expect);
-  await bundleList.goto();
-  await bundleList.expectCalloutVisible("Turn your notes into bundles");
+  await sourceCommand(() => bundleList.goto());
+  await sourceCommand(() => bundleList.expectCalloutVisible("Turn your notes into bundles"));
 
   // Click "create a bundle" in the empty state callout
-  await bundleList.clickCreateBundleLink();
+  await sourceCommand(() => bundleList.clickCreateBundleLink());
 
   // Fill in the Create New Bundle modal
   const createModal = new CreateAndEditBundleModal(page, expect);
   const sourceDir = path.join(testServer.sourceGraphsDir, "meadow-test-bundles-data");
-  await createModal.fillSourceDirectory(sourceDir);
-  await createModal.typeInitialPageTitle("main page");
-  await createModal.selectSuggestion("main page");
-  await createModal.clickCreateBundle();
+  await sourceCommand(() => createModal.fillSourceDirectory(sourceDir));
+  await sourceCommand(() => createModal.typeInitialPageTitle("main page"));
+  await sourceCommand(() => createModal.selectSuggestion("main page"));
+  await sourceCommand(() => createModal.clickCreateBundle());
 
   // Wait for graph view to load
   const editor = new BundleEditorPage(page, expect);
-  await editor.waitForLoad("main-page");
+  await sourceCommand(() => editor.waitForLoad("main-page"));
 
-  await checkpoint("the new bundle contains only its tracked initial page");
+  await sourceCommand(() => checkpoint("the new bundle contains only its tracked initial page"));
 
   // --- Test start ---
   // Preview the single-page bundle.
   // Click Preview — should trigger single-page warning modal
-  await editor.clickPreview();
-  await editor.expectSinglePagePreviewWarningVisible();
-  await addKeyFrame(callout);
-  await checkpoint("single page preview warning shown");
+  await sourceCommand(() => editor.clickPreview());
+  await sourceCommand(() => editor.expectSinglePagePreviewWarningVisible());
+  await sourceCommand(() => addKeyFrame(callout));
+  await sourceCommand(() => checkpoint("single page preview warning shown"));
 
   // Return to tracking pages.
-  await editor.clickGoBackAndTrackMorePages();
+  await sourceCommand(() => editor.clickGoBackAndTrackMorePages());
 
   // Verify we're back on the graph view (modal closed, not navigated to preview)
-  await editor.expectGraphViewButtonVisible();
-  await checkpoint("back on graph view after dismissing warning");
+  await sourceCommand(() => editor.expectGraphViewButtonVisible());
+  await sourceCommand(() => checkpoint("back on graph view after dismissing warning"));
 
   void customBundle;
 
-  await assertMeadowHomeState();
+  await sourceCommand(() => assertMeadowHomeState());
 });

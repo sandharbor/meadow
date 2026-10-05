@@ -15,45 +15,45 @@ test.use({ executionSurfaces: ['browser'] });
  * The highlighted source line must name the production function, and two concepts sharing a
  * role name must retain separate identities. Concepts without participants show no invented links.
  */
-test('Concept pages derive implemented-by navigation from exact inline participation identities', async ({ page, checkpoint, addKeyFrame, assertMeadowHomeState }, testInfo) => {
+test('Concept pages derive implemented-by navigation from exact inline participation identities', { annotation: { type: 'scenario-id', description: '646aabe1-ce31-4123-a574-b9cd8ca878da' } }, async ({ sourceCommand, page, checkpoint, addKeyFrame, assertMeadowHomeState }, testInfo) => {
   // --- Setup ---
-  await new BundleListPage(page, expect).goto();
-  const viewer = await startReportViewer(expect);
+  await sourceCommand(() => new BundleListPage(page, expect).goto());
+  const viewer = await sourceCommand(() => startReportViewer(expect));
   try {
-    await page.goto(`${viewer.url}/concepts/${sourceSnapshot.id}`);
-    await expect(page.getByRole('heading', { name: 'Source Snapshot', exact: true })).toBeVisible();
+    await sourceCommand(() => page.goto(`${viewer.url}/concepts/${sourceSnapshot.id}`));
+    await sourceCommand(() => expect(page.getByRole('heading', { name: 'Source Snapshot', exact: true })).toBeVisible());
     const implementations = page.getByRole('region', { name: 'Implemented by', exact: true });
-    await expect(implementations.getByRole('link', { name: /capture · captureSourceSnapshot/ })).toBeVisible();
-    await expect(implementations.getByRole('link', { name: /accept · acceptSourceSnapshot/ })).toBeVisible();
-    await checkpoint('the canonical concept lists exact inline role symbol and location identities');
+    await sourceCommand(() => expect(implementations.getByRole('link', { name: /capture · captureSourceSnapshot/ })).toBeVisible());
+    await sourceCommand(() => expect(implementations.getByRole('link', { name: /accept · acceptSourceSnapshot/ })).toBeVisible());
+    await sourceCommand(() => checkpoint('the canonical concept lists exact inline role symbol and location identities'));
 
     // --- Test start ---
     // Navigate to the actual implementation rather than the metadata tuple that describes it.
-    await implementations.getByRole('link', { name: /capture · captureSourceSnapshot/ }).click();
+    await sourceCommand(() => implementations.getByRole('link', { name: /capture · captureSourceSnapshot/ }).click());
     const source = page.getByRole('region', { name: 'Implementation source', exact: true });
-    await expect(source).toContainText('export async function captureSourceSnapshot');
+    await sourceCommand(() => expect(source).toContainText('export async function captureSourceSnapshot'));
     const address = new URL(page.url());
     const file = address.searchParams.get('file')!;
     const line = Number(address.searchParams.get('line'));
     expect(file).toBe('runtime/service/src/shared/source-snapshot/sourceSnapshots.ts');
     const actual = fs.readFileSync(path.resolve(import.meta.dirname, '../../../..', file), 'utf8').split('\n')[line - 1];
     expect(actual).toContain('export async function captureSourceSnapshot');
-    await expect(page.getByText(actual.trim(), { exact: false }).last()).toBeVisible();
-    await addKeyFrame(conceptImplementationNavigation);
-    await checkpoint('the selected participation opens the source at its real implementation declaration');
+    await sourceCommand(() => expect(page.getByText(actual.trim(), { exact: false }).last()).toBeVisible());
+    await sourceCommand(() => addKeyFrame(conceptImplementationNavigation));
+    await sourceCommand(() => checkpoint('the selected participation opens the source at its real implementation declaration'));
 
     // The page survives reload and related-concept navigation preserves exact identities.
-    await page.reload();
-    await expect(source).toContainText('export async function captureSourceSnapshot');
-    await page.getByRole('link', { name: 'Source Changes During Review', exact: true }).click();
-    await expect(page.getByRole('heading', { name: 'Source Changes During Review', exact: true })).toBeVisible();
-    await expect(implementations).toContainText('No implementation participants declared.');
-    await addKeyFrame(conceptRoleValidation);
-    await checkpoint('a concept without declared participants makes no implementation claims');
+    await sourceCommand(() => page.reload());
+    await sourceCommand(() => expect(source).toContainText('export async function captureSourceSnapshot'));
+    await sourceCommand(() => page.getByRole('link', { name: 'Source Changes During Review', exact: true }).click());
+    await sourceCommand(() => expect(page.getByRole('heading', { name: 'Source Changes During Review', exact: true })).toBeVisible());
+    await sourceCommand(() => expect(implementations).toContainText('No implementation participants declared.'));
+    await sourceCommand(() => addKeyFrame(conceptRoleValidation));
+    await sourceCommand(() => checkpoint('a concept without declared participants makes no implementation claims'));
   } finally {
-    await page.goto('about:blank');
-    await viewer.stop();
-    await testInfo.attach('report-viewer.log', { body: viewer.logs(), contentType: 'text/plain' });
+    await sourceCommand(() => page.goto('about:blank'));
+    await sourceCommand(() => viewer.stop());
+    await sourceCommand(() => testInfo.attach('report-viewer.log', { body: viewer.logs(), contentType: 'text/plain' }));
   }
-  await assertMeadowHomeState();
+  await sourceCommand(() => assertMeadowHomeState());
 });

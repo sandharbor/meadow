@@ -31,7 +31,7 @@ test.use({ fixtureHome: Fixture.Minimal });
  * Select all untracked pages in the example bundle and track them. The operation should
  * save automatically without an extra Save click.
  */
-test("Track All on example bundle untracked pages auto-saves without a save click", async ({
+test("Track All on example bundle untracked pages auto-saves without a save click", { annotation: { type: 'scenario-id', description: 'f7ebd9d2-d561-4f63-95f4-0e08e6dfdfe4' } }, async ({ sourceCommand,
   page,
   checkpoint,
   assertMeadowHomeState,
@@ -42,38 +42,38 @@ test("Track All on example bundle untracked pages auto-saves without a save clic
   const editor = new BundleEditorPage(page, expect);
 
   // Add the example bundle from the empty state
-  await bundleList.goto();
-  await bundleList.clickAddExampleBundleLink();
-  await editor.waitForLoad("example-bundle");
-  await checkpoint("example bundle loaded");
+  await sourceCommand(() => bundleList.goto());
+  await sourceCommand(() => bundleList.clickAddExampleBundleLink());
+  await sourceCommand(() => editor.waitForLoad("example-bundle"));
+  await sourceCommand(() => checkpoint("example bundle loaded"));
 
   // --- Test start ---
   // Select the safe pages.
-  await editor.expectUndoNotVisible();
+  await sourceCommand(() => editor.expectUndoNotVisible());
 
   // Select all pages — this opens the selection sidebar and reveals the
   // bulk action buttons.
-  await editor.clickSelectAll();
-  await page.waitForTimeout(500);
+  await sourceCommand(() => editor.clickSelectAll());
+  await sourceCommand(() => page.waitForTimeout(500));
 
   // Deselect sensitive pages. The example bundle ships with sensitive pages
   // the user hasn't yet acknowledged, so Track All is disabled until they
   // are removed from the selection.
-  await editor.clickDeselectSensitivePagesIfVisible();
-  await page.waitForTimeout(250);
-  await addKeyFrame(sensitive);
-  await checkpoint("sensitive pages deselected");
+  await sourceCommand(() => editor.clickDeselectSensitivePagesIfVisible());
+  await sourceCommand(() => page.waitForTimeout(250));
+  await sourceCommand(() => addKeyFrame(sensitive));
+  await sourceCommand(() => checkpoint("sensitive pages deselected"));
 
   // Track the selected pages.
   // Track All is a "simple op": it auto-saves the config and commits in a
   // single request. The Save/Undo buttons must never appear — tracking a
   // batch of pages shouldn't feel like "make-work" to the user.
-  await editor.clickTrackAll();
-  await editor.expectUndoNotVisible();
-  await addKeyFrame(tracking);
-  await checkpoint("track all applied — no save button");
+  await sourceCommand(() => editor.clickTrackAll());
+  await sourceCommand(() => editor.expectUndoNotVisible());
+  await sourceCommand(() => addKeyFrame(tracking));
+  await sourceCommand(() => checkpoint("track all applied — no save button"));
 
   void exampleBundle;
 
-  await assertMeadowHomeState();
+  await sourceCommand(() => assertMeadowHomeState());
 });

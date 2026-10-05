@@ -25,14 +25,14 @@ test.use({ bundleMode: 'single-file' });
  * Trigger an unknown startup failure. The branded recovery screen should provide useful
  * guidance while keeping technical details behind disclosure.
  */
-test('Unknown startup failures use branded progressive disclosure', async ({
+test('Unknown startup failures use branded progressive disclosure', { annotation: { type: 'scenario-id', description: 'd482e3bd-67e5-4162-b047-bcd9875615ea' } }, async ({ sourceCommand,
   page,
   checkpoint,
   addKeyFrame,
   assertMeadowHomeState,
 }) => {
   // --- Setup ---
-  await page.setContent(renderStartupRecoveryHtml({
+  await sourceCommand(() => page.setContent(renderStartupRecoveryHtml({
     schemaVersion: 1,
     category: 'startup-failure',
     title: 'Meadow didn’t open',
@@ -47,17 +47,17 @@ test('Unknown startup failures use branded progressive disclosure', async ({
     checkpointId: null,
     checkpointPath: null,
     checkpointAvailable: false,
-  }));
+  })));
 
   // --- Test start ---
   // Inspect the recovery guidance and hidden details.
-  await expect(page.getByRole('banner').getByText('Meadow', { exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Meadow didn’t open' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
-  await expect(page.getByText('Selected Meadow Home')).toBeHidden();
-  await expect(page.getByText('Running app')).toBeHidden();
-  await addKeyFrame(startupRecovery, callout);
-  await checkpoint('unknown startup failure');
+  await sourceCommand(() => expect(page.getByRole('banner').getByText('Meadow', { exact: true })).toBeVisible());
+  await sourceCommand(() => expect(page.getByRole('heading', { name: 'Meadow didn’t open' })).toBeVisible());
+  await sourceCommand(() => expect(page.getByRole('button', { name: 'Try again' })).toBeVisible());
+  await sourceCommand(() => expect(page.getByText('Selected Meadow Home')).toBeHidden());
+  await sourceCommand(() => expect(page.getByText('Running app')).toBeHidden());
+  await sourceCommand(() => addKeyFrame(startupRecovery, callout));
+  await sourceCommand(() => checkpoint('unknown startup failure'));
 
-  await assertMeadowHomeState();
+  await sourceCommand(() => assertMeadowHomeState());
 });

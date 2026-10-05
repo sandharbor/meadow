@@ -30,7 +30,7 @@ test.use({ serialGroup: "generated-bundle-versioning" });
  * Modify a frozen version's files outside Meadow. Restore them from Git, then cancel the
  * unsaved successor and return to the original current version.
  */
-test("V08 G05 generated version frozen integrity is recoverable before canceling an unsaved successor", async ({
+test("V08 G05 generated version frozen integrity is recoverable before canceling an unsaved successor", { annotation: { type: 'scenario-id', description: '2a0ec475-6a37-4886-93a7-e7dd9759e05e' } }, async ({ sourceCommand,
   page,
   checkpoint,
   skipMeadowHomeStateCheck,
@@ -39,28 +39,28 @@ test("V08 G05 generated version frozen integrity is recoverable before canceling
 }) => {
   // --- Setup ---
   const workflows = new Workflows(page, expect);
-  await workflows.navigateToSmallBundlePreview();
+  await sourceCommand(() => workflows.navigateToSmallBundlePreview());
 
   const modal = new PreviewPublishModal(page, expect);
   const changesTab = new ChangesTab(page, expect);
   const versions = new GeneratedBundleVersions(page, expect, Bundle.Small);
-  const initialVersion = await versions.waitForOnlyVersion();
+  const initialVersion = await sourceCommand(() => versions.waitForOnlyVersion());
 
-  await modal.clickSaveChanges();
-  await modal.waitForSaveComplete();
-  await modal.clickStep1Review();
-  await modal.openCustomizeSidebar();
+  await sourceCommand(() => modal.clickSaveChanges());
+  await sourceCommand(() => modal.waitForSaveComplete());
+  await sourceCommand(() => modal.clickStep1Review());
+  await sourceCommand(() => modal.openCustomizeSidebar());
   const customizeTab = new CustomizeTab(page, expect);
-  await customizeTab.generationOptions.disableBreadcrumbs();
-  await changesTab.waitForRegenerationComplete();
-  await modal.clickChangesTab();
-  await modal.openCreateNewVersionDialog();
-  await modal.createConnectedVersion("Recoverable successor");
-  await modal.expectVersionsTabActive();
-  await modal.expectVersionCreatedMessageHidden();
+  await sourceCommand(() => customizeTab.generationOptions.disableBreadcrumbs());
+  await sourceCommand(() => changesTab.waitForRegenerationComplete());
+  await sourceCommand(() => modal.clickChangesTab());
+  await sourceCommand(() => modal.openCreateNewVersionDialog());
+  await sourceCommand(() => modal.createConnectedVersion("Recoverable successor"));
+  await sourceCommand(() => modal.expectVersionsTabActive());
+  await sourceCommand(() => modal.expectVersionCreatedMessageHidden());
 
-  const [, successor] = await versions.waitForCount(2);
-  await checkpoint("a successor exists alongside its frozen predecessor");
+  const [, successor] = await sourceCommand(() => versions.waitForCount(2));
+  await sourceCommand(() => checkpoint("a successor exists alongside its frozen predecessor"));
 
   // --- Test start ---
   // Modify the frozen files outside Meadow.
@@ -80,33 +80,33 @@ test("V08 G05 generated version frozen integrity is recoverable before canceling
 
   // The test changes the filesystem behind the UI's back, so remount the
   // Versions tab to trigger the same integrity refresh as returning to it.
-  await modal.clickChangesTab();
-  await modal.clickVersionsTab();
+  await sourceCommand(() => modal.clickChangesTab());
+  await sourceCommand(() => modal.clickVersionsTab());
 
-  await expect(page.getByText("Integrity Problem", { exact: true })).toBeVisible();
-  await expect(page.getByText("Frozen version modified locally", { exact: true })).toBeVisible();
-  await addKeyFrame(versioning);
-  await checkpoint("frozen integrity problem blocks version workflow");
+  await sourceCommand(() => expect(page.getByText("Integrity Problem", { exact: true })).toBeVisible());
+  await sourceCommand(() => expect(page.getByText("Frozen version modified locally", { exact: true })).toBeVisible());
+  await sourceCommand(() => addKeyFrame(versioning));
+  await sourceCommand(() => checkpoint("frozen integrity problem blocks version workflow"));
 
   // Restore the frozen version.
-  await page.getByRole("button", { name: "Restore Frozen Version from Git" }).click();
-  await expect(page.getByText("Integrity Problem", { exact: true })).toHaveCount(0);
+  await sourceCommand(() => page.getByRole("button", { name: "Restore Frozen Version from Git" }).click());
+  await sourceCommand(() => expect(page.getByText("Integrity Problem", { exact: true })).toHaveCount(0));
   expect(fs.readFileSync(frozenHtmlFile, "utf8")).not.toContain("injected frozen edit");
 
-  await checkpoint("restoring from Git removes the frozen integrity problem");
+  await sourceCommand(() => checkpoint("restoring from Git removes the frozen integrity problem"));
 
   // Cancel the unsaved successor.
-  await modal.cancelCurrentVersion();
-  await expect(page.getByText(successor.versionId, { exact: true })).toHaveCount(0, { timeout: 30_000 });
-  await modal.expectSingleVersionExplanation();
-  await expect(page.getByText(initialVersion.versionId, { exact: true })).toHaveCount(0);
-  const restoredCurrent = await versions.waitForOnlyVersion();
+  await sourceCommand(() => modal.cancelCurrentVersion());
+  await sourceCommand(() => expect(page.getByText(successor.versionId, { exact: true })).toHaveCount(0, { timeout: 30_000 }));
+  await sourceCommand(() => modal.expectSingleVersionExplanation());
+  await sourceCommand(() => expect(page.getByText(initialVersion.versionId, { exact: true })).toHaveCount(0));
+  const restoredCurrent = await sourceCommand(() => versions.waitForOnlyVersion());
   expect(restoredCurrent).toMatchObject({
     versionId: initialVersion.versionId,
     displayState: "current",
   });
-  await checkpoint("unsaved successor canceled after integrity recovery");
+  await sourceCommand(() => checkpoint("unsaved successor canceled after integrity recovery"));
 
   void smallBundle;
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

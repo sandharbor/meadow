@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import ts from 'typescript';
 import type { SourceCommand } from '../artifacts/sourceCommand.js';
 
-/** Opt-in command capture; source locations refer to this run's saved source. */
+/** Command capture; source locations refer to this run's saved source. */
 export class SourceCommandTracker {
   current: SourceCommand | undefined;
   private nextId = 0;

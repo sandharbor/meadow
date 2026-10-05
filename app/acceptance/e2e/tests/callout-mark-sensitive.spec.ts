@@ -26,7 +26,7 @@ test.use({ bundleMode: "single-file" });
  * Mark a page as sensitive for the first time. Check that the introductory callout
  * explains the source change and can be dismissed.
  */
-test("callout for marking source node sensitive the first time", async ({
+test("callout for marking source node sensitive the first time", { annotation: { type: 'scenario-id', description: 'b6df7a57-471f-4913-be4a-30eb32c38735' } }, async ({ sourceCommand,
   page,
   checkpoint,
   skipMeadowHomeStateCheck,
@@ -34,93 +34,93 @@ test("callout for marking source node sensitive the first time", async ({
 }) => {
   // --- Setup ---
   const wf = new Workflows(page, expect);
-  await wf.navigateToBigBundle();
-  await checkpoint("bundle editor loaded");
+  await sourceCommand(() => wf.navigateToBigBundle());
+  await sourceCommand(() => checkpoint("bundle editor loaded"));
 
   // --- Test start ---
   // Mark the first page sensitive.
   const editor = new BundleEditorPage(page, expect);
 
   // Switch to list view so we can reliably target a specific non-sensitive page
-  await editor.switchToListView();
-  await page.waitForTimeout(250);
+  await sourceCommand(() => editor.switchToListView());
+  await sourceCommand(() => page.waitForTimeout(250));
 
   // Right-click on a non-sensitive page to get the context menu
-  await editor.rightClickRow("t002 - dup pages and images");
+  await sourceCommand(() => editor.rightClickRow("t002 - dup pages and images"));
 
   // Choose "Mark Sensitive" from the context menu
-  await editor.clickMarkSensitive();
+  await sourceCommand(() => editor.clickMarkSensitive());
 
   // Should see the consent modal ("Heads Up") since this is the first time
-  await editor.expectConsentModalVisible();
-  await addKeyFrame(callout);
-  await checkpoint("consent modal visible for first sensitive marking");
+  await sourceCommand(() => editor.expectConsentModalVisible());
+  await sourceCommand(() => addKeyFrame(callout));
+  await sourceCommand(() => checkpoint("consent modal visible for first sensitive marking"));
 
   // Accept the explanation.
-  await editor.clickConsentProceed();
-  await page.waitForTimeout(500);
-  await checkpoint("first page marked sensitive");
+  await sourceCommand(() => editor.clickConsentProceed());
+  await sourceCommand(() => page.waitForTimeout(500));
+  await sourceCommand(() => checkpoint("first page marked sensitive"));
 
   // Mark another page sensitive.
-  await editor.rightClickRow("t005 - in and out links");
+  await sourceCommand(() => editor.rightClickRow("t005 - in and out links"));
 
   // Choose "Mark Sensitive" again
-  await editor.clickMarkSensitive();
-  await page.waitForTimeout(500);
+  await sourceCommand(() => editor.clickMarkSensitive());
+  await sourceCommand(() => page.waitForTimeout(500));
 
   // No consent modal this time - the dismissal persisted
-  await editor.expectConsentModalNotVisible();
-  await checkpoint("second page marked sensitive without consent modal");
+  await sourceCommand(() => editor.expectConsentModalNotVisible());
+  await sourceCommand(() => checkpoint("second page marked sensitive without consent modal"));
 
   // Accept and inspect the sensitive pages.
-  await editor.sourceReview.open();
-  await editor.sourceReview.accept();
+  await sourceCommand(() => editor.sourceReview.open());
+  await sourceCommand(() => editor.sourceReview.accept());
 
   // Solo the sensitive pages
   const filterPanel = new FilterPanelComponent(page, expect);
-  await filterPanel.clickSoloOnFilter("Sensitive");
-  await page.waitForTimeout(250);
+  await sourceCommand(() => filterPanel.clickSoloOnFilter("Sensitive"));
+  await sourceCommand(() => page.waitForTimeout(250));
 
   // Select all and verify 3 pages (the 2 we just marked + the page that is
   // already sensitive in the source fixture).
-  await editor.clickSelectAll();
-  await page.waitForTimeout(250);
-  const selectedTitles = await editor.getSelectedPageTitles();
+  await sourceCommand(() => editor.clickSelectAll());
+  await sourceCommand(() => page.waitForTimeout(250));
+  const selectedTitles = await sourceCommand(() => editor.getSelectedPageTitles());
   expect(selectedTitles.length).toBe(3);
-  await checkpoint("3 sensitive pages selected after solo");
+  await sourceCommand(() => checkpoint("3 sensitive pages selected after solo"));
 
   // Remove the solo.
-  await filterPanel.clickSoloOnFilter("Sensitive");
-  await page.waitForTimeout(250);
-  await checkpoint("solo removed");
+  await sourceCommand(() => filterPanel.clickSoloOnFilter("Sensitive"));
+  await sourceCommand(() => page.waitForTimeout(250));
+  await sourceCommand(() => checkpoint("solo removed"));
 
   // Remove both sensitivity markings.
   // Now mark those two pages as not sensitive via right-click
   // First page
-  await editor.rightClickRow("t002 - dup pages and images");
-  await editor.clickMarkNotSensitive();
-  await page.waitForTimeout(500);
+  await sourceCommand(() => editor.rightClickRow("t002 - dup pages and images"));
+  await sourceCommand(() => editor.clickMarkNotSensitive());
+  await sourceCommand(() => page.waitForTimeout(500));
 
   // Second page
-  await editor.rightClickRow("t005 - in and out links");
-  await editor.clickMarkNotSensitive();
-  await page.waitForTimeout(500);
-  await checkpoint("two pages unmarked as sensitive");
+  await sourceCommand(() => editor.rightClickRow("t005 - in and out links"));
+  await sourceCommand(() => editor.clickMarkNotSensitive());
+  await sourceCommand(() => page.waitForTimeout(500));
+  await sourceCommand(() => checkpoint("two pages unmarked as sensitive"));
 
   // Accept the edits and inspect the remaining page.
-  await editor.sourceReview.open();
-  await editor.sourceReview.accept();
+  await sourceCommand(() => editor.sourceReview.open());
+  await sourceCommand(() => editor.sourceReview.accept());
 
   // Solo sensitive pages again, select all - the source-sensitive page remains.
-  await filterPanel.clickSoloOnFilter("Sensitive");
-  await page.waitForTimeout(250);
-  await editor.clickSelectAll();
-  await page.waitForTimeout(250);
-  const selectedTitlesAfter = await editor.getSelectedPageTitles();
+  await sourceCommand(() => filterPanel.clickSoloOnFilter("Sensitive"));
+  await sourceCommand(() => page.waitForTimeout(250));
+  await sourceCommand(() => editor.clickSelectAll());
+  await sourceCommand(() => page.waitForTimeout(250));
+  const selectedTitlesAfter = await sourceCommand(() => editor.getSelectedPageTitles());
   expect(selectedTitlesAfter.length).toBe(1);
-  await checkpoint("1 sensitive page remaining after unmarking two");
+  await sourceCommand(() => checkpoint("1 sensitive page remaining after unmarking two"));
 
   void bigBundle;
 
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

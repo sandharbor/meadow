@@ -25,53 +25,53 @@ test.use({ bundleMode: "single-file" });
  * Create a custom filter using part of an incoming page title. Verify that it selects the
  * expected linked pages.
  */
-test("filter custom inlink title substring selects expected pages", async ({ page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame }) => {
+test("filter custom inlink title substring selects expected pages", { annotation: { type: 'scenario-id', description: '12868fe8-be7a-4880-b45e-3ed0f10a2e54' } }, async ({ sourceCommand, page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame }) => {
   // --- Setup ---
   const bundleList = new BundleListPage(page, expect);
-  await bundleList.goto();
-  await checkpoint("bundle list loaded");
+  await sourceCommand(() => bundleList.goto());
+  await sourceCommand(() => checkpoint("bundle list loaded"));
 
   // --- Test start ---
   // Open the big bundle.
-  await bundleList.clickBundle("meadow-test-bundle-big");
+  await sourceCommand(() => bundleList.clickBundle("meadow-test-bundle-big"));
   const editor = new BundleEditorPage(page, expect);
-  await editor.waitForLoad("meadow-test-bundle-big");
-  await checkpoint("bundle editor loaded");
+  await sourceCommand(() => editor.waitForLoad("meadow-test-bundle-big"));
+  await sourceCommand(() => checkpoint("bundle editor loaded"));
 
   // Create a custom filter.
   const filterPanel = new FilterPanelComponent(page, expect);
-  await filterPanel.clickAddCustomFilter();
-  await checkpoint("custom filter modal open");
+  await sourceCommand(() => filterPanel.clickAddCustomFilter());
+  await sourceCommand(() => checkpoint("custom filter modal open"));
 
   // Match titles containing inlink.
-  await filterPanel.fillAndSaveCustomFilter({
+  await sourceCommand(() => filterPanel.fillAndSaveCustomFilter({
     name: "inlink in title",
     field: "title",
     matchType: "substring",
     value: "inlink",
-  });
-  await checkpoint("custom filter saved");
+  }));
+  await sourceCommand(() => checkpoint("custom filter saved"));
 
   // Solo the matching pages.
-  await page.waitForTimeout(250);
+  await sourceCommand(() => page.waitForTimeout(250));
 
-  await filterPanel.clickSoloOnFilter("inlink in title");
-  await addKeyFrame(filters);
-  await checkpoint("filter soloed");
+  await sourceCommand(() => filterPanel.clickSoloOnFilter("inlink in title"));
+  await sourceCommand(() => addKeyFrame(filters));
+  await sourceCommand(() => checkpoint("filter soloed"));
 
   // Select the visible pages.
-  await editor.clickSelectAll();
-  await checkpoint("all visible pages selected");
+  await sourceCommand(() => editor.clickSelectAll());
+  await sourceCommand(() => checkpoint("all visible pages selected"));
 
   // Check their titles.
-  const titles = await editor.getSelectedPageTitles();
+  const titles = await sourceCommand(() => editor.getSelectedPageTitles());
   expect(titles.length).toBe(7);
   for (const title of titles) {
     expect(title.toLowerCase()).toContain("inlink");
   }
-  await checkpoint("verified selected page titles");
+  await sourceCommand(() => checkpoint("verified selected page titles"));
 
   void bigBundle;
 
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

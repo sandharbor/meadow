@@ -26,7 +26,7 @@ test.use({ bundleMode: "single-file" });
  * Expand the folder filter and inspect recursive counts. Soloing a nested folder should
  * show only its pages.
  */
-test("folder filter expands recursive counts and solos a nested folder", async ({
+test("folder filter expands recursive counts and solos a nested folder", { annotation: { type: 'scenario-id', description: '2a6ce90c-a040-4ce7-b989-bba49761e948' } }, async ({ sourceCommand,
   page,
   checkpoint,
   assertMeadowHomeState,
@@ -37,28 +37,28 @@ test("folder filter expands recursive counts and solos a nested folder", async (
   const editor = new BundleEditorPage(page, expect);
   const filterPanel = new FilterPanelComponent(page, expect);
 
-  await workflows.navigateToBigBundle();
-  await filterPanel.expectFilterVisible("Folders");
-  await filterPanel.enableFilter("Folders");
+  await sourceCommand(() => workflows.navigateToBigBundle());
+  await sourceCommand(() => filterPanel.expectFilterVisible("Folders"));
+  await sourceCommand(() => filterPanel.enableFilter("Folders"));
 
-  await filterPanel.expectFolderCount("t024", 4);
-  await filterPanel.expandFolder("t024");
-  await filterPanel.expectFolderVisible("t024/deeper");
-  await filterPanel.expectFolderCount("t024/deeper", 1);
-  await addKeyFrame(folderFilter);
-  await checkpoint("folder tree expanded with recursive counts");
+  await sourceCommand(() => filterPanel.expectFolderCount("t024", 4));
+  await sourceCommand(() => filterPanel.expandFolder("t024"));
+  await sourceCommand(() => filterPanel.expectFolderVisible("t024/deeper"));
+  await sourceCommand(() => filterPanel.expectFolderCount("t024/deeper", 1));
+  await sourceCommand(() => addKeyFrame(folderFilter));
+  await sourceCommand(() => checkpoint("folder tree expanded with recursive counts"));
 
   // --- Test start ---
   // Solo the nested folder.
-  await filterPanel.soloFolder("t024/deeper");
-  await page.waitForTimeout(250);
-  await editor.switchToListView();
-  await expect.poll(() => editor.getListViewPageCount()).toBe(1);
-  await addKeyFrame(filters);
-  await addKeyFrame(folderFilter);
-  await checkpoint("nested folder soloed");
+  await sourceCommand(() => filterPanel.soloFolder("t024/deeper"));
+  await sourceCommand(() => page.waitForTimeout(250));
+  await sourceCommand(() => editor.switchToListView());
+  await sourceCommand(() => expect.poll(() => editor.getListViewPageCount()).toBe(1));
+  await sourceCommand(() => addKeyFrame(filters));
+  await sourceCommand(() => addKeyFrame(folderFilter));
+  await sourceCommand(() => checkpoint("nested folder soloed"));
 
   void bigBundle;
 
-  await assertMeadowHomeState();
+  await sourceCommand(() => assertMeadowHomeState());
 });

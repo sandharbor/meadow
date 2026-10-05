@@ -41,7 +41,7 @@ test.use({
  * Choose a tracked page as the Open Knowledge Format log through the settings search.
  * Generate the bundle and verify that the chosen page becomes the log.
  */
-test("OKF: choose a custom tracked log page from the settings typeahead", async ({
+test("OKF: choose a custom tracked log page from the settings typeahead", { annotation: { type: 'scenario-id', description: 'd5c7a445-f8b2-4d0a-8896-acb8452cfc86' } }, async ({ sourceCommand,
   page,
   checkpoint,
   skipMeadowHomeStateCheck,
@@ -50,45 +50,45 @@ test("OKF: choose a custom tracked log page from the settings typeahead", async 
 }) => {
   // --- Setup ---
   let delayedInitialOptions = false;
-  await page.route("**/generation/open-knowledge-format/log-page-options?*", async route => {
+  await sourceCommand(() => page.route("**/generation/open-knowledge-format/log-page-options?*", async route => {
     const requestUrl = new URL(route.request().url());
     if (!delayedInitialOptions && requestUrl.searchParams.get("query") === "") {
       delayedInitialOptions = true;
       await new Promise(resolve => setTimeout(resolve, 750));
     }
     await route.continue();
-  });
+  }));
 
   const wf = new Workflows(page, expect);
-  await wf.navigateToBigBundlePreview();
+  await sourceCommand(() => wf.navigateToBigBundlePreview());
   const modal = new PreviewPublishModal(page, expect);
-  await checkpoint("preview loaded");
+  await sourceCommand(() => checkpoint("preview loaded"));
 
   // --- Test start ---
   // Choose a custom log page.
-  await modal.openCustomizeSidebar();
+  await sourceCommand(() => modal.openCustomizeSidebar());
   const customizeTab = new CustomizeTab(page, expect);
-  const okf = await customizeTab.generationOptions.openOpenKnowledgeFormatSettings();
-  await okf.expectLogPageNotSuggested(orphanLogChoicePageName, "orphan");
-  await okf.chooseLogPage(releaseNotesPageName);
-  await addKeyFrame(customize);
-  await checkpoint("custom okf log page selected");
+  const okf = await sourceCommand(() => customizeTab.generationOptions.openOpenKnowledgeFormatSettings());
+  await sourceCommand(() => okf.expectLogPageNotSuggested(orphanLogChoicePageName, "orphan"));
+  await sourceCommand(() => okf.chooseLogPage(releaseNotesPageName));
+  await sourceCommand(() => addKeyFrame(customize));
+  await sourceCommand(() => checkpoint("custom okf log page selected"));
 
   // Generate the knowledge package.
-  await okf.save();
+  await sourceCommand(() => okf.save());
 
   const changesTab = new ChangesTab(page, expect);
-  await changesTab.waitForRegenerationComplete();
-  await addKeyFrame(openKnowledgeFormat);
-  await checkpoint("okf generation complete with custom log page");
+  await sourceCommand(() => changesTab.waitForRegenerationComplete());
+  await sourceCommand(() => addKeyFrame(openKnowledgeFormat));
+  await sourceCommand(() => checkpoint("okf generation complete with custom log page"));
 
   // Inspect the generated package files.
   const bundleDir = path.join(testServer.configDir, "bundles", Bundle.Big);
   const okfBundle = new OpenKnowledgeFormatBundle(bundleDir, expect);
-  await okfBundle.expectFileToContain("log.md", "Custom OKF release notes.");
+  await sourceCommand(() => okfBundle.expectFileToContain("log.md", "Custom OKF release notes."));
   void bigBundle;
 
-  await checkpoint("the selected log becomes the package log page");
+  await sourceCommand(() => checkpoint("the selected log becomes the package log page"));
 
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

@@ -29,7 +29,7 @@ test.use({ fixtureHome: Fixture.Minimal });
  * Add the example bundle to an empty MeadowHome and generate its preview. The example
  * should open with its expected content.
  */
-test("add example bundle from empty state and preview it", async ({
+test("add example bundle from empty state and preview it", { annotation: { type: 'scenario-id', description: 'a309795d-d7b8-4abd-8ca6-74c7f5ea2ea9' } }, async ({ sourceCommand,
   page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame,
 }) => {
   // --- Setup ---
@@ -38,29 +38,29 @@ test("add example bundle from empty state and preview it", async ({
   const previewModal = new PreviewPublishModal(page, expect);
 
   // Start at empty bundle list
-  await bundleList.goto();
-  await checkpoint("empty bundle list");
+  await sourceCommand(() => bundleList.goto());
+  await sourceCommand(() => checkpoint("empty bundle list"));
 
   // --- Test start ---
   // Add the example bundle.
-  await bundleList.clickAddExampleBundleLink();
+  await sourceCommand(() => bundleList.clickAddExampleBundleLink());
 
   // Wait for navigation into the example bundle editor
-  await editor.waitForLoad("example-bundle");
-  await checkpoint("example bundle editor loaded");
+  await sourceCommand(() => editor.waitForLoad("example-bundle"));
+  await sourceCommand(() => checkpoint("example bundle editor loaded"));
 
   // Preview the bundle.
-  await editor.clickPreview();
-  await previewModal.waitForPreviewComplete();
-  await checkpoint("preview complete");
+  await sourceCommand(() => editor.clickPreview());
+  await sourceCommand(() => previewModal.waitForPreviewComplete());
+  await sourceCommand(() => checkpoint("preview complete"));
 
   // Check the generated home page.
-  await previewModal.expectPreviewIframeHeading("Notable Mental Models");
-  await addKeyFrame(htmlGeneration);
-  await checkpoint("example bundle preview visible");
+  await sourceCommand(() => previewModal.expectPreviewIframeHeading("Notable Mental Models"));
+  await sourceCommand(() => addKeyFrame(htmlGeneration));
+  await sourceCommand(() => checkpoint("example bundle preview visible"));
 
   void exampleBundle;
   void bundles;
 
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

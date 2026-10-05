@@ -11,52 +11,52 @@ test.use({ bundleMode: "single-file" });
  * Turn off automatic tracking for newly accepted pages. A later source review should
  * remember that preference for the bundle.
  */
-test('Sourcing remembers the bundle preference to leave new pages untracked', async ({ page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+test('Sourcing remembers the bundle preference to leave new pages untracked', { annotation: { type: 'scenario-id', description: '1529fd21-a754-4e10-aa6e-d48eff2a6f10' } }, async ({ sourceCommand, page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   const workflows = new Workflows(page, expect);
-  await workflows.navigateToBigBundle();
+  await sourceCommand(() => workflows.navigateToBigBundle());
   const editor = new BundleEditorPage(page, expect);
-  await editor.waitForSourceCheck();
-  await checkpoint('the accepted source state is established before changing files');
+  await sourceCommand(() => editor.waitForSourceCheck());
+  await sourceCommand(() => checkpoint('the accepted source state is established before changing files'));
 
   // --- Test start ---
   // Add a linked page.
-  await sourceChanges.apply('add-linked-page');
-  await editor.checkSourceChanges();
-  await editor.sourceReview.open();
-  await editor.sourceReview.expectTrackNewPages(true);
-  await editor.sourceReview.setTrackNewPages(false);
-  await checkpoint('the new page is ready to accept with automatic tracking disabled');
+  await sourceCommand(() => sourceChanges.apply('add-linked-page'));
+  await sourceCommand(() => editor.checkSourceChanges());
+  await sourceCommand(() => editor.sourceReview.open());
+  await sourceCommand(() => editor.sourceReview.expectTrackNewPages(true));
+  await sourceCommand(() => editor.sourceReview.setTrackNewPages(false));
+  await sourceCommand(() => checkpoint('the new page is ready to accept with automatic tracking disabled'));
 
   // Accept the source update.
-  await editor.sourceReview.accept();
-  await editor.switchToListView();
-  await editor.clickListViewRowByExactName('added field notes');
-  await new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect).expectPill(Pill.NotTracked);
-  await addKeyFrame(sourceSnapshot);
-  await checkpoint('turning tracking off leaves the accepted addition untracked');
+  await sourceCommand(() => editor.sourceReview.accept());
+  await sourceCommand(() => editor.switchToListView());
+  await sourceCommand(() => editor.clickListViewRowByExactName('added field notes'));
+  await sourceCommand(() => new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect).expectPill(Pill.NotTracked));
+  await sourceCommand(() => addKeyFrame(sourceSnapshot));
+  await sourceCommand(() => checkpoint('turning tracking off leaves the accepted addition untracked'));
 
   // Reopen the bundle.
-  await editor.clickBackToBundles();
-  await new BundleListPage(page, expect).clickBundle(Bundle.Big);
-  await editor.waitForLoad(Bundle.Big);
-  await editor.waitForSourceCheck();
-  await checkpoint('the bundle is reopened with its saved tracking preference');
+  await sourceCommand(() => editor.clickBackToBundles());
+  await sourceCommand(() => new BundleListPage(page, expect).clickBundle(Bundle.Big));
+  await sourceCommand(() => editor.waitForLoad(Bundle.Big));
+  await sourceCommand(() => editor.waitForSourceCheck());
+  await sourceCommand(() => checkpoint('the bundle is reopened with its saved tracking preference'));
 
   // Add an embedded image.
-  await sourceChanges.apply('add-embedded-image');
-  await editor.checkSourceChanges();
-  await editor.sourceReview.open();
-  await editor.sourceReview.expectTrackNewPages(false);
-  await addKeyFrame(sourceSnapshot);
-  await checkpoint('a later source review restores the saved bundle preference');
+  await sourceCommand(() => sourceChanges.apply('add-embedded-image'));
+  await sourceCommand(() => editor.checkSourceChanges());
+  await sourceCommand(() => editor.sourceReview.open());
+  await sourceCommand(() => editor.sourceReview.expectTrackNewPages(false));
+  await sourceCommand(() => addKeyFrame(sourceSnapshot));
+  await sourceCommand(() => checkpoint('a later source review restores the saved bundle preference'));
 
   // Accept the source update.
-  await editor.sourceReview.accept();
-  await editor.switchToListView();
-  await editor.clickListViewRowByExactName('added sunflower');
-  await new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect).expectPill(Pill.NotTracked);
-  await checkpoint('the later image also remains untracked');
+  await sourceCommand(() => editor.sourceReview.accept());
+  await sourceCommand(() => editor.switchToListView());
+  await sourceCommand(() => editor.clickListViewRowByExactName('added sunflower'));
+  await sourceCommand(() => new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect).expectPill(Pill.NotTracked));
+  await sourceCommand(() => checkpoint('the later image also remains untracked'));
 
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

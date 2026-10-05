@@ -13,37 +13,37 @@ test.use({ fixtureHome: 'home_fixture_multi_source' });
  * Create a bundle from ordered page and folder selections across sources. The initial
  * capture should preserve that order without asking for another acceptance step.
  */
-test('Multi-source initial creation captures ordered mixed selections without an extra acceptance step', async ({ page, testServer, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
+test('Multi-source initial creation captures ordered mixed selections without an extra acceptance step', { annotation: { type: 'scenario-id', description: 'ae17062f-0f31-4721-9594-504a8391aa6b' } }, async ({ sourceCommand, page, testServer, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
-  await list.goto();
-  await list.clickCreateNewBundle();
+  await sourceCommand(() => list.goto());
+  await sourceCommand(() => list.clickCreateNewBundle());
   const dialog = page.getByRole('dialog', { name: 'Create New Bundle', exact: true });
-  await dialog.getByRole('radio', { name: /Sources and mixed starts/ }).click();
-  await dialog.getByRole('textbox', { name: 'Bundle home title', exact: true }).fill('Multi-source created');
+  await sourceCommand(() => dialog.getByRole('radio', { name: /Sources and mixed starts/ }).click());
+  await sourceCommand(() => dialog.getByRole('textbox', { name: 'Bundle home title', exact: true }).fill('Multi-source created'));
   for (const [index, name] of ['notes', 'research', 'reference'].entries()) {
-    await dialog.getByRole('button', { name: 'Add source', exact: true }).click();
-    await dialog.getByRole('textbox', { name: `Source name ${index + 1}`, exact: true }).fill(name);
-    await dialog.getByRole('textbox', { name: `Source directory ${index + 1}`, exact: true }).fill(path.join(testServer.sourceGraphsDir, 'multi-source', name));
+    await sourceCommand(() => dialog.getByRole('button', { name: 'Add source', exact: true }).click());
+    await sourceCommand(() => dialog.getByRole('textbox', { name: `Source name ${index + 1}`, exact: true }).fill(name));
+    await sourceCommand(() => dialog.getByRole('textbox', { name: `Source directory ${index + 1}`, exact: true }).fill(path.join(testServer.sourceGraphsDir, 'multi-source', name)));
   }
   const createModal = new CreateAndEditBundleModal(page, expect);
-  await createModal.chooseStartingSelectionPath(1, 'Sta', 'Start', 'Start.md');
-  await dialog.getByRole('button', { name: 'Add starting selection', exact: true }).click();
-  await dialog.getByRole('combobox', { name: 'Source for starting selection 2', exact: true }).selectOption({ label: 'research' });
-  await dialog.getByRole('combobox', { name: 'Kind for starting selection 2', exact: true }).selectOption('folder');
-  await createModal.chooseStartingSelectionPath(2, 'sa', 'Same', 'Same');
-  await dialog.getByRole('spinbutton', { name: 'Default outlink depth', exact: true }).fill('2');
-  await dialog.getByRole('spinbutton', { name: 'Default inlink depth', exact: true }).fill('1');
-  await addKeyFrame(bundleSource, startingSelection);
-  await checkpoint('sources define admission while ordered files and folders define the starts');
+  await sourceCommand(() => createModal.chooseStartingSelectionPath(1, 'Sta', 'Start', 'Start.md'));
+  await sourceCommand(() => dialog.getByRole('button', { name: 'Add starting selection', exact: true }).click());
+  await sourceCommand(() => dialog.getByRole('combobox', { name: 'Source for starting selection 2', exact: true }).selectOption({ label: 'research' }));
+  await sourceCommand(() => dialog.getByRole('combobox', { name: 'Kind for starting selection 2', exact: true }).selectOption('folder'));
+  await sourceCommand(() => createModal.chooseStartingSelectionPath(2, 'sa', 'Same', 'Same'));
+  await sourceCommand(() => dialog.getByRole('spinbutton', { name: 'Default outlink depth', exact: true }).fill('2'));
+  await sourceCommand(() => dialog.getByRole('spinbutton', { name: 'Default inlink depth', exact: true }).fill('1'));
+  await sourceCommand(() => addKeyFrame(bundleSource, startingSelection));
+  await sourceCommand(() => checkpoint('sources define admission while ordered files and folders define the starts'));
 
   // --- Test start ---
   // Create the bundle.
-  await dialog.getByRole('button', { name: 'Create Bundle', exact: true }).click();
+  await sourceCommand(() => dialog.getByRole('button', { name: 'Create Bundle', exact: true }).click());
   const editor = new BundleEditorPage(page, expect);
-  await editor.waitForLoad('multi-source-created');
-  await editor.waitForSourceCheck();
-  await editor.sourceReview.expectClosed();
+  await sourceCommand(() => editor.waitForLoad('multi-source-created'));
+  await sourceCommand(() => editor.waitForSourceCheck());
+  await sourceCommand(() => editor.sourceReview.expectClosed());
   const bundleConfig = new MeadowHomeBundleConfig(testServer.configDir, 'multi-source-created', expect);
   const config = bundleConfig.read();
   const nodes = bundleConfig.readNodes();
@@ -61,10 +61,10 @@ test('Multi-source initial creation captures ordered mixed selections without an
     expect(response.ok()).toBe(true);
     return (await response.json()).tracks;
   };
-  expect(await lookup('notes')).toBe(true);
-  expect(await lookup('research')).toBe(false);
-  await addKeyFrame(startingSelection);
-  await checkpoint('initial creation captures the sources and preserves initial tracking rules');
+  expect(await sourceCommand(() => lookup('notes'))).toBe(true);
+  expect(await sourceCommand(() => lookup('research'))).toBe(false);
+  await sourceCommand(() => addKeyFrame(startingSelection));
+  await sourceCommand(() => checkpoint('initial creation captures the sources and preserves initial tracking rules'));
 
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

@@ -43,7 +43,7 @@ test.use({
  * Use a source index page and choose another tracked page as the Open Knowledge Format
  * log. Check that the export uses both selections correctly.
  */
-test("OKF: auto-detect index.md and choose a tracked non-log page as log.md", async ({
+test("OKF: auto-detect index.md and choose a tracked non-log page as log.md", { annotation: { type: 'scenario-id', description: '04a0b687-06a3-43d2-a523-ea09ea749045' } }, async ({ sourceCommand,
   page,
   checkpoint,
   skipMeadowHomeStateCheck,
@@ -52,49 +52,49 @@ test("OKF: auto-detect index.md and choose a tracked non-log page as log.md", as
 }) => {
   // --- Setup ---
   const wf = new Workflows(page, expect);
-  await wf.navigateToBigBundlePreview();
+  await sourceCommand(() => wf.navigateToBigBundlePreview());
   const optionsUrl = `/api/bundles/${Bundle.Big}/generation/open-knowledge-format/log-page-options?query=OKF&limit=200`;
-  const concurrentOptions = await Promise.all(
+  const concurrentOptions = await sourceCommand(() => Promise.all(
     Array.from({ length: 6 }, () => page.request.get(optionsUrl)),
-  );
+  ));
   for (const response of concurrentOptions) {
-    expect(response.ok(), await response.text()).toBe(true);
-    const options = await response.json() as { pages: Array<{ title: string }> };
+    expect(response.ok(), await sourceCommand(() => response.text())).toBe(true);
+    const options = await sourceCommand(() => response.json()) as { pages: Array<{ title: string }> };
     expect(options.pages.map(candidate => candidate.title)).toContain(chosenLogPageName);
     expect(options.pages.map(candidate => candidate.title)).not.toContain(orphanLogSubstitutePageName);
   }
   const modal = new PreviewPublishModal(page, expect);
-  await checkpoint("preview loaded");
+  await sourceCommand(() => checkpoint("preview loaded"));
 
   // --- Test start ---
   // Choose the index and log pages.
-  await modal.openCustomizeSidebar();
+  await sourceCommand(() => modal.openCustomizeSidebar());
   const customizeTab = new CustomizeTab(page, expect);
-  const okf = await customizeTab.generationOptions.openOpenKnowledgeFormatSettings();
-  await okf.expectSelectedIndex(sourceIndexPageName, "root");
-  await okf.expectNoReachableLogPageFound();
-  await okf.expectLogPageNotSuggested(orphanLogSubstitutePageName, "orphan");
-  await okf.chooseLogPage(chosenLogPageName);
-  await addKeyFrame(customize);
-  await checkpoint("auto index and custom log selected");
+  const okf = await sourceCommand(() => customizeTab.generationOptions.openOpenKnowledgeFormatSettings());
+  await sourceCommand(() => okf.expectSelectedIndex(sourceIndexPageName, "root"));
+  await sourceCommand(() => okf.expectNoReachableLogPageFound());
+  await sourceCommand(() => okf.expectLogPageNotSuggested(orphanLogSubstitutePageName, "orphan"));
+  await sourceCommand(() => okf.chooseLogPage(chosenLogPageName));
+  await sourceCommand(() => addKeyFrame(customize));
+  await sourceCommand(() => checkpoint("auto index and custom log selected"));
 
   // Generate the knowledge package.
-  await okf.save();
+  await sourceCommand(() => okf.save());
 
   const changesTab = new ChangesTab(page, expect);
-  await changesTab.waitForRegenerationComplete();
-  await addKeyFrame(openKnowledgeFormat);
-  await checkpoint("okf generation complete with auto index and custom log");
+  await sourceCommand(() => changesTab.waitForRegenerationComplete());
+  await sourceCommand(() => addKeyFrame(openKnowledgeFormat));
+  await sourceCommand(() => checkpoint("okf generation complete with auto index and custom log"));
 
   // Inspect the generated package files.
   const bundleDir = path.join(testServer.configDir, "bundles", Bundle.Big);
   const okfBundle = new OpenKnowledgeFormatBundle(bundleDir, expect);
-  await okfBundle.expectFileToContain("index.md", "Auto OKF index source page.");
-  await okfBundle.expectFileToContain("log.md", "Chosen OKF log substitute.");
+  await sourceCommand(() => okfBundle.expectFileToContain("index.md", "Auto OKF index source page."));
+  await sourceCommand(() => okfBundle.expectFileToContain("log.md", "Chosen OKF log substitute."));
   okfBundle.expectFileToBeAbsent("index-original.md");
   void bigBundle;
 
-  await checkpoint("the package contains the automatic index and the selected custom log");
+  await sourceCommand(() => checkpoint("the package contains the automatic index and the selected custom log"));
 
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

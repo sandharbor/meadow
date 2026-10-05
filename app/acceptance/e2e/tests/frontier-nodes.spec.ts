@@ -25,81 +25,81 @@ test.use({ bundleMode: "single-file" });
  * Inspect pages beyond the traversal boundary and change the traversal depth. The frontier
  * should update as pages enter or leave the working graph.
  */
-test("frontier nodes show filtered pages and respond to depth changes", async ({ page, checkpoint, assertMeadowHomeState, addKeyFrame }) => {
+test("frontier nodes show filtered pages and respond to depth changes", { annotation: { type: 'scenario-id', description: '360daa04-8a00-4999-96b2-4e655a7fba25' } }, async ({ sourceCommand, page, checkpoint, assertMeadowHomeState, addKeyFrame }) => {
   // --- Setup ---
   const bundleList = new BundleListPage(page, expect);
-  await bundleList.goto();
-  await checkpoint("bundle list loaded");
+  await sourceCommand(() => bundleList.goto());
+  await sourceCommand(() => checkpoint("bundle list loaded"));
 
   // --- Test start ---
   // Open the big bundle.
-  await bundleList.clickBundle("meadow-test-bundle-big");
+  await sourceCommand(() => bundleList.clickBundle("meadow-test-bundle-big"));
   const editor = new BundleEditorPage(page, expect);
-  await editor.waitForLoad("meadow-test-bundle-big");
-  await checkpoint("bundle editor loaded");
+  await sourceCommand(() => editor.waitForLoad("meadow-test-bundle-big"));
+  await sourceCommand(() => checkpoint("bundle editor loaded"));
 
-  await editor.sourceReview.open();
+  await sourceCommand(() => editor.sourceReview.open());
 
   // Enable frontier pages.
   const filterPanel = new FilterPanelComponent(page, expect);
-  await filterPanel.enableFilter("Frontier");
-  await page.waitForTimeout(250);
-  await checkpoint("frontier pages shown");
+  await sourceCommand(() => filterPanel.enableFilter("Frontier"));
+  await sourceCommand(() => page.waitForTimeout(250));
+  await sourceCommand(() => checkpoint("frontier pages shown"));
 
   // Solo the frontier.
-  await filterPanel.clickSoloOnFilter("Frontier");
-  await addKeyFrame(frontier);
-  await checkpoint("frontier filter soloed");
+  await sourceCommand(() => filterPanel.clickSoloOnFilter("Frontier"));
+  await sourceCommand(() => addKeyFrame(frontier));
+  await sourceCommand(() => checkpoint("frontier filter soloed"));
 
   // Inspect the nearby frontier pages.
-  await editor.switchToListView();
-  await page.waitForTimeout(250);
-  const countAtDepth1 = await editor.getListViewPageCount();
+  await sourceCommand(() => editor.switchToListView());
+  await sourceCommand(() => page.waitForTimeout(250));
+  const countAtDepth1 = await sourceCommand(() => editor.getListViewPageCount());
   expect(countAtDepth1).toBe(7);
-  await checkpoint("list view with 7 frontier pages at depth 1");
+  await sourceCommand(() => checkpoint("list view with 7 frontier pages at depth 1"));
 
   // Extend the frontier depth.
   // Increase frontier depth to 2 and verify 10 bundle pages
   // Wait longer than the 300ms debounce in FilterPanel + API fetch time
-  await filterPanel.setFilterThresholdValue("Frontier", 2);
-  await page.waitForTimeout(1000);
-  const countAtDepth2 = await editor.getListViewPageCount();
+  await sourceCommand(() => filterPanel.setFilterThresholdValue("Frontier", 2));
+  await sourceCommand(() => page.waitForTimeout(1000));
+  const countAtDepth2 = await sourceCommand(() => editor.getListViewPageCount());
   expect(countAtDepth2).toBe(10);
-  await checkpoint("list view with 10 frontier pages at depth 2");
+  await sourceCommand(() => checkpoint("list view with 10 frontier pages at depth 2"));
 
   // Inspect a distant frontier page.
-  await editor.clickListViewRow(9);
-  await page.waitForTimeout(250);
+  await sourceCommand(() => editor.clickListViewRow(9));
+  await sourceCommand(() => page.waitForTimeout(250));
 
   // Get the selected page detail card from the sidebar
   const selectedPageRoot = editor.getSelectedPageRoot();
   const detail = new SelectedPageDetailComponent(selectedPageRoot, expect);
-  await detail.openDetails();
-  await page.waitForTimeout(250);
+  await sourceCommand(() => detail.openDetails());
+  await sourceCommand(() => page.waitForTimeout(250));
 
   // Frontier pages should not be trackable or blacklistable
-  await detail.expectButtonDisabled(ActionButton.Track);
-  await detail.expectButtonDisabled(ActionButton.Blacklist);
+  await sourceCommand(() => detail.expectButtonDisabled(ActionButton.Track));
+  await sourceCommand(() => detail.expectButtonDisabled(ActionButton.Blacklist));
 
   // Should show "Frontier" pill but not "Tracked" pill
-  await detail.expectPill(Pill.Frontier);
-  await detail.expectNoPill(Pill.Tracked);
-  await checkpoint("frontier page details with disabled track and blacklist");
+  await sourceCommand(() => detail.expectPill(Pill.Frontier));
+  await sourceCommand(() => detail.expectNoPill(Pill.Tracked));
+  await sourceCommand(() => checkpoint("frontier page details with disabled track and blacklist"));
 
   // Explain and copy the frontier page.
-  await detail.openAndCloseTraversalPath();
-  await editor.openAndCloseCopySelectedPages(".md");
-  await checkpoint("the frontier page's traversal path and copy dialogs open and close");
+  await sourceCommand(() => detail.openAndCloseTraversalPath());
+  await sourceCommand(() => editor.openAndCloseCopySelectedPages(".md"));
+  await sourceCommand(() => checkpoint("the frontier page's traversal path and copy dialogs open and close"));
 
   // Return to the full graph.
-  await editor.switchToGraphView();
-  await page.waitForTimeout(250);
-  await filterPanel.clickSoloOnFilter("Frontier");
-  await checkpoint("frontier depth 2 with all nodes showing");
+  await sourceCommand(() => editor.switchToGraphView());
+  await sourceCommand(() => page.waitForTimeout(250));
+  await sourceCommand(() => filterPanel.clickSoloOnFilter("Frontier"));
+  await sourceCommand(() => checkpoint("frontier depth 2 with all nodes showing"));
 
   void bigBundle;
 
-  await editor.sourceReview.discard();
-  await checkpoint("frontier exploration leaves accepted material unchanged");
-  await assertMeadowHomeState();
+  await sourceCommand(() => editor.sourceReview.discard());
+  await sourceCommand(() => checkpoint("frontier exploration leaves accepted material unchanged"));
+  await sourceCommand(() => assertMeadowHomeState());
 });

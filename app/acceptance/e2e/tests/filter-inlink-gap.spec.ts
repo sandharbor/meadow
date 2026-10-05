@@ -25,45 +25,45 @@ test.use({ bundleMode: "single-file" });
  * Enable the incoming-link gap filter. Check its calculated threshold and the pages
  * selected by that threshold.
  */
-test("inlink gap filter auto-calculates threshold and selects correct pages", async ({ page, checkpoint, assertMeadowHomeState, addKeyFrame }) => {
+test("inlink gap filter auto-calculates threshold and selects correct pages", { annotation: { type: 'scenario-id', description: '80a06cf6-e286-4a89-926f-16bc96b26deb' } }, async ({ sourceCommand, page, checkpoint, assertMeadowHomeState, addKeyFrame }) => {
   // --- Setup ---
   const bundleList = new BundleListPage(page, expect);
-  await bundleList.goto();
-  await checkpoint("bundle list loaded");
+  await sourceCommand(() => bundleList.goto());
+  await sourceCommand(() => checkpoint("bundle list loaded"));
 
   // --- Test start ---
   // Open the big bundle.
-  await bundleList.clickBundle("meadow-test-bundle-big");
+  await sourceCommand(() => bundleList.clickBundle("meadow-test-bundle-big"));
   const editor = new BundleEditorPage(page, expect);
-  await editor.waitForLoad("meadow-test-bundle-big");
-  await checkpoint("bundle editor loaded");
+  await sourceCommand(() => editor.waitForLoad("meadow-test-bundle-big"));
+  await sourceCommand(() => checkpoint("bundle editor loaded"));
 
   // Enable the inlink-gap filter.
   const filterPanel = new FilterPanelComponent(page, expect);
-  await filterPanel.enableFilter("Inlink Gap");
-  await page.waitForTimeout(250);
-  await checkpoint("inlink gap filter enabled");
+  await sourceCommand(() => filterPanel.enableFilter("Inlink Gap"));
+  await sourceCommand(() => page.waitForTimeout(250));
+  await sourceCommand(() => checkpoint("inlink gap filter enabled"));
 
   // Check the automatic threshold.
-  const threshold = await filterPanel.getFilterThresholdValue("Inlink Gap");
+  const threshold = await sourceCommand(() => filterPanel.getFilterThresholdValue("Inlink Gap"));
   expect(threshold).toBe(3);
-  await addKeyFrame(linkGap);
-  await checkpoint("inlink gap threshold is 3");
+  await sourceCommand(() => addKeyFrame(linkGap));
+  await sourceCommand(() => checkpoint("inlink gap threshold is 3"));
 
   // Solo the matching pages.
-  await filterPanel.clickSoloOnFilter("Inlink Gap");
-  await checkpoint("inlink gap filter soloed");
+  await sourceCommand(() => filterPanel.clickSoloOnFilter("Inlink Gap"));
+  await sourceCommand(() => checkpoint("inlink gap filter soloed"));
 
   // Select the visible pages.
-  await editor.clickSelectAll();
-  await checkpoint("all visible pages selected");
+  await sourceCommand(() => editor.clickSelectAll());
+  await sourceCommand(() => checkpoint("all visible pages selected"));
 
   // Check the selection.
-  const titles = await editor.getSelectedPageTitles();
+  const titles = await sourceCommand(() => editor.getSelectedPageTitles());
   expect(titles.length).toBe(1);
-  await checkpoint("verified one page selected with inlink gap");
+  await sourceCommand(() => checkpoint("verified one page selected with inlink gap"));
 
   void bigBundle;
 
-  await assertMeadowHomeState();
+  await sourceCommand(() => assertMeadowHomeState());
 });

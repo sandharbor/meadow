@@ -941,6 +941,12 @@ export const test = base.extend<{
       // Create artifact directory
       const artifactDir = getTestArtifactDirectory(testInfo.title);
       mkdirSync(artifactDir, { recursive: true });
+      writeFileSync(path.join(artifactDir, 'scenario-identity.json'), JSON.stringify({
+        scenarioId: testInfo.annotations.find(annotation => annotation.type === 'scenario-id')?.description,
+        codeRevision: execSync('git rev-parse HEAD', { cwd: REPO_ROOT, encoding: 'utf8' }).trim(),
+        uncommittedCode: Boolean(execSync('git status --porcelain', { cwd: REPO_ROOT, encoding: 'utf8' }).trim()),
+        testFile: testInfo.file,
+      }));
 
       // Record start time
       writeFileSync(

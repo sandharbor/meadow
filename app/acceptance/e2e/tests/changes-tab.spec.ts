@@ -28,89 +28,89 @@ test.use({ serialGroup: "generated-bundle-versioning" });
  * Generate a bundle's first version and inspect its changes before saving. After saving,
  * the same review should show no outstanding changes.
  */
-test("V03 first generated version is reviewable before and after save", async ({ page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame }) => {
+test("V03 first generated version is reviewable before and after save", { annotation: { type: 'scenario-id', description: 'cd2d2768-5c81-4558-8fbe-8dc5d4c5f09b' } }, async ({ sourceCommand, page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame }) => {
   // --- Setup ---
   // Navigate to big bundle preview (starts on step 1 — Review)
   const wf = new Workflows(page, expect);
-  await wf.navigateToBigBundlePreview();
+  await sourceCommand(() => wf.navigateToBigBundlePreview());
   const modal = new PreviewPublishModal(page, expect);
   const changesTab = new ChangesTab(page, expect);
   const versions = new GeneratedBundleVersions(page, expect, Bundle.Big);
-  await checkpoint("step 1 - preview loaded");
+  await sourceCommand(() => checkpoint("step 1 - preview loaded"));
 
   // --- Test start ---
   // Inspect the initial generated version.
-  await modal.expectSaveChangesVisible();
-  await modal.expectCreateNewVersionHidden();
+  await sourceCommand(() => modal.expectSaveChangesVisible());
+  await sourceCommand(() => modal.expectCreateNewVersionHidden());
 
-  const initialVersion = await versions.waitForOnlyVersion();
+  const initialVersion = await sourceCommand(() => versions.waitForOnlyVersion());
   const versionId = initialVersion.versionId;
   expect(versionId).toMatch(/^v[A-Za-z0-9]{6}$/);
   expect(initialVersion).toMatchObject({ displayState: "unsaved", savedGenerationId: null });
 
-  await modal.clickVersionsTab();
-  await modal.expectSaveChangesHidden();
-  await modal.expectCreateNewVersionVisible();
-  await modal.expectSingleVersionExplanation();
-  await expect(page.getByText(versionId, { exact: true })).toHaveCount(0);
-  await addKeyFrame(versioning);
-  await checkpoint("first generated version shown as unsaved");
+  await sourceCommand(() => modal.clickVersionsTab());
+  await sourceCommand(() => modal.expectSaveChangesHidden());
+  await sourceCommand(() => modal.expectCreateNewVersionVisible());
+  await sourceCommand(() => modal.expectSingleVersionExplanation());
+  await sourceCommand(() => expect(page.getByText(versionId, { exact: true })).toHaveCount(0));
+  await sourceCommand(() => addKeyFrame(versioning));
+  await sourceCommand(() => checkpoint("first generated version shown as unsaved"));
 
   // Review the new files.
-  await modal.clickChangesTab();
-  await modal.expectSaveChangesVisible();
-  await modal.expectCreateNewVersionHidden();
+  await sourceCommand(() => modal.clickChangesTab());
+  await sourceCommand(() => modal.expectSaveChangesVisible());
+  await sourceCommand(() => modal.expectCreateNewVersionHidden());
 
   // Changes tab badge should show a positive number (initial preview has new files)
-  await changesTab.expectBadgeVisible();
+  await sourceCommand(() => changesTab.expectBadgeVisible());
 
   // Go to Changes tab — assert only new files (A indicators, no M or D)
-  await modal.clickChangesTab();
-  await changesTab.expectOnlyNewFiles();
-  await changesTab.expectFolderCollapsed("_mw_assets");
-  await changesTab.expandFolder("_mw_assets");
-  await changesTab.expectFolderCollapsed("index");
-  await changesTab.expectSelectedFile("t001 ---- child 2.html");
-  await checkpoint("only new files in changes tab");
+  await sourceCommand(() => modal.clickChangesTab());
+  await sourceCommand(() => changesTab.expectOnlyNewFiles());
+  await sourceCommand(() => changesTab.expectFolderCollapsed("_mw_assets"));
+  await sourceCommand(() => changesTab.expandFolder("_mw_assets"));
+  await sourceCommand(() => changesTab.expectFolderCollapsed("index"));
+  await sourceCommand(() => changesTab.expectSelectedFile("t001 ---- child 2.html"));
+  await sourceCommand(() => checkpoint("only new files in changes tab"));
 
   // Read the file diff.
-  await changesTab.fileDetails.ensureOnDiffTab();
-  await changesTab.fileDetails.clickCodeSubTab();
-  await changesTab.fileDetails.expectNewFileHeader();
-  await addKeyFrame(htmlGeneration);
-  await addKeyFrame(changesTabDoc);
-  await checkpoint("new file diff header shown");
+  await sourceCommand(() => changesTab.fileDetails.ensureOnDiffTab());
+  await sourceCommand(() => changesTab.fileDetails.clickCodeSubTab());
+  await sourceCommand(() => changesTab.fileDetails.expectNewFileHeader());
+  await sourceCommand(() => addKeyFrame(htmlGeneration));
+  await sourceCommand(() => addKeyFrame(changesTabDoc));
+  await sourceCommand(() => checkpoint("new file diff header shown"));
 
   // Save the generated version.
-  await modal.clickSaveChanges();
-  await modal.waitForSaveComplete();
-  await modal.expectShareVersionSelectorHidden();
-  await checkpoint("save completed - on step 2");
+  await sourceCommand(() => modal.clickSaveChanges());
+  await sourceCommand(() => modal.waitForSaveComplete());
+  await sourceCommand(() => modal.expectShareVersionSelectorHidden());
+  await sourceCommand(() => checkpoint("save completed - on step 2"));
 
   // Return to review.
-  await modal.clickStep1Review();
-  await checkpoint("back on step 1 after save");
+  await sourceCommand(() => modal.clickStep1Review());
+  await sourceCommand(() => checkpoint("back on step 1 after save"));
 
   // Verify the saved version has no changes.
-  await changesTab.expectNoBadge();
+  await sourceCommand(() => changesTab.expectNoBadge());
 
-  await modal.clickVersionsTab();
-  await modal.expectSingleVersionExplanation();
-  await expect(page.getByText(versionId, { exact: true })).toHaveCount(0);
+  await sourceCommand(() => modal.clickVersionsTab());
+  await sourceCommand(() => modal.expectSingleVersionExplanation());
+  await sourceCommand(() => expect(page.getByText(versionId, { exact: true })).toHaveCount(0));
   const hooksReloaded = page.waitForResponse(response =>
     response.request().method() === "GET"
       && new URL(response.url()).pathname.endsWith(
         "/api/bundles/meadow-test-bundle-big/generation/hooks",
       ),
   );
-  await modal.clickChangesTab();
+  await sourceCommand(() => modal.clickChangesTab());
 
   // Go to Changes tab — assert "No changed files"
-  await changesTab.expectNoChangedFiles();
-  expect((await hooksReloaded).ok()).toBe(true);
-  await checkpoint("no changed files after save");
+  await sourceCommand(() => changesTab.expectNoChangedFiles());
+  expect((await sourceCommand(() => hooksReloaded)).ok()).toBe(true);
+  await sourceCommand(() => checkpoint("no changed files after save"));
 
   void bigBundle;
 
-  await skipMeadowHomeStateCheck();
+  await sourceCommand(() => skipMeadowHomeStateCheck());
 });

@@ -26,7 +26,7 @@ test.use({ bundleMode: "single-file" });
  * Build a filter expression with two exclusions and drag one onto the other. The
  * expression should preserve the intended ordering and result.
  */
-test("without mix terms can be reordered by dropping one directly on the other", async ({
+test("without mix terms can be reordered by dropping one directly on the other", { annotation: { type: 'scenario-id', description: '9a8a5d08-d311-4deb-81a8-c6b2a608761e' } }, async ({ sourceCommand,
   page,
   checkpoint,
   assertMeadowHomeState,
@@ -34,39 +34,39 @@ test("without mix terms can be reordered by dropping one directly on the other",
 }) => {
   // --- Setup ---
   const workflows = new Workflows(page, expect);
-  await workflows.navigateToBigBundle();
+  await sourceCommand(() => workflows.navigateToBigBundle());
 
   const editor = new BundleEditorPage(page, expect);
   const filterPanel = new FilterPanelComponent(page, expect);
 
-  await checkpoint("the bundle is ready to combine filters");
+  await sourceCommand(() => checkpoint("the bundle is ready to combine filters"));
 
   // --- Test start ---
   // Build a selection without untracked pages.
-  await editor.clickSelectAll();
-  await editor.clickSoloSelection();
-  await filterPanel.enableAndSoloFilter("Untracked");
+  await sourceCommand(() => editor.clickSelectAll());
+  await sourceCommand(() => editor.clickSoloSelection());
+  await sourceCommand(() => filterPanel.enableAndSoloFilter("Untracked"));
 
-  await filterPanel.openMixFilters();
-  await filterPanel.expectMixTermOrder(["Selection Solo", "Untracked"]);
-  await filterPanel.chooseMixOperator("Without");
-  await filterPanel.closeMixFilters();
-  await editor.expectGraphViewHasPages();
-  await checkpoint("selection without untracked pages");
+  await sourceCommand(() => filterPanel.openMixFilters());
+  await sourceCommand(() => filterPanel.expectMixTermOrder(["Selection Solo", "Untracked"]));
+  await sourceCommand(() => filterPanel.chooseMixOperator("Without"));
+  await sourceCommand(() => filterPanel.closeMixFilters());
+  await sourceCommand(() => editor.expectGraphViewHasPages());
+  await sourceCommand(() => checkpoint("selection without untracked pages"));
 
   // Reverse the filter order.
-  await filterPanel.openMixFilters();
-  await filterPanel.dragMixTermOnto("Selection Solo", "Untracked");
-  await filterPanel.expectMixTermOrder(["Untracked", "Selection Solo"]);
-  await addKeyFrame(filters);
-  await checkpoint("without terms reordered directly");
+  await sourceCommand(() => filterPanel.openMixFilters());
+  await sourceCommand(() => filterPanel.dragMixTermOnto("Selection Solo", "Untracked"));
+  await sourceCommand(() => filterPanel.expectMixTermOrder(["Untracked", "Selection Solo"]));
+  await sourceCommand(() => addKeyFrame(filters));
+  await sourceCommand(() => checkpoint("without terms reordered directly"));
 
   // Check the reversed result.
-  await filterPanel.closeMixFilters();
-  await editor.expectGraphViewPageCount(0);
-  await checkpoint("untracked without the selected pages is empty");
+  await sourceCommand(() => filterPanel.closeMixFilters());
+  await sourceCommand(() => editor.expectGraphViewPageCount(0));
+  await sourceCommand(() => checkpoint("untracked without the selected pages is empty"));
 
   void bigBundle;
 
-  await assertMeadowHomeState();
+  await sourceCommand(() => assertMeadowHomeState());
 });
