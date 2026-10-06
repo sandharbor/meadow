@@ -2,7 +2,7 @@
 
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { PathChange, splitPathChange } from '../../src/shared/components/PathChange.js';
+import { PathChange, DirectoryChange, splitPathChange } from '../../src/shared/components/PathChange.js';
 import { SourceNamesProvider, splitSourcePathLabel } from '../../src/shared/components/SourceNames.js';
 
 describe('source path changes', () => {
@@ -51,5 +51,17 @@ describe('source path changes', () => {
     expect(screen.getByRole('group')).toHaveAttribute('title', `${directory}old.md → ${directory}new.md`);
     expect(screen.getByTestId('source-path-before')).toHaveTextContent(`${directory}old.md`);
     expect(screen.getByTestId('source-path-after')).toHaveTextContent(`${directory}new.md`);
+  });
+});
+
+
+describe('directory change overviews', () => {
+  it('formats registered sources while highlighting only the added directory', () => {
+    const { container } = render(<SourceNamesProvider sources={[{ id: 'source000001', name: 'mwd' }]}>
+      <DirectoryChange before="_mw_sources/source000001" after="_mw_sources/source000001/mwd development" />
+    </SourceNamesProvider>);
+    expect(screen.getByRole('group')).toHaveAccessibleName('Changed directories: mwd:// → mwd://mwd development');
+    expect(container.querySelector('ins')).toHaveTextContent('mwd development');
+    expect(container.querySelector('del')).toBeNull();
   });
 });

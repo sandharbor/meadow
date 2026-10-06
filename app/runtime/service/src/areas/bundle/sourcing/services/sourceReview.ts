@@ -3,6 +3,7 @@
 import { loadTrackingRecords } from '../../../../shared/bundle-node/trackingRecords.js';
 import { sourceFilePathToBundleNodeKey } from '../../../../shared/bundle-node/nodeKeys.js';
 import { diagnoseOrphanConnection } from './orphanDiagnosis.js';
+import { sourceMoveSimilarity, sourceTextProfile } from './sourceMoveSimilarity.js';
 import { findGroupedSourceMoves } from './sourceMoveGroups.js';
 import { sourceTraversalGraph } from './sourceTraversalGraph.js';
 import { loadPendingSourceProposal } from './proposalStore.js';
@@ -32,40 +33,12 @@ import {
   type SourceSnapshot,
 } from '../../../../shared/source-snapshot/sourceSnapshots.js';
 
-function blocks(contents: string): Map<string, number> {
-  const result = new Map<string, number>();
-  for (const block of contents.split(/\n\s*\n/)) {
-    const normalized = block.replace(/\s+/g, ' ').trim();
-    if (normalized.length >= 20) result.set(sha256(normalized), normalized.length);
-  }
-  return result;
-}
-
-function contentSimilarity(a: Map<string, number>, b: Map<string, number>): { similarity: number; unchanged: number; total: number } {
-  const shared = [...a].filter(([hash]) => b.has(hash));
-  const weight = (values: Map<string, number>) => [...values.values()].reduce((sum, size) => sum + size, 0);
-  const denominator = Math.max(weight(a), weight(b));
-  return { similarity: denominator ? shared.reduce((sum, [, size]) => sum + size, 0) / denominator : 0,
-    unchanged: shared.length, total: a.size };
-}
-
-function nameSimilarity(left: string, right: string): number {
-  const tokens = (value: string) => new Set(path.basename(value).toLowerCase().split(/[^a-z0-9]+/).filter(Boolean));
-  const a = tokens(left);
-  const b = tokens(right);
-  return [...a].filter(token => b.has(token)).length / Math.max(a.size, b.size, 1);
-}
-
-function sameLinks(a: string[] | undefined, b: string[] | undefined): boolean {
-  return Boolean(a?.length && b?.length && [...a].sort().join('\0') === [...b].sort().join('\0'));
-}
-
 export function findSourceMoves(bundleDirectory: string, previous: SourceSnapshot, current: SourceSnapshot, configs: BundleNodeConfig[]): SourceMoveCandidate[] {
   const configuredPaths = new Set(configs.map(node => snapshotFilePath(current, node)));
   // Existing unconfigured files also matter when importing a legacy tracked copy after a move.
   const newPaths = Object.keys(current.files).filter(filename => !configuredPaths.has(filename));
   const candidates: SourceMoveCandidate[] = [];
-  const missingFiles: Array<{ node: FileBundleNodeConfig; oldPath: string; prior: SourceSnapshot['files'][string]; blocks?: Map<string, number> }> = [];
+  const missingFiles: Array<{ node: FileBundleNodeConfig; oldPath: string; prior: SourceSnapshot['files'][string]; profile?: ReturnType<typeof sourceTextProfile> }> = [];
   const resultsByNode = new Map<string, Array<SourceMoveCandidate & { score: number }>>();
   for (const node of configs) {
     if (node.bundleNodeKind === 'folder') {
@@ -81,6 +54,7 @@ export function findSourceMoves(bundleDirectory: string, previous: SourceSnapsho
       for (const newPath of matches.slice(0, 3)) candidates.push({
         bundleNodeId: node.bundleNodeId, oldPath, newPath, confidence: 'strong', competing: matches.length > 1,
         evidence: ['Identical folder contents and relative file paths'],
+        similarity: sourceMoveSimilarity({ oldPath, newPath, exact: true, folder: true, previous, current }),
         previousRoute: previous.graph?.nodes.find(item => item.bundleNodeId === node.bundleNodeId)?.path ?? [],
         currentRoute: current.graph?.nodes.find(item => item.bundleNodeKey === `folder:${newPath}`)?.path ?? [],
       });
@@ -95,39 +69,26 @@ export function findSourceMoves(bundleDirectory: string, previous: SourceSnapsho
   // Parse each candidate once, then compare it with the missing pages. Keeping only
   // the current candidate's blocks avoids retaining the entire source library.
   for (const newPath of newPaths) {
-    let candidateBlocks: Map<string, number> | undefined;
+    let candidateProfile: ReturnType<typeof sourceTextProfile> | undefined;
     for (const missing of missingFiles) {
       const { node, oldPath, prior } = missing;
       // Empty contents provide no evidence that two pages share an identity.
       if (prior.size === 0 || current.files[newPath].size === 0) continue;
       if (path.extname(oldPath).toLowerCase() !== path.extname(newPath).toLowerCase()) continue;
       const exact = prior.digest === current.files[newPath].digest;
-      const evidence: string[] = [];
-      let overlap = 0;
-      if (exact) { overlap = 1; evidence.push('Identical file contents'); }
-      else if (/\.(md|html|txt)$/i.test(oldPath)) {
-        missing.blocks ??= blocks(fs.readFileSync(sourcePath(snapshotSourceRoot(bundleDirectory, previous.id, previous), oldPath), 'utf8'));
-        candidateBlocks ??= blocks(fs.readFileSync(sourcePath(snapshotSourceRoot(bundleDirectory, current.id, current), newPath), 'utf8'));
-        const similarity = contentSimilarity(missing.blocks, candidateBlocks);
-        overlap = similarity.similarity;
-        if (similarity.unchanged) evidence.push(`${similarity.unchanged} of ${similarity.total} substantial blocks unchanged`);
+      if (/\.(md|html|txt)$/i.test(oldPath)) {
+        missing.profile ??= sourceTextProfile(fs.readFileSync(sourcePath(snapshotSourceRoot(bundleDirectory, previous.id, previous), oldPath), 'utf8'));
+        candidateProfile ??= sourceTextProfile(fs.readFileSync(sourcePath(snapshotSourceRoot(bundleDirectory, current.id, current), newPath), 'utf8'));
+        if (!missing.profile.length || !candidateProfile.length) continue;
       }
-      if (overlap < 0.45) continue;
-      const name = nameSimilarity(oldPath, newPath);
-      if (path.basename(oldPath) === path.basename(newPath)) evidence.push('Same filename');
-      else if (name >= 0.5) evidence.push('Similar filename');
-      let context = 0;
-      if (sameLinks(previous.graph?.allInlinkSources[sourceFilePathToBundleNodeKey(oldPath)], current.graph?.allInlinkSources[sourceFilePathToBundleNodeKey(newPath)])) {
-        evidence.push('Same incoming links'); context += 0.5;
-      }
-      if (sameLinks(previous.graph?.allOutlinkTargets[sourceFilePathToBundleNodeKey(oldPath)], current.graph?.allOutlinkTargets[sourceFilePathToBundleNodeKey(newPath)])) {
-        evidence.push('Same outgoing links'); context += 0.5;
-      }
-      const score = overlap * 0.75 + name * 0.15 + context * 0.1;
-      if (score < 0.5) continue;
+      const similarity = sourceMoveSimilarity({ oldPath, newPath, exact, before: missing.profile, after: candidateProfile, previous, current });
+      const content = similarity.criteria.find(criterion => criterion.id === (exact ? 'contents' : 'blocks'))!;
+      if ((content.score ?? 0) < 0.45 || similarity.score < 0.5) continue;
+      const evidence = similarity.criteria.filter(criterion => (criterion.score ?? 0) > 0 && criterion.weight > 0).map(criterion => criterion.detail);
+      const score = similarity.score;
       const results = resultsByNode.get(node.bundleNodeId) ?? [];
-      results.push({ bundleNodeId: node.bundleNodeId, oldPath, newPath, evidence,
-        confidence: exact ? 'strong' : 'possible', competing: false, score,
+      results.push({ bundleNodeId: node.bundleNodeId, oldPath, newPath, evidence, similarity,
+        confidence: exact && content.score === 1 ? 'strong' : 'possible', competing: false, score,
         previousRoute: previous.graph?.nodes.find(item => item.bundleNodeKey === sourceFilePathToBundleNodeKey(oldPath))?.path ?? [],
         currentRoute: current.graph?.nodes.find(item => item.bundleNodeKey === sourceFilePathToBundleNodeKey(newPath))?.path ?? [] });
       resultsByNode.set(node.bundleNodeId, results);
@@ -138,7 +99,7 @@ export function findSourceMoves(bundleDirectory: string, previous: SourceSnapsho
     results.sort((a, b) => b.score - a.score || a.newPath.localeCompare(b.newPath));
     for (const match of results.slice(0, 3)) {
       candidates.push({ bundleNodeId: match.bundleNodeId, oldPath: match.oldPath, newPath: match.newPath,
-        evidence: match.evidence, confidence: match.confidence, competing: results.length > 1,
+        evidence: match.evidence, similarity: match.similarity, confidence: match.confidence, competing: results.length > 1,
         previousRoute: match.previousRoute, currentRoute: match.currentRoute });
     }
   }

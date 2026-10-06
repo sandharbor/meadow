@@ -99,7 +99,7 @@ test('Sourcing quietly checks every thirty seconds and updates the change count 
   await sourceCommand(() => sourceReview.open());
   const rename = await sourceCommand(() => sourceReview.moveFrom('t003 ---- page with section to link to.md'));
   await sourceCommand(() => rename.keepSeparate());
-  await sourceCommand(() => expect(sourceReview.root.getByRole('button', { name: 'Accept source changes', exact: true })).toBeEnabled());
+  await sourceCommand(() => expect(sourceReview.root.getByRole('button', { name: 'Accept changes', exact: true })).toBeEnabled());
   await sourceCommand(() => sourceChanges.apply('remove-incoming-link'));
   gate = new Promise<void>(resolve => { release = resolve; });
   await sourceCommand(() => page.clock.fastForward(60000));

@@ -48,7 +48,7 @@ test('Refreshing source material requires renewed confirmation for explicit trac
   await sourceCommand(() => sourceChanges.apply('mark-review-pages-sensitive', 'sourcing-review-data'));
   await sourceCommand(() => sourcing.updateSources());
   expect(proposal.current.candidateSnapshotId).not.toBe(captured);
-  await sourceCommand(() => expect(sourcing.root.getByRole('button', { name: 'Accept source changes', exact: true })).toBeDisabled());
+  await sourceCommand(() => expect(sourcing.root.getByRole('button', { name: 'Accept changes', exact: true })).toBeDisabled());
   for (const name of ['Safe One', 'Safe Two']) expect(proposal.current.tracking[`file:Additions/${name}.md`]).toMatchObject({ origin: 'explicit', needsConfirmation: true });
   await sourceCommand(() => sourcing.reviewTrackingChoices(2));
   await sourceCommand(() => expect(sourcing.sensitivityReview).toContainText('Restricted review material'));

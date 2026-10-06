@@ -31,6 +31,7 @@ import { logger } from '../../utils/logger';
 import { openExternal } from '../../utils/openExternal';
 import { DisabledTooltip } from '../../components/DisabledTooltip';
 import Modal from '../../components/Modal';
+import { ModalTab } from '../../components/ModalTab.js';
 import type { AppShellTypeOpenKnowledgeFormatSettings as OpenKnowledgeFormatSettings } from '../../../areas/bundle/generation/exported.js';
 import { useLinkedSurface } from '../../places/placeContext.js';
 
@@ -1201,51 +1202,15 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
           <div className="border-b mb-4">
             <nav className="flex justify-between items-center">
               <div className="flex space-x-4">
-                <button
-                  className={`pb-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-                    previewSubTab === 'bundlePreview'
-                      ? 'border-main-500 text-main-600'
-                      : 'border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300'
-                  }`}
-                  onClick={() => {
-                    setPreviewSubTab('bundlePreview');
-                    setChangesInitialFile(undefined);
-                  }}
-                >
-                  Bundle Preview
-                </button>
-                <button
-                  className={`pb-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-                    previewSubTab === 'changes'
-                      ? 'border-main-500 text-main-600'
-                      : 'border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300'
-                  }`}
-                  onClick={() => {
-                    logger.debug('[PreviewPublishModal] Changes tab clicked, switching to changes tab');
-                    setPreviewSubTab('changes');
-                  }}
-                >
-                  Changes
-                  {isRegeneratingPreview ? (
-                    <span className="ml-1.5 animate-spin h-3.5 w-3.5 border-2 border-neutral-300 border-t-main-500 rounded-full inline-block relative top-[3px]" />
-                  ) : (
-                    changedFiles.size > 0 && (
-                      <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-neutral-200 text-neutral-700 rounded-full">
-                        {changedFiles.size}
-                      </span>
-                    )
-                  )}
-                </button>
-                <button
-                  className={`pb-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-                    previewSubTab === 'versions'
-                      ? 'border-main-500 text-main-600'
-                      : 'border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300'
-                  }`}
-                  onClick={() => setPreviewSubTab('versions')}
-                >
-                  Versions
-                </button>
+                <ModalTab selected={previewSubTab === 'bundlePreview'} onClick={() => {
+                  setPreviewSubTab('bundlePreview');
+                  setChangesInitialFile(undefined);
+                }}>Bundle Preview</ModalTab>
+                <ModalTab selected={previewSubTab === 'changes'} count={changedFiles.size > 0 ? changedFiles.size : undefined} loading={isRegeneratingPreview} onClick={() => {
+                  logger.debug('[PreviewPublishModal] Changes tab clicked, switching to changes tab');
+                  setPreviewSubTab('changes');
+                }}>Changes</ModalTab>
+                <ModalTab selected={previewSubTab === 'versions'} onClick={() => setPreviewSubTab('versions')}>Versions</ModalTab>
               </div>
               {previewSubTab !== 'versions' && <div className="flex items-center gap-2 pb-2">
                 {saveChangesMessage && (
@@ -1344,38 +1309,9 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
                 {/* Share subtab navigation */}
                 <div className="border-b mb-4">
                   <nav className="flex space-x-4 items-center">
-                    <button
-                      className={`pb-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-                        shareSubTab === 'publish'
-                          ? 'border-main-500 text-main-600'
-                          : 'border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300'
-                      }`}
-                      onClick={() => setShareSubTab('publish')}
-                    >
-                      {publishTabLabel}
-                    </button>
-                    <button
-                      className={`pb-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-                        shareSubTab === 'localExport'
-                          ? 'border-main-500 text-main-600'
-                          : 'border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300'
-                      }`}
-                      onClick={() => {
-                        setShareSubTab('localExport');
-                      }}
-                    >
-                      Local Export
-                    </button>
-                    <button
-                      className={`pb-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-                        shareSubTab === 'advanced'
-                          ? 'border-main-500 text-main-600'
-                          : 'border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300'
-                      }`}
-                      onClick={() => setShareSubTab('advanced')}
-                    >
-                      Advanced
-                    </button>
+                    <ModalTab selected={shareSubTab === 'publish'} onClick={() => setShareSubTab('publish')}>{publishTabLabel}</ModalTab>
+                    <ModalTab selected={shareSubTab === 'localExport'} onClick={() => setShareSubTab('localExport')}>Local Export</ModalTab>
+                    <ModalTab selected={shareSubTab === 'advanced'} onClick={() => setShareSubTab('advanced')}>Advanced</ModalTab>
                   </nav>
                 </div>
 

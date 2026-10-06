@@ -31,6 +31,9 @@ test('Sourcing classifies a renamed linked group once and keeps its pages out of
   const review = editor.sourceReview;
   await sourceCommand(() => review.open());
   await sourceCommand(() => review.expectMoveCount(3));
+  await sourceCommand(() => review.expectDirectoryGroupCollapsed('t001', 't101', 3));
+  await sourceCommand(() => addKeyFrame(sourceMove));
+  await sourceCommand(() => checkpoint('a collapsed overview summarizes the shared change for three files'));
   for (const node of original) {
     await sourceCommand(() => review.expectMoveListed(node.bundleNodeId));
   }

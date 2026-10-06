@@ -58,7 +58,7 @@ test('Sourcing previews page blacklist effects beyond the selected page', { anno
   expect(fs.readFileSync(configPath, 'utf8')).toBe(saved);
   await sourceCommand(() => checkpoint('reversing the exclusion restores the page and its saved depth setting'));
 
-  await sourceCommand(() => sourcing.root.getByRole('button', { name: 'Discard proposal', exact: true }).click());
+  await sourceCommand(() => sourcing.discard());
   await sourceCommand(() => expect(sourcing.root).toBeHidden());
   await sourceCommand(() => checkpoint('accepted curation has kept its original source scope and configuration'));
   await sourceCommand(() => assertMeadowHomeState());

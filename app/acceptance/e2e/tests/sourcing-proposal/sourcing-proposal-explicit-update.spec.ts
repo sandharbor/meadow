@@ -50,7 +50,7 @@ test('Updating a sourcing proposal preserves applicable decisions and exposes in
   await sourceCommand(() => expect(proposal.current.candidateSnapshotId).not.toBe(captured));
   await sourceCommand(() => expect(proposal.current.tracking['file:Routes/Reference.md']).toMatchObject({ track: false, origin: 'explicit' }));
   await sourceCommand(() => expect(proposal.current.tracking['file:Leaf.md'].invalidated).toContain('no longer included'));
-  await sourceCommand(() => expect(sourcing.root.getByRole('button', { name: 'Accept source changes', exact: true })).toBeDisabled());
+  await sourceCommand(() => expect(sourcing.root.getByRole('button', { name: 'Accept changes', exact: true })).toBeDisabled());
   await sourceCommand(() => sourcing.reviewTrackingChoices(1));
   await sourceCommand(() => expect(sourcing.sensitivityReview).toContainText('This page is no longer included'));
   await sourceCommand(() => addKeyFrame(pendingProposalRevalidation));
@@ -63,7 +63,8 @@ test('Updating a sourcing proposal preserves applicable decisions and exposes in
   await sourceCommand(() => fs.renameSync(source, `${source}-unavailable`));
   const endExpectedErrors = expectLogErrors(/disconnected: its directory is unavailable|server responded with a status of 409/);
   try {
-    await sourceCommand(() => sourcing.root.getByRole('button', { name: 'Update sources', exact: true }).click());
+    await sourceCommand(() => sourcing.openReviewActions());
+    await sourceCommand(() => sourcing.reviewActionsMenu.getByRole('menuitem', { name: 'Rescan sources', exact: true }).click());
     await sourceCommand(() => expect(sourcing.root.getByRole('alert')).toContainText('disconnected'));
     await sourceCommand(() => expect(proposal.serialized).toBe(beforeFailure));
     await sourceCommand(() => checkpoint('failed refresh keeps the complete proposal intact while its source is unavailable'));

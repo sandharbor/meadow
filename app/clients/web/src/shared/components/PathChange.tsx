@@ -18,12 +18,13 @@ export function splitPathChange(before: string, after: string) {
   };
 }
 
-function Highlight({ before, after, side }: { before: string; after: string; side: 'before' | 'after' }) {
+function Highlight({ before, after, side, directories = false }: { before: string; after: string; side: 'before' | 'after'; directories?: boolean }) {
   const delta = splitPathChange(before, after);
   const changed = delta[side];
-  return <>{delta.prefix}{changed && (side === 'before'
-    ? <del className="rounded bg-red-50 px-0.5 text-red-800 decoration-red-400">{changed}</del>
-    : <ins className="rounded bg-main-50 px-0.5 text-main-900 no-underline">{changed}</ins>)}{delta.suffix}</>;
+  const fragments = directories ? changed.split(/(\/)/) : [changed];
+  return <>{delta.prefix}{fragments.map((fragment, index) => !fragment ? null : directories && fragment === '/' ? fragment : side === 'before'
+    ? <del key={index} className="rounded bg-red-50 px-0.5 text-red-800 decoration-red-400">{fragment}</del>
+    : <ins key={index} className="rounded bg-main-50 px-0.5 text-main-900 no-underline">{fragment}</ins>)}{delta.suffix}</>;
 }
 
 export function PathChange({ before, after }: { before: string; after: string }) {
@@ -44,5 +45,14 @@ export function PathChange({ before, after }: { before: string; after: string })
         </span>;
       })}
     </span>
+  </span>;
+}
+
+export function DirectoryChange({ before, after }: { before: string; after: string }) {
+  before = useSourcePath(before); after = useSourcePath(after);
+  return <span role="group" aria-label={`Changed directories: ${before || 'Source root'} → ${after || 'Source root'}`} className="inline-flex flex-wrap items-baseline gap-x-2 text-sm text-neutral-500" data-testid="source-directory-change">
+    <span>{before ? <Highlight before={before} after={after} side="before" directories /> : 'Source root'}</span>
+    <span aria-hidden="true" className="text-amber-500">→</span>
+    <span>{after ? <Highlight before={before} after={after} side="after" directories /> : 'Source root'}</span>
   </span>;
 }

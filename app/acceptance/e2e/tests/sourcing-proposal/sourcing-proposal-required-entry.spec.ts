@@ -45,7 +45,7 @@ test('Sourcing requires repair of missing required entries before acceptance', {
   await sourceCommand(() => sourcing.updateSources());
   await sourceCommand(() => expect(sourcing.root.getByRole('alert')).toContainText('Repair missing required entries'));
   await sourceCommand(() => expect(sourcing.root.getByRole('alert')).toContainText('Start'));
-  await sourceCommand(() => expect(sourcing.root.getByRole('button', { name: 'Accept source changes', exact: true })).toBeDisabled());
+  await sourceCommand(() => expect(sourcing.root.getByRole('button', { name: 'Accept changes', exact: true })).toBeDisabled());
   await sourceCommand(() => expect(page.getByTestId('graph-canvas')).toHaveCount(0));
   expect(fs.readFileSync(bundlePath, 'utf8')).toBe(before);
   expect(proposal.current.id).toBe(pendingId);

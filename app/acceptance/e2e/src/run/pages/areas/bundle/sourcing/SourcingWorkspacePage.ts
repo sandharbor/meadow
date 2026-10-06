@@ -1,6 +1,6 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import type { Page, Expect } from '@playwright/test';
+import type { Page, Expect, Locator } from '@playwright/test';
 import { SelectedPageDetailComponent } from '../curation/SelectedPageDetailComponent.js';
 
 /** User actions in the pending source proposal editor. */
@@ -56,7 +56,7 @@ export class SourcingWorkspacePage {
       this.page.waitForResponse(response => response.url().endsWith('/sourcing/proposal/tracking') && response.ok(), { timeout: 10000 }),
       this.selectedPage.getByRole('button', { name: 'Track', exact: true }).click(),
     ]);
-    await this.expect(this.root.locator('header').getByRole('button', { name: 'Update sources', exact: true })).toBeEnabled();
+    await this.expect(this.reviewActionsButton).toBeEnabled();
     await this.expect(this.selectedPage.getByText('Tracked', { exact: true })).toBeVisible();
   }
   async setTrackingPreference(enabled: boolean) {
@@ -71,7 +71,7 @@ export class SourcingWorkspacePage {
       this.page.waitForResponse(response => response.url().endsWith('/sourcing/proposal/tracking') && response.ok(), { timeout: 10000 }),
       this.page.getByRole('button', { name: 'Untrack', exact: true }).click(),
     ]);
-    await this.expect(this.root.locator('header').getByRole('button', { name: 'Update sources', exact: true })).toBeEnabled();
+    await this.expect(this.reviewActionsButton).toBeEnabled();
     await this.expect(this.selectedPage.getByText('Not Tracked', { exact: true })).toBeVisible();
   }
   async setSelectedOutlinkDepth(depth: number) {
@@ -87,20 +87,85 @@ export class SourcingWorkspacePage {
     await this.expect(this.comparison.getByRole('region', { name: 'Source content comparison' })).toBeVisible();
   }
   async closeComparison() { await this.comparison.getByRole('button', { name: 'Close', exact: true }).click(); }
+  get reviewActionsButton() { return this.root.locator('header').getByRole('button', { name: 'More review actions', exact: true }); }
+  get reviewActionsMenu() { return this.root.getByRole('menu', { name: 'Review actions', exact: true }); }
+  async expectMainReviewActions() {
+    await this.expect(this.root.locator('header').getByRole('button')).toHaveText(['Exit review', '', 'Accept changes']);
+  }
+  async openReviewActions() {
+    await this.reviewActionsButton.click();
+    await this.expect(this.reviewActionsMenu).toBeVisible();
+  }
+  async discard() {
+    await this.openReviewActions();
+    await this.reviewActionsMenu.getByRole('menuitem', { name: 'Discard proposal', exact: true }).click();
+    await this.expect(this.root).toBeHidden();
+  }
   async updateSources() {
+    await this.openReviewActions();
     await Promise.all([
       this.page.waitForResponse(response => response.url().endsWith('/sourcing/proposal/refresh') && response.ok(), { timeout: 10000 }),
-      this.root.locator('header').getByRole('button', { name: 'Update sources', exact: true }).click(),
+      this.reviewActionsMenu.getByRole('menuitem', { name: 'Rescan sources', exact: true }).click(),
     ]);
-    await this.expect(this.root.locator('header').getByRole('button', { name: 'Update sources', exact: true })).toBeEnabled();
+    await this.expect(this.reviewActionsButton).toBeEnabled();
+  }
+  async selectIdentityTab(name: 'Confident suggestions' | 'Needs your input') {
+    await this.identities.getByRole('tab', { name, exact: true }).click();
+    await this.expect(this.identities.getByRole('tab', { name, exact: true })).toHaveAttribute('aria-selected', 'true');
+  }
+  protected async showIdentityRecord(record: Locator) {
+    await this.expect(this.identities).toBeVisible();
+    const panel = record.locator('xpath=ancestor::*[@role="tabpanel"]');
+    if (await panel.getAttribute('hidden') !== null) {
+      const confident = await this.identities.getByRole('tab', { name: 'Confident suggestions', exact: true }).getAttribute('aria-selected');
+      await this.selectIdentityTab(confident === 'true' ? 'Needs your input' : 'Confident suggestions');
+    }
+    const ancestors = record.locator('xpath=ancestor::details');
+    for (const ancestor of await ancestors.all()) {
+      if (await ancestor.getAttribute('open') === null) await ancestor.locator(':scope > summary').click();
+    }
+    const details = record.getByTestId('source-identity-record');
+    if (await details.count() && await details.getAttribute('open') === null) await details.getByTestId('source-identity-record-summary').click();
+    await this.expect(record).toBeVisible();
+  }
+  async showIdentity(id: string) {
+    await this.showIdentityRecord(this.identities.getByTestId(`source-move-${id}`));
+  }
+  private directoryIdentityGroup(before: string, after: string) {
+    return this.identities.getByTestId('source-identity-group').filter({ has: this.page.getByRole('group', { name: `Changed directories: ${before} → ${after}`, exact: true }) });
+  }
+  async expectDirectoryGroupCollapsed(before: string, after: string, count: number) {
+    const group = this.directoryIdentityGroup(before, after);
+    await this.expect(group).toHaveCount(1);
+    await this.expect(group).not.toHaveAttribute('open');
+    await this.expect(group.getByTestId('source-identity-group-summary')).toContainText(`${count} files`);
+    await this.expect(group.getByRole('radio')).toHaveCount(0);
+  }
+  async openDirectoryGroup(before: string, after: string) {
+    const group = this.directoryIdentityGroup(before, after);
+    await group.getByTestId('source-identity-group-summary').click();
+    await this.expect(group).toHaveAttribute('open');
+  }
+  async acceptAllIdentitySuggestions() {
+    await this.selectIdentityTab('Confident suggestions');
+    await Promise.all([
+      this.page.waitForResponse(response => response.url().endsWith('/sourcing/proposal/identities') && response.ok()),
+      this.identities.getByRole('button', { name: 'Accept all suggestions', exact: true }).click(),
+    ]);
+  }
+  async toggleIdentitySimilarity(id: string) {
+    await this.showIdentity(id);
+    await this.identities.getByTestId(`source-move-${id}`).locator('summary').filter({ hasText: 'Similarity' }).click();
   }
   async chooseIdentity(id: string, destination: string | null) {
+    await this.showIdentity(id);
     const group = this.identities.getByTestId(`source-move-${id}`);
     const choice = group.getByRole('radio', { name: destination ? `Same page — ${destination}` : 'Different pages — remove the old configuration at acceptance', exact: true });
     await Promise.all([
       this.page.waitForResponse(response => response.url().endsWith('/sourcing/proposal/identities') && response.ok(), { timeout: 10000 }),
       choice.click(),
     ]);
+    await this.showIdentity(id);
     await this.expect(choice).toBeChecked();
   }
   async continueToGraph() {
@@ -121,12 +186,12 @@ export class SourcingWorkspacePage {
     await this.expect(section).toHaveCount(0);
   }
   async accept() {
-    await this.expect(this.root.getByRole('button', { name: 'Accept source changes', exact: true })).toBeEnabled();
-    await this.root.getByRole('button', { name: 'Accept source changes', exact: true }).click();
+    await this.expect(this.root.getByRole('button', { name: 'Accept changes', exact: true })).toBeEnabled();
+    await this.root.getByRole('button', { name: 'Accept changes', exact: true }).click();
     await this.expect(this.root).toBeHidden();
   }
   async later() {
-    await this.root.getByRole('button', { name: 'Later', exact: true }).click();
+    await this.root.getByRole('button', { name: 'Exit review', exact: true }).click();
     await this.expect(this.root).toBeHidden();
   }
 }

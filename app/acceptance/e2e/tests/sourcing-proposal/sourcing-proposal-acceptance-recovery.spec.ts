@@ -66,7 +66,7 @@ test('Failed proposal acceptance preserves accepted state and recoverable node a
   // A failed write after node and shared-policy installation rolls every document back.
   arm('error');
   const endFailure = expectLogErrors(/Injected sourcing acceptance storage failure|server responded with a status of 500/);
-  await sourceCommand(() => sourcing.root.getByRole('button', { name: 'Accept source changes', exact: true }).click());
+  await sourceCommand(() => sourcing.root.getByRole('button', { name: 'Accept changes', exact: true }).click());
   await sourceCommand(() => expect(sourcing.root.getByRole('alert')).toContainText('Internal Server Error'));
   expect(fs.existsSync(faultPath)).toBe(false);
   expect(fs.existsSync(journalPath)).toBe(false);
@@ -80,7 +80,7 @@ test('Failed proposal acceptance preserves accepted state and recoverable node a
   // Kill only the scenario service during installation, then restart against its journal and home.
   arm('interrupt');
   const endInterruption = expectLogErrors(/ERR_EMPTY_RESPONSE|ERR_CONNECTION|Failed to fetch|fetch failed|socket hang up|ECONNRESET|502 \(Bad Gateway\)/);
-  await sourceCommand(() => sourcing.root.getByRole('button', { name: 'Accept source changes', exact: true }).click());
+  await sourceCommand(() => sourcing.root.getByRole('button', { name: 'Accept changes', exact: true }).click());
   await sourceCommand(() => expect.poll(() => fs.existsSync(journalPath)).toBe(true));
   await sourceCommand(() => expect.poll(() => fs.existsSync(testServer.runtimeSessionPath)).toBe(false));
   expect(documents()).not.toEqual(before);

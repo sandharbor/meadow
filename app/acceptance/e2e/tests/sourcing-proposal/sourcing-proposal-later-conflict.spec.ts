@@ -61,7 +61,7 @@ test('Pending sourcing proposals preserve later curation decisions and require c
     await sourceCommand(() => page.reload());
     await sourceCommand(() => editor.waitForLoad('sourcing-review'));
     await sourceCommand(() => sourcing.open());
-    await sourceCommand(() => expect(sourcing.root.getByRole('button', { name: 'Accept source changes', exact: true })).toBeDisabled());
+    await sourceCommand(() => expect(sourcing.root.getByRole('button', { name: 'Accept changes', exact: true })).toBeDisabled());
     await sourceCommand(() => sourcing.root.getByRole('button', { name: 'Resolve 1 configuration conflicts', exact: true }).click());
     const conflict = page.getByRole('dialog', { name: 'Resolve configuration conflicts', exact: true });
     await sourceCommand(() => expect(conflict).toContainText(name));

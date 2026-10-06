@@ -14,7 +14,7 @@ test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });
 
 /*
- * Confirm the unambiguous rename group, then decide the competing identity separately. A rejected match stays two comparison nodes; confirmed moves retain one identity and both paths.
+ * Inspect every similarity criterion, confirm the strong rename, then decide weaker and competing identities separately. A rejected match stays two comparison nodes; confirmed moves retain one identity and both paths.
  */
 test('Sourcing bulk-confirms unambiguous rename suggestions while ambiguous matches require choices', { annotation: { type: 'scenario-id', description: '92083d13-2373-432c-8fd9-600e73c0c653' } }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
   // --- Setup ---
@@ -36,20 +36,50 @@ test('Sourcing bulk-confirms unambiguous rename suggestions while ambiguous matc
   await sourceCommand(() => expect(sourcing.identities).toBeVisible());
   await sourceCommand(() => expect(sourcing.identities.getByRole('button', { name: 'Continue to graph', exact: true })).toBeDisabled());
   await sourceCommand(() => expect(sourcing.root.getByRole('button', { name: 'List View', exact: true })).toHaveCount(0));
-  await sourceCommand(() => expect(sourcing.identities.getByTestId('source-move-100000000006').getByRole('radio', { name: /Same page/ })).toHaveCount(2));
-  await sourceCommand(() => expect(sourcing.identities).toContainText('Identical file contents'));
-  await sourceCommand(() => addKeyFrame(sourceReviewIdentity));
-  await sourceCommand(() => checkpoint('identity gate offers three unambiguous renames and two competing destinations'));
+  const leaf = sourcing.identities.getByTestId('source-move-100000000007');
+  const gateway = sourcing.identities.getByTestId('source-move-100000000002');
+  const competing = sourcing.identities.getByTestId('source-move-100000000006');
+  await sourceCommand(() => expect(sourcing.identities.getByRole('tab', { name: 'Confident suggestions', exact: true })).toHaveAttribute('aria-selected', 'true'));
+  await sourceCommand(() => sourcing.showIdentity('100000000007'));
+  await sourceCommand(() => expect(leaf.getByRole('radio', { name: /Same page/ })).toBeChecked());
+  await sourceCommand(() => expect(leaf.getByText('Recommended', { exact: true })).toBeVisible());
+  await sourceCommand(() => expect(gateway).toBeHidden());
+  expect(proposal.current.identities).toEqual({});
+  await sourceCommand(() => addKeyFrame(sourceMove));
+  await sourceCommand(() => checkpoint('confident suggestions are preselected for review before they are saved'));
 
-  // Bulk confirmation cannot select either competing destination.
-  await sourceCommand(() => sourcing.identities.getByRole('button', { name: 'Confirm 3 unambiguous suggestions', exact: true }).click());
-  await sourceCommand(() => expect(sourcing.identities.getByTestId('source-move-100000000002').getByRole('radio', { name: 'Same page — Routes/Branch/Gateway.md', exact: true })).toBeChecked());
-  await sourceCommand(() => expect(sourcing.identities.getByTestId('source-move-100000000003').getByRole('radio', { name: 'Same page — Routes/Independent.md', exact: true })).toBeChecked());
+  // Uncertain records show evidence and choices without a recommendation.
+  await sourceCommand(() => sourcing.selectIdentityTab('Needs your input'));
+  await sourceCommand(() => sourcing.showIdentity('100000000006'));
+  await sourceCommand(() => expect(competing.getByRole('radio', { name: /Same page/ })).toHaveCount(2));
+  await sourceCommand(() => sourcing.showIdentity('100000000002'));
+  await sourceCommand(() => expect(gateway.getByRole('radio', { checked: true })).toHaveCount(0));
+  await sourceCommand(() => expect(sourcing.identities.getByRole('tabpanel', { name: 'Needs your input', exact: true })).not.toContainText('Recommended'));
+  await sourceCommand(() => sourcing.toggleIdentitySimilarity('100000000002'));
+  await sourceCommand(() => expect(gateway).toContainText('not a probability'));
+  await sourceCommand(() => expect(gateway.getByText('Identical non-blank file contents', { exact: true })).toBeVisible());
+  await sourceCommand(() => expect(gateway.getByText('Substantial blocks', { exact: true })).toBeVisible());
+  await sourceCommand(() => expect(gateway.getByText('Shared folder move', { exact: true })).toBeVisible());
+  await sourceCommand(() => expect(gateway).toContainText('Not applicable'));
+  await sourceCommand(() => addKeyFrame(sourceReviewIdentity));
+  await sourceCommand(() => sourcing.toggleIdentitySimilarity('100000000002'));
+  await sourceCommand(() => checkpoint('the input tab retains similarity and traversal evidence without suggested choices'));
+
+  // Accepting confident suggestions preserves individual decisions in the other tab.
+  await sourceCommand(() => sourcing.chooseIdentity('100000000002', null));
+  await sourceCommand(() => sourcing.acceptAllIdentitySuggestions());
+  await sourceCommand(() => expect(leaf.getByRole('radio', { name: /Same page/ })).toBeChecked());
+  await sourceCommand(() => expect(sourcing.identities.getByRole('button', { name: 'Accept all suggestions', exact: true })).toBeDisabled());
+  await sourceCommand(() => sourcing.selectIdentityTab('Needs your input'));
+  await sourceCommand(() => expect(gateway.getByRole('radio', { name: /Different pages/ })).toBeChecked());
   await sourceCommand(() => expect(sourcing.identities.getByRole('button', { name: 'Continue to graph', exact: true })).toBeDisabled());
   expect(proposal.current.identities['100000000006']).toBeUndefined();
-  await sourceCommand(() => checkpoint('bulk confirmation preserves the unresolved competing identity'));
+  expect(proposal.current.identities['100000000003']).toBeUndefined();
+  await sourceCommand(() => checkpoint('accepting suggestions preserves the saved rejection and unresolved input records'));
 
-  // Reject one suggested identity and explicitly select the competing destination.
+  // Choose the uncertain matches, revise the confirmed suggestion, and select the competing destination.
+  await sourceCommand(() => sourcing.chooseIdentity('100000000002', 'Routes/Branch/Gateway.md'));
+  await sourceCommand(() => sourcing.chooseIdentity('100000000003', 'Routes/Independent.md'));
   await sourceCommand(() => sourcing.chooseIdentity('100000000007', null));
   await sourceCommand(() => sourcing.chooseIdentity('100000000006', 'Retained One.md'));
   await sourceCommand(() => sourcing.continueToGraph());

@@ -31,11 +31,26 @@ export interface SourceSnapshotSummary {
   fileCount: number;
 }
 
+export interface SourceMoveSimilarity {
+  /** Weighted evidence score from 0 to 1, not a probability of shared identity. */
+  score: number;
+  criteria: Array<{
+    id: 'contents' | 'blocks' | 'filename' | 'incoming' | 'outgoing' | 'folderMove' | 'words' | 'folderContents';
+    label: string;
+    /** null means unavailable or inapplicable; zero means evaluated with no support. */
+    score: number | null;
+    /** Maximum contribution to the overall score, from 0 to 1. */
+    weight: number;
+    detail: string;
+  }>;
+}
+
 export interface SourceMoveCandidate {
   bundleNodeId: string;
   oldPath: string;
   newPath: string;
   evidence: string[];
+  similarity: SourceMoveSimilarity;
   /** True only when the two captured files have different content digests. */
   contentChanged?: boolean;
   confidence: 'strong' | 'possible';

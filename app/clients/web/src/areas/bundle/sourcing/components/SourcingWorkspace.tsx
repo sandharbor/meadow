@@ -14,6 +14,8 @@ import { sourceChangeFilters } from './sourceChangeFilters.js';
 import { ProposalDialogs, type ProposalDialog } from './ProposalDialogs.js';
 import { SourceRegistryChanges } from './SourceRegistryChanges.js';
 import { ProposalSettingsSummary } from './ProposalSettingsSummary.js';
+import { SourceReviewActions } from './SourceReviewActions.js';
+import type { IdentityTab } from './SourceIdentityReview.js';
 
 type PendingEdit = ProposalConfiguration | { trackingChange: Record<string, unknown> };
 
@@ -37,6 +39,7 @@ export function SourcingWorkspace({ bundleSlug, onClose, onAccepted, requestedPa
   busyRef.current = busy;
   const [dialog, setDialog] = useState<ProposalDialog>(null);
   const [identityComparison, setIdentityComparison] = useState<string | undefined>();
+  const [identityTab, setIdentityTab] = useState<IdentityTab>('confident');
   const [pendingConfiguration, setPendingConfiguration] = useState<PendingEdit | null>(() => {
     const stored = sessionStorage.getItem(`sourceProposalPendingEdit:${bundleSlug}`);
     return stored ? JSON.parse(stored) as PendingEdit : null;
@@ -135,8 +138,8 @@ export function SourcingWorkspace({ bundleSlug, onClose, onAccepted, requestedPa
   const frontierDepth = frontierFilter?.enabled ? frontierFilter.thresholdValue ?? 1 : 0;
   frontierDepthRef.current = frontierDepth;
   useEffect(() => { void reload(); }, [reload, frontierDepth]);
-  useEffect(() => { setIdentityComparison(requestedParameters.identityComparison); setDialog((requestedParameters.review as ProposalDialog) ?? (reviewRef.current?.unresolvedIdentities.length ? 'identities' : sessionStorage.getItem(`sourceProposalPendingEdit:${bundleSlug}`) ? 'refresh' : null)); }, [requestedParameters, bundleSlug]);
-  useEffect(() => { onPlaceChange(dialog ? { review: dialog, ...(identityComparison ? { identityComparison } : {}) } : {}); }, [dialog, identityComparison, onPlaceChange]);
+  useEffect(() => { setIdentityComparison(requestedParameters.identityComparison); setIdentityTab(requestedParameters.identityTab === 'input' ? 'input' : 'confident'); setDialog((requestedParameters.review as ProposalDialog) ?? (reviewRef.current?.unresolvedIdentities.length ? 'identities' : sessionStorage.getItem(`sourceProposalPendingEdit:${bundleSlug}`) ? 'refresh' : null)); }, [requestedParameters, bundleSlug]);
+  useEffect(() => { onPlaceChange(dialog ? { review: dialog, ...(dialog === 'identities' ? { identityTab } : {}), ...(identityComparison ? { identityComparison } : {}) } : {}); }, [dialog, identityComparison, identityTab, onPlaceChange]);
   const persistNodes = useCallback(async () => {
     if (!graphRef.current) return;
     await operations.request('bundle-config', { method: 'POST', body: JSON.stringify({ configs: buildNodeConfigs(graphRef.current.getAllNodes()) }) });
@@ -154,9 +157,8 @@ export function SourcingWorkspace({ bundleSlug, onClose, onAccepted, requestedPa
   return <SourceNamesProvider sources={graph?.sources ?? review?.configuration.bundle.sources ?? []}><section aria-label="Sourcing workspace" data-testid="sourcing-workspace" data-orphan-count={review?.orphans.length} className="fixed inset-x-0 bottom-0 top-[28px] z-40 flex flex-col bg-white text-neutral-800">
     <header className="flex items-center gap-3 border-b bg-blue-50 px-5 py-3">
       <h1 className="font-semibold">Sourcing · {bundleSlug}</h1><span className="text-xs text-neutral-600">Changes are saved in this proposal until you accept.</span>
-      <div className="flex-1" /><button disabled={busy || !review} onClick={() => void mutate('refresh', {}).catch(() => {})}>Update sources</button>
-      <button disabled={busy} onClick={onClose}>Later</button><button disabled={busy || !review} onClick={() => void finish(true)}>Discard proposal</button>
-      <button className="rounded bg-blue-700 px-3 py-2 text-white disabled:opacity-40" disabled={busy || blocked} onClick={() => void finish(false)}>Accept source changes</button>
+      <SourceReviewActions busy={busy} ready={Boolean(review)} blocked={blocked} onExit={onClose}
+        onRescan={() => void mutate('refresh', {}).catch(() => {})} onDiscard={() => void finish(true)} onAccept={() => void finish(false)} />
     </header>
     <div className="flex flex-wrap items-center gap-4 border-b px-5 py-2 text-sm">
       {review?.proposal.newerSourcesAvailable && <span role="status">Newer sources available. Acceptance keeps the current capture.</span>}
@@ -185,7 +187,7 @@ export function SourcingWorkspace({ bundleSlug, onClose, onAccepted, requestedPa
       untrackedNodeCount={graph.getAllNodes().filter(node => !node.tracked).length} bundleNodeConfigs={review.configuration.nodes}
       protectedBundleNodeIds={new Set([review.configuration.bundle.entryBundleNodeId, review.configuration.bundle.defaultTraversalBundleNodeId].filter((id): id is NonNullable<typeof id> => Boolean(id)))}
     /> : !review && <p className="p-5">Loading source proposal…</p>}</fieldset>
-    {review && <ProposalDialogs identityComparison={identityComparison} onIdentityComparison={setIdentityComparison} request={operations.request} dialog={dialog} review={review} busy={busy} close={() => { setDialog(null); setPendingConfiguration(null); }} later={onClose}
+    {review && <ProposalDialogs identityTab={identityTab} onIdentityTabChange={setIdentityTab} identityComparison={identityComparison} onIdentityComparison={setIdentityComparison} request={operations.request} dialog={dialog} review={review} busy={busy} close={() => { setDialog(null); setPendingConfiguration(null); }} later={onClose}
       mutate={(operation, body) => mutate(operation, body).catch(() => {})} refresh={() => { if (pendingConfiguration) void ('trackingChange' in pendingConfiguration ? mutate('tracking', { ...pendingConfiguration.trackingChange, incorporateNewerSources: true }) : configure(pendingConfiguration, true)).then(() => { setPendingConfiguration(null); setDialog(null); }).catch(() => {}); }} />}
   </section></SourceNamesProvider>;
 }

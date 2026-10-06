@@ -31,7 +31,9 @@ test('Sourcing identity choices remain revisable only while the proposal is pend
   await sourceCommand(() => sourceChanges.apply('rename-review-pages', 'sourcing-review-data'));
   await sourceCommand(() => editor.checkSourceChanges());
   await sourceCommand(() => sourcing.open());
-  await sourceCommand(() => sourcing.identities.getByRole('button', { name: 'Confirm 3 unambiguous suggestions', exact: true }).click());
+  await sourceCommand(() => sourcing.acceptAllIdentitySuggestions());
+  await sourceCommand(() => sourcing.chooseIdentity('100000000002', 'Routes/Branch/Gateway.md'));
+  await sourceCommand(() => sourcing.chooseIdentity('100000000003', 'Routes/Independent.md'));
   await sourceCommand(() => sourcing.chooseIdentity('100000000006', 'Retained One.md'));
   await sourceCommand(() => sourcing.continueToGraph());
   const pendingId = proposal.current.id;
@@ -49,7 +51,7 @@ test('Sourcing identity choices remain revisable only while the proposal is pend
   await sourceCommand(() => sourcing.select('Gateway'));
   await sourceCommand(() => expect(sourcing.evidence).toContainText('Newly included'));
   await sourceCommand(() => sourcing.expectNodeVisible('Bridge'));
-  await sourceCommand(() => expect(sourcing.root.getByRole('button', { name: 'Accept source changes', exact: true })).toBeDisabled());
+  await sourceCommand(() => expect(sourcing.root.getByRole('button', { name: 'Accept changes', exact: true })).toBeDisabled());
   await sourceCommand(() => sourcing.reviewTrackingChoices(1));
   await sourceCommand(() => expect(sourcing.sensitivityReview).toContainText('The page identity changed'));
   await sourceCommand(() => addKeyFrame(sourceReviewIdentity));
@@ -88,7 +90,7 @@ test('Sourcing identity choices remain revisable only while the proposal is pend
   expect(proposal.current.id).not.toBe(pendingId);
   expect(proposal.current.identities).toEqual({});
   await sourceCommand(() => expect(sourcing.root.getByRole('button', { name: 'Review identities', exact: true })).toHaveCount(0));
-  await sourceCommand(() => sourcing.root.getByRole('button', { name: 'Discard proposal', exact: true }).click());
+  await sourceCommand(() => sourcing.discard());
   await sourceCommand(() => expect(sourcing.root).toBeHidden());
   await sourceCommand(() => checkpoint('a new review starts a fresh proposal instead of editing accepted decisions'));
   await sourceCommand(() => assertMeadowHomeState({ allowedUntracked: ['source_graphs/.source-changes.jsonl', 'source_graphs/sourcing-review-data/Petal.md', 'source_graphs/sourcing-review-data/Retained One.md', 'source_graphs/sourcing-review-data/Retained Twin.md', 'source_graphs/sourcing-review-data/Routes/Branch/Gateway.md', 'source_graphs/sourcing-review-data/Routes/Independent.md'], allowedModified: ['source_graphs/sourcing-review-data/Start.md', 'source_graphs/sourcing-review-data/Leaf.md', 'source_graphs/sourcing-review-data/Retained.md', 'source_graphs/sourcing-review-data/Routes/Branch/Bridge.md', 'source_graphs/sourcing-review-data/Routes/Reference.md'] }));

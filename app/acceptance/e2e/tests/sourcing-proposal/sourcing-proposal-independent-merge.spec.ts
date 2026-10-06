@@ -40,7 +40,7 @@ test('Sourcing merges independent configuration edits and treats equal outcomes 
   for (const name of ['Leaf', 'Reference']) {
     await sourceCommand(() => sourcing.select(name));
     await sourceCommand(() => sourcing.setSelectedOutlinkDepth(0));
-    await sourceCommand(() => expect(sourcing.root.getByRole('button', { name: 'Accept source changes', exact: true })).toBeEnabled());
+    await sourceCommand(() => expect(sourcing.root.getByRole('button', { name: 'Accept changes', exact: true })).toBeEnabled());
   }
   await sourceCommand(() => sourcing.later());
   await sourceCommand(() => editor.switchToListView());
@@ -73,12 +73,12 @@ test('Sourcing merges independent configuration edits and treats equal outcomes 
   await sourceCommand(() => checkpoint('competing traversal depths require an explicit choice'));
   await sourceCommand(() => conflict.getByRole('button', { name: 'Use proposed', exact: true }).click());
   await sourceCommand(() => expect(conflict).toContainText('All conflicts resolved.'));
-  await sourceCommand(() => expect(sourcing.root.getByRole('button', { name: 'Accept source changes', exact: true })).toBeEnabled());
+  await sourceCommand(() => expect(sourcing.root.getByRole('button', { name: 'Accept changes', exact: true })).toBeEnabled());
   saveLeaf({ outlinksDepth: 3 });
   await sourceCommand(() => checkpoint('another saved edit arrives while the resolved conflict dialog remains open'));
   await sourceCommand(() => conflict.getByRole('button', { name: 'Close', exact: true }).click());
   const stopExpectedErrors = expectLogErrors(/This proposal changed|server responded with a status of 409/);
-  await sourceCommand(() => sourcing.root.getByRole('button', { name: 'Accept source changes', exact: true }).click());
+  await sourceCommand(() => sourcing.root.getByRole('button', { name: 'Accept changes', exact: true }).click());
   await sourceCommand(() => expect(sourcing.root.getByRole('alert')).toContainText('Review it again before accepting'));
   stopExpectedErrors();
   expect(leaf()).toMatchObject({ outlinksDepth: 3, inlinksDepth: 2 });

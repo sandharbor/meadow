@@ -35,6 +35,25 @@ test('Sourcing preserves node and filter drafts on Later and discards them toget
   await sourceCommand(() => checkpoint('the new proposal begins with the saved node and filter configuration'));
 
   // --- Test start ---
+  // Keep the main choices visible and secondary actions in a keyboard-accessible menu.
+  await sourceCommand(() => sourcing.expectMainReviewActions());
+  await sourceCommand(() => expect(sourcing.reviewActionsMenu).toBeHidden());
+  await sourceCommand(() => sourcing.reviewActionsButton.press('ArrowDown'));
+  const rescan = sourcing.reviewActionsMenu.getByRole('menuitem', { name: 'Rescan sources', exact: true });
+  const discard = sourcing.reviewActionsMenu.getByRole('menuitem', { name: 'Discard proposal', exact: true });
+  await sourceCommand(() => expect(rescan).toBeFocused());
+  await sourceCommand(() => rescan.press('ArrowDown'));
+  await sourceCommand(() => expect(discard).toBeFocused());
+  await sourceCommand(() => addKeyFrame(pendingSourceProposal));
+  await sourceCommand(() => discard.press('Escape'));
+  await sourceCommand(() => expect(sourcing.reviewActionsMenu).toBeHidden());
+  await sourceCommand(() => expect(sourcing.reviewActionsButton).toBeFocused());
+  await sourceCommand(() => sourcing.openReviewActions());
+  await sourceCommand(() => sourcing.root.getByRole('heading', { name: 'Sourcing · sourcing-review', exact: true }).click());
+  await sourceCommand(() => expect(sourcing.reviewActionsMenu).toBeHidden());
+  await sourceCommand(() => checkpoint('review actions are grouped and the menu closes with Escape or an outside click'));
+
+  // Stage changes and leave the review with its proposal intact.
   await sourceCommand(() => sourcing.select('Bridge'));
   await sourceCommand(() => sourcing.setSelectedOutlinkDepth(0));
   await sourceCommand(() => sourcing.select('Reference'));
@@ -77,7 +96,7 @@ test('Sourcing preserves node and filter drafts on Later and discards them toget
   await sourceCommand(() => checkpoint('reopening restores all drafts alongside the independent saved filter'));
   await sourceCommand(() => Promise.all([
     page.waitForResponse(response => response.url().endsWith('/sourcing/scan') && response.ok()),
-    sourcing.root.getByRole('button', { name: 'Discard proposal', exact: true }).click(),
+    sourcing.discard(),
   ]));
   await sourceCommand(() => expect(sourcing.root).toBeHidden());
   expect(proposal.exists).toBe(false);

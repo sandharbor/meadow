@@ -8,7 +8,7 @@ import { SourceNamesProvider } from '../../src/shared/components/SourceNames.js'
 
 const move: SourceMoveCandidate = {
   bundleNodeId: 'page', oldPath: 'old/page.md', newPath: 'new/page.md',
-  confidence: 'strong', competing: false, evidence: [],
+  similarity: { score: 0.9, criteria: [] }, confidence: 'strong', competing: false, evidence: [],
   previousRoute: [testKey('root.md'), testKey('parent.md'), testKey('old/page.md')], currentRoute: [testKey('root.md'), testKey('parent.md'), testKey('new/page.md')],
 };
 

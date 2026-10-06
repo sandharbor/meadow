@@ -71,7 +71,7 @@ test('Reversing pending scope exclusions restores saved page configuration befor
   expect(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).toBe(saved);
   await sourceCommand(() => addKeyFrame(sourceReviewCleanup));
   await sourceCommand(() => checkpoint('reversing both exclusions restores the saved identity tracking and depth settings'));
-  await sourceCommand(() => sourcing.root.getByRole('button', { name: 'Discard proposal', exact: true }).click());
+  await sourceCommand(() => sourcing.discard());
   await sourceCommand(() => expect(sourcing.root).toBeHidden());
   await sourceCommand(() => assertMeadowHomeState());
 });

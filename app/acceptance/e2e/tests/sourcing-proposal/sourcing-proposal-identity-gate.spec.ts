@@ -36,6 +36,8 @@ test('Sourcing requires identity decisions before graph entry and preserves part
   await sourceCommand(() => expect(sourcing.identities).toBeVisible());
   await sourceCommand(() => expect(sourcing.identities.getByRole('button', { name: 'Continue to graph', exact: true })).toBeDisabled());
   await sourceCommand(() => expect(sourcing.root.getByRole('button', { name: 'List View', exact: true })).toHaveCount(0));
+  await sourceCommand(() => sourcing.selectIdentityTab('Needs your input'));
+  await sourceCommand(() => sourcing.showIdentity('100000000006'));
   await sourceCommand(() => expect(sourcing.identities.getByTestId('source-move-100000000006').getByRole('radio', { name: /Same page/ })).toHaveCount(2));
   await sourceCommand(() => sourcing.chooseIdentity('100000000002', 'Routes/Branch/Gateway.md'));
   await sourceCommand(() => addKeyFrame(sourceReviewIdentity));
@@ -49,6 +51,7 @@ test('Sourcing requires identity decisions before graph entry and preserves part
   await sourceCommand(() => editor.waitForLoad('sourcing-review'));
   await sourceCommand(() => sourcing.open());
   await sourceCommand(() => expect(sourcing.identities).toBeVisible());
+  await sourceCommand(() => sourcing.showIdentity('100000000002'));
   await sourceCommand(() => expect(sourcing.identities.getByTestId('source-move-100000000002').getByRole('radio', { name: 'Same page — Routes/Branch/Gateway.md', exact: true })).toBeChecked());
   expect(Object.keys(proposal.current.identities)).toEqual(['100000000002']);
   await sourceCommand(() => expect(sourcing.identities.getByRole('button', { name: 'Continue to graph', exact: true })).toBeDisabled());

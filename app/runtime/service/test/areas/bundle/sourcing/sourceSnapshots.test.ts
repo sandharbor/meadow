@@ -448,7 +448,7 @@ describe('source snapshots with the shared big graph', () => {
     expect(pending.accepted.id).toBe(before.accepted.id);
     expect(sourceConfigFingerprint(bundle)).toBe(originalConfig);
     expect(fs.existsSync(path.join(acceptedSourceRoot(bundle), oldName))).toBe(true);
-    expect(pending.moves.find(move => move.bundleNodeId === node.bundleNodeId)).toMatchObject({ newPath: newName, confidence: 'strong', evidence: expect.arrayContaining(['Identical file contents']) });
+    expect(pending.moves.find(move => move.bundleNodeId === node.bundleNodeId)).toMatchObject({ newPath: newName, confidence: 'strong', evidence: expect.arrayContaining(['Identical non-blank file contents']) });
     const accepted = await acceptSourceSnapshot(bundle, { candidateId: pending.candidate!.id, reviewToken: pending.reviewToken, resolutions: {} });
     expect(accepted.accepted.id).toBe(pending.candidate!.id);
     expect(accepted.candidate).toBeUndefined();
@@ -563,8 +563,8 @@ describe('source snapshots with the shared big graph', () => {
     expect(loadSourcingState(bundle)?.acceptedId).toBe(pending.accepted.id);
   });
 
-  it('keeps an empty missing page orphaned and an empty replacement new', async () => {
-    fs.writeFileSync(path.join(source, oldName), '');
+  it.each(['', ' \n\t\n'])('keeps a blank missing page orphaned and a blank replacement new (%j)', async contents => {
+    fs.writeFileSync(path.join(source, oldName), contents);
     await initializeSourcing(bundle);
     fs.renameSync(path.join(source, oldName), path.join(source, newName));
     fs.appendFileSync(path.join(source, 'main page.md'), `\n[[${path.basename(newName, '.md')}]]`);
@@ -602,7 +602,7 @@ describe('source snapshots with the shared big graph', () => {
 
   it.each([
     { changeId: 'move-and-edit-page', oldPath: 't024 - markdown links.md', confidence: 'possible', evidence: 'blocks unchanged' },
-    { changeId: 'move-tracked-image', oldPath: 't024/t024 ---- test image.png', confidence: 'strong', evidence: 'Identical file contents' },
+    { changeId: 'move-tracked-image', oldPath: 't024/t024 ---- test image.png', confidence: 'strong', evidence: 'Identical non-blank file contents' },
   ])('matches $changeId through the shared Source Change', async ({ changeId, oldPath, confidence, evidence }) => {
     await initializeSourcing(bundle);
     change(changeId);

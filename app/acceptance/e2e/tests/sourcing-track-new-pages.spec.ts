@@ -23,7 +23,7 @@ test('Sourcing acceptance tracks new pages by default', { annotation: { type: 's
   await sourceCommand(() => sourceChanges.apply('add-linked-page'));
   await sourceCommand(() => editor.checkSourceChanges());
   await sourceCommand(() => editor.sourceReview.open());
-  await sourceCommand(() => expect(page.getByTestId('sourcing-workspace').getByRole('button', { name: 'Discard proposal', exact: true })).toBeVisible());
+  await sourceCommand(() => expect(page.getByTestId('sourcing-workspace').getByRole('button', { name: 'Exit review', exact: true })).toBeVisible());
   await sourceCommand(() => editor.sourceReview.expectTrackNewPages(true));
   await sourceCommand(() => addKeyFrame(sourceSnapshot));
   await sourceCommand(() => checkpoint('added page is selected for tracking by default'));

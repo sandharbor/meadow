@@ -41,7 +41,7 @@ test('Sourcing depth edits preview the proposal while accepted curation stays st
   const sourcing = new SourcingWorkspacePage(page, expect);
   const workspace = sourcing.root;
   await sourceCommand(() => expect(workspace).toBeVisible());
-  await sourceCommand(() => expect(workspace.getByRole('button', { name: 'Accept source changes', exact: true })).toBeEnabled());
+  await sourceCommand(() => expect(workspace.getByRole('button', { name: 'Accept changes', exact: true })).toBeEnabled());
   await sourceCommand(() => workspace.getByRole('button', { name: 'List View', exact: true }).click());
   await sourceCommand(() => sourcing.expectNodeVisible('Availability Bias'));
   expect(fs.readFileSync(configPath, 'utf8')).toBe(saved);
@@ -49,7 +49,7 @@ test('Sourcing depth edits preview the proposal while accepted curation stays st
   await sourceCommand(() => checkpoint('expanded candidate includes Availability Bias while accepted configuration stays unchanged'));
 
   // Later and reload retain the original curation graph and the durable proposal.
-  await sourceCommand(() => workspace.getByRole('button', { name: 'Later', exact: true }).click());
+  await sourceCommand(() => workspace.getByRole('button', { name: 'Exit review', exact: true }).click());
   await sourceCommand(() => expect(workspace).toBeHidden());
   await sourceCommand(() => page.reload());
   await sourceCommand(() => editor.waitForLoad('example-bundle'));
@@ -63,7 +63,7 @@ test('Sourcing depth edits preview the proposal while accepted curation stays st
   await sourceCommand(() => checkpoint('reopened deferred proposal retains the expanded capture and staged depth'));
 
   // Discard leaves the accepted fixture exactly as it was.
-  await sourceCommand(() => workspace.getByRole('button', { name: 'Discard proposal', exact: true }).click());
+  await sourceCommand(() => sourcing.discard());
   await sourceCommand(() => expect(workspace).toBeHidden());
   expect(fs.readFileSync(configPath, 'utf8')).toBe(saved);
   await sourceCommand(() => checkpoint('discard returned to the unchanged accepted scope'));

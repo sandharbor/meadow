@@ -67,7 +67,7 @@ test('Curation applies blacklist shortcuts only when calculated impact is limite
   expect(proposal.current.proposed.nodes.find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Leaf')?.listType).toBe('blacklist');
   await sourceCommand(() => checkpoint('the harmless leaf edit is staged with the wider pending exclusion'));
 
-  await sourceCommand(() => sourcing.root.getByRole('button', { name: 'Discard proposal', exact: true }).click());
+  await sourceCommand(() => sourcing.discard());
   await sourceCommand(() => expect(sourcing.root).toBeHidden());
   expect(configuration()).toEqual(original);
   await sourceCommand(() => checkpoint('discard preserves the accepted configuration after both staged exclusions'));

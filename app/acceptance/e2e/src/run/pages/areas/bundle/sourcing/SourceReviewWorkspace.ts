@@ -21,7 +21,7 @@ export class SourceReviewWorkspace extends SourcingWorkspacePage {
   }
   async expectClosed() { await this.reviewExpect(this.root).not.toBeVisible(); }
   async checkAgain() {
-    await this.reviewExpect(this.root.locator('header').getByRole('button', { name: 'Update sources', exact: true })).toBeEnabled();
+    await this.reviewExpect(this.reviewActionsButton).toBeEnabled();
     await this.closeInspection();
     if (await this.identities.isVisible()) {
       await Promise.all([
@@ -31,7 +31,7 @@ export class SourceReviewWorkspace extends SourcingWorkspacePage {
     } else await this.updateSources();
   }
   async expectRefreshInHeader() {
-    await this.reviewExpect(this.root.locator('header').getByRole('button', { name: 'Update sources', exact: true })).toBeVisible();
+    await this.reviewExpect(this.reviewActionsButton).toBeVisible();
   }
   private async closeInspection() {
     if (await this.comparison.isVisible()) await this.closeComparison();
@@ -39,9 +39,9 @@ export class SourceReviewWorkspace extends SourcingWorkspacePage {
     if (await cleanup.isVisible()) await cleanup.getByRole('button', { name: 'Close', exact: true }).click();
   }
   async defer() { await this.closeInspection(); if (await this.identities.isVisible()) await this.identities.getByRole('button', { name: 'Later', exact: true }).click(); else await this.later(); }
-  async discard() {
+  override async discard() {
     await this.closeInspection();
-    await this.root.getByRole('button', { name: 'Discard proposal', exact: true }).click();
+    await super.discard();
     await this.expectClosed();
   }
   async close() { await this.defer(); }
@@ -57,10 +57,7 @@ export class SourceReviewWorkspace extends SourcingWorkspacePage {
   async setTrackNewPages(checked: boolean) { await this.setTrackingPreference(checked); }
   async confirmSuggestedIdentities() {
     await this.reviewExpect(this.identities).toBeVisible();
-    await Promise.all([
-      this.reviewPage.waitForResponse(response => response.url().endsWith('/sourcing/proposal/identities') && response.ok()),
-      this.identities.getByRole('button', { name: /^Confirm \d+ unambiguous suggestions$/ }).click(),
-    ]);
+    await this.acceptAllIdentitySuggestions();
     await this.reviewExpect(this.identities.getByRole('button', { name: 'Continue to graph', exact: true })).toBeEnabled();
   }
   private async selectPath(path: string) {
@@ -116,21 +113,21 @@ export class SourceReviewWorkspace extends SourcingWorkspacePage {
   async moveFrom(originalPath: string) {
     const change = this.reviewPage.locator(`[data-testid="source-path-change"][title^=${JSON.stringify(`${originalPath} → `)}]`);
     const row = this.identities.locator('fieldset').filter({ has: change });
-    await this.reviewExpect(row).toBeVisible();
+    await this.showIdentityRecord(row);
     return new SourceMoveReview(row, this.reviewExpect, this.reviewPage);
   }
   async moveForNode(id: string) {
     const row = this.identities.getByTestId(`source-move-${id}`);
-    await this.reviewExpect(row).toBeVisible();
+    await this.showIdentityRecord(row);
     return new SourceMoveReview(row, this.reviewExpect, this.reviewPage);
   }
   async expectIdentityChoiceRequired() { await this.reviewExpect(this.identities.getByRole('button', { name: 'Continue to graph', exact: true })).toBeDisabled(); }
   async expectMove(kind: 'Renamed' | 'Moved' | 'Moved and renamed', before: string, after: string) {
-    await this.reviewExpect(this.identities.getByRole('group', { name: `${kind}: ${before} → ${after}`, exact: true })).toBeVisible();
+    await this.showIdentityRecord(this.identities.getByRole('group', { name: `${kind}: ${before} → ${after}`, exact: true, includeHidden: true }));
   }
   async expectMoveCount(count: number) { await this.reviewExpect(this.identities.locator('fieldset[data-testid^="source-move-"]')).toHaveCount(count); }
-  async expectMoveListed(nodeId: string) { await this.reviewExpect(this.identities.getByTestId(`source-move-${nodeId}`)).toBeVisible(); }
-  async expectReadyToAccept() { await this.reviewExpect(this.root.getByRole('button', { name: 'Accept source changes', exact: true })).toBeEnabled(); }
+  async expectMoveListed(nodeId: string) { await this.showIdentity(nodeId); }
+  async expectReadyToAccept() { await this.reviewExpect(this.root.getByRole('button', { name: 'Accept changes', exact: true })).toBeEnabled(); }
   async applyOrphanRemovals() { await this.accept(); }
   async reviewOrphans() { await this.open(); await this.closeInspection(); await this.orphans.waitForOpen(); return this.orphans; }
 }

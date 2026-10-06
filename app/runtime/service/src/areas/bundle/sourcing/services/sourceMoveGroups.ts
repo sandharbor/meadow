@@ -6,6 +6,8 @@ import type { BundleNodeConfig } from '../../../../../../../contracts/types/bund
 import type { SourceMoveCandidate } from '../../../../../../../contracts/types/sourcing.js';
 import { snapshotFilePath, snapshotSourceRoot, sourcePath, type SourceSnapshot } from '../../../../shared/source-snapshot/sourceSnapshots.js';
 
+import { sourceMoveSimilarity, sourceTextProfile } from './sourceMoveSimilarity.js';
+
 const words = (text: string) => text.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
 
 function directoryMove(move: SourceMoveCandidate): { from: string; to: string } | undefined {
@@ -78,13 +80,15 @@ export function findGroupedSourceMoves(bundleDirectory: string, previous: Source
       if (previous.files[oldPath].size === 0 || current.files[newPath].size === 0) continue;
       const exact = previous.files[oldPath].digest === current.files[newPath].digest;
       if (!exact && !/\.(md|html|txt)$/i.test(oldPath)) continue;
-      const similarity = exact ? 1 : wordOverlap(
-        fs.readFileSync(sourcePath(snapshotSourceRoot(bundleDirectory, previous.id, previous), oldPath), 'utf8'),
-        fs.readFileSync(sourcePath(snapshotSourceRoot(bundleDirectory, current.id, current), newPath), 'utf8'), renames,
-      );
+      const text = /\.(md|html|txt)$/i.test(oldPath);
+      const before = text ? fs.readFileSync(sourcePath(snapshotSourceRoot(bundleDirectory, previous.id, previous), oldPath), 'utf8') : undefined;
+      const after = text ? fs.readFileSync(sourcePath(snapshotSourceRoot(bundleDirectory, current.id, current), newPath), 'utf8') : undefined;
+      if (text && (!before?.trim() || !after?.trim())) continue;
+      const similarity = exact ? 1 : wordOverlap(before!, after!, renames);
       if (similarity < 0.9) continue;
       result.push({ bundleNodeId: config.bundleNodeId, oldPath, newPath, confidence: 'possible', competing: false,
-        evidence: [`Follows the folder move shared by ${group.anchors.length} matched pages`, exact ? 'Identical file contents' : `${Math.round(similarity * 100)}% word overlap after the shared rename`],
+        similarity: sourceMoveSimilarity({ oldPath, newPath, exact, before: before === undefined ? undefined : sourceTextProfile(before), after: after === undefined ? undefined : sourceTextProfile(after), previous, current, group: { anchors: group.anchors.length, overlap: similarity } }),
+        evidence: [`Follows the folder move shared by ${group.anchors.length} matched pages`, exact ? 'Identical non-blank file contents' : `${Math.round(similarity * 100)}% word overlap after the shared rename`],
         previousRoute: previous.graph?.nodes.find(node => node.bundleNodeKey === sourceFilePathToBundleNodeKey(oldPath))?.path ?? [],
         currentRoute: current.graph?.nodes.find(node => node.bundleNodeKey === sourceFilePathToBundleNodeKey(newPath))?.path ?? [],
       });

@@ -48,7 +48,7 @@ test('Solo temporarily restores full prominence for faded unchanged context with
   await sourceCommand(() => sourcing.root.getByRole('button', { name: 'Graph View', exact: true }).click());
   await sourceCommand(() => sourcing.expectGraphOpacity('file:Routes/Reference.md', 0.5));
   await sourceCommand(() => checkpoint('leaving Solo restores the original Fade in graph and list'));
-  await sourceCommand(() => sourcing.root.getByRole('button', { name: 'Discard proposal', exact: true }).click());
+  await sourceCommand(() => sourcing.discard());
   await sourceCommand(() => expect(sourcing.root).toBeHidden());
   await sourceCommand(() => assertMeadowHomeState());
 });

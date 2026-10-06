@@ -28,6 +28,9 @@ test('Sourcing moves a nested group while unchanged name-only links retain all t
   await sourceCommand(() => editor.checkSourceChanges());
   await sourceCommand(() => editor.sourceReview.open());
   await sourceCommand(() => editor.sourceReview.expectMoveCount(3));
+  await sourceCommand(() => editor.sourceReview.expectDirectoryGroupCollapsed('t001', 'source-changes/nested', 3));
+  await sourceCommand(() => addKeyFrame(sourceMove));
+  await sourceCommand(() => checkpoint('a collapsed overview summarizes the shared change for three files'));
   for (const node of original) {
     await sourceCommand(() => editor.sourceReview.expectMoveListed(node.bundleNodeId));
   }
