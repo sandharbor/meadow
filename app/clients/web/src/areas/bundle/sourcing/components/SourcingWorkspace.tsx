@@ -16,6 +16,7 @@ import { SourceRegistryChanges } from './SourceRegistryChanges.js';
 import { ProposalSettingsSummary } from './ProposalSettingsSummary.js';
 import { SourceReviewActions } from './SourceReviewActions.js';
 import type { IdentityTab } from './SourceIdentityReview.js';
+import { useIdentityDecisions } from './useIdentityDecisions.js';
 
 type PendingEdit = ProposalConfiguration | { trackingChange: Record<string, unknown> };
 
@@ -34,9 +35,7 @@ export function SourcingWorkspace({ bundleSlug, onClose, onAccepted, requestedPa
   const [pendingPreference, setPendingPreference] = useState<boolean | null>(null);
   const [mutating, setBusy] = useState(false);
   const [loadingCount, setLoadingCount] = useState(0);
-  const busy = mutating || loadingCount > 0;
-  const busyRef = useRef(busy);
-  busyRef.current = busy;
+  const busyRef = useRef(false);
   const [dialog, setDialog] = useState<ProposalDialog>(null);
   const [identityComparison, setIdentityComparison] = useState<string | undefined>();
   const [identityTab, setIdentityTab] = useState<IdentityTab>('confident');
@@ -65,12 +64,13 @@ export function SourcingWorkspace({ bundleSlug, onClose, onAccepted, requestedPa
     const node = graph?.getNode(key);
     return node?.bundleNodeId ? { id: node.bundleNodeId } : { key };
   })); }, [graph, selected, reportSelection]);
-  const receive = useCallback(async (value: SourceProposalReview) => {
+  const receive = useCallback(async (value: SourceProposalReview, deferGraph = false) => {
     const requestId = ++comparisonRequest.current;
     if (value.proposal.revision < (reviewRef.current?.proposal.revision ?? 0)) return;
     reviewRef.current = value; setReview(value);
     if (value.unresolvedIdentities.length) { setDialog('identities'); setGraph(null); return; }
     if (value.missingRequiredEntries.length) { setGraph(null); return; }
+    if (deferGraph) { graphRef.current = null; setGraph(null); return; }
     const compared = await proposalRequest<Comparison>(bundleSlug, `graph?frontierDepth=${frontierDepthRef.current}`);
     if (requestId !== comparisonRequest.current || compared.proposal.revision < (reviewRef.current?.proposal.revision ?? 0)) return;
     setFrontierUnavailable(compared.frontierUnavailable ?? null);
@@ -88,6 +88,12 @@ export function SourcingWorkspace({ bundleSlug, onClose, onAccepted, requestedPa
     catch (err) { setError(String(err)); }
     finally { setLoadingCount(count => count - 1); }
   }, [bundleSlug, receive]);
+  const identityDecisions = useIdentityDecisions(review?.proposal.identities ?? {}, async choices => {
+    const result = await proposalRequest<SourceProposalReview>(bundleSlug, 'identities', { choices, revision: reviewRef.current?.proposal.revision });
+    await receive(result, true);
+  }, err => setError(err instanceof Error ? err.message : String(err)));
+  const busy = mutating || identityDecisions.saving || loadingCount > 0;
+  busyRef.current = busy;
   useEffect(() => {
     let active = true;
     let checking = false;
@@ -187,7 +193,8 @@ export function SourcingWorkspace({ bundleSlug, onClose, onAccepted, requestedPa
       untrackedNodeCount={graph.getAllNodes().filter(node => !node.tracked).length} bundleNodeConfigs={review.configuration.nodes}
       protectedBundleNodeIds={new Set([review.configuration.bundle.entryBundleNodeId, review.configuration.bundle.defaultTraversalBundleNodeId].filter((id): id is NonNullable<typeof id> => Boolean(id)))}
     /> : !review && <p className="p-5">Loading source proposal…</p>}</fieldset>
-    {review && <ProposalDialogs identityTab={identityTab} onIdentityTabChange={setIdentityTab} identityComparison={identityComparison} onIdentityComparison={setIdentityComparison} request={operations.request} dialog={dialog} review={review} busy={busy} close={() => { setDialog(null); setPendingConfiguration(null); }} later={onClose}
+    {review && <ProposalDialogs identityChoices={identityDecisions.choices} chooseIdentities={choices => { setError(null); identityDecisions.choose(choices); }} identitySaving={identityDecisions.saving} identityBusy={mutating || loadingCount > 0}
+      identityTab={identityTab} onIdentityTabChange={setIdentityTab} identityComparison={identityComparison} onIdentityComparison={setIdentityComparison} request={operations.request} dialog={dialog} review={review} busy={busy} close={() => { if (dialog === 'identities') void reload(); setDialog(null); setPendingConfiguration(null); }} later={onClose}
       mutate={(operation, body) => mutate(operation, body).catch(() => {})} refresh={() => { if (pendingConfiguration) void ('trackingChange' in pendingConfiguration ? mutate('tracking', { ...pendingConfiguration.trackingChange, incorporateNewerSources: true }) : configure(pendingConfiguration, true)).then(() => { setPendingConfiguration(null); setDialog(null); }).catch(() => {}); }} />}
   </section></SourceNamesProvider>;
 }

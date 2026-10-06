@@ -138,13 +138,90 @@ export class SourcingWorkspacePage {
     const group = this.directoryIdentityGroup(before, after);
     await this.expect(group).toHaveCount(1);
     await this.expect(group).not.toHaveAttribute('open');
-    await this.expect(group.getByTestId('source-identity-group-summary')).toContainText(`${count} files`);
+    await this.expect(group.locator('xpath=ancestor::tr').getByRole('combobox', { name: `Identity choice: Same, ${count} files`, exact: true })).toBeVisible();
     await this.expect(group.getByRole('radio')).toHaveCount(0);
   }
   async openDirectoryGroup(before: string, after: string) {
     const group = this.directoryIdentityGroup(before, after);
     await group.getByTestId('source-identity-group-summary').click();
     await this.expect(group).toHaveAttribute('open');
+  }
+  async expectDirectoryGroupExpanded(before: string, after: string, count: number) {
+    const group = this.directoryIdentityGroup(before, after);
+    await this.expect(group).toHaveAttribute('open');
+    await this.expect(group.locator('fieldset[data-testid^="source-move-"]')).toHaveCount(count);
+    await group.getByTestId('source-identity-group-summary').scrollIntoViewIfNeeded();
+  }
+  async chooseCompactIdentity(id: string, option: string, currentChoice?: 'Same' | 'Different' | 'Choose') {
+    const record = this.identities.getByTestId(`source-move-${id}`);
+    const panel = record.locator('xpath=ancestor::*[@role="tabpanel"]');
+    if (await panel.getAttribute('hidden') !== null) {
+      const confident = await this.identities.getByRole('tab', { name: 'Confident suggestions', exact: true }).getAttribute('aria-selected');
+      await this.selectIdentityTab(confident === 'true' ? 'Needs your input' : 'Confident suggestions');
+    }
+    const row = record.locator('xpath=ancestor::tr');
+    const control = currentChoice ? row.getByRole('combobox', { name: new RegExp(`^Identity choice: ${currentChoice}(?:,|$)`) }) : row.getByTestId('source-identity-choice');
+    await Promise.all([
+      this.page.waitForResponse(response => response.url().endsWith('/sourcing/proposal/identities') && response.ok()),
+      control.selectOption({ label: option }),
+    ]);
+    await this.expect(this.reviewActionsButton).toBeEnabled();
+  }
+  async expectCompactIdentity(id: string, choice: 'Same' | 'Different' | 'Choose', count?: number) {
+    const row = this.identities.getByTestId(`source-move-${id}`).locator('xpath=ancestor::tr');
+    await this.expect(row.getByRole('combobox', { name: `Identity choice: ${choice}${count !== undefined ? `, ${count} ${count === 1 ? 'file' : 'files'}` : ''}`, exact: true })).toBeVisible();
+  }
+  async chooseInputIdentity(id: string, destination: string | null) {
+    await this.selectIdentityTab('Needs your input');
+    const row = this.identities.getByTestId(`source-move-${id}`).locator('xpath=ancestor::tr');
+    const controls = row.getByTestId('source-identity-direct-choices');
+    if (await row.getByTestId('source-identity-pick').count()) {
+      await this.expect(controls).toHaveCount(0);
+      await this.chooseIdentity(id, destination);
+      return;
+    }
+    const same = controls.getByRole('radio', { name: /^Same(?: —|$)/ });
+    const choice = destination === null ? controls.getByRole('radio', { name: 'Different', exact: true })
+      : await same.count() === 1 ? same : controls.locator(`[data-identity-destination=${JSON.stringify(destination)}]`);
+    await Promise.all([
+      this.page.waitForResponse(response => response.url().endsWith('/sourcing/proposal/identities') && response.ok()),
+      choice.click(),
+    ]);
+    await this.expect(this.reviewActionsButton).toBeEnabled();
+  }
+  async expectPickRequired(id: string) {
+    const record = this.identities.getByTestId(`source-move-${id}`);
+    const row = record.locator('xpath=ancestor::tr');
+    await this.expect(row.getByTestId('source-identity-direct-choices')).toHaveCount(0);
+    await this.expect(row.getByTestId('source-identity-pick')).toHaveText('Pick');
+    await this.expect(record.getByTestId('source-identity-record')).not.toHaveAttribute('open');
+    await record.getByTestId('source-identity-record-summary').scrollIntoViewIfNeeded();
+  }
+  async expectChoicesAlignedWithSummary(id: string) {
+    const record = this.identities.getByTestId(`source-move-${id}`);
+    const choices = record.locator('xpath=ancestor::tr').getByTestId('source-identity-direct-choices');
+    const header = record.getByTestId('source-identity-record-summary');
+    const left = await choices.boundingBox();
+    const right = await header.boundingBox();
+    this.expect(left).not.toBeNull(); this.expect(right).not.toBeNull();
+    this.expect(Math.abs(left!.y + left!.height / 2 - right!.y - right!.height / 2)).toBeLessThanOrEqual(2);
+    await this.expect(choices.getByRole('radio', { name: 'Same', exact: true })).toBeInViewport();
+    await this.expect(choices.getByRole('radio', { name: 'Different', exact: true })).toBeInViewport();
+  }
+  async expectInputIdentity(id: string, destination: string | null) {
+    const record = this.identities.getByTestId(`source-move-${id}`);
+    const row = record.locator('xpath=ancestor::tr');
+    if (await row.getByTestId('source-identity-pick').count()) {
+      await this.showIdentity(id);
+      const choice = destination === null ? record.getByRole('radio', { name: 'Different', exact: true })
+        : record.locator(`[data-identity-destination=${JSON.stringify(destination)}]`).getByRole('radio', { name: 'Pick', exact: true });
+      await this.expect(choice).toBeChecked();
+      return;
+    }
+    const controls = row.getByTestId('source-identity-direct-choices');
+    const choice = destination === null ? controls.getByRole('radio', { name: 'Different', exact: true })
+      : controls.locator(`[data-identity-destination=${JSON.stringify(destination)}]`);
+    await this.expect(choice).toBeChecked();
   }
   async acceptAllIdentitySuggestions() {
     await this.selectIdentityTab('Confident suggestions');
@@ -153,6 +230,30 @@ export class SourcingWorkspacePage {
       this.identities.getByRole('button', { name: 'Accept all suggestions', exact: true }).click(),
     ]);
   }
+  async expectIdentityActionsStayVisibleWhenScrolling() {
+    const panel = this.identities.getByRole('tabpanel', { name: 'Confident suggestions', exact: true });
+    const list = panel.getByTestId('source-identity-list');
+    const actions = [this.identities.getByRole('button', { name: 'Refresh sources', exact: true }), panel.getByRole('button', { name: 'Accept all suggestions', exact: true })];
+    const before = await Promise.all(actions.map(action => action.boundingBox()));
+    this.expect(before.every(Boolean)).toBe(true);
+    this.expect(before[0]!.y).toBeLessThan((await panel.boundingBox())!.y);
+    await list.evaluate(element => { element.scrollTop = element.scrollHeight; });
+    await this.expect.poll(() => list.evaluate(element => element.scrollTop)).toBeGreaterThan(0);
+    for (const [index, action] of actions.entries()) {
+      await this.expect(action).toBeInViewport();
+      this.expect((await action.boundingBox())!.y).toBe(before[index]!.y);
+    }
+  }
+  async scrollIdentityListToStart() {
+    await this.identities.getByRole('tabpanel').getByTestId('source-identity-list').evaluate(element => { element.scrollTop = 0; });
+  }
+  async refreshIdentitySources() {
+    await Promise.all([
+      this.page.waitForResponse(response => response.url().endsWith('/sourcing/proposal/refresh') && response.ok()),
+      this.identities.getByRole('button', { name: 'Refresh sources', exact: true }).click(),
+    ]);
+    await this.expect(this.reviewActionsButton).toBeEnabled();
+  }
   async toggleIdentitySimilarity(id: string) {
     await this.showIdentity(id);
     await this.identities.getByTestId(`source-move-${id}`).locator('summary').filter({ hasText: 'Similarity' }).click();
@@ -160,7 +261,8 @@ export class SourcingWorkspacePage {
   async chooseIdentity(id: string, destination: string | null) {
     await this.showIdentity(id);
     const group = this.identities.getByTestId(`source-move-${id}`);
-    const choice = group.getByRole('radio', { name: destination ? `Same page — ${destination}` : 'Different pages — remove the old configuration at acceptance', exact: true });
+    const choice = destination ? group.locator(`[data-identity-destination=${JSON.stringify(destination)}]`).getByRole('radio', { name: /^(Same|Pick)$/ })
+      : group.getByRole('radio', { name: 'Different', exact: true });
     await Promise.all([
       this.page.waitForResponse(response => response.url().endsWith('/sourcing/proposal/identities') && response.ok(), { timeout: 10000 }),
       choice.click(),

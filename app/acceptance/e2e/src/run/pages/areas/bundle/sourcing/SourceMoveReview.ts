@@ -7,26 +7,33 @@ export class SourceMoveReview {
   constructor(private row: Locator, private expect: Expect, private page: Page) {}
 
   async expectSamePageSelected() {
-    await this.expect(this.row.getByRole('radio', { name: /Same page/ })).toBeChecked();
+    await this.expect(this.row.getByRole('radio', { name: /^(Same|Pick)$/ })).toBeChecked();
   }
 
   async expectUnresolved(destinations: string[]) {
     await this.expect(this.row.getByRole('radio', { checked: true })).toHaveCount(0);
-    const choices = this.row.getByRole('radio', { name: /Same page/ });
+    const choices = this.row.getByRole('radio', { name: /^(Same|Pick)$/ });
     await this.expect(choices).toHaveCount(destinations.length);
-    for (const destination of destinations) await this.expect(this.row.getByRole('radio', { name: new RegExp(destination.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) })).toBeVisible();
+    for (const destination of destinations) await this.expect(this.row.getByRole('group', { name: `Match with ${destination}`, exact: true }).getByRole('radio', { name: /^(Same|Pick)$/ })).toBeVisible();
   }
 
   async keepSeparate() {
     await Promise.all([
       this.page.waitForResponse(response => response.url().endsWith('/sourcing/proposal/identities') && response.ok()),
-      this.row.getByRole('radio', { name: /Different pages/ }).click(),
+      this.row.getByRole('radio', { name: /^Different$/ }).click(),
     ]);
     await this.expectSeparateSelected();
   }
 
   async expectSeparateSelected() {
-    await this.expect(this.row.getByRole('radio', { name: /Different pages/ })).toBeChecked();
+    const details = this.row.getByTestId('source-identity-record');
+    if (await details.count() && await details.getAttribute('open') === null) await details.getByTestId('source-identity-record-summary').click();
+    await this.expect(this.row.getByRole('radio', { name: /^Different$/ })).toBeChecked();
+  }
+
+  async showDifferentHelp() {
+    await this.row.getByRole('button', { name: 'About different pages', exact: true }).hover();
+    await this.expect(this.row.getByRole('tooltip')).toBeVisible();
   }
 
   async expectPreviousRoute(path: string) {

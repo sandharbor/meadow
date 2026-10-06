@@ -4,6 +4,7 @@ import type { SourceIdentityRecommendation } from '../../../../../../../shared_c
 import { splitPathChange } from '../../../../shared/components/PathChange.js';
 
 export type IdentityChangeKind = 'moved-renamed' | 'moved' | 'renamed';
+export type IdentityChoice = 'same' | 'different' | 'input';
 
 export interface SourceIdentityGroup {
   key: string;
@@ -18,7 +19,16 @@ export function identitySummaryMove(record: SourceIdentityRecommendation, choice
   return record.moves.find(move => move.newPath === choices[record.id]) ?? record.moves[0];
 }
 
-/** Group the same directory transition and filename edit; competing destinations stay individual. */
+export function identityGuidance(record: SourceIdentityRecommendation): IdentityChoice {
+  return !record.confident ? 'input' : record.destination === null ? 'different' : 'same';
+}
+
+export function identityChoice(record: SourceIdentityRecommendation, choices: Record<string, string | null>): IdentityChoice {
+  if (record.decided) return choices[record.id] === null ? 'different' : 'same';
+  return identityGuidance(record);
+}
+
+/** Group shared path changes with matching guidance; individual choices do not rearrange groups. */
 export function groupSourceIdentities(records: SourceIdentityRecommendation[], choices: Record<string, string | null>) {
   const sections: Array<{ kind: IdentityChangeKind; label: string; groups: SourceIdentityGroup[] }> = [
     { kind: 'moved-renamed', label: 'Changed directories and renamed', groups: [] },
@@ -41,7 +51,7 @@ export function groupSourceIdentities(records: SourceIdentityRecommendation[], c
     const rename = splitPathChange(before.name, after.name);
     const beforeDirectory = from.join('/'), afterDirectory = to.join('/');
     const key = record.moves.length > 1 ? JSON.stringify(['individual', record.id])
-      : JSON.stringify([kind, ...(moved ? [beforeDirectory, afterDirectory] : []), ...(renamed ? [rename.before, rename.after] : [])]);
+      : JSON.stringify([kind, identityGuidance(record), ...(moved ? [beforeDirectory, afterDirectory] : []), ...(renamed ? [rename.before, rename.after] : [])]);
     let group = groups.get(key);
     if (!group) {
       group = { key, beforeDirectory, afterDirectory, beforeName: rename.before, afterName: rename.after, records: [] };

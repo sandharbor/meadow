@@ -55,6 +55,7 @@ export function validateConceptRegistry(concepts: readonly AnyMeadowConcept[]): 
     const referencedIds = [
       ...textsFor(concept).flatMap(text => conceptLinks(text).map(link => link.conceptId)),
       ...(concept.appAreaIds ?? []),
+      ...(concept.subAreas ?? []).map(subArea => subArea.areaId),
       ...(concept.parentId ? [concept.parentId] : []),
     ];
     for (const referencedId of referencedIds) {
@@ -65,6 +66,14 @@ export function validateConceptRegistry(concepts: readonly AnyMeadowConcept[]): 
     for (const appAreaId of concept.appAreaIds ?? []) {
       if (byId.get(appAreaId)?.kind !== "app-area") {
         errors.push(`concept "${concept.id}" has non-app-area membership "${appAreaId}"`);
+      }
+    }
+    for (const subArea of concept.subAreas ?? []) {
+      if (byId.get(subArea.areaId)?.kind !== "app-area" || !concept.appAreaIds?.includes(subArea.areaId)) {
+        errors.push(`concept "${concept.id}" has invalid sub-area membership "${subArea.areaId}"`);
+      }
+      if (!Number.isFinite(subArea.order) || subArea.order < 0) {
+        errors.push(`concept "${concept.id}" has invalid sub-area order`);
       }
     }
     if (concept.kind === "app-area" && concept.appAreaIds?.length) {

@@ -24,6 +24,7 @@ describe('move traversal context', () => {
 
   it('shows an unchanged leading route once and omits the moved endpoint', () => {
     render(<MoveTraversal move={move} />);
+    expect(screen.getByText('Unchanged')).toBeInTheDocument();
     expect(screen.getAllByTestId('source-file-pill').map(node => node.getAttribute('title'))).toEqual(['root.md', 'parent.md']);
     expect(screen.queryByText('Before')).not.toBeInTheDocument();
     expect(screen.queryByText('After')).not.toBeInTheDocument();
@@ -33,6 +34,7 @@ describe('move traversal context', () => {
 
   it('keeps both routes when a different parent leads to the moved page', () => {
     render(<MoveTraversal move={{ ...move, currentRoute: [testKey('root.md'), testKey('different.md'), testKey('new/page.md')] }} />);
+    expect(screen.queryByText('Unchanged')).not.toBeInTheDocument();
     expect(screen.getByText('Before')).toBeInTheDocument();
     expect(screen.getByText('After')).toBeInTheDocument();
     expect(screen.getByTitle('parent.md')).toBeInTheDocument();

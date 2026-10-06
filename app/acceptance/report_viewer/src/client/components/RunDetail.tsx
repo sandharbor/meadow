@@ -42,20 +42,22 @@ import {
 
 const VIEW_TABS = ['thumbs', 'list', 'videos', 'details', 'timing'] as const
 type ViewTab = typeof VIEW_TABS[number]
-type FilterGroup = 'surface' | 'bundle' | 'mode' | 'area'
+type FilterGroup = 'surface' | 'bundle' | 'mode' | 'area' | 'subarea'
 
 interface FilterValues {
   areaIds: string[]
+  subAreaIds: string[]
   docIds: string[]
   bundleIds: string[]
   bundleModes: BundleMode[]
   executionSurfaces: ExecutionSurface[]
 }
 
-const EMPTY_FILTERS: FilterValues = { areaIds: [], docIds: [], bundleIds: [], bundleModes: [], executionSurfaces: [] }
+const EMPTY_FILTERS: FilterValues = { areaIds: [], subAreaIds: [], docIds: [], bundleIds: [], bundleModes: [], executionSurfaces: [] }
 
 interface ConceptView {
   searchFacet: boolean
+  subAreas?: { areaId: string; order: number }[]
   parentId?: string
   kind?: string
   id: string
@@ -263,8 +265,14 @@ export default function RunDetail() {
   const selectedAreaIds = searchParams.getAll('area')
   const selectedAreas = appAreas.filter((d) => selectedAreaIds.includes(d.id))
   const selectedDocIds = searchParams.getAll('doc')
-  const selectedDocs = [...docs, ...conceptCatalog.filter(concept => !docs.some(doc => doc.id === concept.id))]
-    .filter((d) => selectedDocIds.includes(d.id))
+  const allDocs = [...docs, ...conceptCatalog.filter(concept => !docs.some(doc => doc.id === concept.id))]
+  const selectedDocs = allDocs.filter((d) => selectedDocIds.includes(d.id))
+  const subAreaDocs = allDocs.filter(doc => doc.subAreas?.some(subArea => selectedAreaIds.includes(subArea.areaId)))
+    .sort((a, b) => {
+      const order = (doc: ConceptView) => Math.min(...(doc.subAreas ?? []).filter(subArea => selectedAreaIds.includes(subArea.areaId)).map(subArea => subArea.order))
+      return order(a) - order(b) || a.name.localeCompare(b.name)
+    })
+  const selectedSubAreaIds = searchParams.getAll('subarea').filter(id => subAreaDocs.some(doc => doc.id === id))
   const selectedBundleIds = searchParams.getAll('bundle')
   const selectedBundles = bundleDocs.filter((d) => selectedBundleIds.includes(d.id))
   const selectedBundleModes = searchParams.getAll('mode').filter(isBundleMode)
@@ -306,6 +314,7 @@ export default function RunDetail() {
 
   const setFilters = (next: Partial<FilterValues>) => {
     const areaIds = next.areaIds ?? selectedAreaIds
+    const subAreaIds = (next.subAreaIds ?? selectedSubAreaIds).filter(id => allDocs.some(doc => doc.id === id && doc.subAreas?.some(subArea => areaIds.includes(subArea.areaId))))
     const docIds = next.docIds ?? selectedDocIds
     const bundleIds = next.bundleIds ?? selectedBundleIds
     const bundleModes = next.bundleModes ?? selectedBundleModes
@@ -315,6 +324,7 @@ export default function RunDetail() {
       ...executionSurfaces.map((surface): [string, string] => ['surface', surface]),
       ...bundleModes.map((mode): [string, string] => ['mode', mode]),
       ...areaIds.map((id): [string, string] => ['area', id]),
+      ...subAreaIds.map((id): [string, string] => ['subarea', id]),
       ...docIds.map((id): [string, string] => ['doc', id]),
       ...bundleIds.map((id): [string, string] => ['bundle', id]),
     ])
@@ -322,11 +332,12 @@ export default function RunDetail() {
 
   const chooseMetadataFilter = (next: Partial<FilterValues>, action: ScenarioFilterAction) => {
     const current = action === 'restart' ? EMPTY_FILTERS : {
-      areaIds: selectedAreaIds, docIds: selectedDocIds, bundleIds: selectedBundleIds,
+      areaIds: selectedAreaIds, subAreaIds: selectedSubAreaIds, docIds: selectedDocIds, bundleIds: selectedBundleIds,
       bundleModes: selectedBundleModes, executionSurfaces: selectedExecutionSurfaces,
     }
     setFilters({
       areaIds: [...new Set([...current.areaIds, ...next.areaIds ?? []])],
+      subAreaIds: [...new Set([...current.subAreaIds, ...next.subAreaIds ?? []])],
       docIds: [...new Set([...current.docIds, ...next.docIds ?? []])],
       bundleIds: [...new Set([...current.bundleIds, ...next.bundleIds ?? []])],
       bundleModes: [...new Set([...current.bundleModes, ...next.bundleModes ?? []])],
@@ -436,6 +447,7 @@ export default function RunDetail() {
     && (except === 'bundle' || selectedBundles.length === 0 || selectedBundles.some(bundle => scenario.bundleDocIds.includes(bundle.id)))
     && (except === 'mode' || selectedBundleModes.length === 0 || !!scenario.bundleMode && selectedBundleModes.includes(scenario.bundleMode))
     && (except === 'area' || selectedAreas.length === 0 || selectedAreas.some(area => scenario.appAreaDocIds.includes(area.id)))
+    && (except === 'area' || except === 'subarea' || selectedSubAreaIds.length === 0 || selectedSubAreaIds.some(id => scenarioConceptIds(scenario).has(id)))
     && (selectedDocIds.length === 0 || selectedDocIds.some(id => scenarioConceptIds(scenario).has(id)))
 
   const matchesReview = (scenario: Scenario) => !reviewMode || reviewMode === 'logs'
@@ -447,6 +459,8 @@ export default function RunDetail() {
   const bundleMatches = sortedScenarios.filter(scenario => matchesFilters(scenario, 'bundle'))
   const modeMatches = sortedScenarios.filter(scenario => matchesFilters(scenario, 'mode'))
   const areaMatches = sortedScenarios.filter(scenario => matchesFilters(scenario, 'area'))
+  const subAreaMatches = sortedScenarios.filter(scenario => matchesFilters(scenario, 'subarea'))
+  const availableSubAreaIds = new Set(subAreaMatches.flatMap(s => [...scenarioConceptIds(s)]))
   const availableSurfaceIds = new Set(surfaceMatches.flatMap(executionSurfacesFor))
   const availableBundleIds = new Set(bundleMatches.flatMap(s => s.bundleDocIds))
   const availableModeIds = new Set(modeMatches.flatMap(s => s.bundleMode ? [s.bundleMode] : []))
@@ -611,6 +625,21 @@ export default function RunDetail() {
           </div>
         )
       })()}
+
+      {selectedAreaIds.length > 0 && subAreaDocs.length > 0 && <div className="filter-section filter-areas mb-1 w-full rounded-md px-3 py-1.5">
+        <div className="filter-row" role="group" aria-label="Sub-areas">
+          <span className="filter-label text-xs text-neutral-400 font-medium">Sub-areas:</span>
+          <div className="filter-all"><button className="filter-default text-neutral-600 px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
+            aria-pressed={selectedSubAreaIds.length === 0} onClick={() => setFilters({ subAreaIds: [] })}>All</button></div>
+          <div className="filter-choices">{subAreaDocs.map(doc => {
+            const selected = selectedSubAreaIds.includes(doc.id)
+            const available = availableSubAreaIds.has(doc.id)
+            return <button key={doc.id} aria-pressed={selected} title={available ? undefined : 'No matching scenarios with the current filters.'}
+              className={`px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors ${selected ? 'bg-sky-500 text-white' : available ? 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200' : 'bg-neutral-50 text-neutral-400 hover:bg-neutral-100'}${selected && !available ? ' opacity-60' : ''}`}
+              onClick={() => setFilters({ subAreaIds: selected ? selectedSubAreaIds.filter(id => id !== doc.id) : [...selectedSubAreaIds, doc.id] })}>{doc.name}</button>
+          })}</div>
+        </div>
+      </div>}
 
       {/* Bundle filter chips */}
       {bundleDocs.length > 0 && (

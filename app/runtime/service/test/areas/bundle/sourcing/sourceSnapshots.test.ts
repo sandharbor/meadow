@@ -18,6 +18,7 @@ import { getFolderBundleRepairStatus } from '../../../../src/shared/bundle-confi
 import { loadTrackingRecords } from '../../../../src/shared/bundle-node/trackingRecords.js';
 import { sourceFilePathToBundleNodeKey } from '../../../../src/shared/bundle-node/nodeKeys.js';
 import { sourceTraversalGraph } from '../../../../src/areas/bundle/sourcing/services/sourceTraversalGraph.js';
+import { proposalMoveEvidence } from '../../../../src/areas/bundle/sourcing/services/proposalMoveEvidence.js';
 import { ensureTrackedPageContent } from '../../../../src/areas/bundle/generation/source-material/trackedPageContent.js';
 
 vi.mock('../../../../src/shared/utils/configDirectory/gitUtils/gitStatusUtils.js', async importOriginal => ({ ...await importOriginal<typeof import('../../../../src/shared/utils/configDirectory/gitUtils/gitStatusUtils.js')>(), commitChangesNative: vi.fn(async () => undefined) }));
@@ -388,6 +389,36 @@ describe('source snapshots with the shared big graph', () => {
     ]));
     expect(filenames.length).toBeGreaterThan(0);
     expect(new Set(filenames).size).toBe(filenames.length);
+  });
+
+  it('reuses proposal matching evidence and invalidates it when routes, captures, or identities change', async () => {
+    await initializeSourcing(bundle);
+    change('move-nested-group');
+    const review = await scanSourceChanges(bundle);
+    const previous = loadSourceSnapshot(bundle, review.accepted.id);
+    const current = loadSourceSnapshot(bundle, review.candidate!.id);
+    const configs = loadSourceNodeConfigs(bundle);
+    const first = proposalMoveEvidence(bundle, previous, current, configs);
+    expect(first.length).toBeGreaterThan(0);
+    const reads = vi.spyOn(fs, 'readFileSync');
+    try {
+      const next = proposalMoveEvidence(bundle, previous, current, configs);
+      expect(next).toEqual(first);
+      expect(reads).not.toHaveBeenCalled();
+      next[0].evidence.push('Caller annotation');
+      expect(proposalMoveEvidence(bundle, previous, current, configs)).toEqual(first);
+      const graph = globalThis.structuredClone(current.graph!);
+      graph.nodes[0].path = [];
+      graph.allInlinkSources['file:extra-route'] = ['file:new-link'];
+      proposalMoveEvidence(bundle, previous, { ...current, graph }, configs);
+      expect(reads).toHaveBeenCalled();
+      reads.mockClear();
+      proposalMoveEvidence(bundle, previous, { ...current, digest: 'changed-capture' }, configs);
+      expect(reads).toHaveBeenCalled();
+      reads.mockClear();
+      proposalMoveEvidence(bundle, previous, current, configs.slice(1));
+      expect(reads).toHaveBeenCalled();
+    } finally { reads.mockRestore(); }
   });
 
   it('reviews and removes existing orphans without creating another source snapshot', async () => {

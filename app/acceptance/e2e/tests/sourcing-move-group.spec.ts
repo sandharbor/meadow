@@ -29,12 +29,54 @@ test('Sourcing moves a nested group while unchanged name-only links retain all t
   await sourceCommand(() => editor.sourceReview.open());
   await sourceCommand(() => editor.sourceReview.expectMoveCount(3));
   await sourceCommand(() => editor.sourceReview.expectDirectoryGroupCollapsed('t001', 'source-changes/nested', 3));
+  await sourceCommand(() => editor.sourceReview.refreshIdentitySources());
   await sourceCommand(() => addKeyFrame(sourceMove));
   await sourceCommand(() => checkpoint('a collapsed overview summarizes the shared change for three files'));
+
+  // Change every identity directly from the collapsed group's choice column.
+  await sourceCommand(() => editor.sourceReview.chooseCompactIdentity(original[0].bundleNodeId, 'Different'));
+  await sourceCommand(() => editor.sourceReview.expectCompactIdentity(original[0].bundleNodeId, 'Different', 3));
+  await sourceCommand(() => addKeyFrame(sourceMove));
+  await sourceCommand(() => checkpoint('the compact group choice applies Different to all three files'));
+  await sourceCommand(() => editor.sourceReview.chooseCompactIdentity(original[0].bundleNodeId, 'Same'));
+  await sourceCommand(() => editor.sourceReview.expectCompactIdentity(original[0].bundleNodeId, 'Same', 3));
   for (const node of original) {
     await sourceCommand(() => editor.sourceReview.expectMoveListed(node.bundleNodeId));
   }
-  await sourceCommand(() => editor.sourceReview.confirmSuggestedIdentities());
+  await sourceCommand(() => editor.sourceReview.expectIdentityActionsStayVisibleWhenScrolling());
+  await sourceCommand(() => addKeyFrame(sourceMove));
+  await sourceCommand(() => editor.sourceReview.scrollIdentityListToStart());
+
+  // Keep the expanded group intact when one file gets a different decision.
+  // Hold the write so the selection and counts must update before a server response.
+  let releaseSave!: () => void;
+  const heldSave = new Promise<void>(resolve => { releaseSave = resolve; });
+  const identityEndpoint = '**/sourcing/proposal/identities';
+  await page.route(identityEndpoint, async route => { await heldSave; await route.continue(); });
+  const savedChoice = page.waitForResponse(response => response.url().endsWith('/sourcing/proposal/identities') && response.ok());
+  const changedRecord = page.getByTestId(`source-move-${original[0].bundleNodeId}`);
+  try {
+    await sourceCommand(() => changedRecord.getByRole('radio', { name: 'Different', exact: true }).click());
+    await sourceCommand(() => expect(changedRecord.getByRole('radio', { name: 'Different', exact: true })).toBeChecked());
+    await sourceCommand(() => editor.sourceReview.expectCompactIdentity(original[0].bundleNodeId, 'Same', 2));
+    await sourceCommand(() => editor.sourceReview.expectCompactIdentity(original[0].bundleNodeId, 'Different', 1));
+    await sourceCommand(() => expect(page.getByRole('status').filter({ hasText: 'Saving choices' })).toBeVisible());
+    await sourceCommand(() => expect(changedRecord.getByRole('radio', { name: 'Same', exact: true })).toBeEnabled());
+    await sourceCommand(() => addKeyFrame(sourceMove));
+  } finally { releaseSave(); }
+  await savedChoice;
+  await page.unroute(identityEndpoint);
+  await sourceCommand(() => expect(page.getByRole('status').filter({ hasText: 'Saving choices' })).toHaveCount(0));
+  await sourceCommand(() => editor.sourceReview.expectDirectoryGroupExpanded('t001', 'source-changes/nested', 3));
+  await sourceCommand(() => editor.sourceReview.expectCompactIdentity(original[0].bundleNodeId, 'Same', 2));
+  await sourceCommand(() => editor.sourceReview.expectCompactIdentity(original[0].bundleNodeId, 'Different', 1));
+  await sourceCommand(() => addKeyFrame(sourceMove));
+  await sourceCommand(() => checkpoint('one expanded group keeps all three files with Same 2 and Different 1 in its choice column'));
+
+  // Change just the Different subset back to Same.
+  await sourceCommand(() => editor.sourceReview.chooseCompactIdentity(original[0].bundleNodeId, 'Same', 'Different'));
+  await sourceCommand(() => editor.sourceReview.expectCompactIdentity(original[0].bundleNodeId, 'Same', 3));
+  await sourceCommand(() => editor.sourceReview.expectDirectoryGroupExpanded('t001', 'source-changes/nested', 3));
   await sourceCommand(() => editor.sourceReview.continueToGraph());
   for (const node of original) await sourceCommand(() => editor.sourceReview.orphans.expectNotListed(node.bundleNodeName));
   await sourceCommand(() => addKeyFrame(sourceMove));

@@ -41,7 +41,7 @@ test('Sourcing bulk-confirms unambiguous rename suggestions while ambiguous matc
   const competing = sourcing.identities.getByTestId('source-move-100000000006');
   await sourceCommand(() => expect(sourcing.identities.getByRole('tab', { name: 'Confident suggestions', exact: true })).toHaveAttribute('aria-selected', 'true'));
   await sourceCommand(() => sourcing.showIdentity('100000000007'));
-  await sourceCommand(() => expect(leaf.getByRole('radio', { name: /Same page/ })).toBeChecked());
+  await sourceCommand(() => expect(leaf.getByRole('radio', { name: /^Same$/ })).toBeChecked());
   await sourceCommand(() => expect(leaf.getByText('Recommended', { exact: true })).toBeVisible());
   await sourceCommand(() => expect(gateway).toBeHidden());
   expect(proposal.current.identities).toEqual({});
@@ -50,12 +50,19 @@ test('Sourcing bulk-confirms unambiguous rename suggestions while ambiguous matc
 
   // Uncertain records show evidence and choices without a recommendation.
   await sourceCommand(() => sourcing.selectIdentityTab('Needs your input'));
+  await sourceCommand(() => expect(sourcing.identities.getByRole('tabpanel', { name: 'Needs your input', exact: true }).getByRole('columnheader', { name: 'Choose', exact: true })).toBeVisible());
+  await sourceCommand(() => expect(sourcing.identities.getByRole('tabpanel', { name: 'Needs your input', exact: true }).getByRole('combobox')).toHaveCount(0));
+  await sourceCommand(() => sourcing.expectChoicesAlignedWithSummary('100000000002'));
+  await sourceCommand(() => sourcing.expectPickRequired('100000000006'));
+  await sourceCommand(() => addKeyFrame(sourceReviewIdentity));
   await sourceCommand(() => sourcing.showIdentity('100000000006'));
-  await sourceCommand(() => expect(competing.getByRole('radio', { name: /Same page/ })).toHaveCount(2));
+  await sourceCommand(() => expect(competing.getByRole('radio', { name: 'Pick', exact: true })).toHaveCount(2));
+  await sourceCommand(() => addKeyFrame(sourceReviewIdentity));
   await sourceCommand(() => sourcing.showIdentity('100000000002'));
   await sourceCommand(() => expect(gateway.getByRole('radio', { checked: true })).toHaveCount(0));
   await sourceCommand(() => expect(sourcing.identities.getByRole('tabpanel', { name: 'Needs your input', exact: true })).not.toContainText('Recommended'));
   await sourceCommand(() => sourcing.toggleIdentitySimilarity('100000000002'));
+  await sourceCommand(() => sourcing.expectChoicesAlignedWithSummary('100000000002'));
   await sourceCommand(() => expect(gateway).toContainText('not a probability'));
   await sourceCommand(() => expect(gateway.getByText('Identical non-blank file contents', { exact: true })).toBeVisible());
   await sourceCommand(() => expect(gateway.getByText('Substantial blocks', { exact: true })).toBeVisible());
@@ -66,22 +73,28 @@ test('Sourcing bulk-confirms unambiguous rename suggestions while ambiguous matc
   await sourceCommand(() => checkpoint('the input tab retains similarity and traversal evidence without suggested choices'));
 
   // Accepting confident suggestions preserves individual decisions in the other tab.
-  await sourceCommand(() => sourcing.chooseIdentity('100000000002', null));
+  await sourceCommand(() => gateway.getByTestId('source-identity-record-summary').click());
+  await sourceCommand(() => sourcing.chooseInputIdentity('100000000002', null));
+  await sourceCommand(() => expect(gateway.getByTestId('source-identity-record')).not.toHaveAttribute('open'));
+  await sourceCommand(() => sourcing.expectInputIdentity('100000000002', null));
   await sourceCommand(() => sourcing.acceptAllIdentitySuggestions());
-  await sourceCommand(() => expect(leaf.getByRole('radio', { name: /Same page/ })).toBeChecked());
+  await sourceCommand(() => expect(leaf.getByRole('radio', { name: /^Same$/ })).toBeChecked());
   await sourceCommand(() => expect(sourcing.identities.getByRole('button', { name: 'Accept all suggestions', exact: true })).toBeDisabled());
   await sourceCommand(() => sourcing.selectIdentityTab('Needs your input'));
-  await sourceCommand(() => expect(gateway.getByRole('radio', { name: /Different pages/ })).toBeChecked());
+  await sourceCommand(() => sourcing.expectInputIdentity('100000000002', null));
   await sourceCommand(() => expect(sourcing.identities.getByRole('button', { name: 'Continue to graph', exact: true })).toBeDisabled());
   expect(proposal.current.identities['100000000006']).toBeUndefined();
   expect(proposal.current.identities['100000000003']).toBeUndefined();
   await sourceCommand(() => checkpoint('accepting suggestions preserves the saved rejection and unresolved input records'));
 
   // Choose the uncertain matches, revise the confirmed suggestion, and select the competing destination.
-  await sourceCommand(() => sourcing.chooseIdentity('100000000002', 'Routes/Branch/Gateway.md'));
+  await sourceCommand(() => sourcing.chooseInputIdentity('100000000002', 'Routes/Branch/Gateway.md'));
+  await sourceCommand(() => sourcing.expectInputIdentity('100000000002', 'Routes/Branch/Gateway.md'));
   await sourceCommand(() => sourcing.chooseIdentity('100000000003', 'Routes/Independent.md'));
-  await sourceCommand(() => sourcing.chooseIdentity('100000000007', null));
-  await sourceCommand(() => sourcing.chooseIdentity('100000000006', 'Retained One.md'));
+  await sourceCommand(() => sourcing.chooseCompactIdentity('100000000007', 'Different'));
+  await sourceCommand(() => sourcing.expectCompactIdentity('100000000007', 'Different'));
+  await sourceCommand(() => sourcing.chooseInputIdentity('100000000006', 'Retained One.md'));
+  await sourceCommand(() => sourcing.expectInputIdentity('100000000006', 'Retained One.md'));
   await sourceCommand(() => sourcing.continueToGraph());
   await sourceCommand(() => sourcing.select('Gateway'));
   await sourceCommand(() => expect(sourcing.evidence).toContainText('Routes/Branch/Bridge.md'));

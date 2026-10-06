@@ -51,4 +51,23 @@ describe('identity change groups', () => {
     expect(sections[0].label).toBe('Renamed');
     expect(sections[0].groups[0]).toMatchObject({ beforeName: 'a', afterName: 'renamed' });
   });
+
+  it('separates shared changes with different guidance even when both were chosen as same', () => {
+    const same = record('same', 'old/a.md', 'new/a.md');
+    const different = { ...record('different', 'old/b.md', 'new/b.md'), destination: null };
+    same.decided = different.decided = true;
+    const sections = groupSourceIdentities([same, different], { same: 'new/a.md', different: 'new/b.md' });
+    expect(sections[0].groups).toHaveLength(2);
+  });
+
+  it('keeps the group and its key stable when individual decisions differ', () => {
+    const a = { ...record('a', 'old/a.md', 'new/a.md'), decided: true };
+    const b = record('b', 'old/b.md', 'new/b.md');
+    const initial = groupSourceIdentities([a, b], {})[0].groups;
+    const mixed = groupSourceIdentities([a, b], { a: null })[0].groups;
+    expect(mixed).toHaveLength(1);
+    expect(mixed[0].key).toBe(initial[0].key);
+    b.decided = true;
+    expect(groupSourceIdentities([a, b], { a: null, b: null })[0].groups).toHaveLength(1);
+  });
 });

@@ -4,7 +4,8 @@ import type { SourceProposalReview, PendingSourceProposal } from '../../../../..
 import { sameProposalValue } from '../../../../../../../shared_code/utils/proposalConfigurationMerge.js';
 import { bundleNodeKeyFromConfig, fileNodeKeyFromSourceFilePath, serializeBundleNodeKey } from '../../../../../../../shared_code/utils/bundleNodeKey.js';
 import { sourcingQueryPrepareProposalTracking } from '../../curation/exported.js';
-import { findSourceMoves, relinkSourceNode, explainSourceOrphans } from './sourceReview.js';
+import { relinkSourceNode, explainSourceOrphans } from './sourceReview.js';
+import { proposalMoveEvidence } from './proposalMoveEvidence.js';
 import { beginSourceProposal, loadProposalConfiguration, sourceProposalConfigurationReview, saveSourceProposal } from './proposalStore.js';
 import { equivalentSnapshotPath } from '../../../../shared/source-snapshot/sourceRegistrySnapshots.js';
 import { availableSnapshotGraph, loadSourceSnapshot, missingSnapshotRoles, sha256, snapshotSummary, SourcingError,
@@ -27,7 +28,7 @@ export async function reviewSourceProposal(directory: string): Promise<SourcePro
     const beforeIdentity = await availableSnapshotGraph(directory, candidate, 0, { config: configuration.bundle, nodes: configuration.nodes });
     // Identity evidence survives explicit untracking and edits made after a confirmed move.
     const knownIdentities = [...new Map([...saved.nodes, ...proposal.original.nodes].map(node => [node.bundleNodeId, node])).values()];
-    const moves = findSourceMoves(directory, { ...accepted, graph: beforeGraph }, { ...candidate, graph: beforeIdentity }, knownIdentities)
+    const moves = proposalMoveEvidence(directory, { ...accepted, graph: beforeGraph }, { ...candidate, graph: beforeIdentity }, knownIdentities)
       .map(move => ({ ...move, contentChanged: Boolean(accepted.files[move.oldPath] && candidate.files[move.newPath]
         && accepted.files[move.oldPath].digest !== candidate.files[move.newPath].digest) }));
     const unresolvedIdentities = [...new Set(moves.map(move => move.bundleNodeId))].filter(id => {

@@ -28,6 +28,7 @@ test('Sourcing treats a rejected rename as different pages and removes the old c
   await sourceCommand(() => review.open());
   const rename = await sourceCommand(() => review.moveFrom(`${originalTitle}.md`));
   await sourceCommand(() => rename.keepSeparate());
+  await sourceCommand(() => rename.showDifferentHelp());
   await sourceCommand(() => rename.expectPreviousRoute('t003 - link to section.md'));
   await sourceCommand(() => addKeyFrame(orphan));
   await sourceCommand(() => checkpoint('different pages shows the previous route and proposes removing the old configuration'));

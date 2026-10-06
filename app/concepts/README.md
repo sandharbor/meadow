@@ -77,6 +77,12 @@ and remain accessible through their parent concept and direct evidence links.
 The report keeps every concept available for documentation and screenshot
 navigation, while only opted-in facets appear in the run filter pills.
 
+Use `subAreas: [{ areaId, order }]` to expose an existing concept as a workflow
+sub-area of one of its app areas. Reports show the Sub-areas row only when an
+area with sub-areas is selected, in the declared workflow order. All is the
+default; sub-area selections combine with other report filters. Source Review
+Identity precedes Source Review Workspace within Sourcing.
+
 ## Scenario interfaces
 
 A scenario can exercise multiple interfaces: Web App, Dev Tools, and CLI.

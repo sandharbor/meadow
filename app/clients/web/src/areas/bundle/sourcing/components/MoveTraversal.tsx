@@ -24,7 +24,8 @@ export function MoveTraversal({ move, graphs, onDetails }: { move: SourceMoveCan
   };
   return <details className="pl-5"><summary className="cursor-pointer hover:text-neutral-800">Traversal details</summary>
     {same ? <div className="mt-2" aria-label="Traversal route">
-      {after.length ? <><p>Reached through</p><FileRoute paths={after} graph={graphs?.candidate} /></> : <p>Traversal starts at this page.</p>}
+      <p>Unchanged</p>
+      {after.length ? <FileRoute paths={after} graph={graphs?.candidate} /> : <p>Traversal starts at this page.</p>}
       {details('accepted')}{details('candidate')}
     </div> : <dl className="mt-2 space-y-2">
       <div><dt>Before{details('accepted')}</dt><dd>{move.previousRoute.length ? (before.length ? <FileRoute paths={before} graph={graphs?.accepted} /> : 'Traversal started at this page.') : 'No previously reachable route recorded.'}</dd></div>

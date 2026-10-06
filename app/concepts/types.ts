@@ -55,6 +55,8 @@ export interface MeadowConcept<
   readonly kind: MeadowConceptKind;
   /** Opt in to category-level search filters in acceptance reports. */
   readonly searchFacet?: boolean;
+  /** Ordered workflow filters shown when their owning app area is selected. */
+  readonly subAreas?: readonly { readonly areaId: KnownId; readonly order: number }[];
   readonly aliases?: readonly string[];
   readonly definition: ConceptText<KnownId>;
   readonly mechanics: readonly ConceptText<KnownId>[];

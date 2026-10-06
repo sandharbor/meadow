@@ -21,6 +21,7 @@ export interface AcceptanceConceptView {
   readonly id: string;
   readonly name: string;
   readonly searchFacet: boolean;
+  readonly subAreas?: readonly { readonly areaId: string; readonly order: number }[];
   readonly parentId?: string;
   readonly kind?: string;
   readonly description: string;
@@ -32,6 +33,7 @@ export function acceptanceConceptView(concept: AnyMeadowConcept): AcceptanceConc
     id: concept.id,
     name: concept.name,
     searchFacet: concept.searchFacet === true,
+    subAreas: concept.subAreas,
     parentId: concept.parentId,
     kind: concept.kind,
     description: [concept.definition, ...(concept.kind === "behavioral-rule" ? concept.mechanics : [])].map(text => renderConceptText(text)).join("\n\n"),

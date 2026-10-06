@@ -1,6 +1,8 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import { OrphanReview } from './OrphanReview.js';
+import { useState } from 'react';
+import { RefreshSourcesButton } from './RefreshSourcesButton.js';
 import { SourceIdentityReview, type IdentityTab } from './SourceIdentityReview.js';
 import { SourcingComponentContentComparison } from '../../shared-sourcing-curation/exported.js';
 import type { SourcingTypeEditorOperations } from '../../shared-sourcing-curation/exported.js';
@@ -36,7 +38,9 @@ function conflictValue(value: unknown): string {
 
 export type ProposalDialog = 'identities' | 'conflicts' | 'sensitivity' | 'refresh' | 'cleanup' | null;
 
-export function ProposalDialogs({ dialog, review, busy, close, later, mutate, refresh, request, identityComparison, onIdentityComparison, identityTab, onIdentityTabChange }: {
+export function ProposalDialogs({ dialog, review, busy, close, later, mutate, refresh, request, identityComparison, onIdentityComparison, identityTab, onIdentityTabChange, identityChoices, chooseIdentities, identitySaving, identityBusy }: {
+  identityChoices: Record<string, string | null>; chooseIdentities: (choices: Record<string, string | null>) => void;
+  identitySaving: boolean; identityBusy: boolean;
   identityTab: IdentityTab; onIdentityTabChange: (value: IdentityTab) => void;
   identityComparison?: string; onIdentityComparison: (value: string | undefined) => void;
   request: SourcingTypeEditorOperations['request'];
@@ -44,20 +48,27 @@ export function ProposalDialogs({ dialog, review, busy, close, later, mutate, re
   close: () => void; later: () => void; refresh: () => void;
   mutate: (operation: string, body: Record<string, unknown>) => Promise<unknown>;
 }) {
+  const [refreshingSources, setRefreshingSources] = useState(false);
+  const refreshSources = async () => {
+    setRefreshingSources(true);
+    try { await mutate('refresh', {}); }
+    finally { setRefreshingSources(false); }
+  };
   const comparedMove = dialog === 'identities' ? review.moves.find(move => JSON.stringify([move.bundleNodeId, move.newPath]) === identityComparison) : undefined;
   const comparison = comparedMove ? { kind: 'moved' as const, orphanedConfiguration: false, explanation: 'Proposed identity correspondence', previousPath: comparedMove.oldPath, proposedPath: comparedMove.newPath, previousRoute: comparedMove.previousRoute, proposedRoute: comparedMove.currentRoute, beforeSnapshotId: review.accepted.id, afterSnapshotId: review.candidate.id } : undefined;
-  const identities = (choices: Record<string, string | null>) => void mutate('identities', { choices });
   const pendingTracking = Object.entries(review.proposal.tracking).filter(([, decision]) => decision.needsConfirmation || decision.invalidated);
   return <>
-    <Modal isOpen={dialog === 'identities'} title="Source identities" onClose={later} allowContentScroll={false} footer={<div className="flex flex-wrap justify-end gap-3">
-      <button className={secondaryButtonStyle} disabled={busy} onClick={() => void mutate('refresh', {})}>Update sources</button>
+    <Modal isOpen={dialog === 'identities'} title="Source identities" onClose={later} allowContentScroll={false}
+      headerActions={<RefreshSourcesButton compact refreshing={refreshingSources} disabled={busy || refreshingSources} onClick={() => void refreshSources()} />}
+      footer={<div className="flex flex-wrap justify-end gap-3">
+      {identitySaving && <span role="status" className="mr-auto self-center text-sm text-neutral-500">Saving choices…</span>}
       <button className={secondaryButtonStyle} onClick={later}>Later</button>
       <button className={primaryButtonStyle} disabled={busy || review.unresolvedIdentities.length > 0} onClick={close}>Continue to graph</button>
     </div>}>
       <div className="flex h-full min-h-0 flex-col">
         <p className="mb-4 shrink-0">Some files may have moved.  Take a look.</p>
-        <SourceIdentityReview moves={review.moves} choices={review.proposal.identities} busy={busy} tab={identityTab} onTabChange={onIdentityTabChange}
-          choose={identities} compare={move => onIdentityComparison(JSON.stringify([move.bundleNodeId, move.newPath]))} />
+        <SourceIdentityReview moves={review.moves} choices={identityChoices} busy={identityBusy} tab={identityTab} onTabChange={onIdentityTabChange}
+          choose={chooseIdentities} compare={move => onIdentityComparison(JSON.stringify([move.bundleNodeId, move.newPath]))} />
       </div>
     </Modal>
     <Modal isOpen={dialog === 'cleanup'} title="Configuration cleanup" onClose={close}><OrphanReview orphans={review.orphans} hasCandidate /></Modal>

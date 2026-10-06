@@ -31,13 +31,15 @@ export function SourceIdentityReview({ moves, choices, busy, tab, onTabChange, c
           document.getElementById(`${prefix}-${tabs[next].value}`)?.focus();
         }}>{item.label}</ModalTab>)}
     </div>
-    {tabs.map(visible => <div key={visible.value} role="tabpanel" hidden={tab !== visible.value} id={`${prefix}-${visible.value}-panel`} aria-labelledby={`${prefix}-${visible.value}`} className="min-h-0 flex-1 overflow-y-auto -mx-1 px-1">
-      {visible.value === 'confident' && confident.length > 0 && <div className="mb-4 flex justify-end">
+    {tabs.map(visible => <div key={visible.value} role="tabpanel" hidden={tab !== visible.value} id={`${prefix}-${visible.value}-panel`} aria-labelledby={`${prefix}-${visible.value}`} className={tab === visible.value ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
+      {visible.value === 'confident' && confident.length > 0 && <div className="mb-4 flex shrink-0 justify-end">
         <button disabled={busy || pending.length === 0} className="rounded border border-blue-700 bg-blue-700 px-3 py-2 text-sm font-semibold text-white enabled:hover:bg-blue-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700 disabled:opacity-40"
           onClick={() => choose(Object.fromEntries(pending.map(record => [record.id, record.destination ?? null])))}>Accept all suggestions</button>
       </div>}
+      <div data-testid="source-identity-list" className="min-h-0 flex-1 overflow-y-auto -mx-1 px-1">
       {visible.records.length === 0 && <p className="py-4 text-sm text-neutral-500">{visible.value === 'confident' ? 'No confident suggestions. Review the records in Needs your input.' : 'No records need an individual decision.'}</p>}
-      <SourceIdentityGroups records={visible.records} choices={choices} busy={busy} choose={choose} compare={compare} />
+      <SourceIdentityGroups records={visible.records} choices={choices} busy={busy} directChoices={visible.value === 'input'} choose={choose} compare={compare} />
+      </div>
     </div>)}
   </div>;
 }
