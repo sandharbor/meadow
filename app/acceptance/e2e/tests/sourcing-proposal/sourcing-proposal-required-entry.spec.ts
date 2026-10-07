@@ -8,17 +8,17 @@ import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent } from '../../src/run/pages/index.js';
 import { SourcesControl } from '../../src/run/pages/areas/bundle/sourcing/SourcesControl.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
-import { sourcingReviewRedesign, sourceReviewCleanup, sourceReviewAcceptance, startingSelection, sourceMove } from '../../../../concepts/index.js';
+import { sourcingReviewRedesign, sourceReviewCleanup, sourceReviewAcceptance, startingSelection, sourceMove, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: 'home_fixture_multi_source' });
 
-/*
- * Remove the required start while page and filter edits are pending. Acceptance and graph entry stay
- * blocked until source management selects a replacement. The repair retains the proposal's identity
- * and edits, and a deliberately disconnected source is described as disconnected, never deleted.
- */
-test('Sourcing requires repair of missing required entries before acceptance', { annotation: { type: 'scenario-id', description: '12fd5e89-e493-47f3-b84f-03cb00e65e32' } }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+const name = linkedScenarioName(conceptText`Sourcing requires repair of missing required entries before acceptance`);
+
+const description = linkedScenarioDescription(conceptText`Remove the required start while page and filter edits are pending. Acceptance and graph entry stay
+blocked until source management selects a replacement. The repair retains the proposal's identity
+and edits, and a deliberately disconnected source is described as disconnected, never deleted.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '12fd5e89-e493-47f3-b84f-03cb00e65e32' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);

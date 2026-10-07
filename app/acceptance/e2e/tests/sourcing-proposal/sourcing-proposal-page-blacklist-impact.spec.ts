@@ -7,17 +7,17 @@ import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { sourcingReviewRedesign, sourceReviewTrigger, blacklist, sourceReviewWorkspace } from '../../../../concepts/index.js';
+import { sourcingReviewRedesign, sourceReviewTrigger, blacklist, sourceReviewWorkspace, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });
 
-/*
- * Excluding Bridge removes two pages outside its folder, while an independent route retains another
- * page. Sourcing preserves the departing pages and their prior connections for inspection. Removing
- * the staged exclusion restores the saved settings; accepted curation remains unchanged throughout.
- */
-test('Sourcing previews page blacklist effects beyond the selected page', { annotation: { type: 'scenario-id', description: 'ba79e6c7-4b50-4a72-882a-de0230a677f0' } }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+const name = linkedScenarioName(conceptText`Sourcing previews page blacklist effects beyond the selected page`);
+
+const description = linkedScenarioDescription(conceptText`Excluding Bridge removes two pages outside its folder, while an independent route retains another
+page. Sourcing preserves the departing pages and their prior connections for inspection. Removing
+the staged exclusion restores the saved settings; accepted curation remains unchanged throughout.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'ba79e6c7-4b50-4a72-882a-de0230a677f0' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);

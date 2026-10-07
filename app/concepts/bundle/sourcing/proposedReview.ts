@@ -101,6 +101,32 @@ export const sourceReviewAcceptance = define({
   interplay: text`${link(id.sourceReviewCleanup, 'Accepted Scope Cleanup')} governs removed configuration. ${link(id.proposalConfigurationDraft, 'Proposal Configuration Drafts')} and ${link(id.sourceSnapshot, 'Source Snapshots')} are applied together.`,
 });
 
+export const scopeExclusion = define({
+  id: id.scopeExclusion, name: 'Scope Exclusion', kind: 'state', searchFacet: false,
+  parentId: id.sourceReviewCleanup, appAreaIds: [id.bundleSourcing, id.bundleCuration],
+  definition: text`a page left outside the proposed source graph by an intentional boundary change, such as blacklisting a bridge or reducing traversal depth.`,
+  mechanics: [
+    text`Assess the complete graph: a boundary edit can exclude other pages beyond the selected page or folder, while an independent route may keep them reachable. The exclusion concerns admitted source material; it does not delete source files.`,
+    text`While the proposal is pending, retain the excluded pages' configuration. Reversing the draft boundary restores their tracking and traversal settings.`,
+    text`Acceptance removes configuration that is still unreachable and retains the blacklist or traversal setting that caused the boundary. Later expansion admits returning pages untracked; it does not revive their cleaned configuration or old depth overrides.`,
+    text`An externally removed link can also make configuration unreachable. Its cause is outside the proposal's intentional boundary edit, although both kinds of departure are reviewed and cleaned together.`,
+  ],
+  interplay: text`${link(id.blacklist, 'Blacklisting')} and ${link(id.overrides, 'Traversal Overrides')} can cause an exclusion. ${link(id.orphan, 'Orphaned Configuration')} describes the unreachable saved configuration. ${link(id.sourceReviewCleanup, 'Accepted Scope Cleanup')} governs its removal at acceptance.`,
+});
+
+export const bridgeExclusion = define({
+  id: id.bridgeExclusion, name: 'Bridge Exclusion', kind: 'mechanism', searchFacet: false,
+  parentId: id.scopeExclusion, appAreaIds: [id.bundleSourcing, id.bundleCuration],
+  definition: text`a scope exclusion caused by blacklisting a page that provides a traversal route to other pages.`,
+  mechanics: [
+    text`A bridge connects admitted pages to material beyond it. Blacklisting the bridge blocks traversal through it; pages beyond it become excluded only when no independent admitted route reaches them.`,
+    text`A staged bridge exclusion is part of a pending proposal. Removing the draft blacklist restores reachable pages with their saved configuration.`,
+    text`At acceptance, remove saved configuration for pages made unreachable by the exclusion while retaining the causal blacklist and leaving source files untouched. Expanding again starts fresh tracking decisions and does not restore cleaned depth overrides.`,
+    text`Distinguish the boundary edit from an external source edit: removing a leaf link in the source file can make a page unreachable without blacklisting a bridge. Both causes can appear in one proposal.`,
+  ],
+  interplay: text`${link(id.blacklist, 'Blacklisting')} causes this form of ${link(id.scopeExclusion, 'Scope Exclusion')}. ${link(id.pendingSourceProposal, 'Pending Source Proposals')} stage the boundary; ${link(id.sourceReviewCleanup, 'Accepted Scope Cleanup')} governs the unreachable configuration.`,
+});
+
 export const sourceReviewCleanup = define({
   implementationRoles: ['clean-accepted-scope'],
   id: id.sourceReviewCleanup, name: 'Accepted Scope Cleanup', kind: 'behavioral-rule', searchFacet: false,
@@ -108,7 +134,7 @@ export const sourceReviewCleanup = define({
   definition: text`retain excluded pages' configuration while a proposal is pending and remove unreachable configuration when it is accepted.`,
   mechanics: [
     text`Reversing a draft blacklist or depth reduction restores excluded pages with their configuration, including across Later and restart. These provisional exclusions are not permanent cleanup.`,
-    text`Acceptance requires cleanup for both intentional scope exclusions and external-source orphans. Remove Keep in config exceptions. Retain causal blacklist and traversal controls; cleanup must not undo the boundary itself. Required starting and traversal entries block acceptance until repaired rather than being removed implicitly. Source files remain untouched.`,
+    text`Acceptance requires cleanup for both ${link(id.scopeExclusion, 'intentional scope exclusions')} and external-source orphans. Remove Keep in config exceptions. Retain causal blacklist and traversal controls; cleanup must not undo the boundary itself. Required starting and traversal entries block acceptance until repaired rather than being removed implicitly. Source files remain untouched.`,
     text`Re-expanding after acceptance brings pages back with fresh curation decisions. Historical Git data does not turn a completed source session into an ordinary reversible draft.`,
   ],
   interplay: text`${link(id.orphan, 'Orphaned Configuration')} identifies cleanup needs independently of the disappearance cause. ${link(id.sourceReviewIdentity, 'Source Review Identity')} separates confirmed moves from departures.`,
@@ -185,6 +211,6 @@ export const sourceReviewSensitivity = define({
 export const proposedSourceReviewConcepts = [
   pendingSourceProposal, proposalConfigurationDraft, pendingProposalRevalidation,
   sourceReviewConfigurationMerge, sourceReviewTrigger, sourceReviewIdentity,
-  sourceReviewAcceptance, sourceReviewCleanup, sourceReviewWorkspace,
+  sourceReviewAcceptance, scopeExclusion, bridgeExclusion, sourceReviewCleanup, sourceReviewWorkspace,
   sourceReviewFiltering, graphFade, sourceReviewViewState, sourceReviewSensitivity,
 ] as const;

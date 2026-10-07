@@ -27,6 +27,8 @@ import {
 } from '../helpers.ts'
 import HealthGraph from './HealthGraph.tsx'
 import ConceptExplorer from './ConceptExplorer.tsx'
+import { ScenarioText } from './ScenarioText.tsx'
+import type { ConceptText } from '../../../../../concepts/types.js'
 import { useScenarioReviews, ScenarioReviewMenu, ReviewLog } from './ScenarioReview.tsx'
 import { findReview } from '../../scenarioReviews.js'
 import { CopyReferenceButton } from './CopyReferenceButton.tsx'
@@ -88,6 +90,8 @@ interface Scenario {
   scenarioId?: string
   slug: string
   testName: string
+  nameText?: ConceptText
+  descriptionText?: ConceptText
   description?: string
   testBasename?: string
   status: string
@@ -1125,9 +1129,8 @@ export default function RunDetail() {
                             <div className="flex items-start gap-2">
                               <StatusBadge status={scenario.status} hasIssues={scenario.hasIssues} />
                               {executionSurfacesFor(scenario).every(surface => surface === 'cli') && <span className="text-xs text-neutral-500">CLI</span>}
-                              <Link to={`/${runId}/${scenario.slug}`} className="font-medium text-neutral-800 hover:text-brand-600 hover:underline">
-                                {name}
-                              </Link>
+                              <span className="font-medium text-neutral-800"><ScenarioText text={name} linkedText={scenario.nameText}
+                                runId={runId!} scenarioHref={`/${runId}/${scenario.slug}`} /></span>
                               <CopyReferenceButton text={`E2E scenario ${scenario.slug}`} label="Copy scenario reference" />
                             </div>
                             <ScenarioReviewMenu runId={runId!} scenario={scenario} reviews={reviews.data} update={reviews.update} />
@@ -1138,7 +1141,7 @@ export default function RunDetail() {
                           {findReview(reviews.data, scenario)?.note && <p className="mb-2 whitespace-pre-wrap break-words text-xs text-violet-800">Review note: {findReview(reviews.data, scenario)?.note}</p>}
                           {scenario.failureReason && <p className="mb-2 break-words text-xs text-red-600">{scenario.failureReason}</p>}
                           {scenario.description ? (
-                            <p className="whitespace-pre-line break-words leading-relaxed text-neutral-700">{scenario.description}</p>
+                            <p className="whitespace-pre-line break-words leading-relaxed text-neutral-700"><ScenarioText text={scenario.description} linkedText={scenario.descriptionText} runId={runId!} /></p>
                           ) : (
                             <p className="italic text-neutral-400">No description captured in this run.</p>
                           )}

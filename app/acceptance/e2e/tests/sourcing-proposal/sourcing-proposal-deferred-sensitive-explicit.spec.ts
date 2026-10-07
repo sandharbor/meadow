@@ -8,16 +8,16 @@ import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { sourcingReviewRedesign, pendingProposalRevalidation, sourceReviewSensitivity, sourceReviewConfigurationMerge, sensitive, filterSensitivity, tracking, checkpointViewRestoration } from '../../../../concepts/index.js';
+import { sourcingReviewRedesign, pendingProposalRevalidation, sourceReviewSensitivity, sourceReviewConfigurationMerge, sensitive, filterSensitivity, tracking, checkpointViewRestoration, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });
 
-/*
- * Defer a proposal, change accepted sensitivity policy, and reopen the same capture. Explicit choices block acceptance until one is reconfirmed and the other is removed.
- * Checkpoints preserve the pending decisions and their current sensitivity evidence.
- */
-test('Deferred proposals revalidate explicit tracking after accepted sensitivity policy changes', { annotation: { type: 'scenario-id', description: 'c540d2c8-9d88-4810-8960-58e8682e9447' } }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+const name = linkedScenarioName(conceptText`Deferred proposals revalidate explicit tracking after accepted sensitivity policy changes`);
+
+const description = linkedScenarioDescription(conceptText`Defer a proposal, change accepted sensitivity policy, and reopen the same capture. Explicit choices block acceptance until one is reconfirmed and the other is removed.
+Checkpoints preserve the pending decisions and their current sensitivity evidence.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'c540d2c8-9d88-4810-8960-58e8682e9447' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);

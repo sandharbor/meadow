@@ -164,7 +164,7 @@ const AppActionsMenu: React.FC = () => {
   const reviewNote = reviewScenario ? findReview(reviews.data, reviewScenario)?.note : undefined
 
   return (
-    <div ref={ref} className="ml-auto relative flex items-center">
+    <div ref={ref} className="relative flex items-center">
       {reviewNote && <button title={reviewNote} onClick={() => setOpen(true)} className="mr-2 max-w-64 cursor-pointer truncate text-xs text-violet-800">Review note: {reviewNote}</button>}
       {feedback && (
         <span className="text-[11px] text-neutral-500 mr-2">{feedback}</span>
@@ -217,6 +217,10 @@ const ReportsNavigation: React.FC = () => {
 }
 
 const AppHeader: React.FC = () => {
+  const reportsHome = useMatch('/')
+  const runListing = useMatch('/:runId')
+  const agentRunListing = useMatch('/agents/:runId')
+  const showOpenDev = Boolean(reportsHome || runListing || agentRunListing)
   return (
     <header className="bg-white border-b border-neutral-200 px-4 py-2 flex items-center gap-4 flex-shrink-0">
       <Routes>
@@ -228,7 +232,12 @@ const AppHeader: React.FC = () => {
         <Route path="/:runId" element={<Breadcrumbs />} />
         <Route path="/:runId/:testSlug" element={<Breadcrumbs />} />
       </Routes>
-      <AppActionsMenu />
+      <div className="ml-auto flex shrink-0 items-center gap-4">
+        {showOpenDev && <a href="/api/dev-tools/open" target="_blank" rel="noopener noreferrer" className="shrink-0 rounded border border-neutral-300 px-3 py-1 text-xs font-semibold text-neutral-700 hover:bg-neutral-50">
+          Open dev <span aria-hidden="true">↗</span>
+        </a>}
+        <AppActionsMenu />
+      </div>
     </header>
   )
 }

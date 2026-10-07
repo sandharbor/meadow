@@ -16,17 +16,17 @@ limitations under the License.
 
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleEditorPage, BundleListPage } from "../src/run/pages/index.js";
-import { sourcingReviewRedesign, blacklist, folderBundles } from "../../../concepts/index.js";
+import { sourcingReviewRedesign, blacklist, folderBundles, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { Bundle, Fixture } from "../src/run/workflows.js";
 
 test.use({ bundleMode: "multiple-folders" });
 test.use({ fixtureHome: Fixture.FolderStructureMultiple });
 
-/*
- * Blacklist one folder in a collection and inspect the reduced graph. Removing the
- * blacklist should restore its descendants and reachable pages.
- */
-test("a collection member folder can be blacklisted and restored", { annotation: { type: 'scenario-id', description: '65e907d8-cdfb-4082-8465-601adb3f75bc' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`a collection member folder can be blacklisted and restored`);
+
+const description = linkedScenarioDescription(conceptText`Blacklist one folder in a collection and inspect the reduced graph. Removing the
+blacklist should restore its descendants and reachable pages.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '65e907d8-cdfb-4082-8465-601adb3f75bc' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   addKeyFrame,

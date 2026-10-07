@@ -21,18 +21,18 @@ import {
   BundleListPage,
 } from "../src/run/pages/index.js";
 import { Fixture, Bundle } from "../src/run/workflows.js";
-import { sourcingReviewRedesign, folderBundles, htmlGeneration, tracking } from "../../../concepts/index.js";
+import { sourcingReviewRedesign, folderBundles, htmlGeneration, tracking, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { customBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "multiple-folders" });
 
 test.use({ fixtureHome: Fixture.FolderStructureMultiple });
 
-/*
- * Generate a bundle assembled from several folders. The preview should preserve the
- * collection's home page, folder order, and contents.
- */
-test("previews a configured multiple-folder collection bundle", { annotation: { type: 'scenario-id', description: 'df33875b-e30f-4dba-8c86-b342facc6d2e' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`previews a configured multiple-folder collection bundle`);
+
+const description = linkedScenarioDescription(conceptText`Generate a bundle assembled from several folders. The preview should preserve the
+collection's home page, folder order, and contents.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'df33875b-e30f-4dba-8c86-b342facc6d2e' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   addKeyFrame,

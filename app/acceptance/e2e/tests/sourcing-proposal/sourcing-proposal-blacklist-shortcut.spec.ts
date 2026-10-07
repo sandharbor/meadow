@@ -8,17 +8,17 @@ import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { sourcingReviewRedesign, sourceReviewTrigger, blacklist } from '../../../../concepts/index.js';
+import { sourcingReviewRedesign, sourceReviewTrigger, blacklist, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });
 
-/*
- * A leaf exclusion stays in curation with a conditional Undo. Hiding the other graph pages does not
- * make a bridge safe to exclude immediately: its wider impact still opens sourcing. A leaf exclusion
- * made inside sourcing stays in that proposal. Empty-folder shortcuts are covered with folder review.
- */
-test('Curation applies blacklist shortcuts only when calculated impact is limited to the selected item', { annotation: { type: 'scenario-id', description: '09fc160a-3e39-4bb1-8fe0-7b722c5c91ac' } }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+const name = linkedScenarioName(conceptText`Curation applies blacklist shortcuts only when calculated impact is limited to the selected item`);
+
+const description = linkedScenarioDescription(conceptText`A leaf exclusion stays in curation with a conditional Undo. Hiding the other graph pages does not
+make a bridge safe to exclude immediately: its wider impact still opens sourcing. A leaf exclusion
+made inside sourcing stays in that proposal. Empty-folder shortcuts are covered with folder review.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '09fc160a-3e39-4bb1-8fe0-7b722c5c91ac' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);

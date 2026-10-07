@@ -7,17 +7,17 @@ import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent, PreviewPublishModal } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { sourcingReviewRedesign, pendingSourceProposal, sourceReviewSensitivity, tracking, sensitive, filterSensitivity } from '../../../../concepts/index.js';
+import { sourcingReviewRedesign, pendingSourceProposal, sourceReviewSensitivity, tracking, sensitive, filterSensitivity, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });
 
-/*
- * All additions start untracked, including safe and sensitive pages. Explicit tracking
- * and untracking use the ordinary selection controls and survive refresh. All source material
- * is accepted, the ordinary Untracked filter finds the remaining choices, and preview warns about them.
- */
-test('Sourcing starts additions untracked and preserves explicit selection tracking', { annotation: { type: 'scenario-id', description: '33353032-44bd-4d0e-a8e8-e43617f5628f' } }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+const name = linkedScenarioName(conceptText`Sourcing starts additions untracked and preserves explicit selection tracking`);
+
+const description = linkedScenarioDescription(conceptText`All additions start untracked, including safe and sensitive pages. Explicit tracking
+and untracking use the ordinary selection controls and survive refresh. All source material
+is accepted, the ordinary Untracked filter finds the remaining choices, and preview warns about them.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '33353032-44bd-4d0e-a8e8-e43617f5628f' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);

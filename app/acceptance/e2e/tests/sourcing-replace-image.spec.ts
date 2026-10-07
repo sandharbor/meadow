@@ -3,15 +3,15 @@
 import { test, expect } from '../src/run/test-fixtures.js';
 import { Workflows } from '../src/run/workflows.js';
 import { BundleEditorPage } from '../src/run/pages/index.js';
-import { sourcingReviewRedesign, sourceSnapshot } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
 
-/*
- * Replace an accepted image with a different picture. Compare both images in review before
- * accepting the replacement.
- */
-test('Sourcing compares accepted and replacement images before accepting the new picture', { annotation: { type: 'scenario-id', description: 'ce0a8ba1-a5a2-4c97-a497-fa64407013bb' } }, async ({ sourceCommand, page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+const name = linkedScenarioName(conceptText`Sourcing compares accepted and replacement images before accepting the new picture`);
+
+const description = linkedScenarioDescription(conceptText`Replace an accepted image with a different picture. Compare both images in review before
+accepting the replacement.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'ce0a8ba1-a5a2-4c97-a497-fa64407013bb' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
   const editor = new BundleEditorPage(page, expect);

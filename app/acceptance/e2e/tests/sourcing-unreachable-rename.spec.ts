@@ -3,16 +3,16 @@
 import { test, expect } from '../src/run/test-fixtures.js';
 import { Workflows } from '../src/run/workflows.js';
 import { BundleEditorPage } from '../src/run/pages/index.js';
-import { sourcingReviewRedesign, orphan, sourceSnapshot } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, orphan, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
 import { MeadowHomeBundleConfig } from '../src/run/utils/index.js';
 
 test.use({ bundleMode: 'single-file' });
 
-/*
- * Rename a page without updating the link that reached its old name. Meadow should not
- * transfer the old identity to the now-unreachable page.
- */
-test('Sourcing does not assign identity to a renamed page whose old link is unchanged', { annotation: { type: 'scenario-id', description: '4d62391e-d0a9-4a82-8713-97881db0498c' } }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+const name = linkedScenarioName(conceptText`Sourcing does not assign identity to a renamed page whose old link is unchanged`);
+
+const description = linkedScenarioDescription(conceptText`Rename a page without updating the link that reached its old name. Meadow should not
+transfer the old identity to the now-unreachable page.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '4d62391e-d0a9-4a82-8713-97881db0498c' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
   const editor = new BundleEditorPage(page, expect);

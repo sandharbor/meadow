@@ -17,15 +17,15 @@ limitations under the License.
 import { test, expect } from '../src/run/test-fixtures.js';
 import { CustomizeTab, PreviewPublishModal } from '../src/run/pages/index.js';
 import { Workflows } from '../src/run/workflows.js';
-import { htmlGeneration } from '../../../concepts/index.js';
+import { htmlGeneration, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
 
-/*
- * Change a generation option while viewing a child page. The new generated
- * output should apply the option and keep that child page in the preview.
- */
-test('regenerating from Customize keeps the current preview page', { annotation: { type: 'scenario-id', description: 'beb448bf-8830-4679-ab10-8b55d20306d5' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`regenerating from Customize keeps the current preview page`);
+
+const description = linkedScenarioDescription(conceptText`Change a generation option while viewing a child page. The new generated
+output should apply the option and keep that child page in the preview.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'beb448bf-8830-4679-ab10-8b55d20306d5' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page, checkpoint, addKeyFrame, skipMeadowHomeStateCheck,
 }) => {
   // --- Setup ---

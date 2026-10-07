@@ -18,16 +18,18 @@ const fit = (bounds: Bounds): Bounds => {
   return { width, height, x: clamp(bounds.x, 12, window.innerWidth - width - 12), y: clamp(bounds.y, 56, window.innerHeight - height - 12) };
 };
 
-export default function ConceptExplorer({ concept: selected, selectedConceptIds, onSelectConcept, onSidebarWidth }: {
+export default function ConceptExplorer({ concept: selected, selectedConceptIds, onSelectConcept, onSidebarWidth, scenario }: {
   concept: { id: string; name: string } | null;
   selectedConceptIds: string[];
-  onSelectConcept: (id: string, add: boolean) => void;
-  onSidebarWidth: (width: number) => void;
+  onSelectConcept?: (id: string, add: boolean) => void;
+  onSidebarWidth?: (width: number) => void;
+  scenario?: { runId: string; counts: Readonly<Record<string, number>> | null; onClose: () => void };
 }) {
   const [lastSelected, setLastSelected] = useState(selected);
   const concept = selected ?? lastSelected;
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(Boolean(scenario));
   const [mode, setMode] = useState<Mode>(() => {
+    if (scenario) return 'floating';
     const saved = read<Mode>('mode', 'embedded');
     return ['embedded', 'sidebar', 'floating'].includes(saved) ? saved : 'embedded';
   });
@@ -45,12 +47,12 @@ export default function ConceptExplorer({ concept: selected, selectedConceptIds,
     }
     selectionFromExplorer.current = false;
   }, [selected, selectionKey]);
-  useEffect(() => { save('mode', mode); }, [mode]);
-  useEffect(() => { save('bounds', bounds); }, [bounds]);
-  useEffect(() => { save('sidebar-width', sidebarWidth); }, [sidebarWidth]);
+  useEffect(() => { if (!scenario) save('mode', mode); }, [mode, scenario]);
+  useEffect(() => { if (!scenario) save('bounds', bounds); }, [bounds, scenario]);
+  useEffect(() => { if (!scenario) save('sidebar-width', sidebarWidth); }, [sidebarWidth, scenario]);
   useEffect(() => {
-    onSidebarWidth(expanded && mode === 'sidebar' ? sidebarWidth + 12 : 0);
-    return () => onSidebarWidth(0);
+    onSidebarWidth?.(expanded && mode === 'sidebar' ? sidebarWidth + 12 : 0);
+    return () => onSidebarWidth?.(0);
   }, [expanded, mode, sidebarWidth, onSidebarWidth]);
   useEffect(() => {
     const resize = () => { setBounds(value => fit(value)); setSidebarWidth(value => clamp(value, 300, window.innerWidth - 120)); };
@@ -79,8 +81,17 @@ export default function ConceptExplorer({ concept: selected, selectedConceptIds,
   const viewedConceptSelected = selectedConceptIds.includes(location.id);
   const selectConcept = (add: boolean) => {
     selectionFromExplorer.current = true;
-    onSelectConcept(location.id, add);
+    onSelectConcept?.(location.id, add);
   };
+  const close = () => { setExpanded(false); scenario?.onClose(); };
+  const relatedCount = scenario?.counts ? scenario.counts[location.id] ?? 0 : null;
+  const selectRelated = scenario && <a href={`/${scenario.runId}?doc=${encodeURIComponent(location.id)}`} className="inline-flex cursor-pointer items-center gap-2 rounded border border-brand-200 px-2 py-1 text-xs font-medium text-brand-600 hover:bg-brand-50">
+    Select related scenarios <span className="rounded-full bg-brand-100 px-1.5 py-0.5 tabular-nums" aria-label={relatedCount === null ? 'Loading related scenarios' : `${relatedCount} related scenarios`}>{relatedCount ?? '…'}</span>
+  </a>;
+  const openPage = <a href={`/concepts/${encodeURIComponent(location.id)}${location.implementation ? `?${location.implementation}` : ''}`}
+    target="_blank" rel="noopener noreferrer" onClick={close} className="cursor-pointer rounded border border-neutral-300 bg-white px-2 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-50">
+    Open in new page <span aria-hidden="true">↗</span>
+  </a>;
   const displayControl = <label className="flex items-center gap-1 text-xs text-neutral-500">View
     <select aria-label="Concept display" value={mode} className="rounded border bg-white px-2 py-1 text-neutral-700"
       onChange={event => { setMode(event.target.value as Mode); setExpanded(true); }}>
@@ -88,15 +99,14 @@ export default function ConceptExplorer({ concept: selected, selectedConceptIds,
     </select>
   </label>;
   const content = <>
-    <div className="flex flex-wrap items-center gap-3 border-b px-4 py-2 text-xs">
+    {(history.length > 0 || location.id !== concept.id || location.implementation) && <div className="flex flex-wrap items-center gap-3 border-b px-4 py-2 text-xs">
       {history.length > 0 && <button className="cursor-pointer text-brand-600 hover:underline" onClick={() => {
         setLocation(history[history.length - 1]); setHistory(value => value.slice(0, -1));
       }}>← Back</button>}
       {(location.id !== concept.id || location.implementation) && <button className="cursor-pointer text-brand-600 hover:underline"
         onClick={() => { setLocation({ id: concept.id }); setHistory([]); }}>Return to {concept.name}</button>}
-      {!history.length && location.id === concept.id && !location.implementation && <span className="text-neutral-500">Concept details and implementation</span>}
-    </div>
-    <div role="group" aria-label="Concept selection" className="flex flex-wrap items-center gap-2 border-b px-4 py-2 text-xs">
+    </div>}
+    {!scenario && <div role="group" aria-label="Concept selection" className="flex flex-wrap items-center gap-2 border-b px-4 py-2 text-xs">
       <span className={`mr-auto ${viewedConceptSelected ? 'font-medium text-brand-600' : 'text-neutral-400'}`}>
         {viewedConceptSelected ? '✓ Selected' : 'Not selected'}
       </span>
@@ -105,7 +115,7 @@ export default function ConceptExplorer({ concept: selected, selectedConceptIds,
         onClick={() => selectConcept(false)}>Select</button>
       <button className="cursor-pointer rounded border border-neutral-200 px-2 py-1 text-neutral-600 hover:bg-neutral-50 disabled:cursor-default disabled:opacity-40"
         disabled={viewedConceptSelected} onClick={() => selectConcept(true)}>Add to selection</button>
-    </div>
+    </div>}
     <div className="min-h-0 flex-1 overflow-auto p-4" key={`${location.id}:${location.implementation ?? ''}`}>
       <ConceptDetails conceptId={location.id} selected={location.implementation} onNavigate={navigate} showTitle={mode !== 'embedded' || location.id !== concept.id} />
     </div>
@@ -115,15 +125,18 @@ export default function ConceptExplorer({ concept: selected, selectedConceptIds,
       aria-modal={mode === 'floating' ? false : undefined}
       className={`fixed z-40 flex flex-col border border-neutral-200 bg-white shadow-xl ${mode === 'floating' ? 'rounded-lg' : ''}`}
       style={mode === 'floating' ? { left: bounds.x, top: bounds.y, width: bounds.width, height: bounds.height } : { right: 0, top: 56, bottom: 0, width: sidebarWidth }}
-      onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); setExpanded(false); } }}>
-      <div className="flex flex-wrap items-center gap-3 border-b bg-neutral-50 px-4 py-2">
+      onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); close(); } }}>
+      <div data-concept-panel-header className={`flex flex-wrap items-center gap-3 border-b bg-neutral-50 px-4 py-2 ${mode === 'floating' ? 'cursor-move select-none' : ''}`}
+        style={mode === 'floating' ? { touchAction: 'none' } : undefined}
+        onPointerDown={event => {
+          if (mode === 'floating' && event.button === 0 && !(event.target instanceof window.Element && event.target.closest('a, button, input, select, label'))) begin(event, 'move');
+        }} onPointerMove={move} onPointerUp={end} onPointerCancel={end}>
         {mode === 'floating' ? <div role="button" tabIndex={0} aria-label="Move concept panel" className="mr-auto cursor-move select-none font-semibold text-neutral-700" style={{ touchAction: 'none' }}
-          onPointerDown={event => begin(event, 'move')} onPointerMove={move} onPointerUp={end} onPointerCancel={end}
           onKeyDown={event => { if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
             event.preventDefault(); setBounds(value => fit({ ...value, x: value.x + (event.key === 'ArrowLeft' ? -10 : event.key === 'ArrowRight' ? 10 : 0), y: value.y + (event.key === 'ArrowUp' ? -10 : event.key === 'ArrowDown' ? 10 : 0) })); }}>Concept details ⋮⋮</div>
           : <span className="mr-auto font-semibold text-neutral-700">Concept details</span>}
-        {displayControl}
-        <button aria-label="Close concept details" className="cursor-pointer rounded px-2 py-1 text-neutral-500 hover:bg-neutral-200" onClick={() => setExpanded(false)}>✕</button>
+        {selectRelated}{openPage}{!scenario && displayControl}
+        <button aria-label="Close concept details" className="cursor-pointer rounded px-2 py-1 text-neutral-500 hover:bg-neutral-200" onClick={close}>✕</button>
       </div>
       {content}
       {mode === 'sidebar' ? <div role="separator" aria-label="Resize concept sidebar" aria-orientation="vertical" aria-valuemin={300} aria-valuemax={window.innerWidth - 120} aria-valuenow={sidebarWidth} tabIndex={0}
@@ -134,12 +147,13 @@ export default function ConceptExplorer({ concept: selected, selectedConceptIds,
           onPointerDown={event => begin(event, 'floating')} onPointerMove={move} onPointerUp={end} onPointerCancel={end}
           onKeyDown={event => { if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) { event.preventDefault(); setBounds(value => fit({ ...value, width: value.width + (event.key === 'ArrowLeft' ? -20 : event.key === 'ArrowRight' ? 20 : 0), height: value.height + (event.key === 'ArrowUp' ? -20 : event.key === 'ArrowDown' ? 20 : 0) })); } }}>◢</button>}
     </section>, document.body) : null;
+  if (scenario) return detached;
   return <section aria-label="Concept explorer" hidden={!selected && (!expanded || mode !== 'embedded')} className="mt-2 rounded border border-neutral-200 bg-white">
     <div className="flex flex-wrap items-center gap-3 px-3 py-2">
       <h2 className="mr-auto text-sm font-semibold text-neutral-800">{concept.name}</h2>
       <button aria-label={expanded ? 'Hide concept details' : 'Show concept details'} aria-expanded={expanded}
         className="cursor-pointer text-xs font-medium text-brand-600" onClick={() => setExpanded(value => !value)}>{expanded ? '▾' : '▸'} Details</button>
-      {(!expanded || mode === 'embedded') && displayControl}
+      {(!expanded || mode === 'embedded') && <>{openPage}{!scenario && displayControl}</>}
     </div>
     {expanded && mode === 'embedded' && <div aria-label="Concept details" className="flex flex-col border-t">{content}</div>}
     {detached}

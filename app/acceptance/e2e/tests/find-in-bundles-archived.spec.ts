@@ -17,16 +17,16 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, BundleEditorPage } from "../src/run/pages/index.js";
 import { Workflows, Bundle } from "../src/run/workflows.js";
-import { findInBundles, archived, multiBundle } from "../../../concepts/index.js";
+import { findInBundles, archived, multiBundle, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { bigBundle, smallBundle, exampleBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
-/*
- * Find a page that also belongs to an archived bundle. The search should identify the
- * archived match and open it through the archived list.
- */
-test("find in bundles shows archived match indicator and archived tab", { annotation: { type: 'scenario-id', description: '2d70b840-01c1-47ff-9364-c778fb4646f9' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`find in bundles shows archived match indicator and archived tab`);
+
+const description = linkedScenarioDescription(conceptText`Find a page that also belongs to an archived bundle. The search should identify the
+archived match and open it through the archived list.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '2d70b840-01c1-47ff-9364-c778fb4646f9' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   skipMeadowHomeStateCheck,

@@ -26,20 +26,20 @@ import {
 } from "../src/run/pages/index.js";
 import { MeadowHomeBundleConfig } from "../src/run/utils/MeadowHomeBundleConfig.js";
 import { Fixture } from "../src/run/workflows.js";
-import { callout, folderBundles, tracking } from "../../../concepts/index.js";
+import { callout, folderBundles, tracking, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { customBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-folder" });
 test.use({ fixtureHome: Fixture.FolderStructureSingle });
 
-/*
- * Create a folder bundle whose selected folder is also the Notes Root, keeping the
- * default traversal. Only the folder itself is tracked, so preview first explains
- * that only the starting selection is tracked, and the generated bundle contains
- * none of the untracked pages or folder names beneath it. Tracking one nested page
- * then publishes exactly that page.
- */
-test("previews a new folder bundle without publishing its untracked descendants", { annotation: { type: 'scenario-id', description: '51a96f0d-bf07-483a-aa21-c5ca76ab965f' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`previews a new folder bundle without publishing its untracked descendants`);
+
+const description = linkedScenarioDescription(conceptText`Create a folder bundle whose selected folder is also the Notes Root, keeping the
+default traversal. Only the folder itself is tracked, so preview first explains
+that only the starting selection is tracked, and the generated bundle contains
+none of the untracked pages or folder names beneath it. Tracking one nested page
+then publishes exactly that page.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '51a96f0d-bf07-483a-aa21-c5ca76ab965f' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page,
   testServer,
   checkpoint,

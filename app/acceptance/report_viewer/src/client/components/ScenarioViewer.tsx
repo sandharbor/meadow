@@ -26,6 +26,9 @@ import type { TestSourceLocations } from '../../testSourceLocations.ts'
 import type { TestSourceChange } from '../../../../e2e/src/artifacts/testSourceChanges.ts'
 import { TestSourceChangeModal } from './TestSourceChangeModal.tsx'
 import { CopyReferenceButton } from './CopyReferenceButton.tsx'
+import { ScenarioText, scenarioPromptContext } from './ScenarioText.tsx'
+import { useScenarioConceptDetails } from './ScenarioConceptDetails.tsx'
+import type { ConceptText } from '../../../../../concepts/types.js'
 import {
   DEFAULT_PLAYBACK_SPEED_PERCENT,
   MAX_PLAYBACK_SPEED_PERCENT,
@@ -57,6 +60,9 @@ interface KeyFrame {
 
 interface Manifest {
   testName: string
+  description?: string
+  nameText?: ConceptText
+  descriptionText?: ConceptText
   startTime?: string
   endTime?: string
   bundleMode?: BundleMode | null
@@ -538,6 +544,7 @@ export default function ScenarioViewer() {
   const [testSource, setTestSource] = useState('')
   const [sourceDisplay, setSourceDisplay] = useState<{ source: string; commandLines: number[] } | null>(null)
   const [showCaptureCode, setShowCaptureCode] = useState(false)
+  const { openConcept, details: scenarioConceptDetails } = useScenarioConceptDetails(runId)
   const [sourceLocations, setSourceLocations] = useState<TestSourceLocations>({ testLine: null, checkpoints: [] })
   const [testSourceFixtureReferences, setTestSourceFixtureReferences] = useState<TestSourceFixtureReference[]>([])
   const [testSourceFixtureModal, setTestSourceFixtureModal] = useState<TestSourceFixtureModalState | null>(null)
@@ -1738,9 +1745,11 @@ export default function ScenarioViewer() {
   const activeFileModes = activeLenses(fileChangeView, fileChangeLenses, FILE_CHANGE_LENSES)
 
   const hasScenarioMetadata = Boolean(manifest.bundleMode || matchingAppAreas.length || matchingDocs.length)
+  const displayedProse = !showCaptureCode && manifest.nameText ? sourceLocations.scenarioProse : undefined
 
   return (
     <div className="h-full grid grid-cols-2" style={{ gridTemplateRows: hasScenarioMetadata ? 'auto minmax(0, 1fr)' : 'minmax(0, 1fr)' }}>
+      {scenarioConceptDetails}
       {hasScenarioMetadata && (
         <div role="region" aria-label="Scenario metadata" className="col-span-2 flex min-w-0 items-center gap-4 overflow-x-auto whitespace-nowrap border-b border-neutral-200 bg-neutral-50 px-4 py-1.5">
           {/* Bundle-origin mode, app area, and concept chips */}
@@ -1776,11 +1785,12 @@ export default function ScenarioViewer() {
               {matchingDocs.map((doc) => {
                 const hasKeyFrame = manifest?.keyFrames?.some(kf => kf.docId === doc.id)
                 return (
-                  <Link
+                  <button
                     key={doc.id}
-                    to={`/${runId}?doc=${doc.id}`}
+                    type="button"
+                    onClick={() => { setHoveredDocId(null); openConcept({ id: doc.id, name: doc.name }) }}
                     title={doc.isContribution ? 'Contributed Meadow concept' : undefined}
-                    className={`px-2 py-0.5 rounded-full text-[11px] font-medium transition-colors ${
+                    className={`cursor-pointer px-2 py-0.5 rounded-full text-[11px] font-medium transition-colors ${
                       hoveredDocId === doc.id
                         ? 'bg-brand-500 text-white'
                         : 'bg-brand-100 text-brand-700 hover:bg-brand-200'
@@ -1790,7 +1800,7 @@ export default function ScenarioViewer() {
                   >
                     {doc.isContribution && <span className="mr-0.5" aria-hidden>☁</span>}
                     {doc.name}
-                  </Link>
+                  </button>
                 )
               })}
             </div>
@@ -2548,20 +2558,32 @@ export default function ScenarioViewer() {
           {/* Test Code tab */}
           {activeTab === 'test-code' && (
             <>
-            {sourceDisplay && sourceDisplay.commandLines.length > 0 && (
+            {(Boolean(sourceDisplay?.commandLines.length) || (sourceLocations.setupLine ?? 1) > 1 || Boolean(manifest.nameText && sourceLocations.scenarioProse)) && (
               <label className="flex items-center justify-end gap-1 border-b border-neutral-100 px-3 py-1 text-[10px] text-neutral-500">
                 <input type="checkbox" checked={showCaptureCode} onChange={event => setShowCaptureCode(event.target.checked)} />
-                Show capture code
+                show the real code
               </label>
             )}
             <pre
               ref={testCodeRef}
               className="flex-1 min-h-0 overflow-auto m-0 text-xs leading-relaxed"
             >
+              {displayedProse && <div role="region" aria-label="Scenario name and description"
+                className="mb-4 bg-neutral-50 pl-[46px] pr-3 pt-2 pb-1 font-mono whitespace-pre-wrap">
+                <div className="flex items-start gap-2">
+                  <div className="min-w-0 font-semibold"><ScenarioText text={manifest.testName} linkedText={manifest.nameText} runId={runId!} onOpenConcept={openConcept} /></div>
+                  <CopyReferenceButton text={scenarioPromptContext(testSlug!, manifest)} label="Copy scenario name and description" />
+                </div>
+                {manifest.description && <div className="mt-2 text-neutral-600"><ScenarioText text={manifest.description} linkedText={manifest.descriptionText} runId={runId!} onOpenConcept={openConcept} /></div>}
+              </div>}
               {testSource ? (
                 highlight(!showCaptureCode && sourceDisplay ? sourceDisplay.source : testSource, languages.typescript, 'typescript')
                   .split('\n')
                   .map((lineHtml, i) => {
+                    if (!showCaptureCode && i + 1 < (sourceLocations.setupLine ?? 1)) return null
+                    const prose = displayedProse
+                    if (prose && [prose.name, prose.description].some(range => range && i + 1 >= range.start && i + 1 <= range.end)) return null
+                    if (prose && i + 1 >= prose.name.start - 1 && sourceLocations.testLine && i + 1 < sourceLocations.testLine && !lineHtml.trim()) return null
                     const fixtureReferences = testSourceFixturesByLine.get(i) ?? []
                     const lineEvents = sourceTimelineMarkers.get(i + 1)
                     const targetTick = lineEvents?.checkpoints[0] ?? lineEvents?.ticks[0]
@@ -2583,7 +2605,7 @@ export default function ScenarioViewer() {
                               goToLine()
                             }
                           }}
-                          className={`code-line relative pl-[46px] pr-3 font-mono ${targetTick === undefined ? '' : 'cursor-pointer'} ${highlightedSourceLine === i + 1 ? sourceHighlightBackground : targetTick === undefined ? '' : lineEvents?.checkpoints.length ? 'hover:bg-orange-50/50 focus-visible:bg-orange-50/50' : 'hover:bg-purple-50/50 focus-visible:bg-purple-50/50'}`}
+                          className={`code-line relative pl-[46px] pr-3 font-mono ${prose && i + 1 === sourceLocations.testLine ? 'mt-2' : ''} ${targetTick === undefined ? '' : 'cursor-pointer'} ${highlightedSourceLine === i + 1 ? sourceHighlightBackground : targetTick === undefined ? '' : lineEvents?.checkpoints.length ? 'hover:bg-orange-50/50 focus-visible:bg-orange-50/50' : 'hover:bg-purple-50/50 focus-visible:bg-purple-50/50'}`}
                         >
                           {highlightedSourceLine === i + 1 && currentTickIndex >= 0 && (
                             <span

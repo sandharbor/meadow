@@ -16,16 +16,16 @@ limitations under the License.
 
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, BundleEditorPage, FilterPanelComponent } from "../src/run/pages/index.js";
-import { filters } from "../../../concepts/index.js";
+import { filters, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
-/*
- * Create a custom filter using part of an incoming page title. Verify that it selects the
- * expected linked pages.
- */
-test("filter custom inlink title substring selects expected pages", { annotation: { type: 'scenario-id', description: '12868fe8-be7a-4880-b45e-3ed0f10a2e54' } }, async ({ sourceCommand, page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame }) => {
+const name = linkedScenarioName(conceptText`filter custom inlink title substring selects expected pages`);
+
+const description = linkedScenarioDescription(conceptText`Create a custom filter using part of an incoming page title. Verify that it selects the
+expected linked pages.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '12868fe8-be7a-4880-b45e-3ed0f10a2e54' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame }) => {
   // --- Setup ---
   const bundleList = new BundleListPage(page, expect);
   await sourceCommand(() => bundleList.goto());

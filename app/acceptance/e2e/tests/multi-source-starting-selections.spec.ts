@@ -3,17 +3,17 @@
 import { test, expect } from '../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage } from '../src/run/pages/index.js';
 import { SourcesControl } from '../src/run/pages/areas/bundle/sourcing/SourcesControl.js';
-import { sourcingReviewRedesign, bundleSource, startingSelection, sourceSnapshot } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, bundleSource, startingSelection, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
 import { MeadowHomeBundleConfig } from '../src/run/utils/index.js';
 
 test.use({ bundleMode: 'mixed-starts' });
 test.use({ fixtureHome: 'home_fixture_multi_source' });
 
-/*
- * Add a folder to a bundle that already starts from a page. Preserve the page selection
- * and require explicit repair when a starting selection becomes invalid.
- */
-test('Multi-source starting selections preserve the page start when adding a folder and require explicit repair', { annotation: { type: 'scenario-id', description: 'aa046ed6-74f2-4249-af5d-5479b96797f3' } }, async ({ sourceCommand, page, testServer, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
+const name = linkedScenarioName(conceptText`Multi-source starting selections preserve the page start when adding a folder and require explicit repair`);
+
+const description = linkedScenarioDescription(conceptText`Add a folder to a bundle that already starts from a page. Preserve the page selection
+and require explicit repair when a starting selection becomes invalid.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'aa046ed6-74f2-4249-af5d-5479b96797f3' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   await sourceCommand(() => list.goto());

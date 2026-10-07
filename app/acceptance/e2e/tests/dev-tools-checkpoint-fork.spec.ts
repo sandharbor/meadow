@@ -8,7 +8,7 @@ import { startDevTools } from '../src/run/devTools.js';
 import { DevSavedStatesPage } from '../src/run/pages/dev-tools/SavedStatesPage.js';
 import { BundleEditorPage } from '../src/run/pages/index.js';
 import { Workflows } from '../src/run/workflows.js';
-import { sourcingReviewRedesign, checkpoint as checkpointConcept, localServices, serviceTarget } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, checkpoint as checkpointConcept, localServices, serviceTarget, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
 import { minioBucketName } from '../../../tooling/local_services/src/index.js';
 import { MinioS3 } from '../src/run/utils/MinioS3.js';
 import { getRuntimePaths } from '../../../runtime/supervisor/src/runtimePaths.js';
@@ -26,14 +26,14 @@ async function stopRuntime(home: string): Promise<void> {
   await waitForRuntimeHomeRelease(descriptor);
 }
 
-/*
- * Fork this scenario at its own checkpoint. After a source move and a published
- * object, the checkpoint is opened in Dev Tools the way the report viewer opens
- * it: the whole home and its object storage are restored into a fresh home and
- * partition, Hosted Development is refused because local storage holds state,
- * and the forked app shows the same pending move on current code.
- */
-test('Dev Tools forks a scenario checkpoint into a fresh home with Local services', { annotation: { type: 'scenario-id', description: '581b954b-d946-45f4-888c-8e6d829757d6' } }, async ({ sourceCommand, page, testServer, sourceChanges, minioS3, artifactDir, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }, testInfo) => {
+const name = linkedScenarioName(conceptText`Dev Tools forks a scenario checkpoint into a fresh home with Local services`);
+
+const description = linkedScenarioDescription(conceptText`Fork this scenario at its own checkpoint. After a source move and a published
+object, the checkpoint is opened in Dev Tools the way the report viewer opens
+it: the whole home and its object storage are restored into a fresh home and
+partition, Hosted Development is refused because local storage holds state,
+and the forked app shows the same pending move on current code.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '581b954b-d946-45f4-888c-8e6d829757d6' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, minioS3, artifactDir, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }, testInfo) => {
   // --- Setup ---
   await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
   await sourceCommand(() => new BundleEditorPage(page, expect).waitForSourceCheck());

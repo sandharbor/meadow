@@ -46,6 +46,7 @@ import { MinioS3 } from "./utils/MinioS3.js";
 import type { BundleMode } from "./bundleMode.js";
 import type { ExecutionSurface } from "./executionSurface.js";
 import { getTestArtifactDirectory } from "./artifactReporter.js";
+import { scenarioRecordingDirectory } from '../artifacts/scenarioVideo.js';
 import { SourceCommandTracker } from "./SourceCommandTracker.js";
 import type { SourceCommand } from "../artifacts/sourceCommand.js";
 import { appendTickEntrySync } from "./writeTickEntry.js";
@@ -650,15 +651,9 @@ export const test = base.extend<{
   // backend / frontend / web-server are ready, keeping video duration
   // close to the actual test-body duration.
   context: async ({ browser, testServer, recordVideo }, use, testInfo) => {
-    const testSlug = testInfo.title
-      .replace(/[^a-zA-Z0-9]+/g, "-")
-      .replace(/^-|-$/g, "")
-      .toLowerCase();
-    const videoDir = path.join(
-      import.meta.dirname, "..", "..", "test-results", `${testSlug}-context`
-    );
-    // This directory is outside Playwright's normal per-run cleanup. Remove
-    // stale recordings so a non-video scenario cannot inherit an older file.
+    const videoDir = scenarioRecordingDirectory(getTestArtifactDirectory(testInfo.title));
+    // Clear only this executing scenario; later runs cannot erase the recordings
+    // belonging to another run or scenario through temporary-output cleanup.
     rmSync(videoDir, { recursive: true, force: true });
     mkdirSync(videoDir, { recursive: true });
     const context = await browser.newContext({

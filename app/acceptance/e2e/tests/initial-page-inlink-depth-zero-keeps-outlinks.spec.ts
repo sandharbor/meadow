@@ -23,7 +23,7 @@ import {
   SelectedPageDetailComponent,
 } from "../src/run/pages/index.js";
 import { Fixture } from "../src/run/workflows.js";
-import { sourcingReviewRedesign, excalidraw, images, initialPage } from "../../../concepts/index.js";
+import { sourcingReviewRedesign, excalidraw, images, initialPage, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { customBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -38,11 +38,11 @@ test.use({ fixtureHome: Fixture.Minimal });
  * (png, svg, excalidraw) should still appear — only the inlink-side traversal
  * should collapse.
  */
-/*
- * Set the starting page's incoming-link depth to zero. Its depth-one outgoing media should
- * remain visible.
- */
-test("setting initial-page inlink depth to 0 keeps the depth-1 outlink media visible", { annotation: { type: 'scenario-id', description: '32d62495-d925-46a4-8627-97c343887ec3' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`setting initial-page inlink depth to 0 keeps the depth-1 outlink media visible`);
+
+const description = linkedScenarioDescription(conceptText`Set the starting page's incoming-link depth to zero. Its depth-one outgoing media should
+remain visible.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '32d62495-d925-46a4-8627-97c343887ec3' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page,
   testServer,
   checkpoint,

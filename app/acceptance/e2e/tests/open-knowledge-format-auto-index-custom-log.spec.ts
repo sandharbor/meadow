@@ -18,7 +18,7 @@ import path from "path";
 import { test, expect } from "../src/run/test-fixtures.js";
 import { PreviewPublishModal, ChangesTab, CustomizeTab } from "../src/run/pages/index.js";
 import { Workflows, Bundle } from "../src/run/workflows.js";
-import { customize, openKnowledgeFormat } from "../../../concepts/index.js";
+import { customize, openKnowledgeFormat, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 import { seedTrackedAndLinkedFile, seedTrackedFile } from "../src/run/utils/index.js";
 import { OpenKnowledgeFormatBundle } from "./open-knowledge-format-support.js";
@@ -39,11 +39,11 @@ test.use({
   },
 });
 
-/*
- * Use a source index page and choose another tracked page as the Open Knowledge Format
- * log. Check that the export uses both selections correctly.
- */
-test("OKF: auto-detect index.md and choose a tracked non-log page as log.md", { annotation: { type: 'scenario-id', description: '04a0b687-06a3-43d2-a523-ea09ea749045' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`OKF: auto-detect index.md and choose a tracked non-log page as log.md`);
+
+const description = linkedScenarioDescription(conceptText`Use a source index page and choose another tracked page as the Open Knowledge Format
+log. Check that the export uses both selections correctly.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '04a0b687-06a3-43d2-a523-ea09ea749045' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   skipMeadowHomeStateCheck,

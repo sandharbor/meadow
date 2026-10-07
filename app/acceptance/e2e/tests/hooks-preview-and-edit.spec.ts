@@ -16,18 +16,18 @@ limitations under the License.
 
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, BundleEditorPage, PreviewPublishModal, CustomizeTab, ChangesTab } from "../src/run/pages/index.js";
-import { htmlGeneration, hooks } from "../../../concepts/index.js";
+import { htmlGeneration, hooks, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { hooksBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
 test.use({ fixtureHome: "home_fixture_hooks" });
 
-/*
- * Preview a page-title hook, edit it, and preview again. The generated title should follow
- * the updated hook.
- */
-test("Hooks preview shows normalized title and editing hook updates it", { annotation: { type: 'scenario-id', description: '5c38a3bb-fff1-466e-b6fe-a03358542cc4' } }, async ({ sourceCommand, page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame }) => {
+const name = linkedScenarioName(conceptText`Hooks preview shows normalized title and editing hook updates it`);
+
+const description = linkedScenarioDescription(conceptText`Preview a page-title hook, edit it, and preview again. The generated title should follow
+the updated hook.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '5c38a3bb-fff1-466e-b6fe-a03358542cc4' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame }) => {
   // --- Setup ---
   // Navigate to bundle list and click the hooks test bundle
   const bundleList = new BundleListPage(page, expect);

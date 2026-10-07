@@ -7,7 +7,7 @@ import { test, expect } from '../src/run/test-fixtures.js';
 import { startDevTools } from '../src/run/devTools.js';
 import { BundleListPage, BundleEditorPage } from '../src/run/pages/index.js';
 import { SourcesControl } from '../src/run/pages/areas/bundle/sourcing/SourcesControl.js';
-import { sourcingReviewRedesign, checkpoint as checkpointConcept, bundleSource, startingSelection } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, checkpoint as checkpointConcept, bundleSource, startingSelection, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
 import { getRuntimePaths } from '../../../runtime/supervisor/src/runtimePaths.js';
 import { readRuntimeSessionDescriptor } from '../../../runtime/supervisor/src/sessionDescriptor.js';
 import { postRuntimeControl, waitForRuntimeHomeRelease } from '../../../runtime/supervisor/src/runtimeClient.js';
@@ -15,12 +15,12 @@ import { postRuntimeControl, waitForRuntimeHomeRelease } from '../../../runtime/
 test.use({ bundleMode: 'mixed-starts' });
 test.use({ fixtureHome: 'home_fixture_multi_source', executionSurfaces: ['dev-tools', 'browser'] });
 
-/*
- * Restore an accepted page-and-folder collection into a new Dev Tools home.
- * Refreshing the relocated sources must leave the accepted snapshot alone;
- * a real edit after restoration must still produce a readable source review.
- */
-test('Dev Tools restores accepted multi-source starts without inventing source changes', { annotation: { type: 'scenario-id', description: '2e2a6687-4377-4afb-bcfd-496e131dce69' } }, async ({ sourceCommand, page, artifactDir, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }, testInfo) => {
+const name = linkedScenarioName(conceptText`Dev Tools restores accepted multi-source starts without inventing source changes`);
+
+const description = linkedScenarioDescription(conceptText`Restore an accepted page-and-folder collection into a new Dev Tools home.
+Refreshing the relocated sources must leave the accepted snapshot alone;
+a real edit after restoration must still produce a readable source review.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '2e2a6687-4377-4afb-bcfd-496e131dce69' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, artifactDir, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }, testInfo) => {
   // --- Setup ---
   // Accept a folder alongside the existing page start, then capture it.
   const list = new BundleListPage(page, expect);

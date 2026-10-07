@@ -17,16 +17,16 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleEditorPage, FilterPanelComponent } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { labels } from "../../../concepts/index.js";
+import { labels, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
-/*
- * Enable title labels for untracked pages. Their names should appear in the graph without
- * changing tracking state.
- */
-test("enabling show titles on untracked filter displays page title labels", { annotation: { type: 'scenario-id', description: '3af9ece8-3c3c-42c7-bd86-c15b2e792017' } }, async ({ sourceCommand, page, checkpoint, assertMeadowHomeState, addKeyFrame }) => {
+const name = linkedScenarioName(conceptText`enabling show titles on untracked filter displays page title labels`);
+
+const description = linkedScenarioDescription(conceptText`Enable title labels for untracked pages. Their names should appear in the graph without
+changing tracking state.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '3af9ece8-3c3c-42c7-bd86-c15b2e792017' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, checkpoint, assertMeadowHomeState, addKeyFrame }) => {
   // --- Setup ---
   const wf = new Workflows(page, expect);
   await sourceCommand(() => wf.navigateToBigBundle());

@@ -17,16 +17,16 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { PreviewPublishModal, ChangesTab, CustomizeTab } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { hooks, customize } from "../../../concepts/index.js";
+import { hooks, customize, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
-/*
- * Create and validate an HTML post-processing hook, then save it. Review the generated
- * diff to confirm that the hook changed the output.
- */
-test("HTML post-processing hook: create, validate, save, and verify diff", { annotation: { type: 'scenario-id', description: '6e16ca6b-afe5-492d-9627-37c1aac8f45e' } }, async ({ sourceCommand, page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame }) => {
+const name = linkedScenarioName(conceptText`HTML post-processing hook: create, validate, save, and verify diff`);
+
+const description = linkedScenarioDescription(conceptText`Create and validate an HTML post-processing hook, then save it. Review the generated
+diff to confirm that the hook changed the output.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '6e16ca6b-afe5-492d-9627-37c1aac8f45e' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame }) => {
   // --- Setup ---
   // Navigate to big bundle preview
   const wf = new Workflows(page, expect);

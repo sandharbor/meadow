@@ -42,9 +42,9 @@ test('ticks position command markers beside multiline calls without moving code 
     const commandLine = page.locator('[data-source-line="2"]');
     await expect(commandLine).toContainText('await sourcing.updateSources(');
     await expect(commandLine).not.toContainText('sourceCommand');
-    await page.getByRole('checkbox', { name: 'Show capture code' }).check();
+    await page.getByRole('checkbox', { name: 'show the real code' }).check();
     await expect(commandLine).toContainText('sourceCommand(() =>');
-    await page.getByRole('checkbox', { name: 'Show capture code' }).uncheck();
+    await page.getByRole('checkbox', { name: 'show the real code' }).uncheck();
     await expect(commandLine).not.toContainText('sourceCommand');
     await commandLine.click();
     await expect(marker).toHaveText('T 2CP');

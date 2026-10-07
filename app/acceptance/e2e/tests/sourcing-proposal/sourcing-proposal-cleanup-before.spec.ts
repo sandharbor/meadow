@@ -8,17 +8,17 @@ import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { sourcingReviewRedesign, sourceReviewCleanup, pendingSourceProposal, blacklist, overrides } from '../../../../concepts/index.js';
+import { sourcingReviewRedesign, sourceReviewCleanup, pendingSourceProposal, blacklist, overrides, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });
 
-/*
- * Reduce a bridge's depth, defer and reload, then reverse the boundary. Repeat with a blacklist.
- * Excluded pages retain their saved identity, tracking and traversal settings throughout the pending
- * proposal, and both reversal paths restore those settings before anything is accepted.
- */
-test('Reversing pending scope exclusions restores saved page configuration before acceptance', { annotation: { type: 'scenario-id', description: '3edbe143-aa65-47b7-bdec-8422d2c3d888' } }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+const name = linkedScenarioName(conceptText`Reversing pending scope exclusions restores saved page configuration before acceptance`);
+
+const description = linkedScenarioDescription(conceptText`Reduce a bridge's depth, defer and reload, then reverse the boundary. Repeat with a blacklist.
+Excluded pages retain their saved identity, tracking and traversal settings throughout the pending
+proposal, and both reversal paths restore those settings before anything is accepted.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '3edbe143-aa65-47b7-bdec-8422d2c3d888' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);

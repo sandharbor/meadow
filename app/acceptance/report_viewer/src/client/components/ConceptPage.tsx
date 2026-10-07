@@ -48,14 +48,16 @@ export function ConceptDetails({ conceptId, selected = '', onNavigate, showTitle
       <p className="mt-3 max-w-4xl whitespace-pre-line">{concept.description}</p>
       <ul className="my-4 max-w-4xl list-disc space-y-2 pl-5">{concept.mechanics.map((rule, index) => <li key={index}>{rule}</li>)}</ul>
       <p className="max-w-4xl">{concept.interplay}</p>
-      <section aria-label="Implemented by" className="my-6 rounded border border-neutral-200 bg-white p-4">
-        <h2 className="text-lg font-semibold">Implemented by</h2>
-        <p className="mb-3 text-sm text-neutral-500">Locations are derived from inline participation declarations in the current checkout.</p>
-        {concept.implementations.length ? <ul className="space-y-2">{concept.implementations.map(entry => {
+      {concept.implementations.length ? <section aria-label="Implemented by" className="my-4 rounded border border-neutral-200 bg-white p-3">
+        <h2 className="mb-2 flex items-center gap-2 text-lg font-semibold">Implemented by
+          <span tabIndex={0} aria-label="About implementation locations" title="Locations are derived from inline participation declarations in the current checkout."
+            className="inline-flex h-4 w-4 cursor-help items-center justify-center rounded-full border border-neutral-400 text-xs font-normal text-neutral-500">?</span>
+        </h2>
+        <ul className="space-y-2">{concept.implementations.map(entry => {
           const query = new window.URLSearchParams({ file: entry.file, line: String(entry.line), role: entry.role });
           return <li className="break-words" key={`${entry.file}:${entry.line}:${entry.role}`}>{conceptLink(concept.id, `${entry.role} · ${entry.symbol} · ${entry.file}:${entry.line}`, query.toString())}</li>;
-        })}</ul> : <p>No implementation participants declared.</p>}
-      </section>
+        })}</ul>
+      </section> : <p className="my-3 text-xs text-neutral-500">No implementation declared.</p>}
       {implementation && <section aria-label="Implementation source" className="my-5">
         <h2 className="font-semibold">{implementation.symbol}</h2>
         <p className="mb-3 text-sm">{implementation.file}:{implementation.line} · {implementation.role}</p>

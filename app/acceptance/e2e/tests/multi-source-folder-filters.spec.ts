@@ -3,16 +3,16 @@
 import { test, expect } from '../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent } from '../src/run/pages/index.js';
 import { SourcesControl } from '../src/run/pages/areas/bundle/sourcing/SourcesControl.js';
-import { sourcingReviewRedesign, bundleSource, folderFilter } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, bundleSource, folderFilter, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
 test.use({ fixtureHome: 'home_fixture_multi_source' });
 
-/*
- * Hide one of two equally named folders in different sources, then rename that source. The
- * filter should keep affecting only the original source and remain resettable.
- */
-test('Multi-source folder filters distinguish equal folder names and retain independent settings', { annotation: { type: 'scenario-id', description: 'ed923b4e-3481-433a-91e3-b9adb3190594' } }, async ({ sourceCommand, page, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
+const name = linkedScenarioName(conceptText`Multi-source folder filters distinguish equal folder names and retain independent settings`);
+
+const description = linkedScenarioDescription(conceptText`Hide one of two equally named folders in different sources, then rename that source. The
+filter should keep affecting only the original source and remain resettable.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'ed923b4e-3481-433a-91e3-b9adb3190594' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   await sourceCommand(() => list.goto());

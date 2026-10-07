@@ -2,16 +2,16 @@
 
 import { test, expect } from '../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent } from '../src/run/pages/index.js';
-import { bundleSource, folderBundles } from '../../../concepts/index.js';
+import { bundleSource, folderBundles, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
 
 test.use({ bundleMode: 'mixed-starts' });
 test.use({ fixtureHome: 'home_fixture_multi_source' });
 
-/*
- * Sort a multi-source bundle by its Source column in flat and structural lists. Source
- * names should remain separate from folders and stay visible when filtering to one source.
- */
-test('Multi-source list view sorts canonical source names in flat and structural views', { annotation: { type: 'scenario-id', description: '47643e99-1c78-4bf4-8431-3f8bc651479e' } }, async ({ sourceCommand, page, addKeyFrame, skipMeadowHomeStateCheck, checkpoint }) => {
+const name = linkedScenarioName(conceptText`Multi-source list view sorts canonical source names in flat and structural views`);
+
+const description = linkedScenarioDescription(conceptText`Sort a multi-source bundle by its Source column in flat and structural lists. Source
+names should remain separate from folders and stay visible when filtering to one source.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '47643e99-1c78-4bf4-8431-3f8bc651479e' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, addKeyFrame, skipMeadowHomeStateCheck, checkpoint }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   await sourceCommand(() => list.goto());

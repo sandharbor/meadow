@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { bundles } from "../../../concepts/index.js";
+import { bundles, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 import { cli } from "../../../concepts/index.js";
 import { expect, test } from "../src/run/test-fixtures.js";
@@ -24,11 +24,11 @@ test.use({ bundleMode: "single-file" });
 test.use({ executionSurface: "cli" });
 test.use({ recordVideo: false });
 
-/*
- * Request both the working graph and final graph through the CLI. Compare their JSON
- * output with the expected node inventories.
- */
-test("CLI describes all and final nodes in the big bundle as exact JSON", { annotation: { type: 'scenario-id', description: '380064ce-e016-4815-8cc4-752cbd3c35fa' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`CLI describes all and final nodes in the big bundle as exact JSON`);
+
+const description = linkedScenarioDescription(conceptText`Request both the working graph and final graph through the CLI. Compare their JSON
+output with the expected node inventories.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '380064ce-e016-4815-8cc4-752cbd3c35fa' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   assertMeadowHomeState,
   meadowCli,
   checkpoint,

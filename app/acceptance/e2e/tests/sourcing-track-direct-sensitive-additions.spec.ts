@@ -3,15 +3,15 @@
 import { test, expect } from '../src/run/test-fixtures.js';
 import { Workflows } from '../src/run/workflows.js';
 import { BundleEditorPage, FilterPanelComponent, Pill, SelectedPageDetailComponent } from '../src/run/pages/index.js';
-import { sourcingReviewRedesign, sourceSnapshot, sensitive } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, sourceSnapshot, sensitive, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 
-/*
- * Add pages that are directly marked sensitive. Acceptance should leave them untracked and
- * remain visible in the ordinary Untracked filter.
- */
-test('Sourcing acceptance leaves direct-sensitive additions untracked and uses the ordinary untracked filter', { annotation: { type: 'scenario-id', description: '0b132f4e-f39f-47eb-b609-dc8151afb48e' } }, async ({ sourceCommand, page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+const name = linkedScenarioName(conceptText`Sourcing acceptance leaves direct-sensitive additions untracked and uses the ordinary untracked filter`);
+
+const description = linkedScenarioDescription(conceptText`Add pages that are directly marked sensitive. Acceptance should leave them untracked and
+remain visible in the ordinary Untracked filter.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '0b132f4e-f39f-47eb-b609-dc8151afb48e' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
   const editor = new BundleEditorPage(page, expect);

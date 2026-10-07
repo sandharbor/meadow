@@ -7,17 +7,18 @@ import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { sourcingReviewRedesign, sourceReviewCleanup, sourceReviewAcceptance, orphan, blacklist, overrides } from '../../../../concepts/index.js';
+import { sourcingReviewRedesign, sourceReviewCleanup, sourceReviewAcceptance, orphan, blacklist, overrides, scopeExclusion, bridgeExclusion, conceptText, conceptLink, linkedScenarioName, linkedScenarioDescription } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });
 
-/*
- * Combine a staged bridge exclusion with an externally removed leaf link. Acceptance removes both
- * unreachable configurations, retains the causal blacklist, and leaves source files untouched.
- * Re-expansion has fresh tracking decisions and cannot revive the cleaned page's depth override.
- */
-test('Acceptance cleans unreachable configuration for both scope exclusions and external orphans', { annotation: { type: 'scenario-id', description: '98d3a524-50f8-46a4-9213-a5404ef8c6ce' } }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+const name = linkedScenarioName(conceptText`Acceptance cleans unreachable configuration for both ${conceptLink(scopeExclusion.id, 'scope exclusion')}s and external orphans`);
+
+const description = linkedScenarioDescription(conceptText`Combine a staged ${conceptLink(bridgeExclusion.id, 'bridge exclusion')} with an externally removed leaf link. Acceptance removes both
+unreachable configurations, retains the causal blacklist, and leaves source files untouched.
+Re-expansion has fresh tracking decisions and cannot revive the cleaned page's depth override.`);
+
+test(name.name, { annotation: [{ type: 'scenario-id', description: '98d3a524-50f8-46a4-9213-a5404ef8c6ce' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);

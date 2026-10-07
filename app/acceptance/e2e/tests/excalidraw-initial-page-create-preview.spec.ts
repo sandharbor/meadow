@@ -23,18 +23,18 @@ import {
   PreviewPublishModal,
 } from "../src/run/pages/index.js";
 import { Fixture } from "../src/run/workflows.js";
-import { excalidraw, initialPage } from "../../../concepts/index.js";
+import { excalidraw, initialPage, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { customBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
 test.use({ fixtureHome: Fixture.Minimal });
 
-/*
- * Create a bundle whose starting page is an Excalidraw drawing. Generate its preview and
- * follow a drawing link to another page.
- */
-test("create a custom bundle with an excalidraw initial page and follow a drawing link", { annotation: { type: 'scenario-id', description: '05e433b3-03e3-46b3-82c9-99271d27b813' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`create a custom bundle with an excalidraw initial page and follow a drawing link`);
+
+const description = linkedScenarioDescription(conceptText`Create a bundle whose starting page is an Excalidraw drawing. Generate its preview and
+follow a drawing link to another page.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '05e433b3-03e3-46b3-82c9-99271d27b813' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page,
   testServer,
   checkpoint,

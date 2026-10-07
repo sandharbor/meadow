@@ -15,7 +15,7 @@ echo "Type checking passed."
 echo "Testing E2E service lifecycle..."
 node --import tsx --test _module/tests/*.test.ts src/artifacts/conceptImplementations.test.ts
 
-echo "Linting one-test-per-spec rule..."
+echo "Linting one-test-per-spec and required scenario metadata..."
 npx tsx _module/scripts/lint-single-test-per-spec.ts
 
 echo "Checking every source change has its own E2E scenario..."

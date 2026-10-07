@@ -33,6 +33,8 @@ export const coreConceptIds = {
   sourceReviewTrigger: "source-review-trigger",
   sourceReviewIdentity: "source-review-identity",
   sourceReviewAcceptance: "source-review-acceptance",
+  scopeExclusion: "scope-exclusion",
+  bridgeExclusion: "bridge-exclusion",
   sourceReviewCleanup: "source-review-cleanup",
   sourceReviewWorkspace: "source-review-workspace",
   sourceReviewViewState: "source-review-view-state",

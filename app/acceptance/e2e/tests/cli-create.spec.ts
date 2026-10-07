@@ -29,7 +29,7 @@ import {
   EXPECTED_GENERATED_PAGES,
   materializeCreateSafeBundleSource,
 } from "../src/agent-evals/scenarios/createSafeBundle.js";
-import { bundles } from "../../../concepts/index.js";
+import { bundles, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { cli } from "../../../concepts/index.js";
 import { expect, test } from "../src/run/test-fixtures.js";
 
@@ -51,12 +51,12 @@ test.use({ executionSurface: "cli" });
 test.use({ fixtureHome: "home_fixture_minimal" });
 test.use({ recordVideo: false });
 
-/*
- * Create a bundle from a read-only source, track safe pages, and generate and save it
- * through the CLI. Check retries, stale saves, sensitive-page protection, and the
- * resulting files.
- */
-test("CLI creates a page bundle and safely tracks its working graph", { annotation: { type: 'scenario-id', description: '5d8ab79c-23c5-4af5-8d25-7dcde499ddfe' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`CLI creates a page bundle and safely tracks its working graph`);
+
+const description = linkedScenarioDescription(conceptText`Create a bundle from a read-only source, track safe pages, and generate and save it
+through the CLI. Check retries, stale saves, sensitive-page protection, and the
+resulting files.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '5d8ab79c-23c5-4af5-8d25-7dcde499ddfe' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   assertMeadowHomeState,
   meadowCli,
   page,

@@ -7,17 +7,17 @@ import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { sourcingReviewRedesign, pendingSourceProposal, proposalConfigurationDraft, sourceReviewConfigurationMerge } from '../../../../concepts/index.js';
+import { sourcingReviewRedesign, pendingSourceProposal, proposalConfigurationDraft, sourceReviewConfigurationMerge, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });
 
-/*
- * Stage traversal, tracking, a bundle filter and a global filter, then choose Later. Other bundles
- * retain their saved policy. A later accepted global filter and an external source change survive
- * reopening and discarding the original proposal; only that proposal's isolated drafts disappear.
- */
-test('Sourcing preserves node and filter drafts on Later and discards them together', { annotation: { type: 'scenario-id', description: 'c4ae489a-82e5-46c2-b64e-64e07f42afdb' } }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+const name = linkedScenarioName(conceptText`Sourcing preserves node and filter drafts on Later and discards them together`);
+
+const description = linkedScenarioDescription(conceptText`Stage traversal, tracking, a bundle filter and a global filter, then choose Later. Other bundles
+retain their saved policy. A later accepted global filter and an external source change survive
+reopening and discarding the original proposal; only that proposal's isolated drafts disappear.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'c4ae489a-82e5-46c2-b64e-64e07f42afdb' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);

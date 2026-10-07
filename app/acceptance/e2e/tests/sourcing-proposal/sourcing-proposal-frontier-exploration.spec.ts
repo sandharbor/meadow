@@ -6,17 +6,17 @@ import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent, PreviewPublishModal } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { sourcingReviewRedesign, sourceReviewWorkspace, sourceReviewTrigger, frontier, sourceSnapshot } from '../../../../concepts/index.js';
+import { sourcingReviewRedesign, sourceReviewWorkspace, sourceReviewTrigger, frontier, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.Example });
 
-/*
- * With no external changes, sourcing explores live frontier beyond its captured boundary. Increasing
- * traversal captures those pages into the proposal. Later preserves accepted curation and generation;
- * accepting admits the new material and returns to curation without frontier exploration controls.
- */
-test('Sourcing explores the frontier without changing accepted material until acceptance', { annotation: { type: 'scenario-id', description: 'add4249e-bd6a-4747-8995-e8600181e8d1' } }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+const name = linkedScenarioName(conceptText`Sourcing explores the frontier without changing accepted material until acceptance`);
+
+const description = linkedScenarioDescription(conceptText`With no external changes, sourcing explores live frontier beyond its captured boundary. Increasing
+traversal captures those pages into the proposal. Later preserves accepted curation and generation;
+accepting admits the new material and returns to curation without frontier exploration controls.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'add4249e-bd6a-4747-8995-e8600181e8d1' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);

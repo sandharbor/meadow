@@ -5,16 +5,16 @@ import { Bundle, Fixture } from '../src/run/workflows.js';
 import {
   BundleEditorPage, BundleListPage, FilterPanelComponent, Pill, SelectedPageDetailComponent,
 } from '../src/run/pages/index.js';
-import { sourcingReviewRedesign, overrides, sourceSnapshot, bundleNodeKey } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, overrides, sourceSnapshot, bundleNodeKey, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.Example });
 
-/*
- * Remove the example bundle's zero-depth override and accept the three pages newly
- * reached by its inherited depth. The newly admitted pages start untracked.
- */
-test('Removing the example depth override leaves newly accepted pages untracked', { annotation: { type: 'scenario-id', description: 'b3137f45-5155-4892-9e2e-f3a0a08da7c6' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`Removing the example depth override leaves newly accepted pages untracked`);
+
+const description = linkedScenarioDescription(conceptText`Remove the example bundle's zero-depth override and accept the three pages newly
+reached by its inherited depth. The newly admitted pages start untracked.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'b3137f45-5155-4892-9e2e-f3a0a08da7c6' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page, checkpoint, addKeyFrame, assertMeadowHomeState,
 }) => {
   // --- Setup ---

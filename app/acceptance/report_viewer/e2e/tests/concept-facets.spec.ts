@@ -88,6 +88,22 @@ test('run filters use explicit category facets while rules remain directly navig
   await page.getByRole('button', { name: 'Return to Newer source material pauses frontier exploration', exact: true }).click();
   await expect(page).toHaveURL(filteredUrl);
   await expect(page.getByRole('heading', { name: 'Frontier Bundle Page', exact: true })).not.toBeVisible();
+
+  for (const mode of ['embedded', 'sidebar', 'floating']) {
+    await page.getByRole('combobox', { name: 'Concept display', exact: true }).selectOption(mode);
+    const [conceptPage] = await Promise.all([
+      page.waitForEvent('popup'),
+      page.getByRole('link', { name: 'Open in new page', exact: true }).click(),
+    ]);
+    await expect(conceptPage).toHaveURL(/\/concepts\/frontier-pending-sources$/);
+    await expect(conceptPage.getByRole('heading', { name: 'Newer source material pauses frontier exploration', exact: true })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Floating concept details', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('region', { name: 'Concept sidebar', exact: true })).toHaveCount(0);
+    await expect(page.locator('[aria-label="Concept details"]')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Show concept details', exact: true })).toBeVisible();
+    await expect(page).toHaveURL(filteredUrl);
+    await conceptPage.close();
+  }
 });
 
 test('detailed concepts follow matching scenarios and retain visible counts for hidden selections', async ({ page }) => {

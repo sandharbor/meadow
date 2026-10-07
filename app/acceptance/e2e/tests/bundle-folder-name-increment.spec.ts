@@ -17,17 +17,17 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, BundleEditorPage, CreateAndEditBundleModal } from "../src/run/pages/index.js";
 import { Workflows, Bundle } from "../src/run/workflows.js";
-import { bundleConfig, callout } from "../../../concepts/index.js";
+import { bundleConfig, callout, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 import { bundles } from "../../../concepts/index.js";
 
 test.use({ bundleMode: "single-file" });
 
-/*
- * Create two bundles from the same source page. The second should receive a distinct
- * folder name without overwriting the first.
- */
-test("creating a second bundle from the same source page auto-increments the folder name", { annotation: { type: 'scenario-id', description: 'c43f1ffb-20a7-473e-9fe7-d6e3bc027e52' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`creating a second bundle from the same source page auto-increments the folder name`);
+
+const description = linkedScenarioDescription(conceptText`Create two bundles from the same source page. The second should receive a distinct
+folder name without overwriting the first.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'c43f1ffb-20a7-473e-9fe7-d6e3bc027e52' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   assertMeadowHomeState,

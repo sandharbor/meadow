@@ -3,7 +3,7 @@
 import { test, expect } from '../src/run/test-fixtures.js';
 import { Workflows } from '../src/run/workflows.js';
 import { BundleEditorPage } from '../src/run/pages/index.js';
-import { sourcingReviewRedesign, sourceSnapshot, sourceMove, sourceChange } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, sourceSnapshot, sourceMove, sourceChange, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
 import { MeadowHomeBundleConfig } from '../src/run/utils/index.js';
 
 const slug = 'meadow-test-bundle-big';
@@ -12,11 +12,11 @@ const renamedTitle = 't003 ---- renamed section page';
 
 test.use({ bundleMode: "single-file" });
 
-/*
- * Rename a source page that already has curation settings. Review should preserve those
- * settings and retain the page's identity after acceptance.
- */
-test('Sourcing reviews a shared rename without disrupting curation and preserves page identity', { annotation: { type: 'scenario-id', description: '86ec9574-29c5-4f44-b44e-58cfbbbae216' } }, async ({ sourceCommand, page, sourceChanges, testServer, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+const name = linkedScenarioName(conceptText`Sourcing reviews a shared rename without disrupting curation and preserves page identity`);
+
+const description = linkedScenarioDescription(conceptText`Rename a source page that already has curation settings. Review should preserve those
+settings and retain the page's identity after acceptance.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '86ec9574-29c5-4f44-b44e-58cfbbbae216' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, sourceChanges, testServer, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   const wf = new Workflows(page, expect);
   await sourceCommand(() => wf.navigateToBigBundle());

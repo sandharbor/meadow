@@ -15,17 +15,17 @@ limitations under the License.
 */
 
 import { renderStartupRecoveryHtml } from '../../../shared_code/utils/startupRecoveryHtml.js';
-import { callout, startupRecovery } from '../../../concepts/index.js';
+import { callout, startupRecovery, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
 import { expect, test } from '../src/run/test-fixtures.js';
 
 test.use({ fixtureHome: 'home_fixture_minimal' });
 test.use({ bundleMode: 'single-file' });
 
-/*
- * Trigger an unknown startup failure. The branded recovery screen should provide useful
- * guidance while keeping technical details behind disclosure.
- */
-test('Unknown startup failures use branded progressive disclosure', { annotation: { type: 'scenario-id', description: 'd482e3bd-67e5-4162-b047-bcd9875615ea' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`Unknown startup failures use branded progressive disclosure`);
+
+const description = linkedScenarioDescription(conceptText`Trigger an unknown startup failure. The branded recovery screen should provide useful
+guidance while keeping technical details behind disclosure.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'd482e3bd-67e5-4162-b047-bcd9875615ea' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   addKeyFrame,

@@ -18,18 +18,18 @@ import { test, expect } from "../src/run/test-fixtures.js";
 import { ChangesTab, CustomizeTab, PreviewPublishModal } from "../src/run/pages/index.js";
 import { GeneratedBundleVersions } from "../src/run/utils/index.js";
 import { Bundle, Workflows } from "../src/run/workflows.js";
-import { changesTab as changesTabDoc, customize, versioning } from "../../../concepts/index.js";
+import { changesTab as changesTabDoc, customize, versioning, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 test.use({ serialGroup: "generated-bundle-versioning" });
 
-/*
- * Change a saved generation and create a connected successor. The predecessor should
- * freeze, comparison should remain available, and sharing should warn when an older
- * version is selected.
- */
-test("V06 generated version connected successor freezes its predecessor and supports comparison", { annotation: { type: 'scenario-id', description: '74ff8663-eed7-4380-b7d6-bfd3ded60fda' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`V06 generated version connected successor freezes its predecessor and supports comparison`);
+
+const description = linkedScenarioDescription(conceptText`Change a saved generation and create a connected successor. The predecessor should
+freeze, comparison should remain available, and sharing should warn when an older
+version is selected.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '74ff8663-eed7-4380-b7d6-bfd3ded60fda' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   skipMeadowHomeStateCheck,

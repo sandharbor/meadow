@@ -7,17 +7,17 @@ import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { sourcingReviewRedesign, sourceReviewTrigger, pendingProposalRevalidation, sourceChangesDuringReview, overrides } from '../../../../concepts/index.js';
+import { sourcingReviewRedesign, sourceReviewTrigger, pendingProposalRevalidation, sourceChangesDuringReview, overrides, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.Example });
 
-/*
- * Change a stopped page's live link and its destination, then increase the proposed depth. Confirm
- * the refresh and verify the new capture contains both the revised links and destination bytes,
- * retains an applicable untrack decision, and leaves accepted curation unchanged until acceptance.
- */
-test('Confirming a depth change incorporates newer sources and applies the edit together', { annotation: { type: 'scenario-id', description: '51af7817-6b84-4f0e-b058-b20b13fe27c4' } }, async ({ sourceCommand, page, sourceChanges, testServer, checkpoint, addKeyFrame, assertMeadowHomeState, expectLogErrors }) => {
+const name = linkedScenarioName(conceptText`Confirming a depth change incorporates newer sources and applies the edit together`);
+
+const description = linkedScenarioDescription(conceptText`Change a stopped page's live link and its destination, then increase the proposed depth. Confirm
+the refresh and verify the new capture contains both the revised links and destination bytes,
+retains an applicable untrack decision, and leaves accepted curation unchanged until acceptance.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '51af7817-6b84-4f0e-b058-b20b13fe27c4' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, sourceChanges, testServer, checkpoint, addKeyFrame, assertMeadowHomeState, expectLogErrors }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);

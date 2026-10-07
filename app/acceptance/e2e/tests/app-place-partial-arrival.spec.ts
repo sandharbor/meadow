@@ -2,17 +2,17 @@
 
 import { test, expect } from "../src/run/test-fixtures.js";
 import { AppPlace, BundleEditorPage } from "../src/run/pages/index.js";
-import { appPlace, callout } from "../../../concepts/index.js";
+import { appPlace, callout, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 
 test.use({ bundleMode: "single-file" });
 
-/*
- * Follow a link that asks for more than the bundle can show: a custom filter
- * that does not exist and a selected page that is gone. The app opens as deep
- * as it can, selects the page that still exists, and a callout says exactly
- * where it stopped. The Runtime receives the same report a CLI caller reads.
- */
-test("A link the app cannot follow all the way opens as deep as it can and says where it stopped", { annotation: { type: 'scenario-id', description: '2771ea2c-ce5c-44d6-81dd-eabb2aa8f97a' } }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+const name = linkedScenarioName(conceptText`A link the app cannot follow all the way opens as deep as it can and says where it stopped`);
+
+const description = linkedScenarioDescription(conceptText`Follow a link that asks for more than the bundle can show: a custom filter
+that does not exist and a selected page that is gone. The app opens as deep
+as it can, selects the page that still exists, and a callout says exactly
+where it stopped. The Runtime receives the same report a CLI caller reads.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '2771ea2c-ce5c-44d6-81dd-eabb2aa8f97a' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Test start ---
   // Follow the link into the big bundle.
   const places = new AppPlace(page, expect);

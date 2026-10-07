@@ -17,18 +17,18 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, BundleEditorPage, FilterPanelComponent } from "../src/run/pages/index.js";
 import { Fixture } from "../src/run/workflows.js";
-import { sourcingReviewRedesign, frontier, filters } from "../../../concepts/index.js";
+import { sourcingReviewRedesign, frontier, filters, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { exampleBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
 test.use({ fixtureHome: Fixture.Minimal });
 
-/*
- * Open the example bundle and enable the frontier filter. Check that pages beyond the
- * normal traversal boundary appear in the graph.
- */
-test("example bundle frontier pages show in graph view with frontier filter", { annotation: { type: 'scenario-id', description: 'c0c45455-93e3-4e43-9a7e-ff6d7660d483' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`example bundle frontier pages show in graph view with frontier filter`);
+
+const description = linkedScenarioDescription(conceptText`Open the example bundle and enable the frontier filter. Check that pages beyond the
+normal traversal boundary appear in the graph.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'c0c45455-93e3-4e43-9a7e-ff6d7660d483' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page, checkpoint, assertMeadowHomeState, addKeyFrame,
 }) => {
   // --- Setup ---

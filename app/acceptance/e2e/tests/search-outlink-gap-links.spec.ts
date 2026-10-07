@@ -22,16 +22,16 @@ import {
   LinksModal,
 } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { sourceGraphSearch, labels, linkGap, callout, links } from "../../../concepts/index.js";
+import { sourceGraphSearch, labels, linkGap, callout, links, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
-/*
- * Search for a page with an outgoing-link gap and inspect its links. Follow an incoming
- * link to verify navigation to the related page.
- */
-test("sourceGraphSearch for outlink gap page, inspect links, and navigate via inlink", { annotation: { type: 'scenario-id', description: '5d8213b4-06da-47eb-a6a1-a88f6f18fe4f' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`sourceGraphSearch for outlink gap page, inspect links, and navigate via inlink`);
+
+const description = linkedScenarioDescription(conceptText`Search for a page with an outgoing-link gap and inspect its links. Follow an incoming
+link to verify navigation to the related page.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '5d8213b4-06da-47eb-a6a1-a88f6f18fe4f' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   assertMeadowHomeState,

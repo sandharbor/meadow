@@ -39,6 +39,10 @@ const CHECKPOINT_REF_PREFIX = "refs/checkpoints/";
 const HOME_GIT_OBJECTS_FILE = "home.git-objects";
 /** Logs and disposable caches are not state worth restoring. */
 const EXCLUDED_HOME_PATHS = ["logs", "cache/source-index", "cache/editor-view"];
+// durableDocument publishes through PID/UUID siblings. They are in-progress
+// writes, not saved state, and can vanish while Git reads a running home.
+const DOCUMENT_SCRATCH_EXCLUDES = ['tmp', 'rollback', 'lock-owner'].map(purpose =>
+  `:(glob,exclude)**/.*.${purpose}.[0-9]*.????????-????-????-????-????????????`);
 
 export interface CheckpointMetadata {
   version: 1 | 2;
@@ -110,7 +114,7 @@ function treeOf(repo: string, workTree: string, objectEnv: Record<string, string
     for (let attempt = 1; ; attempt++) {
       try {
         fs.rmSync(index, { force: true });
-        git(repo, ["--work-tree", workTree, "add", "--all", "--force", "--", ".", ...excludes.map(exclude => `:(exclude)${exclude}`)], { env });
+        git(repo, ["--work-tree", workTree, "add", "--all", "--force", "--", ".", ...excludes.map(exclude => `:(exclude)${exclude}`), ...DOCUMENT_SCRATCH_EXCLUDES], { env });
         return git(repo, ["write-tree"], { env });
       } catch (error) {
         const vanished = /unable to stat|No such file or directory|unable to index file/.test(String((error as { stderr?: unknown }).stderr ?? error));

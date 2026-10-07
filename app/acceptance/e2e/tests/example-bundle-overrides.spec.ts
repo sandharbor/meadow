@@ -17,18 +17,18 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, BundleEditorPage, FilterPanelComponent } from "../src/run/pages/index.js";
 import { Fixture } from "../src/run/workflows.js";
-import { sourcingReviewRedesign, filters, overrides, initialPage } from "../../../concepts/index.js";
+import { sourcingReviewRedesign, filters, overrides, initialPage, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { exampleBundle, exampleBundleInitialPageTitle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
 test.use({ fixtureHome: Fixture.Minimal });
 
-/*
- * Apply the Overrides filter to the example bundle. The initial page's required depths
- * should not count as a custom override.
- */
-test("overrides filter on example bundle does not include the initial page", { annotation: { type: 'scenario-id', description: '234c4657-7b31-4f5a-9e4c-750bbbf1c5e7' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`overrides filter on example bundle does not include the initial page`);
+
+const description = linkedScenarioDescription(conceptText`Apply the Overrides filter to the example bundle. The initial page's required depths
+should not count as a custom override.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '234c4657-7b31-4f5a-9e4c-750bbbf1c5e7' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page, checkpoint, assertMeadowHomeState, addKeyFrame,
 }) => {
   // --- Setup ---

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { renderConceptText, type AnyMeadowConcept } from "./types.js";
+import { renderConceptText, type ConceptText, type AnyMeadowConcept } from "./types.js";
 
 /** The acceptance/report projection of a canonical concept. */
 export interface AcceptanceConceptView {
@@ -53,4 +53,14 @@ export function deriveAppAreaIds(
     for (const appAreaId of byId.get(conceptId)?.appAreaIds ?? []) ids.add(appAreaId);
   }
   return appAreas.map(area => area.id).filter(id => ids.has(id));
+}
+
+/** Capture linked scenario prose while retaining Playwright's plain-text name and stable slug. */
+export function linkedScenarioName(nameText: ConceptText) {
+  return { name: renderConceptText(nameText), annotation: { type: 'scenario-name', description: JSON.stringify(nameText) } };
+}
+
+/** Formal scenario prose, captured with its checked concept references. */
+export function linkedScenarioDescription(descriptionText: ConceptText) {
+  return { description: renderConceptText(descriptionText), annotation: { type: 'scenario-description', description: JSON.stringify(descriptionText) } };
 }

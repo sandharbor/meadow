@@ -17,18 +17,18 @@ limitations under the License.
 import path from "path";
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, BundleEditorPage, CreateAndEditBundleModal } from "../src/run/pages/index.js";
-import { bundleConfig } from "../../../concepts/index.js";
+import { bundleConfig, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { customBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
 test.use({ fixtureHome: "home_fixture_minimal" });
 
-/*
- * Create bundles with different traversal depths. Each should use the chosen depths
- * without showing the introductory depth callout.
- */
-test("new bundle uses chosen depths without the introductory depth callout", { annotation: { type: 'scenario-id', description: '6296a54a-ba3a-43bf-993d-5925b6b708c5' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`new bundle uses chosen depths without the introductory depth callout`);
+
+const description = linkedScenarioDescription(conceptText`Create bundles with different traversal depths. Each should use the chosen depths
+without showing the introductory depth callout.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '6296a54a-ba3a-43bf-993d-5925b6b708c5' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page,
   testServer,
   checkpoint,

@@ -17,7 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleEditorPage } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { sourcingReviewRedesign, orphan, sourceSnapshot } from "../../../concepts/index.js";
+import { sourcingReviewRedesign, orphan, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 const EXPECTED_ORPHAN_COUNT = 13;
@@ -26,11 +26,11 @@ const CHILD_OF_BLACKLISTED = "t007 ---- child of blacklisted page";
 
 test.use({ bundleMode: "single-file" });
 
-/*
- * Remove a link that leaves previously captured pages orphaned. Review the existing and
- * proposed orphans, then confirm that acceptance removes the chosen configuration.
- */
-test("Sourcing reviews existing and candidate orphans with removal on acceptance", { annotation: { type: 'scenario-id', description: 'fc541bcb-6df3-4c55-90f6-6c5dd6cf7871' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`Sourcing reviews existing and candidate orphans with removal on acceptance`);
+
+const description = linkedScenarioDescription(conceptText`Remove a link that leaves previously captured pages orphaned. Review the existing and
+proposed orphans, then confirm that acceptance removes the chosen configuration.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'fc541bcb-6df3-4c55-90f6-6c5dd6cf7871' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page,
   sourceChanges,
   checkpoint,

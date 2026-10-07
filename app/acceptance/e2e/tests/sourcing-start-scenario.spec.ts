@@ -8,7 +8,7 @@ import { startDevTools } from '../src/run/devTools.js';
 import { DevSourceChangesControl } from '../src/run/pages/dev-tools/SourceChangesControl.js';
 import { DevSavedStatesPage } from '../src/run/pages/dev-tools/SavedStatesPage.js';
 import { BundleEditorPage } from '../src/run/pages/index.js';
-import { sourcingReviewRedesign, savedState, sourceChange } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, savedState, sourceChange, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
 import { getRuntimePaths } from '../../../runtime/supervisor/src/runtimePaths.js';
 import { readRuntimeSessionDescriptor } from '../../../runtime/supervisor/src/sessionDescriptor.js';
 import { postRuntimeControl, waitForRuntimeHomeRelease } from '../../../runtime/supervisor/src/runtimeClient.js';
@@ -24,13 +24,13 @@ async function stopRuntime(home: string): Promise<void> {
   await waitForRuntimeHomeRelease(descriptor);
 }
 
-/*
- * Start a source-change scenario from Dev Tools twice. Each start opens the
- * change's designated fixture in a fresh home with Local services, accepts the
- * baseline, applies the change, and hands over directly in source review. The
- * developer's real home is never touched.
- */
-test('Sourcing Start scenario opens a fresh home and hands over directly in source review', { annotation: { type: 'scenario-id', description: '673d01ca-cd33-43b5-9c5b-224d1bdbe26c' } }, async ({ sourceCommand, page, addKeyFrame, skipMeadowHomeStateCheck, checkpoint }, testInfo) => {
+const name = linkedScenarioName(conceptText`Sourcing Start scenario opens a fresh home and hands over directly in source review`);
+
+const description = linkedScenarioDescription(conceptText`Start a source-change scenario from Dev Tools twice. Each start opens the
+change's designated fixture in a fresh home with Local services, accepts the
+baseline, applies the change, and hands over directly in source review. The
+developer's real home is never touched.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '673d01ca-cd33-43b5-9c5b-224d1bdbe26c' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, addKeyFrame, skipMeadowHomeStateCheck, checkpoint }, testInfo) => {
   // --- Setup ---
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'meadow-dev-scenario-')));
   const realHome = path.join(root, 'MeadowHome');

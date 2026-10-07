@@ -9,6 +9,7 @@ import { readFileSync, readdirSync } from "fs";
 import path from "path";
 import url from "url";
 import ts from "typescript";
+import { isScenarioTestCall, scenarioMetadataIssues } from './scenario-metadata.js';
 
 const SCRIPT_DIR = path.dirname(url.fileURLToPath(import.meta.url));
 const TEST_RUNNER_DIR = path.resolve(SCRIPT_DIR, "../..");
@@ -28,27 +29,13 @@ function isStringArg(node: ts.Node | undefined): node is ts.StringLiteral | ts.N
   return !!node && ts.isStringLiteralLike(node);
 }
 
-function isTestCaseCall(node: ts.Node): node is ts.CallExpression {
-  if (!ts.isCallExpression(node)) return false;
-
-  const callee = node.expression;
-  if (ts.isIdentifier(callee) && callee.text === "test") {
-    return isStringArg(node.arguments[0]);
-  }
-
-  if (!ts.isPropertyAccessExpression(callee)) return false;
-  if (!ts.isIdentifier(callee.expression) || callee.expression.text !== "test") return false;
-  if (!["only", "skip", "fixme"].includes(callee.name.text)) return false;
-  return isStringArg(node.arguments[0]);
-}
-
 function findTestCases(filePath: string): TestCase[] {
   const text = readFileSync(filePath, "utf8");
   const sourceFile = ts.createSourceFile(filePath, text, ts.ScriptTarget.ESNext, true);
   const tests: TestCase[] = [];
 
   function walk(node: ts.Node): void {
-    if (isTestCaseCall(node)) {
+    if (isScenarioTestCall(node)) {
       const titleArg = node.arguments[0];
       const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart());
       tests.push({
@@ -70,19 +57,22 @@ function main(): void {
     .sort();
 
   const issues: Issue[] = [];
+  const metadataIssues: string[] = [];
   for (const spec of specs) {
     const tests = findTestCases(spec);
     if (tests.length !== 1) {
       issues.push({ file: spec, tests });
     }
+    const source = ts.createSourceFile(spec, readFileSync(spec, 'utf8'), ts.ScriptTarget.ESNext, true);
+    for (const issue of scenarioMetadataIssues(source)) metadataIssues.push(`  ${path.relative(TEST_RUNNER_DIR, spec)}:${issue.line}: ${issue.message}`);
   }
 
-  if (issues.length === 0) {
-    console.log(`✅ ${specs.length} spec(s): each file defines exactly one test case.`);
+  if (issues.length === 0 && metadataIssues.length === 0) {
+    console.log(`✅ ${specs.length} spec(s): each defines one test with a linked scenario name and description.`);
     return;
   }
 
-  console.error(`❌ single-test-per-spec linter found ${issues.length} issue(s):`);
+  if (issues.length) console.error(`❌ single-test-per-spec linter found ${issues.length} issue(s):`);
   for (const issue of issues) {
     const rel = path.relative(TEST_RUNNER_DIR, issue.file);
     console.error(`  ${rel}: defines ${issue.tests.length} test case(s), expected exactly 1`);
@@ -90,12 +80,17 @@ function main(): void {
       console.error(`    line ${testCase.line}: "${testCase.title}"`);
     }
   }
+  if (metadataIssues.length) console.error(`❌ scenario metadata linter found ${metadataIssues.length} issue(s):\n${metadataIssues.join('\n')}`);
   console.error(`
 How to fix
 ----------
 
 Move each test case into its own .spec.ts file. Shared setup and helper code
 should live in a non-.spec.ts module next to the specs or under src/run/utils.
+Declare const name = linkedScenarioName(conceptText\`…\`) and then
+const description = linkedScenarioDescription(conceptText\`…\`), using the helpers
+from concepts/index.js. Pass name.name as the title and both metadata annotations
+alongside the scenario-id annotation.
 `.trimEnd());
   process.exit(1);
 }

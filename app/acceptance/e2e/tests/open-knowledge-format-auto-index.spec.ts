@@ -18,7 +18,7 @@ import path from "path";
 import { test, expect } from "../src/run/test-fixtures.js";
 import { PreviewPublishModal, ChangesTab, CustomizeTab } from "../src/run/pages/index.js";
 import { Workflows, Bundle } from "../src/run/workflows.js";
-import { customize, openKnowledgeFormat } from "../../../concepts/index.js";
+import { customize, openKnowledgeFormat, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 import { seedTrackedAndLinkedFile } from "../src/run/utils/index.js";
 import { OpenKnowledgeFormatBundle } from "./open-knowledge-format-support.js";
@@ -35,11 +35,11 @@ test.use({
   },
 });
 
-/*
- * Enable Open Knowledge Format with an existing source index page. Meadow should use it
- * directly without treating it as a reserved-name rename.
- */
-test("OKF: auto-detect a source index page without reserved rename", { annotation: { type: 'scenario-id', description: 'faf07c58-2ffa-4c39-9942-d575c41bb4cc' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`OKF: auto-detect a source index page without reserved rename`);
+
+const description = linkedScenarioDescription(conceptText`Enable Open Knowledge Format with an existing source index page. Meadow should use it
+directly without treating it as a reserved-name rename.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'faf07c58-2ffa-4c39-9942-d575c41bb4cc' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   skipMeadowHomeStateCheck,

@@ -17,7 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, BundleEditorPage, PreviewPublishModal } from "../src/run/pages/index.js";
 import { Fixture } from "../src/run/workflows.js";
-import { htmlGeneration } from "../../../concepts/index.js";
+import { htmlGeneration, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { exampleBundle } from "../src/bundle-docs/index.js";
 import { bundles } from "../../../concepts/index.js";
 
@@ -25,11 +25,11 @@ test.use({ bundleMode: "single-file" });
 
 test.use({ fixtureHome: Fixture.Minimal });
 
-/*
- * Add the example bundle to an empty MeadowHome and generate its preview. The example
- * should open with its expected content.
- */
-test("add example bundle from empty state and preview it", { annotation: { type: 'scenario-id', description: 'a309795d-d7b8-4abd-8ca6-74c7f5ea2ea9' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`add example bundle from empty state and preview it`);
+
+const description = linkedScenarioDescription(conceptText`Add the example bundle to an empty MeadowHome and generate its preview. The example
+should open with its expected content.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'a309795d-d7b8-4abd-8ca6-74c7f5ea2ea9' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame,
 }) => {
   // --- Setup ---

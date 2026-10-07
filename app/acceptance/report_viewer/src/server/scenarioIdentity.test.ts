@@ -21,3 +21,12 @@ test('older recordings resolve scenario identity from either their title or arti
   expect(scenarioIdFromSpec(filename, 'unknown')).toBeUndefined();
   expect(scenarioIdFromSpec(undefined, 'a-renamed-scenario')).toBeUndefined();
 });
+
+ test('a single typed scenario name preserves identity for older recordings', () => {
+  const directory = mkdtempSync(path.join(os.tmpdir(), 'scenario-identity-'));
+  directories.push(directory);
+  const filename = path.join(directory, 'typed.spec.ts');
+  writeFileSync(filename, `const name = linkedScenarioName(conceptText\`A linked name\`);
+    test(name.name, { annotation: [{ type: 'scenario-id', description: 'stable-typed-id' }, name.annotation] }, async () => {});`);
+  expect(scenarioIdFromSpec(filename, 'a-linked-name')).toBe('stable-typed-id');
+});

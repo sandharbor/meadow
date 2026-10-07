@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { bundles } from "../../../concepts/index.js";
+import { bundles, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 import { cli } from "../../../concepts/index.js";
 import { expect, test } from "../src/run/test-fixtures.js";
@@ -24,11 +24,11 @@ test.use({ bundleMode: "single-file" });
 test.use({ executionSurface: "cli" });
 test.use({ recordVideo: false });
 
-/*
- * Read the available filters through the CLI, then query nodes with default and explicit
- * combinations. Each JSON result should match the expected set of pages.
- */
-test("CLI lists filters and applies default and explicit set operations as exact JSON", { annotation: { type: 'scenario-id', description: 'a2b621ca-663b-4ca5-a6a8-432abbbe713e' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`CLI lists filters and applies default and explicit set operations as exact JSON`);
+
+const description = linkedScenarioDescription(conceptText`Read the available filters through the CLI, then query nodes with default and explicit
+combinations. Each JSON result should match the expected set of pages.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'a2b621ca-663b-4ca5-a6a8-432abbbe713e' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   assertMeadowHomeState,
   meadowCli,
   checkpoint,

@@ -21,7 +21,7 @@ import type {
   MutateBundleNodeCliResult,
 } from "../../../contracts/types/cliOperations.js";
 import { materializeCreateSafeBundleSource } from "../src/agent-evals/scenarios/createSafeBundle.js";
-import { sourcingReviewRedesign, bundles } from "../../../concepts/index.js";
+import { sourcingReviewRedesign, bundles, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { cli } from "../../../concepts/index.js";
 import { expect, test } from "../src/run/test-fixtures.js";
 
@@ -30,12 +30,12 @@ test.use({ executionSurface: "cli" });
 test.use({ fixtureHome: "home_fixture_minimal" });
 test.use({ recordVideo: false });
 
-/*
- * Inspect and curate individual pages through the CLI using paths and stable IDs. Check
- * tracking, concurrent edits, depth overrides, blacklisting, sensitivity, and cross-bundle
- * lookup.
- */
-test("CLI supports every single-node inspection and curation operation by path or ID", { annotation: { type: 'scenario-id', description: '03acf875-6cf1-4d17-a98d-a389f02fea68' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`CLI supports every single-node inspection and curation operation by path or ID`);
+
+const description = linkedScenarioDescription(conceptText`Inspect and curate individual pages through the CLI using paths and stable IDs. Check
+tracking, concurrent edits, depth overrides, blacklisting, sensitivity, and cross-bundle
+lookup.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '03acf875-6cf1-4d17-a98d-a389f02fea68' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   assertMeadowHomeState,
   meadowCli,
   checkpoint,

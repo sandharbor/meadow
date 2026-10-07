@@ -14,16 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { softwareUpdate } from '../../../concepts/index.js';
+import { softwareUpdate, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
 import { expect, test } from '../src/run/test-fixtures.js';
 
 test.use({ bundleMode: 'single-file' });
 
-/*
- * Open the software update dialog after a checksum failure. The error should explain that
- * the installed app was preserved and offer retry without offering installation.
- */
-test('Verified update failure remains retryable without offering installation', { annotation: { type: 'scenario-id', description: '08283c70-2042-4ae9-a2e3-39709b66458c' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`Verified update failure remains retryable without offering installation`);
+
+const description = linkedScenarioDescription(conceptText`Open the software update dialog after a checksum failure. The error should explain that
+the installed app was preserved and offer retry without offering installation.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '08283c70-2042-4ae9-a2e3-39709b66458c' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page,
   testServer,
   checkpoint,

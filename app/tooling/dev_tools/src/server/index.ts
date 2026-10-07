@@ -37,7 +37,7 @@ import { createBrowserLaunchUrl } from "../../../../runtime/supervisor/src/runti
 import { DevRuntimeManager } from "./devRuntimeManager.js";
 import { stopOwnedDevAppProcesses } from "./devAppProcessManager.js";
 import { SavedStateRefusal, SavedStateSession, type SavedStateOrigin, type ServiceTarget } from "./savedStateSession.js";
-import { checkpointOptions } from "./checkpointCatalog.js";
+import { checkpointOptions, reportViewerUrl } from "./checkpointCatalog.js";
 import { designatedScenarioStart } from "./designatedScenario.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -49,6 +49,9 @@ const PORT = process.env.PORT || 3002;
 // The report viewer opens checkpoints here from another origin.
 app.use(cors());
 app.use(express.json());
+app.get('/api/reports/open', (_req, res) => {
+  res.redirect(reportViewerUrl());
+});
 
 function getProjectRoot(): string {
   const projectRoot = findProjectRoot(__dirname);

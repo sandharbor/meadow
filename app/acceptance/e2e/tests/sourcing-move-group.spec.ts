@@ -3,16 +3,16 @@
 import { test, expect } from '../src/run/test-fixtures.js';
 import { Workflows } from '../src/run/workflows.js';
 import { BundleEditorPage } from '../src/run/pages/index.js';
-import { sourcingReviewRedesign, sourceMove, sourceSnapshot } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, sourceMove, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
 import { MeadowHomeBundleConfig } from '../src/run/utils/index.js';
 
 test.use({ bundleMode: 'single-file' });
 
-/*
- * Move a nested group whose links use page names. Accept the move and verify that all
- * three page identities survive.
- */
-test('Sourcing moves a nested group while unchanged name-only links retain all three identities', { annotation: { type: 'scenario-id', description: '2f0bd0e6-f5e7-4016-ad12-eeade9f8569b' } }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+const name = linkedScenarioName(conceptText`Sourcing moves a nested group while unchanged name-only links retain all three identities`);
+
+const description = linkedScenarioDescription(conceptText`Move a nested group whose links use page names. Accept the move and verify that all
+three page identities survive.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '2f0bd0e6-f5e7-4016-ad12-eeade9f8569b' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
   const editor = new BundleEditorPage(page, expect);

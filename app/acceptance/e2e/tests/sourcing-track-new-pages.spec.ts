@@ -3,15 +3,15 @@
 import { test, expect } from '../src/run/test-fixtures.js';
 import { Workflows } from '../src/run/workflows.js';
 import { BundleEditorPage, Pill, SelectedPageDetailComponent } from '../src/run/pages/index.js';
-import { sourcingReviewRedesign, sourceSnapshot } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 
-/*
- * Add reachable pages and accept the source changes with the default settings. The newly
- * accepted pages remain untracked until selected and tracked.
- */
-test('Sourcing additions start untracked and use ordinary tracking controls', { annotation: { type: 'scenario-id', description: '7437de34-d543-4c52-950b-c3d7c192ee15' } }, async ({ sourceCommand, page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+const name = linkedScenarioName(conceptText`Sourcing additions start untracked and use ordinary tracking controls`);
+
+const description = linkedScenarioDescription(conceptText`Add reachable pages and accept the source changes with the default settings. The newly
+accepted pages remain untracked until selected and tracked.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '7437de34-d543-4c52-950b-c3d7c192ee15' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
   const editor = new BundleEditorPage(page, expect);

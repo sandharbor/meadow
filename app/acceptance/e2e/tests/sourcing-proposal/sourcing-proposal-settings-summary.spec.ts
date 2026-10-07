@@ -7,18 +7,18 @@ import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { sourcingReviewRedesign, proposalConfigurationDraft, sourceReviewWorkspace, tracking } from '../../../../concepts/index.js';
+import { sourcingReviewRedesign, proposalConfigurationDraft, sourceReviewWorkspace, tracking, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });
 
-/*
- * Review a changed source alongside staged traversal, tracking, bundle and global filters. The
- * header counts the staged settings and tracking choices, and its expanded summary shows readable
- * before/after values and global scope. Soloing Untracked changes presentation, while acceptance
- * still applies the complete proposal.
- */
-test('Sourcing summarizes staged settings and tracking edits without adding a graph change category', { annotation: { type: 'scenario-id', description: 'd1647330-ccf7-428a-8bb5-87e69537129a' } }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+const name = linkedScenarioName(conceptText`Sourcing summarizes staged settings and tracking edits without adding a graph change category`);
+
+const description = linkedScenarioDescription(conceptText`Review a changed source alongside staged traversal, tracking, bundle and global filters. The
+header counts the staged settings and tracking choices, and its expanded summary shows readable
+before/after values and global scope. Soloing Untracked changes presentation, while acceptance
+still applies the complete proposal.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'd1647330-ccf7-428a-8bb5-87e69537129a' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);

@@ -3,16 +3,16 @@
 import { test, expect } from '../src/run/test-fixtures.js';
 import { Workflows } from '../src/run/workflows.js';
 import { BundleEditorPage } from '../src/run/pages/index.js';
-import { sourcingReviewRedesign, sourceMove, sourceSnapshot } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, sourceMove, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
 import { MeadowHomeBundleConfig } from '../src/run/utils/index.js';
 
 test.use({ bundleMode: 'single-file' });
 
-/*
- * Move a nested page while leaving name-only links unchanged. Review and acceptance should
- * preserve the page's identity and working links.
- */
-test('Sourcing moves a nested page while preserving its identity and name-only links', { annotation: { type: 'scenario-id', description: '53c939c8-a8cf-4d90-b52f-b20924e0b6c1' } }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+const name = linkedScenarioName(conceptText`Sourcing moves a nested page while preserving its identity and name-only links`);
+
+const description = linkedScenarioDescription(conceptText`Move a nested page while leaving name-only links unchanged. Review and acceptance should
+preserve the page's identity and working links.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '53c939c8-a8cf-4d90-b52f-b20924e0b6c1' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
   const editor = new BundleEditorPage(page, expect);

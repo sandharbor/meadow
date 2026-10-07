@@ -20,7 +20,7 @@ import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleEditorPage, PreviewPublishModal, ChangesTab, CustomizeTab } from "../src/run/pages/index.js";
 import { Workflows, Bundle } from "../src/run/workflows.js";
 import { MeadowHomeGit } from "../src/run/utils/index.js";
-import { customize, sourcesExport, changesTab as changesTabDoc, filters, git } from "../../../concepts/index.js";
+import { customize, sourcesExport, changesTab as changesTabDoc, filters, git, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 async function applyGenerationOptionAndWait(page: Page, action: () => Promise<void>) {
@@ -31,11 +31,11 @@ async function applyGenerationOptionAndWait(page: Page, action: () => Promise<vo
 
 test.use({ bundleMode: "single-file" });
 
-/*
- * Enable and save a source ZIP export, then disable it. The saved export should become
- * unavailable while generated HTML changes remain reviewable.
- */
-test("Sources export ZIP: saved export can be disabled without hiding changed HTML", { annotation: { type: 'scenario-id', description: '0ec721cf-af7a-4c07-8787-42294412e324' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`Sources export ZIP: saved export can be disabled without hiding changed HTML`);
+
+const description = linkedScenarioDescription(conceptText`Enable and save a source ZIP export, then disable it. The saved export should become
+unavailable while generated HTML changes remain reviewable.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '0ec721cf-af7a-4c07-8787-42294412e324' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame, testServer,
 }) => {
   // --- Setup ---

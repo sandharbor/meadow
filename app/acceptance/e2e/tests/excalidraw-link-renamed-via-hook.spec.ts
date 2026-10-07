@@ -21,7 +21,7 @@ import {
   PreviewPublishModal,
   CustomizeTab,
 } from "../src/run/pages/index.js";
-import { excalidraw, hooks } from "../../../concepts/index.js";
+import { excalidraw, hooks, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -40,11 +40,11 @@ const PREFIX_HOOK_SOURCE = `function pageTitleNormalization(bundleSlug: string, 
 }
 `;
 
-/*
- * Apply a page-title hook and preview an embedded drawing. Both the drawing's link labels
- * and its targets should reflect the renamed pages.
- */
-test("Excalidraw embed and in-drawing links pick up page-title hook prefix", { annotation: { type: 'scenario-id', description: '96c282bf-6c94-4f7c-95b7-f70b7af50808' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`Excalidraw embed and in-drawing links pick up page-title hook prefix`);
+
+const description = linkedScenarioDescription(conceptText`Apply a page-title hook and preview an embedded drawing. Both the drawing's link labels
+and its targets should reflect the renamed pages.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '96c282bf-6c94-4f7c-95b7-f70b7af50808' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   skipMeadowHomeStateCheck,

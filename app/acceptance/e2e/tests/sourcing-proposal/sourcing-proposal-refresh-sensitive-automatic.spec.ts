@@ -8,16 +8,16 @@ import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { sourcingReviewRedesign, pendingProposalRevalidation, sourceChangesDuringReview, sourceReviewSensitivity, sensitive, filterSensitivity, tracking } from '../../../../concepts/index.js';
+import { sourcingReviewRedesign, pendingProposalRevalidation, sourceChangesDuringReview, sourceReviewSensitivity, sensitive, filterSensitivity, tracking, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });
 
-/*
- * Review untracked additions, then refresh after their content starts matching sensitivity policy. Untracked additions remain untracked without requiring explicit confirmation.
- * Checkpoints preserve the pending decisions and their current sensitivity evidence.
- */
-test('Refreshing source material keeps newly sensitive additions untracked', { annotation: { type: 'scenario-id', description: '63b363d7-248b-4c3b-a136-7cc5dffb7754' } }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+const name = linkedScenarioName(conceptText`Refreshing source material keeps newly sensitive additions untracked`);
+
+const description = linkedScenarioDescription(conceptText`Review untracked additions, then refresh after their content starts matching sensitivity policy. Untracked additions remain untracked without requiring explicit confirmation.
+Checkpoints preserve the pending decisions and their current sensitivity evidence.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '63b363d7-248b-4c3b-a136-7cc5dffb7754' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);

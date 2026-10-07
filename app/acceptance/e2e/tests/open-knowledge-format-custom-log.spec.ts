@@ -18,7 +18,7 @@ import path from "path";
 import { test, expect } from "../src/run/test-fixtures.js";
 import { PreviewPublishModal, ChangesTab, CustomizeTab } from "../src/run/pages/index.js";
 import { Workflows, Bundle } from "../src/run/workflows.js";
-import { customize, openKnowledgeFormat } from "../../../concepts/index.js";
+import { customize, openKnowledgeFormat, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 import { seedTrackedAndLinkedFile, seedTrackedFile } from "../src/run/utils/index.js";
 import { OpenKnowledgeFormatBundle } from "./open-knowledge-format-support.js";
@@ -37,11 +37,11 @@ test.use({
   },
 });
 
-/*
- * Choose a tracked page as the Open Knowledge Format log through the settings search.
- * Generate the bundle and verify that the chosen page becomes the log.
- */
-test("OKF: choose a custom tracked log page from the settings typeahead", { annotation: { type: 'scenario-id', description: 'd5c7a445-f8b2-4d0a-8896-acb8452cfc86' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`OKF: choose a custom tracked log page from the settings typeahead`);
+
+const description = linkedScenarioDescription(conceptText`Choose a tracked page as the Open Knowledge Format log through the settings search.
+Generate the bundle and verify that the chosen page becomes the log.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'd5c7a445-f8b2-4d0a-8896-acb8452cfc86' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   skipMeadowHomeStateCheck,

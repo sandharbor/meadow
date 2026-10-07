@@ -7,17 +7,17 @@ import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { sourcingReviewRedesign, pendingSourceProposal, pendingProposalRevalidation, sourceReviewConfigurationMerge, proposalConfigurationDraft, tracking, blacklist, checkpointViewRestoration } from '../../../../concepts/index.js';
+import { sourcingReviewRedesign, pendingSourceProposal, pendingProposalRevalidation, sourceReviewConfigurationMerge, proposalConfigurationDraft, tracking, blacklist, checkpointViewRestoration, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });
 
-/*
- * Untrack a leaf in a proposal, defer it, and blacklist the same leaf in accepted curation. A separate
- * tracking edit must survive either resolution. Two proposals exercise keeping the saved blacklist
- * and applying the proposed untrack, with each conflict captured open before choosing.
- */
-test('Pending sourcing proposals preserve later curation decisions and require conflict resolution', { annotation: { type: 'scenario-id', description: 'b5ad609f-77b6-4cbf-9e1f-80ff8d52db07' } }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+const name = linkedScenarioName(conceptText`Pending sourcing proposals preserve later curation decisions and require conflict resolution`);
+
+const description = linkedScenarioDescription(conceptText`Untrack a leaf in a proposal, defer it, and blacklist the same leaf in accepted curation. A separate
+tracking edit must survive either resolution. Two proposals exercise keeping the saved blacklist
+and applying the proposed untrack, with each conflict captured open before choosing.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'b5ad609f-77b6-4cbf-9e1f-80ff8d52db07' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);

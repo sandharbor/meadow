@@ -20,7 +20,7 @@ import YAML from "yaml";
 import { test as baseTest, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage } from "../src/run/pages/index.js";
 import { MeadowHomeMigrations } from "../src/run/utils/index.js";
-import { migration } from "../../../concepts/index.js";
+import { migration, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 import { bundles } from "../../../concepts/index.js";
 
@@ -51,11 +51,11 @@ const test = baseTest.extend({
 
 test.use({ bundleMode: "single-file" });
 
-/*
- * Start Meadow with a test migration installed. Verify that startup applies the migration
- * and records its result.
- */
-test("Migration runner applies an E2E-only migration at startup", { annotation: { type: 'scenario-id', description: 'ec8d200b-55aa-49e5-894f-8c6145d1865c' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`Migration runner applies an E2E-only migration at startup`);
+
+const description = linkedScenarioDescription(conceptText`Start Meadow with a test migration installed. Verify that startup applies the migration
+and records its result.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'ec8d200b-55aa-49e5-894f-8c6145d1865c' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   assertMeadowHomeState,

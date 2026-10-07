@@ -17,16 +17,16 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleEditorPage, FilterPanelComponent } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { sourcingReviewRedesign, callout } from "../../../concepts/index.js";
+import { sourcingReviewRedesign, callout, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
-/*
- * Mark a page as sensitive for the first time. Check that the introductory callout
- * explains the source change and can be dismissed.
- */
-test("callout for marking source node sensitive the first time", { annotation: { type: 'scenario-id', description: 'b6df7a57-471f-4913-be4a-30eb32c38735' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`callout for marking source node sensitive the first time`);
+
+const description = linkedScenarioDescription(conceptText`Mark a page as sensitive for the first time. Check that the introductory callout
+explains the source change and can be dismissed.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'b6df7a57-471f-4913-be4a-30eb32c38735' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   skipMeadowHomeStateCheck,

@@ -17,16 +17,16 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { FilterPanelComponent, BundleEditorPage } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { filters } from "../../../concepts/index.js";
+import { filters, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
-/*
- * Build a filter expression with two exclusions and drag one onto the other. The
- * expression should preserve the intended ordering and result.
- */
-test("without mix terms can be reordered by dropping one directly on the other", { annotation: { type: 'scenario-id', description: '9a8a5d08-d311-4deb-81a8-c6b2a608761e' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`without mix terms can be reordered by dropping one directly on the other`);
+
+const description = linkedScenarioDescription(conceptText`Build a filter expression with two exclusions and drag one onto the other. The
+expression should preserve the intended ordering and result.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '9a8a5d08-d311-4deb-81a8-c6b2a608761e' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   assertMeadowHomeState,

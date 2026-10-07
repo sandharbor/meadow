@@ -5,17 +5,17 @@ import { test, expect } from '../src/run/test-fixtures.js';
 import { MeadowHomeBundleConfig } from '../src/run/utils/index.js';
 import { BundleListPage, BundleEditorPage } from '../src/run/pages/index.js';
 import { SourcesControl } from '../src/run/pages/areas/bundle/sourcing/SourcesControl.js';
-import { sourcingReviewRedesign, bundleSource } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, bundleSource, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
 test.use({ fixtureHome: 'home_fixture_multi_source' });
 
-/*
- * Move a source directory and repair its registered location. Captured pages should
- * survive the missing directory. Saving the repaired location should close source
- * management with a success message and no material review.
- */
-test('Multi-source relocation saves the repaired location without reviewing unchanged material', { annotation: { type: 'scenario-id', description: '9e553a56-7e3c-408c-ab79-53e03fae54c0' } }, async ({ sourceCommand, page, testServer, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
+const name = linkedScenarioName(conceptText`Multi-source relocation saves the repaired location without reviewing unchanged material`);
+
+const description = linkedScenarioDescription(conceptText`Move a source directory and repair its registered location. Captured pages should
+survive the missing directory. Saving the repaired location should close source
+management with a success message and no material review.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '9e553a56-7e3c-408c-ab79-53e03fae54c0' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   await sourceCommand(() => list.goto());

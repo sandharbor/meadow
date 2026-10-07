@@ -6,17 +6,17 @@ import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, PreviewPublishModal } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { sourcingReviewRedesign, pendingSourceProposal, pendingProposalRevalidation, sourceChangesDuringReview, sourceReviewAcceptance, sourceSnapshot } from '../../../../concepts/index.js';
+import { sourcingReviewRedesign, pendingSourceProposal, pendingProposalRevalidation, sourceChangesDuringReview, sourceReviewAcceptance, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.Example });
 
-/*
- * Review a captured text and diagram revision B, then edit both live files again to C. A background
- * check reports newer material while the comparison stays on B. Accept and generate B, then open
- * the subsequent C proposal. Each phase preserves the exact capture that its review displays.
- */
-test('Sourcing accepts the exact reviewed capture while newer live sources remain available', { annotation: { type: 'scenario-id', description: 'a1240dd2-45c4-4c32-a1e7-6fc8ff7e2786' } }, async ({ sourceCommand, page, sourceChanges, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+const name = linkedScenarioName(conceptText`Sourcing accepts the exact reviewed capture while newer live sources remain available`);
+
+const description = linkedScenarioDescription(conceptText`Review a captured text and diagram revision B, then edit both live files again to C. A background
+check reports newer material while the comparison stays on B. Accept and generate B, then open
+the subsequent C proposal. Each phase preserves the exact capture that its review displays.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'a1240dd2-45c4-4c32-a1e7-6fc8ff7e2786' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, sourceChanges, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
   // --- Setup ---
   await sourceCommand(() => page.clock.install());
   const list = new BundleListPage(page, expect);

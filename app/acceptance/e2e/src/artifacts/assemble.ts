@@ -23,7 +23,6 @@ import {
   readdirSync,
   rmSync,
   statSync,
-  cpSync,
 } from "fs";
 import os from "os";
 import path from "path";
@@ -53,6 +52,7 @@ import {
 } from "../run/stateRepoCompaction.ts";
 import { compactManifest, contentBlobGitDir, expandManifest } from "./manifestEncoding.ts";
 import { declaredScenarioOptions } from "./declaredScenarioOptions.js";
+import { assembleScenarioVideo, findScenarioRecording } from './scenarioVideo.js';
 import {
   collectReferencedCliFixtures,
   type TestSourceFixture,
@@ -246,6 +246,8 @@ interface Manifest {
   uncommittedCode?: boolean;
   testName: string;
   description: string;
+  nameText?: import("../../../../concepts/types.js").ConceptText;
+  descriptionText?: import("../../../../concepts/types.js").ConceptText;
   status: string;
   startTime: string;
   endTime: string;
@@ -348,6 +350,8 @@ interface ScenarioReportMeta {
   scenarioInfo: {
     testName: string;
     description: string;
+    nameText?: import("../../../../concepts/types.js").ConceptText;
+    descriptionText?: import("../../../../concepts/types.js").ConceptText;
     duration: number | null;
     bundleMode: BundleMode | null;
     executionSurface: ExecutionSurface;
@@ -413,9 +417,7 @@ function readTimeline(
   return map;
 }
 
-const E2E_DIR = path.join(import.meta.dirname, "../..");
 const ARTIFACTS_BASE = path.join(os.homedir(), "meadow-e2e-artifacts", "current");
-const TEST_RESULTS_DIR = path.join(E2E_DIR, "test-results");
 
 function extractHomeCommits(
   stateRepo: string,
@@ -993,40 +995,6 @@ function processTickLog(testDir: string): TickData {
   };
 }
 
-interface VideoInfo {
-  path: string;
-  dirName: string;
-  size: number;
-}
-
-/** Walk TEST_RESULTS_DIR once and return all .webm videos. */
-function collectAllVideos(): VideoInfo[] {
-  if (!existsSync(TEST_RESULTS_DIR)) return [];
-  const videos: VideoInfo[] = [];
-  function walk(dir: string) {
-    for (const entry of readdirSync(dir)) {
-      const full = path.join(dir, entry);
-      if (statSync(full).isDirectory()) walk(full);
-      else if (entry.endsWith(".webm")) {
-        videos.push({
-          path: full,
-          dirName: path.basename(path.dirname(full)).toLowerCase(),
-          size: statSync(full).size,
-        });
-      }
-    }
-  }
-  walk(TEST_RESULTS_DIR);
-  return videos;
-}
-
-/** Match a test slug to the video captured in that test's dedicated context directory. */
-function findVideoFromList(videos: VideoInfo[], testSlug: string): string | null {
-  const exactDirName = `${testSlug}-context`;
-  const exactMatches = videos.filter((video) => video.dirName === exactDirName);
-  return exactMatches.sort((a, b) => b.size - a.size)[0]?.path ?? null;
-}
-
 /** Run async tasks with bounded concurrency. */
 async function runWithConcurrency<T>(
   items: T[],
@@ -1064,7 +1032,7 @@ function computeScenarioReportMeta(
   testDir: string,
   manifest: Manifest
 ): ScenarioReportMeta {
-  const { testName, description, startTime, endTime, logs, uncommittedEntries, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, keyFrames } = manifest;
+  const { testName, description, nameText, descriptionText, startTime, endTime, logs, uncommittedEntries, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, keyFrames } = manifest;
 
   // Compute duration
   const duration = (startTime && endTime)
@@ -1077,7 +1045,7 @@ function computeScenarioReportMeta(
     ? readFileSync(failureReasonPath, "utf8").trim()
     : undefined;
 
-  const scenarioInfo = { scenarioId: manifest.scenarioId, testName, description, duration, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, keyFrames, ...(failureReason && { failureReason }) };
+  const scenarioInfo = { scenarioId: manifest.scenarioId, testName, description, nameText, descriptionText, duration, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, keyFrames, ...(failureReason && { failureReason }) };
 
   // Load expected error windows (written by the expectLogErrors fixture)
   const expectedWindowsPath = path.join(testDir, "expected-error-windows.json");
@@ -1292,6 +1260,10 @@ export function assembleTestArtifacts(testDir: string, options: { dropTickLog?: 
     }
     return { testSourceFile: sourceFile, testSource: source };
   });
+  const nameTextPath = path.join(testDir, 'name-text.json');
+  const nameText: Manifest['nameText'] = existsSync(nameTextPath) ? JSON.parse(readFileSync(nameTextPath, 'utf8')) : undefined;
+  const descriptionTextPath = path.join(testDir, 'description-text.json');
+  const descriptionText: Manifest['descriptionText'] = existsSync(descriptionTextPath) ? JSON.parse(readFileSync(descriptionTextPath, 'utf8')) : undefined;
   const descriptionPath = path.join(testDir, "description.txt");
   const description = existsSync(descriptionPath) ? readFileSync(descriptionPath, "utf8").trim() : "";
   const sourceChangesPath = path.join(testDir, "source-changes.json");
@@ -1393,7 +1365,7 @@ export function assembleTestArtifacts(testDir: string, options: { dropTickLog?: 
   // Write manifest
   const identityPath = path.join(testDir, 'scenario-identity.json');
   const identity = existsSync(identityPath) ? JSON.parse(readFileSync(identityPath, 'utf8')) : {};
-  const manifest: Manifest = { ...identity, testName, description, status, startTime, endTime, homeCommits, homeCommitMeta, minioCommitMeta, extensionCommitMeta, uncommittedEntries, logs, testSourceFile, testSource, testSourceFixtures, testSourceChanges, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, keyFrames, ...tickData };
+  const manifest: Manifest = { ...identity, testName, description, nameText, descriptionText, status, startTime, endTime, homeCommits, homeCommitMeta, minioCommitMeta, extensionCommitMeta, uncommittedEntries, logs, testSourceFile, testSource, testSourceFixtures, testSourceChanges, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, keyFrames, ...tickData };
   // On disk the manifest leaves out what the report viewer rebuilds, and
   // skips indentation; see manifestEncoding.ts.
   const blobGitDir = contentBlobGitDir(testDir);
@@ -1494,9 +1466,9 @@ export async function assembleRun(runId: string): Promise<void> {
     parseInt(process.env.E2E_ASSEMBLE_WORKERS || "", 10) || os.cpus().length;
   const workerScript = path.join(import.meta.dirname, "assemble-worker.ts");
 
-  // Pre-collect all videos (single directory walk instead of one per test)
+  // Collect only recordings belonging to these scenarios in this run.
   const videoCollectStart = performance.now();
-  const allVideos = collectAllVideos();
+  const allVideos = new Map(dirs.map(dir => [dir, findScenarioRecording(path.join(runDir, dir))]));
   const videoCollectMs = performance.now() - videoCollectStart;
 
   // Assemble per-test artifacts in parallel and copy videos
@@ -1522,13 +1494,8 @@ export async function assembleRun(runId: string): Promise<void> {
 
     const videoStart = performance.now();
     try {
-      const videoDest = path.join(testDir, "video.webm");
-      rmSync(videoDest, { force: true });
-      const videoSrc = findVideoFromList(allVideos, dir);
-      if (videoSrc) {
-        cpSync(videoSrc, videoDest);
-        videoBytes = fileSizeOrNull(videoSrc) ?? undefined;
-      }
+      const videoSrc = allVideos.get(dir) ?? null;
+      videoBytes = assembleScenarioVideo(testDir, videoSrc);
     } finally {
       videoCopyMs = performance.now() - videoStart;
       parentTimings.set(dir, { parentForkMs, videoCopyMs, videoBytes });

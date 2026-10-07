@@ -16,16 +16,16 @@ limitations under the License.
 
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, BundleEditorPage, FilterPanelComponent } from "../src/run/pages/index.js";
-import { linkGap } from "../../../concepts/index.js";
+import { linkGap, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
-/*
- * Enable the incoming-link gap filter. Check its calculated threshold and the pages
- * selected by that threshold.
- */
-test("inlink gap filter auto-calculates threshold and selects correct pages", { annotation: { type: 'scenario-id', description: '80a06cf6-e286-4a89-926f-16bc96b26deb' } }, async ({ sourceCommand, page, checkpoint, assertMeadowHomeState, addKeyFrame }) => {
+const name = linkedScenarioName(conceptText`inlink gap filter auto-calculates threshold and selects correct pages`);
+
+const description = linkedScenarioDescription(conceptText`Enable the incoming-link gap filter. Check its calculated threshold and the pages
+selected by that threshold.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '80a06cf6-e286-4a89-926f-16bc96b26deb' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, checkpoint, assertMeadowHomeState, addKeyFrame }) => {
   // --- Setup ---
   const bundleList = new BundleListPage(page, expect);
   await sourceCommand(() => bundleList.goto());

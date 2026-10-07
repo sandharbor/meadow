@@ -18,15 +18,15 @@ import { test, expect } from "../src/run/test-fixtures.js";
 import { Workflows } from "../src/run/workflows.js";
 import { BundleListPage, BundleEditorPage } from "../src/run/pages/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
-import { bundles } from "../../../concepts/index.js";
+import { bundles, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 
 test.use({ bundleMode: "single-file" });
 
-/*
- * Open the big bundle, then return to the bundle list. The list should show the available
- * bundles again.
- */
-test("navigate back to bundles list from big bundle view", { annotation: { type: 'scenario-id', description: 'fb52e607-1bb1-4cc8-9a88-15ab2735b7f1' } }, async ({ sourceCommand, page, checkpoint, assertMeadowHomeState }) => {
+const name = linkedScenarioName(conceptText`navigate back to bundles list from big bundle view`);
+
+const description = linkedScenarioDescription(conceptText`Open the big bundle, then return to the bundle list. The list should show the available
+bundles again.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'fb52e607-1bb1-4cc8-9a88-15ab2735b7f1' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, checkpoint, assertMeadowHomeState }) => {
   // --- Setup ---
   const wf = new Workflows(page, expect);
   const bundleList = new BundleListPage(page, expect);

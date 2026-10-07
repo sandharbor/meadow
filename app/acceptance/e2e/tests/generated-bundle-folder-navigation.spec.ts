@@ -21,7 +21,7 @@ import {
   PreviewPublishModal,
 } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { customize, htmlGeneration } from "../../../concepts/index.js";
+import { customize, htmlGeneration, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 const NORMALIZATION_HOOK_SOURCE = `function pageTitleNormalization(bundleSlug: string, pageTitle: string): string {
@@ -67,11 +67,11 @@ async function navigateWithFolderNavigationHydrationPaused(
 
 test.use({ bundleMode: "single-file" });
 
-/*
- * Browse generated pages through the folder navigation. Check normalized filenames and
- * persistence of the reader's navigation settings.
- */
-test("generated-bundle folder navigation uses normalized filenames and persists its UI state", { annotation: { type: 'scenario-id', description: '9a5da1c5-dbc5-469e-b131-ee051d4de4b4' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`generated-bundle folder navigation uses normalized filenames and persists its UI state`);
+
+const description = linkedScenarioDescription(conceptText`Browse generated pages through the folder navigation. Check normalized filenames and
+persistence of the reader's navigation settings.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '9a5da1c5-dbc5-469e-b131-ee051d4de4b4' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   skipMeadowHomeStateCheck,

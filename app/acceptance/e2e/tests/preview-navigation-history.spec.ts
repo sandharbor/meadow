@@ -17,15 +17,15 @@ limitations under the License.
 import { test, expect } from '../src/run/test-fixtures.js';
 import { PreviewPublishModal } from '../src/run/pages/index.js';
 import { Workflows } from '../src/run/workflows.js';
-import { htmlGeneration } from '../../../concepts/index.js';
+import { htmlGeneration, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
 
-/*
- * Follow links inside the generated preview, then use the editor's Back and Forward
- * controls. A new link after going back should discard the forward branch.
- */
-test('preview history navigates back and forward through generated pages', { annotation: { type: 'scenario-id', description: '862fa2d0-3ce1-4398-a5cc-821eb8ba8549' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`preview history navigates back and forward through generated pages`);
+
+const description = linkedScenarioDescription(conceptText`Follow links inside the generated preview, then use the editor's Back and Forward
+controls. A new link after going back should discard the forward branch.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '862fa2d0-3ce1-4398-a5cc-821eb8ba8549' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page, checkpoint, addKeyFrame, skipMeadowHomeStateCheck,
 }) => {
   // --- Setup ---

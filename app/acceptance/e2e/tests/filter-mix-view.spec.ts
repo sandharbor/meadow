@@ -17,16 +17,16 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { FilterPanelComponent, BundleEditorPage } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { filters } from "../../../concepts/index.js";
+import { filters, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
-/*
- * Solo the untracked and sensitive filters, then intersect them in Mix Filters. Graph and
- * list views should show the same intersection.
- */
-test("mix filters intersects soloed untracked and sensitive filters in graph and list views", { annotation: { type: 'scenario-id', description: '388a726c-11f7-42d8-b6a4-8d683cb01277' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`mix filters intersects soloed untracked and sensitive filters in graph and list views`);
+
+const description = linkedScenarioDescription(conceptText`Solo the untracked and sensitive filters, then intersect them in Mix Filters. Graph and
+list views should show the same intersection.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '388a726c-11f7-42d8-b6a4-8d683cb01277' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   assertMeadowHomeState,

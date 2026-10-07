@@ -7,17 +7,17 @@ import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { sourcingReviewRedesign, pendingProposalRevalidation, sourceReviewConfigurationMerge } from '../../../../concepts/index.js';
+import { sourcingReviewRedesign, pendingProposalRevalidation, sourceReviewConfigurationMerge, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });
 
-/*
- * A proposal's traversal edits merge with later curation presentation and independent saved fields.
- * Direct edits of the user's saved configuration simulate another client, including equal outcomes.
- * A competing depth requires review again if that saved value changes after conflict resolution.
- */
-test('Sourcing merges independent configuration edits and treats equal outcomes as nonconflicting', { annotation: { type: 'scenario-id', description: '459afd83-d7c3-46e6-8ae4-2cb6b22a6c27' } }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState, expectLogErrors }) => {
+const name = linkedScenarioName(conceptText`Sourcing merges independent configuration edits and treats equal outcomes as nonconflicting`);
+
+const description = linkedScenarioDescription(conceptText`A proposal's traversal edits merge with later curation presentation and independent saved fields.
+Direct edits of the user's saved configuration simulate another client, including equal outcomes.
+A competing depth requires review again if that saved value changes after conflict resolution.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '459afd83-d7c3-46e6-8ae4-2cb6b22a6c27' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState, expectLogErrors }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);

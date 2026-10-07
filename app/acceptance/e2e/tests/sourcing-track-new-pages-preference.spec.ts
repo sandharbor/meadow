@@ -3,14 +3,14 @@
 import { test, expect } from '../src/run/test-fixtures.js';
 import { Bundle, Workflows } from '../src/run/workflows.js';
 import { BundleEditorPage, BundleListPage, Pill, SelectedPageDetailComponent } from '../src/run/pages/index.js';
-import { sourcingReviewRedesign, sourceSnapshot } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 
-/*
- * Accept new pages untracked. Later additions remain untracked after reopening the bundle.
- */
-test('Sourcing leaves later additions untracked after reopening the bundle', { annotation: { type: 'scenario-id', description: '1529fd21-a754-4e10-aa6e-d48eff2a6f10' } }, async ({ sourceCommand, page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+const name = linkedScenarioName(conceptText`Sourcing leaves later additions untracked after reopening the bundle`);
+
+const description = linkedScenarioDescription(conceptText`Accept new pages untracked. Later additions remain untracked after reopening the bundle.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '1529fd21-a754-4e10-aa6e-d48eff2a6f10' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   const workflows = new Workflows(page, expect);
   await sourceCommand(() => workflows.navigateToBigBundle());

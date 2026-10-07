@@ -24,16 +24,16 @@ import {
   ActionButton,
 } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { filters, htmlGeneration, changesTab as changesTabDoc, tracking } from "../../../concepts/index.js";
+import { filters, htmlGeneration, changesTab as changesTabDoc, tracking, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
-/*
- * Generate and save a bundle, then change its output. Check that change-type counts and
- * HTML-section filters stay consistent throughout the review.
- */
-test("Change type filter shows correct counts and interacts with HTML section filter", { annotation: { type: 'scenario-id', description: 'e141c6a7-5f95-4f01-a45c-05bd2c17322f' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`Change type filter shows correct counts and interacts with HTML section filter`);
+
+const description = linkedScenarioDescription(conceptText`Generate and save a bundle, then change its output. Check that change-type counts and
+HTML-section filters stay consistent throughout the review.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'e141c6a7-5f95-4f01-a45c-05bd2c17322f' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   skipMeadowHomeStateCheck,

@@ -18,6 +18,7 @@ limitations under the License.
 import express from "express";
 import { ScenarioReviewStore } from './scenarioReviewStore.js';
 import { scenarioIdFromSpec } from './scenarioIdentity.js';
+import { runsNewestFirst } from './runChronology.js';
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync } from "fs";
 import { execFileSync, execSync } from "child_process";
 import os from "os";
@@ -592,18 +593,9 @@ app.get("/api/runs", (_req, res) => {
     return res.json([]);
   }
 
-  const entries = readdirSync(CURRENT_ARTIFACTS_ROOT)
-    .filter((name) => {
-      // Hide internal scratch dirs (e.g. the regenerable fixture scenario)
-      // from the runs list — they're reachable only by direct URL.
-      if (name.startsWith("__")) return false;
-      const full = path.join(CURRENT_ARTIFACTS_ROOT, name);
-      return statSync(full).isDirectory();
-    })
-    .sort()
-    .reverse(); // newest first
+  const entries = runsNewestFirst(CURRENT_ARTIFACTS_ROOT);
 
-  const runs = entries.map((runId) => {
+  const runs = entries.map(({ runId, createdAt }) => {
     const runDir = path.join(CURRENT_ARTIFACTS_ROOT, runId);
 
     // Try to read pre-computed run-level report meta
@@ -642,13 +634,6 @@ app.get("/api/runs", (_req, res) => {
 
     const allPassed = scenarios.length > 0 && scenarios.every((s) => s.status === "passed");
     const anyFailed = scenarios.some((s) => s.status === "failed");
-
-    // Parse timestamp from runId format: YYYY-MM-DD_HH-MM-SS
-    let createdAt: string | null = null;
-    const match = runId.match(/^(\d{4}-\d{2}-\d{2})_(\d{2})-(\d{2})-(\d{2})/);
-    if (match) {
-      createdAt = `${match[1]}T${match[2]}:${match[3]}:${match[4]}`;
-    }
 
     // Read run-level notes
     let notes: string | undefined;
@@ -702,6 +687,8 @@ app.get("/api/runs/:runId", (req, res) => {
       let testName = slug;
       let scenarioId: string | undefined;
       let description = "";
+      let nameText;
+      let descriptionText;
       let duration: number | null = null;
       let bundleMode: BundleMode | null = null;
       let executionSurface: ExecutionSurface = "browser";
@@ -727,6 +714,8 @@ app.get("/api/runs/:runId", (req, res) => {
             testName = meta.scenarioInfo.testName || slug;
             scenarioId = meta.scenarioInfo.scenarioId;
             description = meta.scenarioInfo.description || "";
+            nameText = meta.scenarioInfo.nameText;
+            descriptionText = meta.scenarioInfo.descriptionText;
             duration = meta.scenarioInfo.duration ?? null;
             bundleMode = isBundleMode(meta.scenarioInfo.bundleMode)
               ? meta.scenarioInfo.bundleMode
@@ -757,6 +746,8 @@ app.get("/api/runs/:runId", (req, res) => {
             testName = manifest.testName || slug;
             scenarioId = manifest.scenarioId;
             description = manifest.description || "";
+            nameText = manifest.nameText;
+            descriptionText = manifest.descriptionText;
             bundleMode = isBundleMode(manifest.bundleMode) ? manifest.bundleMode : null;
             executionSurface = isExecutionSurface(manifest.executionSurface)
               ? manifest.executionSurface
@@ -801,7 +792,7 @@ app.get("/api/runs/:runId", (req, res) => {
         }
       }
 
-      return { scenarioId, slug, testName, description, testBasename, status, duration, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, keyFrames, failureReason, hasIssues };
+      return { scenarioId, slug, testName, description, nameText, descriptionText, testBasename, status, duration, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, keyFrames, failureReason, hasIssues };
     });
 
   // Read concept targeting metadata, with a fallback for historical runs.
@@ -1039,16 +1030,10 @@ app.post("/api/runs/:runId/archive-and-below", (req, res) => {
     return res.status(404).json({ error: "No artifacts directory" });
   }
 
-  const allRuns = readdirSync(CURRENT_ARTIFACTS_ROOT)
-    .filter((name) => {
-      if (name.startsWith("__")) return false;
-      const full = path.join(CURRENT_ARTIFACTS_ROOT, name);
-      return statSync(full).isDirectory();
-    })
-    .sort();
-
-  // Runs sorted ascending; "this and below" means this run and all older (<=) ones
-  const toArchive = allRuns.filter((runId) => runId <= targetRunId);
+  const allRuns = runsNewestFirst(CURRENT_ARTIFACTS_ROOT);
+  const targetIndex = allRuns.findIndex(run => run.runId === targetRunId);
+  if (targetIndex < 0) return res.status(404).json({ error: "Run not found" });
+  const toArchive = allRuns.slice(targetIndex).map(run => run.runId);
   const destinationRunIds: string[] = [];
   for (const runId of toArchive) {
     destinationRunIds.push(archiveRun(runId));
@@ -1081,6 +1066,9 @@ function normalizeLegacyManifest(manifest: Record<string, unknown>): Record<stri
 // Checkpoints open in Dev Tools, which owns saved states and Local Services.
 app.get("/api/dev-tools", (_req, res) => {
   res.json({ url: (process.env.MEADOW_DEV_TOOLS_URL ?? "http://localhost:5174").replace(/\/$/, "") });
+});
+app.get("/api/dev-tools/open", (_req, res) => {
+  res.redirect((process.env.MEADOW_DEV_TOOLS_URL ?? "http://localhost:5174").replace(/\/$/, ""));
 });
 
 // --- Per-scenario APIs (prefixed with /:runId/:testSlug) ---

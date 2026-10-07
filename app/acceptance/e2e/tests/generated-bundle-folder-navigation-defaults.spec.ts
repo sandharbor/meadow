@@ -17,16 +17,16 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { CustomizeTab, GeneratedBundle, PreviewPublishModal } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { customize, htmlGeneration } from "../../../concepts/index.js";
+import { customize, htmlGeneration, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { bigBundle, smallBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
-/*
- * Set global and per-bundle folder navigation defaults. Reader choices should persist for
- * each bundle without leaking into another bundle on the same host.
- */
-test("folder navigation defaults can be global or per bundle and reader choices stay isolated on one host", { annotation: { type: 'scenario-id', description: 'ed1db37f-0e07-43db-af7c-bda2a5d6fdee' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`folder navigation defaults can be global or per bundle and reader choices stay isolated on one host`);
+
+const description = linkedScenarioDescription(conceptText`Set global and per-bundle folder navigation defaults. Reader choices should persist for
+each bundle without leaking into another bundle on the same host.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'ed1db37f-0e07-43db-af7c-bda2a5d6fdee' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page, browser, checkpoint, skipMeadowHomeStateCheck, addKeyFrame,
 }) => {
   // --- Setup ---

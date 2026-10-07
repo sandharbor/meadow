@@ -17,18 +17,18 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, BundleEditorPage } from "../src/run/pages/index.js";
 import { Fixture } from "../src/run/workflows.js";
-import { initialPage } from "../../../concepts/index.js";
+import { initialPage, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { exampleBundle, exampleBundleInitialPageTitle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
 test.use({ fixtureHome: Fixture.Minimal });
 
-/*
- * Select the bundle's starting page and inspect its actions. Meadow should prevent
- * blacklisting the page that anchors the bundle.
- */
-test("a publisher should not be able to blacklist the initial page", { annotation: { type: 'scenario-id', description: '4cf8d25d-1de3-4074-a122-225250114627' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`a publisher should not be able to blacklist the initial page`);
+
+const description = linkedScenarioDescription(conceptText`Select the bundle's starting page and inspect its actions. Meadow should prevent
+blacklisting the page that anchors the bundle.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '4cf8d25d-1de3-4074-a122-225250114627' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page, checkpoint, assertMeadowHomeState, addKeyFrame,
 }) => {
   // --- Setup ---

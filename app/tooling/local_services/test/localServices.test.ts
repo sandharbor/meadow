@@ -112,6 +112,10 @@ test("a checkpoint restores the whole home, its repository, and each part partit
   execFileSync("git", ["init", "--quiet"], { cwd: home });
   execFileSync("git", ["-c", "user.name=t", "-c", "user.email=t@t", "add", "."], { cwd: home });
   execFileSync("git", ["-c", "user.name=t", "-c", "user.email=t@t", "commit", "--quiet", "-m", "initial Meadow Home commit"], { cwd: home });
+  const scratchFiles = ['tmp', 'rollback', 'lock-owner'].map(purpose =>
+    `.generated.json.${purpose}.12345.11111111-2222-4333-8444-555555555555`);
+  for (const filename of scratchFiles) fs.writeFileSync(path.join(home, 'bundles/demo/raw', filename), 'in-progress document write');
+  fs.writeFileSync(path.join(home, 'bundles/demo/raw/.generated.json.tmp.manual'), 'saved user file');
   fs.mkdirSync(path.join(home, "app"), { recursive: true });
   fs.writeFileSync(path.join(home, "app/resources.local.yaml"), "logDirectory: /tmp/logs\n");
   fs.mkdirSync(path.join(home, "bundles/demo/config"), { recursive: true });
@@ -154,6 +158,11 @@ test("a checkpoint restores the whole home, its repository, and each part partit
   const restoredHome = path.join(root, "fork-home");
   await restoreCheckpoint({ repo, index: 1, homeDirectory: restoredHome, parts: [part], containers: { files: container }, partition: "fork-1" });
   assert.equal(fs.readFileSync(path.join(restoredHome, "bundles/demo/raw/generated.json"), "utf8"), "{}\n");
+  for (const filename of scratchFiles) {
+    assert.equal(fs.existsSync(path.join(restoredHome, 'bundles/demo/raw', filename)), false, 'in-progress PID/UUID write siblings are not checkpoint state');
+    assert.equal(fs.existsSync(path.join(home, 'bundles/demo/raw', filename)), true, 'capture does not alter the running home');
+  }
+  assert.equal(fs.readFileSync(path.join(restoredHome, 'bundles/demo/raw/.generated.json.tmp.manual'), 'utf8'), 'saved user file', 'ordinary dotfiles are retained');
   const restoredBundle = path.join(restoredHome, "bundles/demo");
   const restoredView = JSON.parse(fs.readFileSync(path.join(restoredHome, 'cache/editor-view/checkpoint.json'), 'utf8'));
   assert.deepEqual(restoredView.view.local, editorView.local, 'the two modes retain their independent views');

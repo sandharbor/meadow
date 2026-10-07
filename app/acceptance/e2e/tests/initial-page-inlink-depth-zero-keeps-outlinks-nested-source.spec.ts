@@ -24,7 +24,7 @@ import {
   SelectedPageDetailComponent,
 } from "../src/run/pages/index.js";
 import { Fixture } from "../src/run/workflows.js";
-import { sourcingReviewRedesign, excalidraw, images, initialPage } from "../../../concepts/index.js";
+import { sourcingReviewRedesign, excalidraw, images, initialPage, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { customBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -40,11 +40,11 @@ test.use({ fixtureHome: Fixture.Minimal });
  * nesting the source graph one level deeper shouldn't change anything the
  * graph builder cares about.
  */
-/*
- * Set the starting page's incoming-link depth to zero in a nested source directory. Its
- * depth-one outgoing media should remain visible.
- */
-test("setting initial-page inlink depth to 0 keeps the depth-1 outlink media visible (nested source dir)", { annotation: { type: 'scenario-id', description: 'f6510873-acc2-4902-a532-b60aff409868' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`setting initial-page inlink depth to 0 keeps the depth-1 outlink media visible (nested source dir)`);
+
+const description = linkedScenarioDescription(conceptText`Set the starting page's incoming-link depth to zero in a nested source directory. Its
+depth-one outgoing media should remain visible.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'f6510873-acc2-4902-a532-b60aff409868' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page,
   testServer,
   checkpoint,

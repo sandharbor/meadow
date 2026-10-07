@@ -9,15 +9,15 @@ import YAML from 'yaml';
 import { test, expect } from '../src/run/test-fixtures.js';
 import { Workflows } from '../src/run/workflows.js';
 import { BundleEditorPage } from '../src/run/pages/index.js';
-import { sourcingReviewRedesign, sourceSnapshot } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 
-/*
- * Change source content, then rebuild the source index. A full scan should discover the
- * update and present it for review.
- */
-test('Sourcing rechecks all source files through a real Rust index rebuild and reviews the resulting update', { annotation: { type: 'scenario-id', description: '2fd097fe-1920-458d-a0d2-26f66e48c93e' } }, async ({ sourceCommand, page, sourceChanges, testServer, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
+const name = linkedScenarioName(conceptText`Sourcing rechecks all source files through a real Rust index rebuild and reviews the resulting update`);
+
+const description = linkedScenarioDescription(conceptText`Change source content, then rebuild the source index. A full scan should discover the
+update and present it for review.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '2fd097fe-1920-458d-a0d2-26f66e48c93e' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, sourceChanges, testServer, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
   const editor = new BundleEditorPage(page, expect);

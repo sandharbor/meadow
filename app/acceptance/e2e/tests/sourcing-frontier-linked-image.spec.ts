@@ -2,15 +2,15 @@
 import { test, expect } from '../src/run/test-fixtures.js';
 import { Workflows } from '../src/run/workflows.js';
 import { ActionButton, BundleEditorPage, FilterPanelComponent, Pill, SelectedPageDetailComponent } from '../src/run/pages/index.js';
-import { sourcingReviewRedesign, frontierEmbeddedAssets } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, frontierEmbeddedAssets, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
 
-/*
- * Add a plain link to an image beyond the traversal boundary. The live frontier should
- * show it without allowing it to be tracked there.
- */
-test('a plain link to an image beyond the boundary stays untrackable in the live frontier', { annotation: { type: 'scenario-id', description: 'caec0c25-9239-4906-8896-87b6bf817779' } }, async ({ sourceCommand, page, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
+const name = linkedScenarioName(conceptText`a plain link to an image beyond the boundary stays untrackable in the live frontier`);
+
+const description = linkedScenarioDescription(conceptText`Add a plain link to an image beyond the traversal boundary. The live frontier should
+show it without allowing it to be tracked there.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'caec0c25-9239-4906-8896-87b6bf817779' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
   await sourceCommand(() => checkpoint('the accepted source state is established before changing files'));

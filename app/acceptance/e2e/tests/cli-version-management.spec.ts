@@ -16,7 +16,7 @@ limitations under the License.
 
 import fs from "fs";
 import path from "path";
-import { cli, versioning } from "../../../concepts/index.js";
+import { cli, versioning, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { expect, test } from "../src/run/test-fixtures.js";
 import { Bundle } from "../src/run/workflows.js";
 
@@ -50,12 +50,12 @@ test.use({ bundleMode: "single-file" });
 test.use({ executionSurface: "cli" });
 test.use({ recordVideo: false });
 
-/*
- * Create and save generated versions through the CLI. Edit notes, cancel a temporary
- * successor, restore damaged frozen files, and delete local files while retaining version
- * history.
- */
-test("CLI manages generated versions through create read update restore cancel and delete", { annotation: { type: 'scenario-id', description: '8b742038-6302-4432-851c-241d7446a677' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`CLI manages generated versions through create read update restore cancel and delete`);
+
+const description = linkedScenarioDescription(conceptText`Create and save generated versions through the CLI. Edit notes, cancel a temporary
+successor, restore damaged frozen files, and delete local files while retaining version
+history.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '8b742038-6302-4432-851c-241d7446a677' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   assertMeadowHomeState,
   meadowCli,
   testServer,

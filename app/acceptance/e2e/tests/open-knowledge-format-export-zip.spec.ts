@@ -19,7 +19,7 @@ import path from "path";
 import { test, expect } from "../src/run/test-fixtures.js";
 import { PreviewPublishModal, ChangesTab, CustomizeTab } from "../src/run/pages/index.js";
 import { Workflows, Bundle } from "../src/run/workflows.js";
-import { customize, sourcesExport, openKnowledgeFormat, changesTab as changesTabDoc, git } from "../../../concepts/index.js";
+import { customize, sourcesExport, openKnowledgeFormat, changesTab as changesTabDoc, git, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 import { MeadowHomeGit, seedTrackedAndLinkedFile } from "../src/run/utils/index.js";
 
@@ -41,11 +41,11 @@ test.use({
   },
 });
 
-/*
- * Enable Open Knowledge Format and review its reserved-name changes. Save, export a ZIP,
- * and browse the resulting bundle index.
- */
-test("OKF: enable, inspect reserved rename indicator, save, export ZIP, and browse bundle index", { annotation: { type: 'scenario-id', description: '0da48f7e-6325-4dad-879a-53665bd280c7' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`OKF: enable, inspect reserved rename indicator, save, export ZIP, and browse bundle index`);
+
+const description = linkedScenarioDescription(conceptText`Enable Open Knowledge Format and review its reserved-name changes. Save, export a ZIP,
+and browse the resulting bundle index.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '0da48f7e-6325-4dad-879a-53665bd280c7' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   skipMeadowHomeStateCheck,

@@ -8,15 +8,15 @@ import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { sourcingReviewRedesign, sourceReviewIdentity, sourceMove, pendingSourceProposal, checkpointViewRestoration } from '../../../../concepts/index.js';
+import { sourcingReviewRedesign, sourceReviewIdentity, sourceMove, pendingSourceProposal, checkpointViewRestoration, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });
 
-/*
- * Enter a rename review and make one identity decision. Later and reload preserve that partial choice while blocking the graph until every identity is resolved.
- */
-test('Sourcing requires identity decisions before graph entry and preserves partial review on Later', { annotation: { type: 'scenario-id', description: '9fbb91cb-48e4-43dc-b5a2-72864118bd2d' } }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+const name = linkedScenarioName(conceptText`Sourcing requires identity decisions before graph entry and preserves partial review on Later`);
+
+const description = linkedScenarioDescription(conceptText`Enter a rename review and make one identity decision. Later and reload preserve that partial choice while blocking the graph until every identity is resolved.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '9fbb91cb-48e4-43dc-b5a2-72864118bd2d' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);

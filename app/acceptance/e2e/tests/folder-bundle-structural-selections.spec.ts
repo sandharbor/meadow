@@ -16,17 +16,17 @@ limitations under the License.
 
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleEditorPage, BundleListPage } from "../src/run/pages/index.js";
-import { sourcingReviewRedesign, folderBundles, paths } from "../../../concepts/index.js";
+import { sourcingReviewRedesign, folderBundles, paths, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { Bundle, Fixture } from "../src/run/workflows.js";
 
 test.use({ bundleMode: "multiple-folders" });
 test.use({ fixtureHome: Fixture.FolderStructureMultiple });
 
-/*
- * Select a folder's direct children, then its deeper paths. Confirm that structural
- * descendants and linked pages are selected in the list and graph.
- */
-test("folder context selections include structural children and deeper paths", { annotation: { type: 'scenario-id', description: '7d68931a-2d3c-403f-b1d4-293f0dd5f124' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`folder context selections include structural children and deeper paths`);
+
+const description = linkedScenarioDescription(conceptText`Select a folder's direct children, then its deeper paths. Confirm that structural
+descendants and linked pages are selected in the list and graph.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '7d68931a-2d3c-403f-b1d4-293f0dd5f124' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   addKeyFrame,

@@ -17,16 +17,16 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { PreviewPublishModal, ChangesTab, CustomizeTab } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { htmlGeneration, customize, changesTab as changesTabDoc } from "../../../concepts/index.js";
+import { htmlGeneration, customize, changesTab as changesTabDoc, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
-/*
- * Save a generated bundle and customize its HTML output. The section-change filter should
- * distinguish the resulting changes from the saved baseline.
- */
-test("HTML section changes filter correctly reflects changes after save and customization", { annotation: { type: 'scenario-id', description: 'e5b729ec-8d8d-4a05-acad-1822d0cc963c' } }, async ({ sourceCommand, page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame }) => {
+const name = linkedScenarioName(conceptText`HTML section changes filter correctly reflects changes after save and customization`);
+
+const description = linkedScenarioDescription(conceptText`Save a generated bundle and customize its HTML output. The section-change filter should
+distinguish the resulting changes from the saved baseline.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'e5b729ec-8d8d-4a05-acad-1822d0cc963c' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame }) => {
   // --- Setup ---
   // Navigate to big bundle preview (starts on step 1 — Review)
   const wf = new Workflows(page, expect);

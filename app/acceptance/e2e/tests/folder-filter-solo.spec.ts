@@ -17,16 +17,16 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { FilterPanelComponent, BundleEditorPage } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { filters, folderFilter } from "../../../concepts/index.js";
+import { filters, folderFilter, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
-/*
- * Expand the folder filter and inspect recursive counts. Soloing a nested folder should
- * show only its pages.
- */
-test("folder filter expands recursive counts and solos a nested folder", { annotation: { type: 'scenario-id', description: '2a6ce90c-a040-4ce7-b989-bba49761e948' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`folder filter expands recursive counts and solos a nested folder`);
+
+const description = linkedScenarioDescription(conceptText`Expand the folder filter and inspect recursive counts. Soloing a nested folder should
+show only its pages.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '2a6ce90c-a040-4ce7-b989-bba49761e948' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   assertMeadowHomeState,

@@ -17,17 +17,17 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { AppPlace, BundleListPage, BundleEditorPage, PreviewPublishModal } from "../src/run/pages/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
-import { appPlace, bundles } from "../../../concepts/index.js";
+import { appPlace, bundles, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 
 test.use({ bundleMode: "single-file" });
 
-/*
- * Open a bundle from the list and inspect its graph. The editor should show the bundle's
- * pages and navigation controls. Each page's menu opens its dialogs, which close
- * without leaving the page. Opening Preview adds a history entry, so browser Back
- * closes Preview, then returns to the list, and Forward replays both.
- */
-test("navigate from bundle list to bundle and see graph view", { annotation: { type: 'scenario-id', description: '0db228c5-345b-459d-8ff0-27b5ef0acc87' } }, async ({ sourceCommand, page, checkpoint, assertMeadowHomeState }) => {
+const name = linkedScenarioName(conceptText`navigate from bundle list to bundle and see graph view`);
+
+const description = linkedScenarioDescription(conceptText`Open a bundle from the list and inspect its graph. The editor should show the bundle's
+pages and navigation controls. Each page's menu opens its dialogs, which close
+without leaving the page. Opening Preview adds a history entry, so browser Back
+closes Preview, then returns to the list, and Forward replays both.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '0db228c5-345b-459d-8ff0-27b5ef0acc87' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, checkpoint, assertMeadowHomeState }) => {
   // --- Setup ---
   const bundleList = new BundleListPage(page, expect);
   await sourceCommand(() => bundleList.goto());

@@ -90,3 +90,36 @@ Declare them with `test.use({ executionSurfaces: ['dev-tools', 'browser'] })`
 when a scenario crosses interfaces. The report's Interface row supports multiple
 selections with the same any-match behavior as Tags. Interface selections
 combine with the other filter rows. Legacy single-interface reports still work.
+
+## Linked scenario names and descriptions
+
+Keep scenario-specific names and descriptions beside the executable test. Use
+typed `conceptText` and `conceptLink` values to refer to reusable concepts defined
+in this registry. `linkedScenarioName` supplies Playwright's plain-text name and
+its captured rich annotation; `linkedScenarioDescription` supplies the formal
+description annotation. Put the name before the description:
+
+```ts
+const name = linkedScenarioName(conceptText`Review ${conceptLink(scopeExclusion.id, 'scope exclusion')}s`);
+
+const description = linkedScenarioDescription(conceptText`Stage a ${conceptLink(bridgeExclusion.id, 'bridge exclusion')} before acceptance.`);
+test(name.name, { annotation: [scenarioIdentity, name.annotation, description.annotation] }, async () => {
+  // Test behavior.
+});
+```
+
+Import the linked concept value from the registry. Missing exports and unknown
+concept IDs fail the standard TypeScript checks. Reports capture the text
+segments with the run rather than rebuilding old prose from edited specs. Quickcheck
+requires every scenario to declare both variables, pass `name.name` as the test
+title, and include both annotations. Reports retain support for older captures
+that used the block comment immediately before the test.
+The simplified Test Code pane starts with the captured name and description,
+then the `test.use` setup and test body. It hides everything before the first
+top-level `test.use`, along with the prose declarations (or legacy description
+comment). Both scroll with the code;
+the original source line numbers still anchor ticks and checkpoints. “show the real code”
+reveals the original source.
+Concept links in a captured name or description open the shared floating concept details
+within the report. Select related scenarios shows the count in that run and
+opens the run with that concept selected.

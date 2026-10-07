@@ -10,7 +10,7 @@ import { DevSourceChangesControl } from '../src/run/pages/dev-tools/SourceChange
 import { DevSavedStatesPage } from '../src/run/pages/dev-tools/SavedStatesPage.js';
 import { BundleEditorPage } from '../src/run/pages/index.js';
 import { Workflows } from '../src/run/workflows.js';
-import { sourcingReviewRedesign, sourceChange, sourceSnapshot, savedState } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, sourceChange, sourceSnapshot, savedState, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
 import { createBrowserLaunchUrl } from '../../../runtime/supervisor/src/runtimeClient.js';
 import { readRuntimeSessionDescriptor } from '../../../runtime/supervisor/src/sessionDescriptor.js';
 
@@ -19,12 +19,12 @@ const projectRoot = fileURLToPath(new URL('../../../../', import.meta.url));
 test.use({ executionSurfaces: ['dev-tools', 'browser'] });
 test.use({ bundleMode: "single-file" });
 
-/*
- * Apply a shared source change from Dev Tools to the open saved state, which is
- * this scenario's own running home. The application should review the same move
- * used by the automated test, and fixture menus that share the graph agree.
- */
-test('Sourcing dev controls apply the same shared move to the running application', { annotation: { type: 'scenario-id', description: 'e990e4cb-3410-43f9-9054-f3f40ce902e7' } }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }, testInfo) => {
+const name = linkedScenarioName(conceptText`Sourcing dev controls apply the same shared move to the running application`);
+
+const description = linkedScenarioDescription(conceptText`Apply a shared source change from Dev Tools to the open saved state, which is
+this scenario's own running home. The application should review the same move
+used by the automated test, and fixture menus that share the graph agree.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'e990e4cb-3410-43f9-9054-f3f40ce902e7' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }, testInfo) => {
   // --- Setup ---
   await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
   await sourceCommand(() => new BundleEditorPage(page, expect).waitForSourceCheck());

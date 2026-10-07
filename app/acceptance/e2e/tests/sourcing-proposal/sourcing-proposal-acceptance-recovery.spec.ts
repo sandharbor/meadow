@@ -10,20 +10,20 @@ import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { sourcingReviewRedesign, sourceReviewAcceptance, proposalConfigurationDraft, pendingProposalRevalidation } from '../../../../concepts/index.js';
+import { sourcingReviewRedesign, sourceReviewAcceptance, proposalConfigurationDraft, pendingProposalRevalidation, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
 test.use({ fixtureHome: Fixture.SourcingReview, _backendExtraEnv: {
   NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --import=${pathToFileURL(path.resolve(import.meta.dirname, '../../src/run/scripts/sourcing_acceptance_fault.mjs')).href}`,
 } });
 
-/*
- * Stage captured material, node/tracking changes, bundle and shared filters, default-policy removal,
- * and cleanup. Fail an actual document rename after partial installation, then interrupt the process
- * at that same boundary. Restart the owned Runtime and verify exact rollback plus a recoverable
- * proposal before accepting the whole change successfully.
- */
-test('Failed proposal acceptance preserves accepted state and recoverable node and filter drafts', { annotation: { type: 'scenario-id', description: '585e9b0e-3c46-47c8-b5d3-e0cf71bb3d8e' } }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState, expectLogErrors }) => {
+const name = linkedScenarioName(conceptText`Failed proposal acceptance preserves accepted state and recoverable node and filter drafts`);
+
+const description = linkedScenarioDescription(conceptText`Stage captured material, node/tracking changes, bundle and shared filters, default-policy removal,
+and cleanup. Fail an actual document rename after partial installation, then interrupt the process
+at that same boundary. Restart the owned Runtime and verify exact rollback plus a recoverable
+proposal before accepting the whole change successfully.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '585e9b0e-3c46-47c8-b5d3-e0cf71bb3d8e' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState, expectLogErrors }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);

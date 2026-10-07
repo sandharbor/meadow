@@ -5,17 +5,17 @@ import path from 'node:path';
 import { test, expect } from '../../src/run/test-fixtures.js';
 import { startReportViewer } from '../../src/run/reportViewer.js';
 import { BundleListPage } from '../../src/run/pages/index.js';
-import { sourcingReviewRedesign, conceptImplementationNavigation, conceptRoleValidation, sourceSnapshot } from '../../../../concepts/index.js';
+import { sourcingReviewRedesign, conceptImplementationNavigation, conceptRoleValidation, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
 test.use({ executionSurfaces: ['browser'] });
 
-/*
- * Open a canonical concept from a real report and follow its derived role/symbol/location link.
- * The highlighted source line must name the production function, and two concepts sharing a
- * role name must retain separate identities. Concepts without participants show no invented links.
- */
-test('Concept pages derive implemented-by navigation from exact inline participation identities', { annotation: { type: 'scenario-id', description: '646aabe1-ce31-4123-a574-b9cd8ca878da' } }, async ({ sourceCommand, page, checkpoint, addKeyFrame, assertMeadowHomeState }, testInfo) => {
+const name = linkedScenarioName(conceptText`Concept pages derive implemented-by navigation from exact inline participation identities`);
+
+const description = linkedScenarioDescription(conceptText`Open a canonical concept from a real report and follow its derived role/symbol/location link.
+The highlighted source line must name the production function, and two concepts sharing a
+role name must retain separate identities. Concepts without participants show no invented links.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '646aabe1-ce31-4123-a574-b9cd8ca878da' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, checkpoint, addKeyFrame, assertMeadowHomeState }, testInfo) => {
   // --- Setup ---
   await sourceCommand(() => new BundleListPage(page, expect).goto());
   const viewer = await sourceCommand(() => startReportViewer(expect));
@@ -47,7 +47,8 @@ test('Concept pages derive implemented-by navigation from exact inline participa
     await sourceCommand(() => expect(source).toContainText('export async function captureSourceSnapshot'));
     await sourceCommand(() => page.getByRole('link', { name: 'Source Changes During Review', exact: true }).click());
     await sourceCommand(() => expect(page.getByRole('heading', { name: 'Source Changes During Review', exact: true })).toBeVisible());
-    await sourceCommand(() => expect(implementations).toContainText('No implementation participants declared.'));
+    await sourceCommand(() => expect(implementations).toHaveCount(0));
+    await sourceCommand(() => expect(page.getByText('No implementation declared.', { exact: true })).toBeVisible());
     await sourceCommand(() => addKeyFrame(conceptRoleValidation));
     await sourceCommand(() => checkpoint('a concept without declared participants makes no implementation claims'));
   } finally {

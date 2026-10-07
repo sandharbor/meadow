@@ -6,15 +6,15 @@ import path from 'node:path';
 import { test, expect } from '../src/run/test-fixtures.js';
 import { prepareSourceScenario } from '../../../shared_code/shared_dev/sourceScenario.js';
 import { BundleEditorPage } from '../src/run/pages/index.js';
-import { sourcingReviewRedesign, orphan } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, orphan, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
 
-/*
- * Delete a file while leaving a section link that points to it. Review should identify the
- * missing file and optionally show the previously accepted route.
- */
-test('Sourcing explains a surviving section link to a deleted file with file pills and an optional previous route', { annotation: { type: 'scenario-id', description: 'b6e58804-dcbc-44fa-9777-326aa3855648' } }, async ({ sourceCommand, page, meadowCli, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+const name = linkedScenarioName(conceptText`Sourcing explains a surviving section link to a deleted file with file pills and an optional previous route`);
+
+const description = linkedScenarioDescription(conceptText`Delete a file while leaving a section link that points to it. Review should identify the
+missing file and optionally show the previously accepted route.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'b6e58804-dcbc-44fa-9777-326aa3855648' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, meadowCli, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   let command = 0;
   const destination = await sourceCommand(() => prepareSourceScenario(

@@ -18,17 +18,17 @@ import { test, expect } from "../src/run/test-fixtures.js";
 import { PreviewPublishModal, ChangesTab } from "../src/run/pages/index.js";
 import { GeneratedBundleVersions } from "../src/run/utils/index.js";
 import { Workflows, Bundle } from "../src/run/workflows.js";
-import { htmlGeneration, changesTab as changesTabDoc, versioning } from "../../../concepts/index.js";
+import { htmlGeneration, changesTab as changesTabDoc, versioning, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 test.use({ serialGroup: "generated-bundle-versioning" });
 
-/*
- * Generate a bundle's first version and inspect its changes before saving. After saving,
- * the same review should show no outstanding changes.
- */
-test("V03 first generated version is reviewable before and after save", { annotation: { type: 'scenario-id', description: 'cd2d2768-5c81-4558-8fbe-8dc5d4c5f09b' } }, async ({ sourceCommand, page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame }) => {
+const name = linkedScenarioName(conceptText`V03 first generated version is reviewable before and after save`);
+
+const description = linkedScenarioDescription(conceptText`Generate a bundle's first version and inspect its changes before saving. After saving,
+the same review should show no outstanding changes.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'cd2d2768-5c81-4558-8fbe-8dc5d4c5f09b' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame }) => {
   // --- Setup ---
   // Navigate to big bundle preview (starts on step 1 — Review)
   const wf = new Workflows(page, expect);

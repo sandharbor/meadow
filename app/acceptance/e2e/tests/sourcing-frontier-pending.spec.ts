@@ -2,12 +2,14 @@
 import { test, expect } from '../src/run/test-fixtures.js';
 import { Workflows } from '../src/run/workflows.js';
 import { BundleEditorPage, FilterPanelComponent } from '../src/run/pages/index.js';
-import { sourcingReviewRedesign, frontier, frontierPendingSources, frontierDismissal, frontierLiveDiscovery } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, frontier, frontierPendingSources, frontierDismissal, frontierLiveDiscovery, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
 
-/* Frontier discovery uses the reviewed core capture. Newer source links remain unavailable until an explicit update. */
-test('newer source changes pause sourcing frontier discovery until the reviewed capture is updated', { annotation: { type: 'scenario-id', description: '334554e6-7b1c-4ae2-bcc1-3710e807b936' } }, async ({ sourceCommand, page, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
+const name = linkedScenarioName(conceptText`newer source changes pause sourcing frontier discovery until the reviewed capture is updated`);
+
+const description = linkedScenarioDescription(conceptText`Frontier discovery uses the reviewed core capture. Newer source links remain unavailable until an explicit update.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '334554e6-7b1c-4ae2-bcc1-3710e807b936' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
   const editor = new BundleEditorPage(page, expect);

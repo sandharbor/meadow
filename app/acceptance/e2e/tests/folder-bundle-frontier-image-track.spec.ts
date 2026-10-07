@@ -24,17 +24,17 @@ import {
   SelectedPageDetailComponent,
 } from "../src/run/pages/index.js";
 import { Fixture, Bundle } from "../src/run/workflows.js";
-import { sourcingReviewRedesign, frontier, htmlGeneration, tracking } from "../../../concepts/index.js";
+import { sourcingReviewRedesign, frontier, htmlGeneration, tracking, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { customBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-folder" });
 test.use({ fixtureHome: Fixture.FolderStructureSingle });
 
-/*
- * Find an image beyond a folder bundle's normal traversal boundary and track it. The
- * tracked image should become part of the generated bundle.
- */
-test("tracks a depth-three frontier image in a folder-derived bundle", { annotation: { type: 'scenario-id', description: '78112a8f-5b71-4770-b9e2-e33a205bef9f' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`tracks a depth-three frontier image in a folder-derived bundle`);
+
+const description = linkedScenarioDescription(conceptText`Find an image beyond a folder bundle's normal traversal boundary and track it. The
+tracked image should become part of the generated bundle.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '78112a8f-5b71-4770-b9e2-e33a205bef9f' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   addKeyFrame,

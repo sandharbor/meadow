@@ -10,10 +10,14 @@ the failure — that's the whole point of running inside an agent.
 
 ## Scenario phases and checkpoints
 
-Put a short plain-English block comment immediately above each scenario. Explain
-what happens and what the scenario verifies so a reader can skim it without
-following every test statement. Describe the behavior, rather than repeating the
-test title or listing implementation details.
+Declare `const name = linkedScenarioName(conceptText\`…\`)` and then
+`const description = linkedScenarioDescription(conceptText\`…\`)` above each
+scenario, importing the helpers from the concept registry. Use `name.name` as
+the test title and include `name.annotation` and `description.annotation`
+alongside the stable scenario-id annotation. Quickcheck enforces this pattern.
+Describe what happens and what the scenario verifies so a reader can skim it
+without following every statement; avoid repeating the title or listing
+implementation details. Add typed concept links when they clarify the prose.
 
 If the first section establishes the starting state, label it
 `// --- Setup ---`. After the setup checkpoint and a blank line, mark the first

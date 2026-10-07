@@ -20,17 +20,17 @@ import { test, expect } from "../src/run/test-fixtures.js";
 import { ChangesTab, PreviewPublishModal } from "../src/run/pages/index.js";
 import { GeneratedBundleVersions } from "../src/run/utils/index.js";
 import { Bundle, Workflows } from "../src/run/workflows.js";
-import { versioning } from "../../../concepts/index.js";
+import { versioning, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 test.use({ serialGroup: "generated-bundle-versioning" });
 
-/*
- * Request another version when generated files have not changed. Creation should require
- * explicit confirmation and produce a complete, correlated operation log.
- */
-test("V07 L01 generated version no-change creation requires confirmation and correlated logs", { annotation: { type: 'scenario-id', description: 'ec53dab3-2953-40e2-b863-b06d10357ea1' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`V07 L01 generated version no-change creation requires confirmation and correlated logs`);
+
+const description = linkedScenarioDescription(conceptText`Request another version when generated files have not changed. Creation should require
+explicit confirmation and produce a complete, correlated operation log.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'ec53dab3-2953-40e2-b863-b06d10357ea1' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   skipMeadowHomeStateCheck,

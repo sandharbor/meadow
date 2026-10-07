@@ -5,17 +5,17 @@ import path from "path";
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleEditorPage, BundleListPage } from "../src/run/pages/index.js";
 import { Fixture, Bundle } from "../src/run/workflows.js";
-import { folderBundles } from "../../../concepts/index.js";
+import { folderBundles, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 
 test.use({ bundleMode: "single-folder" });
 test.use({ fixtureHome: Fixture.FolderStructureSingle });
 
-/*
- * Move a folder bundle's selected folder away. Opening the bundle from the list asks
- * to relink the folder first; after relinking to its new location, the bundle opens
- * with its pages.
- */
-test("relinks a folder bundle whose selected folder moved", { annotation: { type: 'scenario-id', description: '61372431-391b-49d5-a228-243d2052d98b' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`relinks a folder bundle whose selected folder moved`);
+
+const description = linkedScenarioDescription(conceptText`Move a folder bundle's selected folder away. Opening the bundle from the list asks
+to relink the folder first; after relinking to its new location, the bundle opens
+with its pages.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '61372431-391b-49d5-a228-243d2052d98b' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page,
   testServer,
   checkpoint,

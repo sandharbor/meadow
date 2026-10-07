@@ -23,17 +23,17 @@ import {
   PreviewPublishModal,
 } from "../src/run/pages/index.js";
 import { customBundle } from "../src/bundle-docs/index.js";
-import { htmlNode } from "../../../concepts/index.js";
+import { htmlNode, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { Fixture } from "../src/run/workflows.js";
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.Minimal });
 
-/*
- * Track a native HTML page and explore its linked graph. Generate the bundle and verify
- * that the HTML content is browsable.
- */
-test("tracks and browses a native HTML node graph", { annotation: { type: 'scenario-id', description: '721b46f5-299e-4185-a676-d773b7b95308' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`tracks and browses a native HTML node graph`);
+
+const description = linkedScenarioDescription(conceptText`Track a native HTML page and explore its linked graph. Generate the bundle and verify
+that the HTML content is browsable.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '721b46f5-299e-4185-a676-d773b7b95308' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page,
   testServer,
   checkpoint,

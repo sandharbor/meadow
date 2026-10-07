@@ -4,17 +4,17 @@ import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { sourcingReviewRedesign, graphFade, sourceReviewFiltering, sourceReviewViewState, tracking } from '../../../../concepts/index.js';
+import { sourcingReviewRedesign, graphFade, sourceReviewFiltering, sourceReviewViewState, tracking, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });
 
-/*
- * Unchanged context is faded in both graph and list. An explicit untrack immediately matches the
- * ordinary Untracked filter. Solo brings that context to full prominence without rewriting Fade,
- * selection remains usable, and leaving Solo restores the remembered presentation.
- */
-test('Solo temporarily restores full prominence for faded unchanged context without rewriting Fade', { annotation: { type: 'scenario-id', description: '3b2016ed-f843-43a3-830f-0088eeb5f0df' } }, async ({ sourceCommand, page, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+const name = linkedScenarioName(conceptText`Solo temporarily restores full prominence for faded unchanged context without rewriting Fade`);
+
+const description = linkedScenarioDescription(conceptText`Unchanged context is faded in both graph and list. An explicit untrack immediately matches the
+ordinary Untracked filter. Solo brings that context to full prominence without rewriting Fade,
+selection remains usable, and leaving Solo restores the remembered presentation.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '3b2016ed-f843-43a3-830f-0088eeb5f0df' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);

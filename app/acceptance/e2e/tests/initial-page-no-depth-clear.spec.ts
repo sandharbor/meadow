@@ -18,18 +18,18 @@ import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, BundleEditorPage } from "../src/run/pages/index.js";
 import { SelectedPageDetailComponent } from "../src/run/pages/areas/bundle/curation/SelectedPageDetailComponent.js";
 import { Fixture } from "../src/run/workflows.js";
-import { sourcingReviewRedesign, initialPage, bundleConfig } from "../../../concepts/index.js";
+import { sourcingReviewRedesign, initialPage, bundleConfig, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { exampleBundle, exampleBundleInitialPageTitle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
 test.use({ fixtureHome: Fixture.Minimal });
 
-/*
- * Select the starting page and inspect its depth controls. Its required traversal depths
- * should not be removable.
- */
-test("a publisher should not be able to remove the depth on the initial page", { annotation: { type: 'scenario-id', description: '5f71211d-5ca3-48b0-8655-686be2662d65' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`a publisher should not be able to remove the depth on the initial page`);
+
+const description = linkedScenarioDescription(conceptText`Select the starting page and inspect its depth controls. Its required traversal depths
+should not be removable.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '5f71211d-5ca3-48b0-8655-686be2662d65' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page, checkpoint, assertMeadowHomeState, addKeyFrame,
 }) => {
   // --- Setup ---

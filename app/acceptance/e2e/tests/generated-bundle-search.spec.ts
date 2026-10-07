@@ -24,16 +24,16 @@ import {
   PreviewPublishModal,
 } from "../src/run/pages/index.js";
 import { Bundle, Workflows } from "../src/run/workflows.js";
-import { customize, generatedBundleSearch } from "../../../concepts/index.js";
+import { customize, generatedBundleSearch, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
-/*
- * Search generated page titles and content, then follow a result. Disable search and
- * verify that the generated bundle removes the search controls.
- */
-test("generated bundle search finds titles and contents, navigates, and can be disabled", { annotation: { type: 'scenario-id', description: 'becacc26-9e46-40a8-98b7-701c607af0f7' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`generated bundle search finds titles and contents, navigates, and can be disabled`);
+
+const description = linkedScenarioDescription(conceptText`Search generated page titles and content, then follow a result. Disable search and
+verify that the generated bundle removes the search controls.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'becacc26-9e46-40a8-98b7-701c607af0f7' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   skipMeadowHomeStateCheck,

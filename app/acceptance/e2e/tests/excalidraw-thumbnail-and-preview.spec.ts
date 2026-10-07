@@ -17,7 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { Workflows } from "../src/run/workflows.js";
 import { BundleEditorPage, PreviewPublishModal } from "../src/run/pages/index.js";
-import { excalidraw } from "../../../concepts/index.js";
+import { excalidraw, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -34,11 +34,11 @@ test.use({ trackBigBundleExcalidrawPages: true });
  *   3. Clicking the embed takes the reader to the standalone Excalidraw HTML
  *      page where the drawing renders at full size.
  */
-/*
- * Inspect an Excalidraw thumbnail in the list, then view the drawing embedded and on its
- * own. All three representations should render correctly.
- */
-test("excalidraw thumbnail in list view, embedded in preview, and standalone page", { annotation: { type: 'scenario-id', description: '5cc5229f-f7a7-4fba-96e2-3d1b28ea265f' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`excalidraw thumbnail in list view, embedded in preview, and standalone page`);
+
+const description = linkedScenarioDescription(conceptText`Inspect an Excalidraw thumbnail in the list, then view the drawing embedded and on its
+own. All three representations should render correctly.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '5cc5229f-f7a7-4fba-96e2-3d1b28ea265f' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   skipMeadowHomeStateCheck,

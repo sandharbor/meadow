@@ -17,16 +17,16 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { FilterPanelComponent, BundleEditorPage } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { filters, folderFilter } from "../../../concepts/index.js";
+import { filters, folderFilter, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
-/*
- * Hide a nested folder and collapse its parent. The parent should indicate the hidden
- * activity, and Reset should restore every page.
- */
-test("folder filter exposes collapsed activity and reset restores all pages", { annotation: { type: 'scenario-id', description: 'd05dc908-cb6a-4963-89c8-f1ec7b8a8bf9' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`folder filter exposes collapsed activity and reset restores all pages`);
+
+const description = linkedScenarioDescription(conceptText`Hide a nested folder and collapse its parent. The parent should indicate the hidden
+activity, and Reset should restore every page.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'd05dc908-cb6a-4963-89c8-f1ec7b8a8bf9' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   assertMeadowHomeState,

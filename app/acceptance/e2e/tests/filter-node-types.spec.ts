@@ -17,16 +17,16 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { FilterPanelComponent, BundleEditorPage } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { filters } from "../../../concepts/index.js";
+import { filters, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
-/*
- * Inspect the available concrete file types and solo Markdown. The graph should retain
- * only pages of that type.
- */
-test("type filter lists concrete file types and solos Markdown", { annotation: { type: 'scenario-id', description: '463d5905-356e-4fd4-bbc9-ef4078d3ecba' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`type filter lists concrete file types and solos Markdown`);
+
+const description = linkedScenarioDescription(conceptText`Inspect the available concrete file types and solo Markdown. The graph should retain
+only pages of that type.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '463d5905-356e-4fd4-bbc9-ef4078d3ecba' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   assertMeadowHomeState,

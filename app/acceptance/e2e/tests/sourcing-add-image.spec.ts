@@ -3,15 +3,15 @@
 import { test, expect } from '../src/run/test-fixtures.js';
 import { Workflows } from '../src/run/workflows.js';
 import { BundleEditorPage, Pill, SelectedPageDetailComponent } from '../src/run/pages/index.js';
-import { sourcingReviewRedesign, sourceSnapshot } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
 
-/*
- * Add a reachable image and inspect its proposed inclusion route. Explicit tracking should retain
- * the new image without changing the accepted graph beforehand.
- */
-test('Sourcing previews an added image and its inclusion route before explicitly tracking it', { annotation: { type: 'scenario-id', description: 'bf4dde21-65c3-4632-ab21-f1b8b5f23e6e' } }, async ({ sourceCommand, page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+const name = linkedScenarioName(conceptText`Sourcing previews an added image and its inclusion route before explicitly tracking it`);
+
+const description = linkedScenarioDescription(conceptText`Add a reachable image and inspect its proposed inclusion route. Explicit tracking should retain
+the new image without changing the accepted graph beforehand.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'bf4dde21-65c3-4632-ab21-f1b8b5f23e6e' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
   const editor = new BundleEditorPage(page, expect);

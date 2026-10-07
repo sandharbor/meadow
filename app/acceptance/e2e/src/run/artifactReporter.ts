@@ -15,11 +15,12 @@ limitations under the License.
 */
 
 import type { Reporter, TestCase, TestResult } from "@playwright/test/reporter";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { extractScenarioDescription } from "../artifacts/scenarioDescription.js";
 import { collectReferencedSourceChanges } from "../artifacts/testSourceChanges.js";
+import { renderConceptText, type ConceptText } from '../../../../concepts/types.js';
 
 export function getTestArtifactDirectory(title: string, outputDir = path.join(
   os.homedir(), "meadow-e2e-artifacts", "current", process.env.E2E_RUN_ID || "default"
@@ -36,11 +37,20 @@ export default class ArtifactReporter implements Reporter {
   onTestBegin(test: TestCase, result: TestResult): void {
     const directory = getTestArtifactDirectory(test.title, this.options.outputDir);
     mkdirSync(directory, { recursive: true });
+    // Clear only a scenario that is actually executing. Reassembly of other
+    // scenarios must retain their recordings after temporary output is cleaned.
+    rmSync(path.join(directory, 'video.webm'), { force: true });
     writeFileSync(path.join(directory, "test-file.txt"), test.location.file);
     const source = readFileSync(test.location.file, "utf8");
     writeFileSync(path.join(directory, "test-source.ts"), source);
     writeFileSync(path.join(directory, "source-changes.json"), JSON.stringify(collectReferencedSourceChanges(source), null, 2));
-    writeFileSync(path.join(directory, "description.txt"), extractScenarioDescription(source, test.location.line, test.location.column));
+    const nameText = test.annotations.find(annotation => annotation.type === 'scenario-name')?.description;
+    if (nameText) writeFileSync(path.join(directory, 'name-text.json'), nameText);
+    const descriptionText = test.annotations.find(annotation => annotation.type === 'scenario-description')?.description;
+    if (descriptionText) writeFileSync(path.join(directory, 'description-text.json'), descriptionText);
+    writeFileSync(path.join(directory, "description.txt"), descriptionText
+      ? renderConceptText(JSON.parse(descriptionText) as ConceptText)
+      : extractScenarioDescription(source, test.location.line, test.location.column));
     writeFileSync(path.join(directory, "start-time.txt"), result.startTime.toISOString());
     writeFileSync(path.join(directory, "status.txt"), "running");
   }

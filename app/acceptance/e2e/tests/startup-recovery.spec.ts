@@ -16,7 +16,7 @@ limitations under the License.
 
 import type { StartupFailureDiagnostic } from '../../../contracts/types/startupRecovery.js';
 import { renderStartupRecoveryHtml } from '../../../shared_code/utils/startupRecoveryHtml.js';
-import { callout, startupRecovery } from '../../../concepts/index.js';
+import { callout, startupRecovery, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
 import { expect, test } from '../src/run/test-fixtures.js';
 
 test.use({ fixtureHome: 'home_fixture_minimal' });
@@ -36,11 +36,11 @@ const commonDiagnostic: Omit<StartupFailureDiagnostic, 'category' | 'title' | 's
   checkpointAvailable: false,
 };
 
-/*
- * Exercise startup failure and recovery states. The screens should offer actionable
- * choices without exposing secrets.
- */
-test('Startup recovery surfaces remain actionable and secret-free', { annotation: { type: 'scenario-id', description: 'f367e5cb-e72f-4b64-b120-ba1012226a1b' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`Startup recovery surfaces remain actionable and secret-free`);
+
+const description = linkedScenarioDescription(conceptText`Exercise startup failure and recovery states. The screens should offer actionable
+choices without exposing secrets.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'f367e5cb-e72f-4b64-b120-ba1012226a1b' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   addKeyFrame,

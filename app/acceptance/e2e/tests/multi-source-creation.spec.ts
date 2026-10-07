@@ -3,17 +3,17 @@
 import path from 'node:path';
 import { test, expect } from '../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, CreateAndEditBundleModal } from '../src/run/pages/index.js';
-import { sourcingReviewRedesign, bundleSource, startingSelection } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, bundleSource, startingSelection, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
 import { MeadowHomeBundleConfig } from '../src/run/utils/index.js';
 
 test.use({ bundleMode: 'mixed-starts' });
 test.use({ fixtureHome: 'home_fixture_multi_source' });
 
-/*
- * Create a bundle from ordered page and folder selections across sources. The initial
- * capture should preserve that order without asking for another acceptance step.
- */
-test('Multi-source initial creation captures ordered mixed selections without an extra acceptance step', { annotation: { type: 'scenario-id', description: 'ae17062f-0f31-4721-9594-504a8391aa6b' } }, async ({ sourceCommand, page, testServer, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
+const name = linkedScenarioName(conceptText`Multi-source initial creation captures ordered mixed selections without an extra acceptance step`);
+
+const description = linkedScenarioDescription(conceptText`Create a bundle from ordered page and folder selections across sources. The initial
+capture should preserve that order without asking for another acceptance step.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'ae17062f-0f31-4721-9594-504a8391aa6b' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   await sourceCommand(() => list.goto());

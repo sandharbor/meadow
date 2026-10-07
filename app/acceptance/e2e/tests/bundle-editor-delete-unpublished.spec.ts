@@ -17,16 +17,16 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleEditorPage, BundleListPage, DeleteBundleModal } from "../src/run/pages/index.js";
 import { Workflows, Bundle } from "../src/run/workflows.js";
-import { deletion, callout } from "../../../concepts/index.js";
+import { deletion, callout, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
-/*
- * Delete an unpublished bundle from its editor. Confirm that it disappears from the list
- * and its local files are removed.
- */
-test("Delete unpublished bundle from within bundle editor", { annotation: { type: 'scenario-id', description: '720025cc-0103-45b5-8e58-2ca9b37af6d0' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`Delete unpublished bundle from within bundle editor`);
+
+const description = linkedScenarioDescription(conceptText`Delete an unpublished bundle from its editor. Confirm that it disappears from the list
+and its local files are removed.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '720025cc-0103-45b5-8e58-2ca9b37af6d0' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   skipMeadowHomeStateCheck,

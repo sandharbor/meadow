@@ -3,16 +3,16 @@
 import { test, expect } from '../src/run/test-fixtures.js';
 import { Workflows } from '../src/run/workflows.js';
 import { BundleEditorPage } from '../src/run/pages/index.js';
-import { sourcingReviewRedesign, sourceMove, sourceSnapshot } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, sourceMove, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
 import { MeadowHomeBundleConfig } from '../src/run/utils/index.js';
 
 test.use({ bundleMode: 'single-file' });
 
-/*
- * Move a tracked image and review the proposed match. Accepting it should preserve both
- * the image's identity and tracking state.
- */
-test('Sourcing moves a tracked image while preserving its identity and tracking', { annotation: { type: 'scenario-id', description: 'd9e784cb-3a46-431c-bdb7-e93cd91739e3' } }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+const name = linkedScenarioName(conceptText`Sourcing moves a tracked image while preserving its identity and tracking`);
+
+const description = linkedScenarioDescription(conceptText`Move a tracked image and review the proposed match. Accepting it should preserve both
+the image's identity and tracking state.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'd9e784cb-3a46-431c-bdb7-e93cd91739e3' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
   const editor = new BundleEditorPage(page, expect);

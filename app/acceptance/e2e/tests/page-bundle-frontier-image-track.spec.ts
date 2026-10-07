@@ -22,16 +22,16 @@ import {
   SelectedPageDetailComponent,
 } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { sourcingReviewRedesign, frontier, frontierEmbeddedAssets, tracking } from "../../../concepts/index.js";
+import { sourcingReviewRedesign, frontier, frontierEmbeddedAssets, tracking, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
-/*
- * Find and track a frontier image in a page-rooted bundle. The image should be included
- * when the bundle is generated.
- */
-test("tracks a frontier image in a page-derived bundle", { annotation: { type: 'scenario-id', description: 'c6ff4187-9d76-4de3-bb43-b697ee898364' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`tracks a frontier image in a page-derived bundle`);
+
+const description = linkedScenarioDescription(conceptText`Find and track a frontier image in a page-rooted bundle. The image should be included
+when the bundle is generated.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'c6ff4187-9d76-4de3-bb43-b697ee898364' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   addKeyFrame,

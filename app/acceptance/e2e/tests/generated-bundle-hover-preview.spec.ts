@@ -20,16 +20,16 @@ import {
   PreviewPublishModal,
 } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { customize, htmlGeneration } from "../../../concepts/index.js";
+import { customize, htmlGeneration, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
-/*
- * Open a nested generated page and hover over a link to a root page. Links inside the
- * preview should resolve against that root page and navigate correctly.
- */
-test("generated-bundle hover preview links navigate from nested pages", { annotation: { type: 'scenario-id', description: '6f8a8ed1-f84c-4753-b987-cef81539b2d8' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`generated-bundle hover preview links navigate from nested pages`);
+
+const description = linkedScenarioDescription(conceptText`Open a nested generated page and hover over a link to a root page. Links inside the
+preview should resolve against that root page and navigate correctly.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '6f8a8ed1-f84c-4753-b987-cef81539b2d8' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   skipMeadowHomeStateCheck,

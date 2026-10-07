@@ -22,22 +22,18 @@ import {
   FilterPanelComponent,
 } from "../src/run/pages/index.js";
 import { Fixture } from "../src/run/workflows.js";
-import {
-  sourcingReviewRedesign,
-  bundleConfig,
-  overrides,
-} from "../../../concepts/index.js";
+import { sourcingReviewRedesign, bundleConfig, overrides, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { exampleBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
 test.use({ fixtureHome: Fixture.Minimal });
 
-/*
- * Add a depth override to a child page. Unlike simple tracking changes, the override
- * should remain pending until explicitly saved.
- */
-test("adding a depth override on a child page requires proposal acceptance", { annotation: { type: 'scenario-id', description: '37d9c264-c863-4ac7-8b91-402f52ef1ffb' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`adding a depth override on a child page requires proposal acceptance`);
+
+const description = linkedScenarioDescription(conceptText`Add a depth override to a child page. Unlike simple tracking changes, the override
+should remain pending until explicitly saved.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '37d9c264-c863-4ac7-8b91-402f52ef1ffb' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   assertMeadowHomeState,

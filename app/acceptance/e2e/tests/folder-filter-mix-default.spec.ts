@@ -17,16 +17,16 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { FilterPanelComponent, BundleEditorPage } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { filters, folderFilter } from "../../../concepts/index.js";
+import { filters, folderFilter, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
-/*
- * Hide one folder and solo another. The default filter mix should combine those choices
- * and show only the expected pages.
- */
-test("hidden folders are intersected with soloed folders by default", { annotation: { type: 'scenario-id', description: '4fa68df7-a9cd-48a7-b397-a7138cb61106' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`hidden folders are intersected with soloed folders by default`);
+
+const description = linkedScenarioDescription(conceptText`Hide one folder and solo another. The default filter mix should combine those choices
+and show only the expected pages.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '4fa68df7-a9cd-48a7-b397-a7138cb61106' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   assertMeadowHomeState,

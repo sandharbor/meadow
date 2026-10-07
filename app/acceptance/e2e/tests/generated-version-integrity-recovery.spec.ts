@@ -20,17 +20,17 @@ import { test, expect } from "../src/run/test-fixtures.js";
 import { ChangesTab, CustomizeTab, PreviewPublishModal } from "../src/run/pages/index.js";
 import { GeneratedBundleVersions } from "../src/run/utils/index.js";
 import { Bundle, Workflows } from "../src/run/workflows.js";
-import { versioning } from "../../../concepts/index.js";
+import { versioning, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { smallBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 test.use({ serialGroup: "generated-bundle-versioning" });
 
-/*
- * Modify a frozen version's files outside Meadow. Restore them from Git, then cancel the
- * unsaved successor and return to the original current version.
- */
-test("V08 G05 generated version frozen integrity is recoverable before canceling an unsaved successor", { annotation: { type: 'scenario-id', description: '2a0ec475-6a37-4886-93a7-e7dd9759e05e' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`V08 G05 generated version frozen integrity is recoverable before canceling an unsaved successor`);
+
+const description = linkedScenarioDescription(conceptText`Modify a frozen version's files outside Meadow. Restore them from Git, then cancel the
+unsaved successor and return to the original current version.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '2a0ec475-6a37-4886-93a7-e7dd9759e05e' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   skipMeadowHomeStateCheck,

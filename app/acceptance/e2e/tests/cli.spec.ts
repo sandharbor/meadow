@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { bundles } from "../../../concepts/index.js";
+import { bundles, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { cli } from "../../../concepts/index.js";
 import { expect, test } from "../src/run/test-fixtures.js";
 
@@ -33,11 +33,11 @@ test.use({ bundleMode: "single-file" });
 test.use({ executionSurface: "cli" });
 test.use({ recordVideo: false });
 
-/*
- * Archive a bundle through the CLI and inspect the current and archived lists. Restore it
- * and check that command help describes the supported operations.
- */
-test("CLI archives and lists current and archived bundles as JSON", { annotation: { type: 'scenario-id', description: 'bcd26c10-bbf1-4558-8c9d-8799e8b0abfe' } }, async ({ sourceCommand,
+const name = linkedScenarioName(conceptText`CLI archives and lists current and archived bundles as JSON`);
+
+const description = linkedScenarioDescription(conceptText`Archive a bundle through the CLI and inspect the current and archived lists. Restore it
+and check that command help describes the supported operations.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'bcd26c10-bbf1-4558-8c9d-8799e8b0abfe' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   assertMeadowHomeState,
   meadowCli,
   checkpoint,

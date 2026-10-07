@@ -8,17 +8,17 @@ import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { sourcingReviewRedesign, sourceReviewWorkspace, tracking, sourceReviewCleanup } from '../../../../concepts/index.js';
+import { sourcingReviewRedesign, sourceReviewWorkspace, tracking, sourceReviewCleanup, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });
 
-/*
- * Track an eligible untracked candidate together with a departing comparison node. The action
- * stages the eligible page and explicitly names the departure it skipped. Acceptance applies the
- * complete scope and mandatory cleanup without any per-page source approval.
- */
-test('Sourcing bulk tracking explicitly reports departing comparison nodes it cannot track', { annotation: { type: 'scenario-id', description: 'e6c2836c-da56-4f84-9488-64b007b3989a' } }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+const name = linkedScenarioName(conceptText`Sourcing bulk tracking explicitly reports departing comparison nodes it cannot track`);
+
+const description = linkedScenarioDescription(conceptText`Track an eligible untracked candidate together with a departing comparison node. The action
+stages the eligible page and explicitly names the departure it skipped. Acceptance applies the
+complete scope and mandatory cleanup without any per-page source approval.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'e6c2836c-da56-4f84-9488-64b007b3989a' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);

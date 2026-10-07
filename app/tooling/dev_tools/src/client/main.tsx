@@ -22,8 +22,11 @@ import './index.css'
 const App: React.FC = () => {
   return (
     <>
-      <header className="bg-white border-b border-neutral-200 px-4 py-3">
+      <header className="bg-white border-b border-neutral-200 px-4 py-3 flex items-center gap-4">
         <h1 className="text-lg font-bold text-brand-700">dev_tools_app</h1>
+        <a href="/api/reports/open" target="_blank" rel="noopener noreferrer" className="ml-auto rounded border border-neutral-300 px-3 py-1 text-sm font-semibold text-neutral-700 hover:bg-neutral-50">
+          Open E2E reports <span aria-hidden="true">↗</span>
+        </a>
       </header>
       <main className="min-h-[calc(100vh-49px)] bg-gradient-to-br from-neutral-50 to-brand-50">
         <SavedStatesManager />

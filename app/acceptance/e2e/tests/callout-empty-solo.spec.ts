@@ -16,16 +16,16 @@ limitations under the License.
 
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, BundleEditorPage, FilterPanelComponent } from "../src/run/pages/index.js";
-import { filters, callout } from "../../../concepts/index.js";
+import { filters, callout, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
-/*
- * Solo a filter that matches no pages. The empty-graph callout should explain why the
- * pages are hidden and help restore them.
- */
-test("empty solo callout appears when solo filter hides all pages", { annotation: { type: 'scenario-id', description: 'bbf7cb88-2a18-46dc-b338-41f4305ce162' } }, async ({ sourceCommand, page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame }) => {
+const name = linkedScenarioName(conceptText`empty solo callout appears when solo filter hides all pages`);
+
+const description = linkedScenarioDescription(conceptText`Solo a filter that matches no pages. The empty-graph callout should explain why the
+pages are hidden and help restore them.`);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'bbf7cb88-2a18-46dc-b338-41f4305ce162' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame }) => {
   // --- Setup ---
   const bundleList = new BundleListPage(page, expect);
   await sourceCommand(() => bundleList.goto());
