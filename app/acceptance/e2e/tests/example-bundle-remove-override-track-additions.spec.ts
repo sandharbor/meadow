@@ -12,9 +12,9 @@ test.use({ fixtureHome: Fixture.Example });
 
 /*
  * Remove the example bundle's zero-depth override and accept the three pages newly
- * reached by its inherited depth. Acceptance should track them without a recovery notice.
+ * reached by its inherited depth. The newly admitted pages start untracked.
  */
-test('Removing the example depth override tracks newly accepted pages', { annotation: { type: 'scenario-id', description: 'b3137f45-5155-4892-9e2e-f3a0a08da7c6' } }, async ({ sourceCommand,
+test('Removing the example depth override leaves newly accepted pages untracked', { annotation: { type: 'scenario-id', description: 'b3137f45-5155-4892-9e2e-f3a0a08da7c6' } }, async ({ sourceCommand,
   page, checkpoint, addKeyFrame, assertMeadowHomeState,
 }) => {
   // --- Setup ---
@@ -47,14 +47,14 @@ test('Removing the example depth override tracks newly accepted pages', { annota
   await sourceCommand(() => addKeyFrame(overrides));
   await sourceCommand(() => checkpoint('the inherited boundary and its newly reached pages await acceptance'));
 
-  await sourceCommand(() => editor.sourceReview.expectTrackNewPages(true));
+  await sourceCommand(() => editor.sourceReview.expectNoAutomaticTrackingOption());
   for (const name of additions) {
     await sourceCommand(() => editor.sourceReview.expectAdded(`${name}.md`));
   }
   await sourceCommand(() => addKeyFrame(sourceSnapshot));
-  await sourceCommand(() => checkpoint('all three newly reachable pages are ready for acceptance and tracking'));
+  await sourceCommand(() => checkpoint('all three newly reachable pages are ready for acceptance and later curation'));
 
-  // Accept the source update and verify automatic tracking completed.
+  // Accept the source update and verify the additions remain untracked.
   await sourceCommand(() => editor.sourceReview.accept());
   await sourceCommand(() => addKeyFrame(sourceSnapshot));
   await sourceCommand(() => expect(page.getByRole('alert').filter({ hasText: 'automatic tracking could not finish' })).not.toBeVisible());
@@ -64,11 +64,11 @@ test('Removing the example depth override tracks newly accepted pages', { annota
   await sourceCommand(() => editor.clickSelectNone());
   for (const name of additions) {
     await sourceCommand(() => editor.clickListViewRowByExactName(name));
-    await sourceCommand(() => new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect).expectPill(Pill.Tracked));
+    await sourceCommand(() => new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect).expectPill(Pill.NotTracked));
     await sourceCommand(() => editor.clickSelectNone());
   }
   await sourceCommand(() => addKeyFrame(bundleNodeKey));
-  await sourceCommand(() => checkpoint('all three accepted pages are tracked without an error'));
+  await sourceCommand(() => checkpoint('all three accepted pages remain untracked'));
 
   await sourceCommand(() => assertMeadowHomeState());
 });

@@ -401,7 +401,6 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
             .map(({ page }) => ({ page, depths: remainingTraversalDepths(page!), inheritedDepths: inheritedTraversalDepths(page!) }))
             .map(({ page, depths, inheritedDepths }) => (
               <div key={page!.bundleNodeKey} className="p-4 hover:bg-neutral-50" data-testid={`selected-page-${page!.bundleNodeKey}`}>
-                {page!.sourceReview && <SourceComparisonEvidence evidence={page!.sourceReview} graph={graph} onCompare={() => onPreviewPage(page!.bundleNodeKey)} />}
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium truncate flex-1 mr-2">{page!.data?.bundleNodeName || page!.label}</span>
                   <div className="flex items-center gap-1 flex-none">
@@ -462,6 +461,7 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
                     </button>
                   </div>
                 </div>
+                {page!.sourceReview && page!.sourceReview.kind !== 'unchanged' && <SourceComparisonEvidence evidence={page!.sourceReview} graph={graph} onCompare={() => onPreviewPage(page!.bundleNodeKey)} />}
                 <div className="mt-1 flex flex-wrap gap-1">
                   <span className={`inline-block px-2 py-0.5 rounded-full text-xs ${
                     page!.tracked
@@ -546,11 +546,11 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
                     >
                       <polyline points="9 18 15 12 9 6" />
                     </svg>
-                    <span>Details</span>
+                    <span>{page!.sourceReview?.kind === 'departing' ? 'Details before removal' : 'Details'}</span>
                   </button>
 
                   {openDetailsBundleNodeKeys.has(page!.bundleNodeKey) && (
-                    <div className="mt-2 p-2 bg-neutral-50 border border-neutral-200 rounded space-y-2">
+                    <div data-testid="selected-node-details" className="mt-2 p-2 bg-neutral-50 border border-neutral-200 rounded space-y-2">
                       <NodeFolderDetails node={page!} sources={graph.sources} />
                       {/* Path - only show for non-initial pages */}
                       {page!.depth !== 0 && Array.isArray(page!.path) && page!.path.length > 0 && (

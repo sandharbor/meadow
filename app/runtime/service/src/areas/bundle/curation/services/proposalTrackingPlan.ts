@@ -12,7 +12,7 @@ import { loadSourceSnapshot, snapshotGraph, sha256, SourcingError } from '../../
 
 /** Curation prepares tracking decisions without writing accepted policy or rereading live sources. */
 export async function prepareProposalTracking(directory: string, snapshotId: string, configuration: ProposalConfiguration,
-  decisions: Record<string, ProposalTrackingDecision>, addedKeys: string[] = [], identities: Record<string, BundleNodeId> = {}) {
+  decisions: Record<string, ProposalTrackingDecision>, identities: Record<string, BundleNodeId> = {}) {
   const snapshot = loadSourceSnapshot(directory, snapshotId);
   const raw = await snapshotGraph(directory, snapshot, configuration.nodes, 0, false, configuration.bundle);
   const output = serializeWorkingGraphOutput(raw);
@@ -44,12 +44,6 @@ export async function prepareProposalTracking(directory: string, snapshotId: str
         id: filter.id, selectors: filter.selectors, criterion: filter.selectorApplicationCriteria,
       })).sort((a, b) => a.id.localeCompare(b.id));
       targets[key].sensitivity = sha256(JSON.stringify({ policy, digest: raw.nodes.find(item => item.bundleNodeKey === key)?.sourceFile?.digest }));
-    }
-    if (!proposed[key] && addedKeys.includes(key) && !node.conf && configuration.bundle.trackNewPages !== false) {
-      proposed[key] = { track: !sensitive.has(key), origin: 'automatic' };
-    }
-    if (proposed[key]?.origin === 'automatic' && addedKeys.includes(key)) {
-      proposed[key].track = configuration.bundle.trackNewPages !== false && !sensitive.has(key);
     }
     if (proposed[key] && !proposed[key].bundleNodeId) {
       const id = targets[key].bundleNodeId ?? generateBundleNodeId(ids);

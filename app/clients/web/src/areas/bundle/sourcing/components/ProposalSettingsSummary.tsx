@@ -13,12 +13,12 @@ export const proposalSettingLabels: Record<string, string> = {
   name: 'Name', note: 'Description', enabled: 'Enabled', scope: 'Applies to', selectors: 'Matching rules',
   actions: 'Actions', selectorApplicationCriteria: 'Combine rules', listType: 'Tracking', deletedDefaultFilterIds: 'Removed default filters',
   outlinksDepth: 'Outlink depth', inlinksDepth: 'Inlink depth', defaultOutlinksDepth: 'Default outlink depth',
-  defaultInlinksDepth: 'Default inlink depth', trackNewPages: 'Track non-sensitive added pages',
+  defaultInlinksDepth: 'Default inlink depth',
   entryBundleNodeId: 'Starting entry', defaultTraversalBundleNodeId: 'Traversal entry',
   sourceDirectory: 'Source directory', sources: 'Connected sources', disabledGlobalFilters: 'Disabled global filters',
   bundleNodeName: 'Name', sourceGraphSubdirectory: 'Location', sourceId: 'Source', memberBundleNodeIds: 'Members',
 };
-const ignored = new Set(['bundleGuid', 'bundleNodeId', 'bundleNodeKind', 'fileType', 'trackingEvidence',
+const ignored = new Set(['trackNewPages', 'bundleGuid', 'bundleNodeId', 'bundleNodeKind', 'fileType', 'trackingEvidence',
   'bundleCreatedAt', 'bundleUpdatedAt', 'bundleLastPublishedAt', 'generatedBundleVersions']);
 
 function display(value: unknown): string {
@@ -53,13 +53,13 @@ export function proposalSettingsEntries(review: SourceProposalReview): Entry[] {
     const before = original.nodes.find(node => node.bundleNodeId === id), after = proposed.nodes.find(node => node.bundleNodeId === id);
     const name = (after ?? before)!.bundleNodeName;
     if (before && after) compare(name, id, before, after);
-    // Explicit decisions get their own row below, including automatic choices for additions.
+    // Explicit decisions get their own row below.
     if (!decisionIds.has(id) && tracking(before) !== tracking(after)) entries.push({ key: `${id}:tracking`, name, setting: 'Tracking', before: tracking(before), after: tracking(after), tracking: true });
   }
   for (const [key, decision] of Object.entries(review.proposal.tracking)) {
     const before = original.nodes.find(node => node.bundleNodeId === decision.bundleNodeId);
     const name = proposed.nodes.find(node => node.bundleNodeId === decision.bundleNodeId)?.bundleNodeName ?? before?.bundleNodeName ?? bundleNodeKeySourceGraphPath(key as EncodedBundleNodeKey);
-    entries.push({ key: `tracking:${key}`, name, setting: decision.origin === 'automatic' ? 'Automatic tracking' : 'Tracking choice',
+    entries.push({ key: `tracking:${key}`, name, setting: 'Tracking choice',
       before: tracking(before), after: `${decision.track ? 'Tracked' : 'Untracked'}${decision.needsConfirmation ? ' · Confirmation required' : ''}${decision.invalidated ? ' · Page no longer included' : ''}`, tracking: true });
   }
   const beforeFilters = [...original.bundleFilters, ...original.globalFilters], afterFilters = [...proposed.bundleFilters, ...proposed.globalFilters];

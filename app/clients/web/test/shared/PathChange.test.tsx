@@ -52,6 +52,30 @@ describe('source path changes', () => {
     expect(screen.getByTestId('source-path-before')).toHaveTextContent(`${directory}old.md`);
     expect(screen.getByTestId('source-path-after')).toHaveTextContent(`${directory}new.md`);
   });
+
+  it.each([
+    ['long/same/folder/Old name.md', 'long/same/folder/New name.md', 'Old name.md', 'New name.md'],
+    ['notes/old/Page.md', 'notes/new/Page.md', 'notes/old', 'notes/new'],
+    ['Page.md', 'notes/Page.md', 'Source root', 'notes'],
+    ['notes/Page.md', 'Page.md', 'notes', 'Source root'],
+    ['old/Before.md', 'new/After.md', 'old/Before.md', 'new/After.md'],
+  ])('compacts %s → %s to the path parts that changed', (before, after, oldLabel, newLabel) => {
+    render(<PathChange compact before={before} after={after} />);
+    expect(screen.getByTestId('source-path-before')).toHaveTextContent(oldLabel);
+    expect(screen.getByTestId('source-path-after')).toHaveTextContent(newLabel);
+    expect(screen.getByTestId('source-path-before').textContent).toBe(oldLabel);
+    expect(screen.getByTestId('source-path-after').textContent).toBe(newLabel);
+    expect(screen.getByRole('group')).toHaveAttribute('title', `${before} → ${after}`);
+  });
+
+  it('keeps registered source names in a compact cross-source directory move', () => {
+    render(<SourceNamesProvider sources={[{ id: 'source000001', name: 'notes' }, { id: 'source000002', name: 'research' }]}>
+      <PathChange compact before="_mw_sources/source000001/Same/Inside.md" after="_mw_sources/source000002/Same/Inside.md" />
+    </SourceNamesProvider>);
+    expect(screen.getByTestId('source-path-before')).toHaveTextContent('notes://Same');
+    expect(screen.getByTestId('source-path-after')).toHaveTextContent('research://Same');
+    expect(screen.queryByText(/Inside\.md/)).not.toBeInTheDocument();
+  });
 });
 
 

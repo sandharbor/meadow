@@ -37,7 +37,7 @@ test('Reversing pending scope exclusions restores saved page configuration befor
   await sourceCommand(() => sourcing.select('Bridge'));
   await sourceCommand(() => sourcing.setSelectedOutlinkDepth(0));
   await sourceCommand(() => sourcing.select('Departing'));
-  await sourceCommand(() => expect(sourcing.evidence).toContainText('Orphaned configuration'));
+  await sourceCommand(() => sourcing.expectSelectedRemovalReason('Not reachable'));
   expect(proposal.current.proposed.nodes.find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Departing')).toEqual(original);
   await sourceCommand(() => checkpoint('the reduced depth leaves excluded page configuration in the pending proposal'));
   await sourceCommand(() => sourcing.later());
@@ -45,19 +45,19 @@ test('Reversing pending scope exclusions restores saved page configuration befor
   await sourceCommand(() => editor.waitForLoad('sourcing-review'));
   await sourceCommand(() => sourcing.open());
   await sourceCommand(() => sourcing.select('Departing'));
-  await sourceCommand(() => expect(sourcing.evidence).toContainText('departing'));
+  await sourceCommand(() => expect(sourcing.evidence).toContainText('Change: Removed'));
   await sourceCommand(() => checkpoint('reopening restores the excluded page and its pending cleanup evidence'));
   await sourceCommand(() => sourcing.select('Bridge'));
   await sourceCommand(() => sourcing.setSelectedOutlinkDepth(3));
   await sourceCommand(() => sourcing.select('Departing'));
-  await sourceCommand(() => expect(sourcing.evidence).toContainText('Unchanged source material'));
+  await sourceCommand(() => sourcing.expectNoSelectedSourceChange());
   await sourceCommand(() => expect(sourcing.selectedPage.getByText('Tracked', { exact: true })).toBeVisible());
   expect(proposal.current.proposed.nodes.find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Departing')).toEqual(original);
 
   await sourceCommand(() => sourcing.select('Bridge'));
   await sourceCommand(() => sourcing.setSelectedBlacklisted(true));
   await sourceCommand(() => sourcing.select('Departing'));
-  await sourceCommand(() => expect(sourcing.evidence).toContainText('departing'));
+  await sourceCommand(() => expect(sourcing.evidence).toContainText('Change: Removed'));
   await sourceCommand(() => sourcing.later());
   await sourceCommand(() => page.reload());
   await sourceCommand(() => editor.waitForLoad('sourcing-review'));
@@ -65,7 +65,7 @@ test('Reversing pending scope exclusions restores saved page configuration befor
   await sourceCommand(() => sourcing.select('Bridge'));
   await sourceCommand(() => sourcing.setSelectedBlacklisted(false));
   await sourceCommand(() => sourcing.select('Departing'));
-  await sourceCommand(() => expect(sourcing.evidence).toContainText('Unchanged source material'));
+  await sourceCommand(() => sourcing.expectNoSelectedSourceChange());
   await sourceCommand(() => expect(sourcing.selectedPage.getByText('Tracked', { exact: true })).toBeVisible());
   expect(proposal.current.proposed.nodes.find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Departing')).toEqual(original);
   expect(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).toBe(saved);

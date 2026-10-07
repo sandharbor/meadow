@@ -57,7 +57,7 @@ test('Curation applies blacklist shortcuts only when calculated impact is limite
   await sourceCommand(() => expect(sourcing.root).toBeVisible());
   expect(configuration()).toEqual(original);
   await sourceCommand(() => sourcing.select('Outside'));
-  await sourceCommand(() => expect(sourcing.evidence).toContainText('departing'));
+  await sourceCommand(() => expect(sourcing.evidence).toContainText('Change: Removed'));
   await sourceCommand(() => checkpoint('the hidden wider consequences require a sourcing proposal'));
 
   // Once sourcing is open, even a harmless leaf exclusion remains staged.

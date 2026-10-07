@@ -13,7 +13,7 @@ import { applyBlacklistEdit, undoBlacklistEdit } from '../../../../src/areas/bun
 import { reviewSourceProposal } from '../../../../src/areas/bundle/sourcing/services/proposalReview.js';
 import { updateSourceProposalCapture, checkSourceProposalUpdates } from '../../../../src/areas/bundle/sourcing/services/proposalCapture.js';
 import { acceptSourceProposal } from '../../../../src/areas/bundle/sourcing/services/proposalAcceptance.js';
-import { discardSourceProposal, loadPendingSourceProposal } from '../../../../src/areas/bundle/sourcing/services/proposalStore.js';
+import { discardSourceProposal, loadPendingSourceProposal, saveSourceProposal } from '../../../../src/areas/bundle/sourcing/services/proposalStore.js';
 import { chooseProposalIdentities, chooseProposalTracking, resolveProposalConflicts } from '../../../../src/areas/bundle/sourcing/services/proposalDecisions.js';
 import { fileNodeKeyFromSourceFilePath, serializeBundleNodeKey } from '../../../../../../shared_code/utils/bundleNodeKey.js';
 
@@ -89,7 +89,7 @@ describe('captured proposal lifecycle', () => {
     expect(loadSourceNodeConfigs(directory).find(node => node.bundleNodeId === bridgeId)?.bundleNodeName).toBe('Renamed');
   });
 
-  it('recomputes automatic tracking after a rejected rename becomes a confirmed identity', async () => {
+  it('leaves a rejected rename untracked until its existing identity is confirmed', async () => {
     let review = await reviewSourceProposal(directory);
     fs.renameSync(path.join(source, 'Bridge.md'), path.join(source, 'Renamed.md'));
     fs.writeFileSync(path.join(source, 'Start.md'), 'The source entry.\n\n[[Renamed]]');
@@ -97,12 +97,37 @@ describe('captured proposal lifecycle', () => {
     review = await reviewSourceProposal(directory);
     await chooseProposalIdentities(directory, review.proposal.revision, { [bridgeId]: null });
     review = await reviewSourceProposal(directory);
-    expect(review.proposal.tracking[key('Renamed.md')]).toMatchObject({ track: true, origin: 'automatic' });
+    expect(review.proposal.tracking[key('Renamed.md')]).toBeUndefined();
+    expect(review.configuration.nodes.some(node => node.bundleNodeName === 'Renamed')).toBe(false);
     await chooseProposalIdentities(directory, review.proposal.revision, { [bridgeId]: 'Renamed.md' });
     review = await reviewSourceProposal(directory);
     expect(review.proposal.tracking[key('Renamed.md')]).toBeUndefined();
     expect(review.configuration.nodes.filter(node => node.bundleNodeName === 'Renamed')).toHaveLength(1);
     expect(review.configuration.nodes.find(node => node.bundleNodeName === 'Renamed')?.bundleNodeId).toBe(bridgeId);
+  });
+
+  it('removes legacy automatic choices while preserving explicit choices and accepted tracking', async () => {
+    let review = await reviewSourceProposal(directory);
+    const draft = structuredClone(review.proposal.proposed);
+    draft.bundle.defaultOutlinksDepth = 3;
+    draft.bundle.trackNewPages = true;
+    await updateSourceProposalCapture(directory, review.proposal.revision, { configuration: draft });
+    review = await reviewSourceProposal(directory);
+    expect(review.proposal.tracking).toEqual({});
+    await chooseProposalTracking(directory, review.proposal.revision, [key('Leaf.md')], true);
+    review = await reviewSourceProposal(directory);
+    const automaticId = 'automatic001' as BundleNodeId;
+    saveSourceProposal(directory, { ...review.proposal,
+      tracking: { ...review.proposal.tracking, [key('Extra.md')]: { track: true, origin: 'automatic', bundleNodeId: automaticId } },
+      proposed: { ...review.proposal.proposed, nodes: [...review.proposal.proposed.nodes,
+        { bundleNodeId: automaticId, bundleNodeName: 'Extra', bundleNodeKind: 'file', fileType: 'md', listType: 'whitelist' }] },
+    }, review.proposal.revision);
+    review = await reviewSourceProposal(directory);
+    expect(review.proposal.tracking[key('Extra.md')]).toBeUndefined();
+    expect(review.proposal.tracking[key('Leaf.md')]).toMatchObject({ track: true, origin: 'explicit' });
+    expect(review.configuration.nodes.map(node => node.bundleNodeName).sort()).toEqual(['Bridge', 'Leaf', 'Start']);
+    await acceptSourceProposal(directory, review.reviewToken);
+    expect(loadSourceNodeConfigs(directory).map(node => node.bundleNodeName).sort()).toEqual(['Bridge', 'Leaf', 'Start']);
   });
 
   it('explores live frontier only when the admitted material matches the reviewed capture', async () => {
@@ -154,7 +179,9 @@ describe('captured proposal lifecycle', () => {
     review = await reviewSourceProposal(directory);
     expect(loadSourceBundleConfig(directory).defaultOutlinksDepth).toBe(2);
     expect(loadSourcingState(directory)?.acceptedId).toBe(acceptedId);
-    expect(review.proposal.tracking[key('Extra.md')]).toMatchObject({ track: true, origin: 'automatic' });
+    expect(review.proposal.tracking[key('Extra.md')]).toBeUndefined();
+    await chooseProposalTracking(directory, review.proposal.revision, [key('Extra.md')], true);
+    review = await reviewSourceProposal(directory);
     const reviewed = fs.readFileSync(path.join(source, 'Leaf.md'), 'utf8');
     fs.writeFileSync(path.join(source, 'Leaf.md'), 'Newer live content C.\n\n[[Extra]]');
     await checkSourceProposalUpdates(directory);

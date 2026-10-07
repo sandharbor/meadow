@@ -47,12 +47,12 @@ test('Multi-source competing moves never assign the old identity to either ident
   // Accept the source update.
   await sourceCommand(() => editor.sourceReview.accept());
   const updated = bundleConfig.readNodes();
-  expect(updated.filter(node => node.bundleNodeName === 'Inside' && node.sourceGraphSubdirectory === 'Moved')).toHaveLength(2);
+  expect(updated.filter(node => node.bundleNodeName === 'Inside' && node.sourceGraphSubdirectory === 'Moved')).toHaveLength(0);
   expect(updated.some(node => node.bundleNodeId === original.bundleNodeId)).toBe(false);
   await sourceCommand(() => editor.switchToListView());
   for (const source of ['source000002', 'source000003']) await sourceCommand(() => editor.expectListViewNodeVisible(`file:_mw_sources/${source}/Moved/Inside.md`, true));
   await sourceCommand(() => addKeyFrame(sourceSnapshot));
-  await sourceCommand(() => checkpoint('explicitly keeping pages separate removes the old identity and automatically tracks both safe additions with fresh identities'));
+  await sourceCommand(() => checkpoint('explicitly keeping pages separate removes the old identity and leaves both additions untracked for curation'));
 
   await sourceCommand(() => skipMeadowHomeStateCheck());
 });

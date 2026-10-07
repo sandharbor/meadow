@@ -222,7 +222,6 @@ async function buildSourceReview(bundleDirectory: string, attempt = 0): Promise<
       outputPathsChange: candidate.sourceProposal.sourceOutputLayout !== loadSourceBundleConfig(bundleDirectory).sourceOutputLayout
         || candidate.sourceProposal.sources.some(source => bundleSources(loadSourceBundleConfig(bundleDirectory)).some(before => before.id === source.id && before.name !== source.name)),
     } }),
-    trackNewPages: loadSourceBundleConfig(bundleDirectory).trackNewPages ?? true,
     accepted: state.history.find(item => item.id === accepted.id) ?? snapshotSummary(accepted),
     ...(candidate && { candidate: snapshotSummary(candidate) }), moves, changes: distinctChanges,
     orphans, history: state.history,
@@ -274,7 +273,6 @@ export async function scanSourceChanges(bundleDirectory: string, replaceCandidat
 
 export async function acceptSourceSnapshot(bundleDirectory: string, request: SourceSnapshotAcceptance): Promise<SourceSnapshotAcceptanceResult> {
   if (loadPendingSourceProposal(bundleDirectory)) throw new SourcingError('Accept this update in the sourcing workspace so its pending decisions are included.');
-  let trackingRequest: SourceSnapshotAcceptanceResult['trackingRequest'];
   // Build the review before taking the write lock; acceptance checks its revision again inside it.
   const review = await sourcingReview(bundleDirectory);
   await withSourcingLock(bundleDirectory, async () => {
@@ -323,30 +321,19 @@ export async function acceptSourceSnapshot(bundleDirectory: string, request: Sou
     for (const id of removals) if (!stillOrphaned.has(id)) throw new SourcingError('A selected entry is reachable after the chosen moves. Keep it and review the update again.');
     const next = relinked.filter(node => !removals.has(node.bundleNodeId));
     const graph = removals.size ? await snapshotGraph(bundleDirectory, candidate, next, 0, false, bundle) : relinkedGraph;
-    const trackNewPages = request.trackNewPages ?? bundle.trackNewPages ?? true;
-    if (trackNewPages && state.candidateId) {
-      // Sourcing identifies the reviewed additions; curation owns tracking and safety policy.
-      // Existing configuration and rejected rename matches are separate curation decisions.
-      const additions = new Set(review.changes.filter(change => change.kind === 'added').map(change => change.path));
-      const configuredPaths = new Set(next.map(node => snapshotFilePath(candidate, node)));
-      const nodeKeys = graph.nodes.filter(node => node.bundleNodeKind === 'file'
-        && additions.has(node.sourceFile?.path ?? bundleNodeKeySourceGraphPath(node.bundleNodeKey)) && !configuredPaths.has(node.sourceFile?.path ?? bundleNodeKeySourceGraphPath(node.bundleNodeKey)))
-        .map(node => node.bundleNodeKey);
-      if (nodeKeys.length) trackingRequest = { snapshotId: candidate.id, nodeKeys };
-    }
     if (token !== sha256(`${state.acceptedId}\0${state.candidateId ?? ''}\0${sourceConfigFingerprint(bundleDirectory)}`)) throw new SourcingError('Curation changed while applying. Review the source update again.');
     const acceptedAt = new Date().toISOString();
     installAcceptedSnapshot(bundleDirectory, state, {
       version: 1, storage: "git", acceptedId: candidate.id, history: state.candidateId ? [...state.history, snapshotSummary(candidate, acceptedAt)] : state.history,
-    }, next, trackNewPages, proposal);
+    }, next, proposal);
     rememberReachableProvenance(bundleDirectory, candidate, graph, next);
     writeSourcingJson(path.join(sourcingRoot(bundleDirectory), state.candidateId ? `acceptance-${candidate.id}.json` : `orphan-cleanup-${randomUUID()}.json`), {
-      snapshotId: candidate.id, acceptedAt, previousSnapshotId: state.acceptedId, resolutions, trackNewPages, trackingRequest, orphanRemovals: [...removals],
+      snapshotId: candidate.id, acceptedAt, previousSnapshotId: state.acceptedId, resolutions, orphanRemovals: [...removals],
     });
     await commitChangesNative([path.join(bundleDirectory, 'config'), sourcingRoot(bundleDirectory)],
       `accept source snapshot for ${path.basename(bundleDirectory)}`, { configDir: getConfigDirectory() });
   });
-  return { ...await sourcingReview(bundleDirectory), ...(trackingRequest && { trackingRequest }) };
+  return await sourcingReview(bundleDirectory);
 }
 
 export function sourceComparison(bundleDirectory: string, beforeId: string, afterId: string, beforePath: string, afterPath: string): {
@@ -407,5 +394,3 @@ export function sourceSnapshotHistory(bundleDirectory: string): SourceSnapshotHi
   return { acceptedId: state?.acceptedId ?? null, snapshots: state?.history ?? [],
     ...(acceptances.length > 0 && { acceptances: acceptances as SourceSnapshotHistory['acceptances'] }) };
 }
-
-import { bundleNodeKeySourceGraphPath } from '../../../../../../../shared_code/utils/bundleNodeKey.js';

@@ -33,8 +33,7 @@ test('Deferred proposals revalidate explicit tracking after accepted sensitivity
   await sourceCommand(() => sourcing.open());
   for (const name of ['Safe One', 'Safe Two']) {
     await sourceCommand(() => sourcing.select(name));
-    await sourceCommand(() => expect(sourcing.selectedPage.getByText('Tracked', { exact: true })).toBeVisible());
-    await sourceCommand(() => sourcing.untrackSelected());
+    await sourceCommand(() => expect(sourcing.selectedPage.getByText('Not Tracked', { exact: true })).toBeVisible());
     await sourceCommand(() => sourcing.trackSelected());
   }
   for (const name of ['Safe One', 'Safe Two']) expect(proposal.current.tracking[`file:Additions/${name}.md`]).toMatchObject({ track: true, origin: 'explicit' });
@@ -69,8 +68,6 @@ test('Deferred proposals revalidate explicit tracking after accepted sensitivity
   await sourceCommand(() => expect(sourcing.selectedPage.getByText('Not Tracked', { exact: true })).toBeVisible());
   await sourceCommand(() => checkpoint('one sensitive page is explicitly reconfirmed and the other is left untracked'));
   await sourceCommand(() => sourcing.accept());
-  await sourceCommand(() => editor.sourceReview.trackingNotice.expectSensitiveSkipped(1));
-  await sourceCommand(() => editor.sourceReview.trackingNotice.close());
   const nodes = YAML.parse(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).nodes;
   expect(nodes.some((node: { bundleNodeName: string }) => node.bundleNodeName === 'Safe One')).toBe(true);
   expect(nodes.some((node: { bundleNodeName: string }) => node.bundleNodeName === 'Safe Two')).toBe(false);

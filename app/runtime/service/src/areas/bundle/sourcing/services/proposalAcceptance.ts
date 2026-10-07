@@ -102,9 +102,7 @@ export async function acceptSourceProposal(directory: string, token: string) {
       const node = graph.nodes.find(item => item.bundleNodeKey === key);
       if (!node) continue;
       if (decision.track) trackingOutcome.trackedNodeKeys.push(node.bundleNodeKey);
-      else if (decision.origin === 'automatic' && configuration.bundle.trackNewPages !== false && review.trackingTargets[key]?.sensitivity) {
-        trackingOutcome.sensitiveSkipped.push({ bundleNodeKey: node.bundleNodeKey, bundleNodeName: node.bundleNodeName });
-      }
+
     }
     return { accepted: snapshotSummary(candidate, now), proposalId: current.id, trackingOutcome };
   });

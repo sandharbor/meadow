@@ -47,11 +47,11 @@ test('Sourcing previews folder blacklist and unblacklist reachability consequenc
   await sourceCommand(() => expect(sourcing.root).toBeVisible());
   expect(configuration()).toEqual(original);
   await sourceCommand(() => sourcing.select('Outside'));
-  await sourceCommand(() => expect(sourcing.evidence).toContainText('departing'));
-  await sourceCommand(() => expect(sourcing.evidence).toContainText('Orphaned configuration'));
+  await sourceCommand(() => expect(sourcing.evidence).toContainText('Change: Removed'));
+  await sourceCommand(() => sourcing.expectSelectedRemovalReason('Not reachable'));
   await sourceCommand(() => sourcing.select('Retained'));
-  await sourceCommand(() => expect(sourcing.evidence).toContainText('Reference'));
-  await sourceCommand(() => expect(sourcing.evidence).toContainText('Unchanged source material'));
+  await sourceCommand(() => sourcing.expectSelectedRoute(['Routes', 'Reference', 'Retained']));
+  await sourceCommand(() => sourcing.expectNoSelectedSourceChange());
   await sourceCommand(() => addKeyFrame(sourceReviewWorkspace));
   await sourceCommand(() => checkpoint('folder exclusion previews departures outside its subtree and the independent route'));
   await sourceCommand(() => sourcing.accept());
@@ -64,7 +64,7 @@ test('Sourcing previews folder blacklist and unblacklist reachability consequenc
   await sourceCommand(() => page.getByRole('button', { name: 'Remove from Blacklist', exact: true }).click());
   await sourceCommand(() => expect(sourcing.root).toBeVisible());
   await sourceCommand(() => sourcing.select('Outside'));
-  await sourceCommand(() => expect(sourcing.evidence).toContainText('Newly included'));
+  await sourceCommand(() => expect(sourcing.evidence).toContainText('Change: Added'));
   await sourceCommand(() => checkpoint('unblacklisting the folder stages the returning pages as a proposed expansion'));
   await sourceCommand(() => sourcing.accept());
   await sourceCommand(() => editor.switchToListView());

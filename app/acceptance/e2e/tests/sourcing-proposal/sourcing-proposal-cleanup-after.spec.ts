@@ -41,9 +41,8 @@ test('Acceptance cleans unreachable configuration for both scope exclusions and 
   await sourceCommand(() => sourcing.setSelectedBlacklisted(true));
   for (const name of ['Leaf', 'Departing', 'Outside']) {
     await sourceCommand(() => sourcing.select(name));
-    await sourceCommand(() => expect(sourcing.evidence).toContainText('departing'));
-    await sourceCommand(() => expect(sourcing.evidence).toContainText('Orphaned configuration'));
-    await sourceCommand(() => expect(sourcing.evidence).toContainText('No longer reachable'));
+    await sourceCommand(() => expect(sourcing.evidence).toContainText('Change: Removed'));
+    await sourceCommand(() => sourcing.expectSelectedRemovalReason('Not reachable'));
   }
   expect(nodes()).toEqual(original);
   await sourceCommand(() => expect(page.getByRole('button', { name: 'Keep in config', exact: true })).toHaveCount(0));
@@ -59,9 +58,9 @@ test('Acceptance cleans unreachable configuration for both scope exclusions and 
   await sourceCommand(() => editor.rightClickRow('Bridge'));
   await sourceCommand(() => page.getByRole('button', { name: 'Remove from Blacklist', exact: true }).click());
   await sourceCommand(() => expect(sourcing.root).toBeVisible());
-  await sourceCommand(() => sourcing.root.getByRole('checkbox', { name: 'Track non-sensitive added pages', exact: true }).uncheck());
+  await sourceCommand(() => sourcing.expectNoAutomaticTrackingOption());
   await sourceCommand(() => sourcing.select('Departing'));
-  await sourceCommand(() => expect(sourcing.evidence).toContainText('Newly included'));
+  await sourceCommand(() => expect(sourcing.evidence).toContainText('Change: Added'));
   await sourceCommand(() => expect(sourcing.selectedPage.getByText('Not Tracked', { exact: true })).toBeVisible());
   await sourceCommand(() => checkpoint('returning pages have fresh tracking choices without the cleaned override'));
   await sourceCommand(() => sourcing.accept());

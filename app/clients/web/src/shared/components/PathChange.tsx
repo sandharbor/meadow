@@ -27,20 +27,22 @@ function Highlight({ before, after, side, directories = false }: { before: strin
     : <ins key={index} className="rounded bg-main-50 px-0.5 text-main-900 no-underline">{fragment}</ins>)}{delta.suffix}</>;
 }
 
-export function PathChange({ before, after }: { before: string; after: string }) {
+export function PathChange({ before, after, compact = false }: { before: string; after: string; compact?: boolean }) {
   before = useSourcePath(before); after = useSourcePath(after);
   const old = splitSourcePathLabel(before); const next = splitSourcePathLabel(after);
   const moved = old.directory !== next.directory;
   const renamed = old.filename !== next.filename;
+  const showDirectory = !compact || moved || !renamed;
+  const showFilename = !compact || renamed || !moved;
   const kind = moved && renamed ? 'Moved and renamed' : moved ? 'Moved' : renamed ? 'Renamed' : 'Unchanged';
   return <span role="group" aria-label={`${kind}: ${before} → ${after}`} title={`${before} → ${after}`} className="block min-w-0" data-testid="source-path-change">
-    <span aria-hidden="true" className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
+    <span aria-hidden="true" className={`flex flex-wrap items-baseline gap-y-1 ${compact ? 'gap-x-1' : 'gap-x-2 text-sm'}`}>
       {(['before', 'after'] as const).map(side => {
         const value = side === 'before' ? old : next;
         return <span key={side} className="contents">
           {side === 'after' && <span className="text-amber-500">→</span>}
           <span data-testid={`source-path-${side}`} className="min-w-0 max-w-full [overflow-wrap:anywhere]">
-            <span className="text-neutral-500"><Highlight before={old.directory} after={next.directory} side={side} />{value.separator && <span className="mx-1 text-neutral-400">{value.separator}</span>}</span><span className="font-medium text-neutral-700"><Highlight before={old.filename} after={next.filename} side={side} /></span>
+            {showDirectory && <span className="text-neutral-500">{!showFilename && !value.directory ? 'Source root' : <Highlight before={old.directory} after={next.directory} side={side} directories={compact && !showFilename} />}{showFilename && value.separator && <span className="mx-1 text-neutral-400">{value.separator}</span>}</span>}{showFilename && <span className="font-medium text-neutral-700"><Highlight before={old.filename} after={next.filename} side={side} /></span>}
           </span>
         </span>;
       })}

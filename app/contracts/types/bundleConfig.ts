@@ -41,7 +41,7 @@ export interface BundleConfig {
   defaultTraversalBundleNodeId?: BundleNodeId;
   defaultOutlinksDepth?: number;
   defaultInlinksDepth?: number;
-  /** Request safe bulk tracking for newly added pages after accepting source updates (default: true). Initial capture is unaffected. */
+  /** @deprecated Retained for reading older configuration; additions start untracked. */
   trackNewPages?: boolean;
   archivedAt?: string | null;
   bundleCreatedAt?: string;

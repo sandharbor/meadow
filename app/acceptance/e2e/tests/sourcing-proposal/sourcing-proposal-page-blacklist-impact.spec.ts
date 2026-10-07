@@ -39,12 +39,12 @@ test('Sourcing previews page blacklist effects beyond the selected page', { anno
   await sourceCommand(() => expect(sourcing.root).toBeVisible());
   expect(fs.readFileSync(configPath, 'utf8')).toBe(saved);
   await sourceCommand(() => sourcing.select('Outside'));
-  await sourceCommand(() => expect(sourcing.evidence).toContainText('departing'));
-  await sourceCommand(() => expect(sourcing.evidence).toContainText('Orphaned configuration'));
-  await sourceCommand(() => expect(sourcing.evidence).toContainText('Start → Bridge → Departing'));
+  await sourceCommand(() => expect(sourcing.evidence).toContainText('Change: Removed'));
+  await sourceCommand(() => sourcing.expectSelectedRemovalReason('Not reachable'));
+  await sourceCommand(() => sourcing.expectSelectedRoute(['Start', 'Bridge', 'Departing']));
   await sourceCommand(() => sourcing.select('Retained'));
-  await sourceCommand(() => expect(sourcing.evidence).toContainText('Unchanged source material'));
-  await sourceCommand(() => expect(sourcing.evidence).toContainText('Reference'));
+  await sourceCommand(() => sourcing.expectNoSelectedSourceChange());
+  await sourceCommand(() => sourcing.expectSelectedRoute(['Start', 'Reference', 'Retained']));
   await sourceCommand(() => addKeyFrame(sourceReviewWorkspace));
   await sourceCommand(() => checkpoint('wider departures remain inspectable while an independent route retains its page'));
 
@@ -52,8 +52,7 @@ test('Sourcing previews page blacklist effects beyond the selected page', { anno
   await sourceCommand(() => sourcing.select('Bridge'));
   await sourceCommand(() => sourcing.setSelectedBlacklisted(false));
   await sourceCommand(() => sourcing.select('Departing'));
-  await sourceCommand(() => expect(sourcing.evidence).toContainText('Unchanged source material'));
-  await sourceCommand(() => expect(sourcing.evidence).not.toContainText('Orphaned configuration'));
+  await sourceCommand(() => sourcing.expectNoSelectedSourceChange());
   expect(proposal.current.proposed.nodes.find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Departing')?.outlinksDepth).toBe(1);
   expect(fs.readFileSync(configPath, 'utf8')).toBe(saved);
   await sourceCommand(() => checkpoint('reversing the exclusion restores the page and its saved depth setting'));

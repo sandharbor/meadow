@@ -37,7 +37,7 @@ test('Solo temporarily restores full prominence for faded unchanged context with
   await sourceCommand(() => sourcing.expectListOpacity('Reference', 1));
   await sourceCommand(() => sourcing.expectNodeVisible('Start', false));
   await sourceCommand(() => sourcing.select('Reference'));
-  await sourceCommand(() => expect(sourcing.evidence).toContainText('Unchanged source material'));
+  await sourceCommand(() => sourcing.expectNoSelectedSourceChange());
   await sourceCommand(() => expect(sourcing.selectedPage.getByText('Not Tracked', { exact: true })).toBeVisible());
   await sourceCommand(() => addKeyFrame(graphFade));
   await sourceCommand(() => checkpoint('soloed untracked context has full prominence while Fade remains configured'));

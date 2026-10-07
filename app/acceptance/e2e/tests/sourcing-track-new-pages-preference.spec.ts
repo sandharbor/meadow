@@ -8,10 +8,9 @@ import { sourcingReviewRedesign, sourceSnapshot } from '../../../concepts/index.
 test.use({ bundleMode: "single-file" });
 
 /*
- * Turn off automatic tracking for newly accepted pages. A later source review should
- * remember that preference for the bundle.
+ * Accept new pages untracked. Later additions remain untracked after reopening the bundle.
  */
-test('Sourcing remembers the bundle preference to leave new pages untracked', { annotation: { type: 'scenario-id', description: '1529fd21-a754-4e10-aa6e-d48eff2a6f10' } }, async ({ sourceCommand, page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+test('Sourcing leaves later additions untracked after reopening the bundle', { annotation: { type: 'scenario-id', description: '1529fd21-a754-4e10-aa6e-d48eff2a6f10' } }, async ({ sourceCommand, page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   const workflows = new Workflows(page, expect);
   await sourceCommand(() => workflows.navigateToBigBundle());
@@ -24,9 +23,8 @@ test('Sourcing remembers the bundle preference to leave new pages untracked', { 
   await sourceCommand(() => sourceChanges.apply('add-linked-page'));
   await sourceCommand(() => editor.checkSourceChanges());
   await sourceCommand(() => editor.sourceReview.open());
-  await sourceCommand(() => editor.sourceReview.expectTrackNewPages(true));
-  await sourceCommand(() => editor.sourceReview.setTrackNewPages(false));
-  await sourceCommand(() => checkpoint('the new page is ready to accept with automatic tracking disabled'));
+  await sourceCommand(() => editor.sourceReview.expectNoAutomaticTrackingOption());
+  await sourceCommand(() => checkpoint('the new page is ready to accept without tracking'));
 
   // Accept the source update.
   await sourceCommand(() => editor.sourceReview.accept());
@@ -34,22 +32,22 @@ test('Sourcing remembers the bundle preference to leave new pages untracked', { 
   await sourceCommand(() => editor.clickListViewRowByExactName('added field notes'));
   await sourceCommand(() => new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect).expectPill(Pill.NotTracked));
   await sourceCommand(() => addKeyFrame(sourceSnapshot));
-  await sourceCommand(() => checkpoint('turning tracking off leaves the accepted addition untracked'));
+  await sourceCommand(() => checkpoint('acceptance leaves the accepted addition untracked'));
 
   // Reopen the bundle.
   await sourceCommand(() => editor.clickBackToBundles());
   await sourceCommand(() => new BundleListPage(page, expect).clickBundle(Bundle.Big));
   await sourceCommand(() => editor.waitForLoad(Bundle.Big));
   await sourceCommand(() => editor.waitForSourceCheck());
-  await sourceCommand(() => checkpoint('the bundle is reopened with its saved tracking preference'));
+  await sourceCommand(() => checkpoint('the bundle is reopened with its existing tracking choices'));
 
   // Add an embedded image.
   await sourceCommand(() => sourceChanges.apply('add-embedded-image'));
   await sourceCommand(() => editor.checkSourceChanges());
   await sourceCommand(() => editor.sourceReview.open());
-  await sourceCommand(() => editor.sourceReview.expectTrackNewPages(false));
+  await sourceCommand(() => editor.sourceReview.expectNoAutomaticTrackingOption());
   await sourceCommand(() => addKeyFrame(sourceSnapshot));
-  await sourceCommand(() => checkpoint('a later source review restores the saved bundle preference'));
+  await sourceCommand(() => checkpoint('a later source review also starts additions untracked'));
 
   // Accept the source update.
   await sourceCommand(() => editor.sourceReview.accept());

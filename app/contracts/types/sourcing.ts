@@ -91,7 +91,7 @@ export interface SourcingReview {
   trackingSensitivity?: Record<string, TrackingSensitivity>;
   /** Traversals evaluated separately against each snapshot, using the reviewed configuration. */
   traversalGraphs?: { accepted?: SourceTraversalGraph; candidate?: SourceTraversalGraph };
-  /** Bundle preference for requesting safe bulk tracking after acceptance; defaults to true. */
+  /** @deprecated Older review field; additions start untracked. */
   trackNewPages?: boolean;
   accepted: SourceSnapshotSummary;
   candidate?: SourceSnapshotSummary;
@@ -108,7 +108,7 @@ export interface SourceSnapshotAcceptanceResult extends SourcingReview {
 }
 
 export interface SourceSnapshotAcceptance {
-  /** Override and save this bundle’s preference when accepting the update. */
+  /** @deprecated Accepted for compatibility; ignored. Additions start untracked. */
   trackNewPages?: boolean;
   candidateId: string;
   reviewToken: string;

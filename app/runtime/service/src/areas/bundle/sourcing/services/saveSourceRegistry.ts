@@ -18,7 +18,6 @@ export async function saveSourceRegistry(directory: string, sources: BundleSourc
     if (!review.candidate || review.changes.length || review.moves.length || review.orphans.length) return;
     await acceptSourceSnapshot(directory, {
       candidateId: review.candidate.id, reviewToken: review.reviewToken, resolutions: {},
-      trackNewPages: review.trackNewPages,
     });
   }));
 }

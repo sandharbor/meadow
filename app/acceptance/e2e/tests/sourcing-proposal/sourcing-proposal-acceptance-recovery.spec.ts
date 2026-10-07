@@ -46,6 +46,8 @@ test('Failed proposal acceptance preserves accepted state and recoverable node a
   await sourceCommand(() => sourceChanges.apply('recovery-material', 'sourcing-review-data'));
   await sourceCommand(() => editor.checkSourceChanges());
   await sourceCommand(() => sourcing.open());
+  await sourceCommand(() => sourcing.select('Safe One'));
+  await sourceCommand(() => sourcing.trackSelected());
   await sourceCommand(() => sourcing.select('Reference'));
   await sourceCommand(() => sourcing.untrackSelected());
   await sourceCommand(() => sourcing.select('Bridge'));

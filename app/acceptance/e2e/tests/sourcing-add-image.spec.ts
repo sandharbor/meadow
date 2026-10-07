@@ -8,10 +8,10 @@ import { sourcingReviewRedesign, sourceSnapshot } from '../../../concepts/index.
 test.use({ bundleMode: 'single-file' });
 
 /*
- * Add a reachable image and inspect its proposed inclusion route. Acceptance should track
+ * Add a reachable image and inspect its proposed inclusion route. Explicit tracking should retain
  * the new image without changing the accepted graph beforehand.
  */
-test('Sourcing previews an added image and its inclusion route before tracking it on acceptance', { annotation: { type: 'scenario-id', description: 'bf4dde21-65c3-4632-ab21-f1b8b5f23e6e' } }, async ({ sourceCommand, page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+test('Sourcing previews an added image and its inclusion route before explicitly tracking it', { annotation: { type: 'scenario-id', description: 'bf4dde21-65c3-4632-ab21-f1b8b5f23e6e' } }, async ({ sourceCommand, page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
   const editor = new BundleEditorPage(page, expect);
@@ -27,7 +27,9 @@ test('Sourcing previews an added image and its inclusion route before tracking i
   await sourceCommand(() => addKeyFrame(sourceSnapshot));
   await sourceCommand(() => checkpoint('the shared added image has a thumbnail and a real inclusion route'));
 
-  // Accept the source update.
+  // Track the inspected image through the ordinary controls, then accept.
+  await sourceCommand(() => editor.sourceReview.closeComparison());
+  await sourceCommand(() => editor.sourceReview.trackSelected());
   await sourceCommand(() => editor.sourceReview.accept());
   await sourceCommand(() => editor.switchToListView());
   await sourceCommand(() => editor.clickListViewRowByExactName('added sunflower'));

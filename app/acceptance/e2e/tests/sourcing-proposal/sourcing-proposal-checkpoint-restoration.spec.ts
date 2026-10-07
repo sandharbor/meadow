@@ -45,7 +45,6 @@ test('Fresh Dev Tools forks restore both mode views and exact modal tabs from ch
   await sourceCommand(() => panel.editCustomFilter('Fork review settings'));
   await sourceCommand(() => panel.saveCustomFilterEdits({ note: 'Proposed fork definition' }));
   await sourceCommand(() => sourcing.select('Safe One'));
-  await sourceCommand(() => sourcing.untrackSelected());
   await sourceCommand(() => sourcing.trackSelected());
   await sourceCommand(() => sourcing.select('Leaf'));
   await sourceCommand(() => sourcing.untrackSelected());

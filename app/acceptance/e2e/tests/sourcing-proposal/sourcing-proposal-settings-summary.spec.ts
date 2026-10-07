@@ -63,7 +63,7 @@ test('Sourcing summarizes staged settings and tracking edits without adding a gr
   await sourceCommand(() => summaryButton.click());
   await sourceCommand(() => filters.enableAndSoloFilter('Untracked'));
   await sourceCommand(() => sourcing.select('Reference'));
-  await sourceCommand(() => expect(sourcing.evidence).toContainText('Unchanged source material'));
+  await sourceCommand(() => sourcing.expectNoSelectedSourceChange());
   await sourceCommand(() => expect(sourcing.selectedPage.getByText('Not Tracked', { exact: true })).toBeVisible());
   await sourceCommand(() => expect(sourcing.root.getByRole('checkbox', { name: /Staged decision/ })).toHaveCount(0));
   await sourceCommand(() => checkpoint('the ordinary Untracked filter shows an unchanged page with a staged untrack choice'));

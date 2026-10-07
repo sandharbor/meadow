@@ -32,7 +32,6 @@ export function SourcingWorkspace({ bundleSlug, onClose, onAccepted, requestedPa
   const graphRef = useRef(graph);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [pendingPreference, setPendingPreference] = useState<boolean | null>(null);
   const [mutating, setBusy] = useState(false);
   const [loadingCount, setLoadingCount] = useState(0);
   const busyRef = useRef(false);
@@ -172,11 +171,6 @@ export function SourcingWorkspace({ bundleSlug, onClose, onAccepted, requestedPa
       {Boolean(review?.orphans.length) && <button onClick={() => setDialog('cleanup')}>Configuration cleanup · {review?.orphans.length}</button>}
       {Boolean(review?.conflicts.length) && <button className="text-amber-800 underline" onClick={() => setDialog('conflicts')}>Resolve {review?.conflicts.length} configuration conflicts</button>}
       {sensitiveCount > 0 && <button className="text-amber-800 underline" onClick={() => setDialog('sensitivity')}>Review {sensitiveCount} tracking choices</button>}
-      {review && <label className="flex items-center gap-2"><input type="checkbox" disabled={busy} checked={pendingPreference ?? (review.configuration.bundle.trackNewPages !== false)} onChange={event => {
-        const trackNewPages = event.target.checked;
-        setPendingPreference(trackNewPages);
-        void configure({ ...review.proposal.proposed, bundle: { ...review.proposal.proposed.bundle, trackNewPages } }).catch(() => {}).finally(() => setPendingPreference(null));
-      }} />Track non-sensitive added pages</label>}
       {review && <ProposalSettingsSummary review={review} bundleSlug={bundleSlug} />}
       <span className="text-xs text-neutral-500">View filters affect presentation. Accept applies the entire proposal.</span>
     </div>

@@ -28,6 +28,7 @@ test('Sourcing identity choices remain revisable only while the proposal is pend
   await sourceCommand(() => list.goto());
   await sourceCommand(() => list.clickBundle('sourcing-review'));
   await sourceCommand(() => editor.waitForLoad('sourcing-review'));
+  await sourceCommand(() => editor.waitForSourceCheck());
   await sourceCommand(() => sourceChanges.apply('rename-review-pages', 'sourcing-review-data'));
   await sourceCommand(() => editor.checkSourceChanges());
   await sourceCommand(() => sourcing.open());
@@ -39,7 +40,7 @@ test('Sourcing identity choices remain revisable only while the proposal is pend
   const pendingId = proposal.current.id;
   await sourceCommand(() => sourcing.select('Gateway'));
   await sourceCommand(() => sourcing.untrackSelected());
-  await sourceCommand(() => expect(sourcing.evidence).toContainText('Routes/Branch/Bridge.md'));
+  await sourceCommand(() => sourcing.expectSelectedRename('Routes/Branch/Bridge.md', 'Routes/Branch/Gateway.md'));
   await sourceCommand(() => sourcing.expectNodeVisible('Bridge', false));
   await sourceCommand(() => checkpoint('a confirmed renamed identity has an explicit pending untrack choice'));
 
@@ -49,7 +50,7 @@ test('Sourcing identity choices remain revisable only while the proposal is pend
   await sourceCommand(() => sourcing.chooseIdentity('100000000002', null));
   await sourceCommand(() => sourcing.continueToGraph());
   await sourceCommand(() => sourcing.select('Gateway'));
-  await sourceCommand(() => expect(sourcing.evidence).toContainText('Newly included'));
+  await sourceCommand(() => expect(sourcing.evidence).toContainText('Change: Added'));
   await sourceCommand(() => sourcing.expectNodeVisible('Bridge'));
   await sourceCommand(() => expect(sourcing.root.getByRole('button', { name: 'Accept changes', exact: true })).toBeDisabled());
   await sourceCommand(() => sourcing.reviewTrackingChoices(1));

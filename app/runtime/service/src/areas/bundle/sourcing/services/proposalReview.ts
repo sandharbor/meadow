@@ -2,12 +2,11 @@
 
 import type { SourceProposalReview, PendingSourceProposal } from '../../../../../../../contracts/types/sourcingProposal.js';
 import { sameProposalValue } from '../../../../../../../shared_code/utils/proposalConfigurationMerge.js';
-import { bundleNodeKeyFromConfig, fileNodeKeyFromSourceFilePath, serializeBundleNodeKey } from '../../../../../../../shared_code/utils/bundleNodeKey.js';
+import { bundleNodeKeyFromConfig, serializeBundleNodeKey } from '../../../../../../../shared_code/utils/bundleNodeKey.js';
 import { sourcingQueryPrepareProposalTracking } from '../../curation/exported.js';
 import { relinkSourceNode, explainSourceOrphans } from './sourceReview.js';
 import { proposalMoveEvidence } from './proposalMoveEvidence.js';
 import { beginSourceProposal, loadProposalConfiguration, sourceProposalConfigurationReview, saveSourceProposal } from './proposalStore.js';
-import { equivalentSnapshotPath } from '../../../../shared/source-snapshot/sourceRegistrySnapshots.js';
 import { availableSnapshotGraph, loadSourceSnapshot, missingSnapshotRoles, sha256, snapshotSummary, SourcingError,
   withSourcingLock } from '../../../../shared/source-snapshot/sourceSnapshots.js';
 
@@ -20,6 +19,16 @@ export async function reviewSourceProposal(directory: string): Promise<SourcePro
   await beginSourceProposal(directory);
   return withSourcingLock(directory, async () => {
     let proposal = await beginSourceProposal(directory);
+    // Older pending proposals may contain provisional automatic choices. Keep
+    // accepted configuration and explicit choices; discard only that provisional policy.
+    const automaticIds = new Set(Object.values(proposal.tracking).filter(decision => decision.origin === 'automatic').map(decision => decision.bundleNodeId));
+    if (automaticIds.size) {
+      const existingIds = new Set(proposal.original.nodes.map(node => node.bundleNodeId));
+      proposal = saveSourceProposal(directory, { ...proposal,
+        tracking: Object.fromEntries(Object.entries(proposal.tracking).filter(([, decision]) => decision.origin === 'explicit')),
+        proposed: { ...proposal.proposed, nodes: proposal.proposed.nodes.filter(node => !automaticIds.has(node.bundleNodeId) || existingIds.has(node.bundleNodeId)) },
+      }, proposal.revision);
+    }
     const saved = loadProposalConfiguration(directory);
     const { configuration, conflicts } = sourceProposalConfigurationReview(directory, proposal);
     const accepted = loadSourceSnapshot(directory, proposal.acceptedSnapshotId);
@@ -46,15 +55,12 @@ export async function reviewSourceProposal(directory: string): Promise<SourcePro
     const missingRequiredEntries = [...new Set([...(proposal.requiredEntryRepair ?? []), ...missingSnapshotRoles(candidate, configuration.bundle, configuration.nodes).map(node => node.bundleNodeName)])];
     let trackingTargets: SourceProposalReview['trackingTargets'] = {};
     if (!missingRequiredEntries.length && !unresolvedIdentities.length) {
-      const paired = new Set(moves.filter(move => proposal.identities[move.bundleNodeId] === move.newPath).map(move => move.newPath));
-      const addedKeys = Object.keys(candidate.files).filter(filename => !accepted.files[equivalentSnapshotPath(candidate, accepted, filename)] && !paired.has(filename))
-        .map(filename => serializeBundleNodeKey(fileNodeKeyFromSourceFilePath(filename)));
       const identities = Object.fromEntries(knownIdentities.filter(node => node.bundleNodeKind !== 'collection').map(node => {
         const destination = proposal.identities[node.bundleNodeId];
         const located = typeof destination === 'string' ? relinkSourceNode(node, destination, candidate.sources) : node;
         return [serializeBundleNodeKey(bundleNodeKeyFromConfig(located)), node.bundleNodeId];
       }));
-      const tracking = await sourcingQueryPrepareProposalTracking(directory, candidate.id, configuration, proposal.tracking, addedKeys, identities);
+      const tracking = await sourcingQueryPrepareProposalTracking(directory, candidate.id, configuration, proposal.tracking, identities);
       configuration.nodes = tracking.nodes;
       trackingTargets = tracking.targets;
       if (!sameProposalValue(tracking.tracking, proposal.tracking)) {

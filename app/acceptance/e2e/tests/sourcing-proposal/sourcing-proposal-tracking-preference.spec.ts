@@ -13,11 +13,11 @@ test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });
 
 /*
- * Safe additions follow the saved tracking preference; directly sensitive and filter-sensitive
- * additions remain untracked. An individual opt-out survives preference toggles. All source material
+ * All additions start untracked, including safe and sensitive pages. Explicit tracking
+ * and untracking use the ordinary selection controls and survive refresh. All source material
  * is accepted, the ordinary Untracked filter finds the remaining choices, and preview warns about them.
  */
-test('Sourcing shows provisional tracking preferences and permits untracked accepted additions', { annotation: { type: 'scenario-id', description: '33353032-44bd-4d0e-a8e8-e43617f5628f' } }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+test('Sourcing starts additions untracked and preserves explicit selection tracking', { annotation: { type: 'scenario-id', description: '33353032-44bd-4d0e-a8e8-e43617f5628f' } }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);
@@ -36,30 +36,33 @@ test('Sourcing shows provisional tracking preferences and permits untracked acce
   await sourceCommand(() => sourcing.open());
   for (const name of ['Safe One', 'Safe Two']) {
     await sourceCommand(() => sourcing.select(name));
-    await sourceCommand(() => expect(sourcing.selectedPage.getByText('Tracked', { exact: true })).toBeVisible());
+    await sourceCommand(() => expect(sourcing.selectedPage.getByText('Not Tracked', { exact: true })).toBeVisible());
   }
   for (const name of ['Secret', 'Policy Draft']) {
     await sourceCommand(() => sourcing.select(name));
     await sourceCommand(() => expect(sourcing.selectedPage.getByText('Not Tracked', { exact: true })).toBeVisible());
     await sourceCommand(() => expect(sourcing.selectedPage.getByText('Sensitive', { exact: true })).toBeVisible());
   }
+  await sourceCommand(() => sourcing.expectNoAutomaticTrackingOption());
+  await sourceCommand(() => filters.enableAndSoloFilter('Untracked'));
+  for (const name of ['Safe One', 'Safe Two', 'Secret', 'Policy Draft']) await sourceCommand(() => editor.expectListViewRowByExactNamePresent(name));
   await sourceCommand(() => addKeyFrame(sourceReviewSensitivity));
-  await sourceCommand(() => checkpoint('provisional tracking includes only safe additions under the current preference'));
-  await sourceCommand(() => sourcing.select('Safe Two'));
-  await sourceCommand(() => sourcing.untrackSelected());
-  await sourceCommand(() => sourcing.setTrackingPreference(false));
+  await sourceCommand(() => checkpoint('all additions start untracked and can be reviewed through the ordinary filter'));
+
+  // Track one inspected page and leave the others untracked.
   await sourceCommand(() => sourcing.select('Safe One'));
-  await sourceCommand(() => expect(sourcing.selectedPage.getByText('Not Tracked', { exact: true })).toBeVisible());
-  await sourceCommand(() => checkpoint('preference off removes the remaining automatic choice'));
-  await sourceCommand(() => sourcing.setTrackingPreference(true));
+  await sourceCommand(() => sourcing.trackSelected());
+  await sourceCommand(() => filters.clickSoloOnFilter('Untracked'));
+  await sourceCommand(() => sourcing.select('Safe Two'));
+  await sourceCommand(() => sourcing.trackSelected());
+  await sourceCommand(() => sourcing.untrackSelected());
+  await sourceCommand(() => sourcing.updateSources());
   await sourceCommand(() => sourcing.select('Safe One'));
   await sourceCommand(() => expect(sourcing.selectedPage.getByText('Tracked', { exact: true })).toBeVisible());
   await sourceCommand(() => sourcing.select('Safe Two'));
   await sourceCommand(() => expect(sourcing.selectedPage.getByText('Not Tracked', { exact: true })).toBeVisible());
-  await sourceCommand(() => checkpoint('preference on restores automatic tracking while preserving the explicit opt-out'));
+  await sourceCommand(() => checkpoint('explicit tracking choices survive refresh without automatic tracking'));
   await sourceCommand(() => sourcing.accept());
-  await sourceCommand(() => editor.sourceReview.trackingNotice.expectSensitiveSkipped(2));
-  await sourceCommand(() => editor.sourceReview.trackingNotice.close());
   const directory = path.join(testServer.configDir, 'bundles/sourcing-review');
   const nodes = YAML.parse(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).nodes;
   expect(nodes.some((node: { bundleNodeName: string }) => node.bundleNodeName === 'Safe One')).toBe(true);

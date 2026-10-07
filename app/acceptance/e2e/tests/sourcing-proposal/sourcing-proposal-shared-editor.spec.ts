@@ -14,8 +14,9 @@ test.use({ fixtureHome: Fixture.SourcingReview });
 
 /*
  * Use the complete editor in each mode: folder and selection solos, labels, hidden nodes, graph/list
- * selection, resize and page details. Curation inspects accepted material; sourcing supplies source
- * evidence and stages its tracking action until acceptance. Returning through Later preserves both.
+ * selection, resize and page details. Curation inspects accepted material; sourcing stages tracking
+ * until acceptance. Unchanged pages retain normal details without a source-change card, and Later
+ * preserves both modes' choices.
  */
 test('Sourcing and curation share full editor behavior while retaining mode-specific ownership', { annotation: { type: 'scenario-id', description: '8200e571-3323-4e87-8ca1-817d55a94bee' } }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
   // --- Setup ---
@@ -70,15 +71,11 @@ test('Sourcing and curation share full editor behavior while retaining mode-spec
       await sourceCommand(() => checkpoint('curation supplies the full graph list filters details and selection tools'));
       await sourceCommand(() => editor.clickSelectNone());
     } else {
-      await sourceCommand(() => expect(sourcing.evidence).toContainText('Accepted location and route'));
-      await sourceCommand(() => expect(sourcing.evidence).toContainText('Proposed location and route'));
+      await sourceCommand(() => sourcing.expectNoSelectedSourceChange());
       await sourceCommand(() => sourcing.untrackSelected());
       expect(fs.readFileSync(configPath, 'utf8')).toBe(acceptedConfig);
-      await sourceCommand(() => sourcing.root.getByRole('button', { name: 'Compare captured content', exact: true }).click());
-      await sourceCommand(() => expect(sourcing.comparison).toContainText('Reference'));
-      await sourceCommand(() => sourcing.closeComparison());
       await sourceCommand(() => addKeyFrame(sourceReviewWorkspace));
-      await sourceCommand(() => checkpoint('sourcing supplies the same editor with captured evidence and isolated tracking'));
+      await sourceCommand(() => checkpoint('sourcing supplies the same editor and isolated tracking without change evidence for unchanged pages'));
     }
   }
   await sourceCommand(() => sourcing.later());

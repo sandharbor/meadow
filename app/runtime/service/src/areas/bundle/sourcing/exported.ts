@@ -12,4 +12,3 @@
 
 export { createSourcingRoutes as appShellCommandCreateSourcingRoutes } from './routes/sourcingRoutes.js';
 export { acceptSnapshotCommand as appShellCommandAcceptSourceSnapshot } from './services/acceptSnapshotCommand.js';
-export { sourcingReview as appShellQuerySourceReview } from './services/sourceReview.js';

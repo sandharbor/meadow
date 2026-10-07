@@ -30,7 +30,7 @@ export class SourcingWorkspacePage {
     const deselect = this.root.getByTitle('Deselect', { exact: true });
     while (await deselect.count()) await deselect.first().click();
     await this.root.locator('tr').filter({ has: this.page.getByText(name, { exact: true }) }).click();
-    await this.expect(this.root.getByRole('region', { name: 'Source review evidence', exact: true })).toBeVisible();
+    await this.expect(this.selectedPage).toBeVisible();
   }
   async addToSelection(name: string) {
     await this.root.locator('tr').filter({ has: this.page.getByText(name, { exact: true }) }).click();
@@ -44,6 +44,71 @@ export class SourcingWorkspacePage {
   }
   get selectedPage() { return this.root.locator('[data-testid^="selected-page-"]'); }
   get evidence() { return this.root.getByRole('region', { name: 'Source review evidence', exact: true }); }
+  async expectNoSelectedSourceChange() {
+    await this.expect(this.selectedPage).toBeVisible();
+    await this.expect(this.evidence).toHaveCount(0);
+    await this.expect(this.selectedPage.getByRole('button', { name: 'Details', exact: true })).toBeVisible();
+  }
+  async expectSelectedRename(before: string, after: string) {
+    const change = this.evidence.getByTestId('source-path-change');
+    await this.expect(change).toHaveAttribute('title', `${before} → ${after}`);
+    await this.expect(this.evidence).not.toContainText('location and route');
+    const directory = (value: string) => value.slice(0, Math.max(0, value.lastIndexOf('/')));
+    const filename = (value: string) => value.slice(value.lastIndexOf('/') + 1);
+    if (directory(before) === directory(after)) {
+      await this.expect(change.getByTestId('source-path-before')).toHaveText(filename(before));
+      await this.expect(change.getByTestId('source-path-after')).toHaveText(filename(after));
+    } else if (filename(before) === filename(after)) {
+      await this.expect(change.getByTestId('source-path-before')).toHaveText(directory(before) || 'Source root');
+      await this.expect(change.getByTestId('source-path-after')).toHaveText(directory(after) || 'Source root');
+    }
+    await this.expect(this.evidence.getByRole('button', { name: 'See file content changes', exact: true })).toBeVisible();
+  }
+  async expectSelectedRemovalReason(label: 'Source missing' | 'Not reachable' | 'Disconnected') {
+    await this.expect(this.selectedPage.getByRole('button', { name: 'Details before removal', exact: true })).toBeVisible();
+    const details = this.evidence.locator('details');
+    if (await details.getAttribute('open') === null) await details.getByText('Details', { exact: true }).click();
+    await this.expect(details.getByText(label, { exact: true })).toBeVisible();
+    const descriptions = { 'Source missing': 'Missing on disk when the proposed capture was made.', 'Not reachable': 'Excluded by the proposed traversal, links, or blacklist boundaries.', Disconnected: 'Its source was removed from the proposed registry.' };
+    await this.expect(details.getByText(descriptions[label], { exact: true })).toBeVisible();
+    await this.expect(this.evidence).not.toContainText('location and route');
+    await this.expect(this.evidence).not.toContainText('Orphaned configuration');
+  }
+  async expectSelectedRoute(names: string[]) {
+    await new SelectedPageDetailComponent(this.selectedPage, this.expect).openDetails();
+    for (const name of names) await this.expect(this.selectedPage.getByTestId('selected-node-details').getByText(name, { exact: true }).filter({ visible: true }).first()).toBeVisible();
+  }
+  async expectRemovedLineCount(count: number) {
+    await this.expect(this.evidence.getByTestId('source-line-counts')).toHaveAttribute('aria-label', `${count} removed lines`);
+    await this.expect(this.evidence.getByText(`-${count}`, { exact: true })).toBeVisible();
+    await this.expect(this.evidence.getByText(/^\+/)).toHaveCount(0);
+  }
+  async seePreviousContent(text: string) {
+    await this.evidence.getByRole('button', { name: 'See previous content', exact: true }).click();
+    await this.expect(this.comparison.getByRole('region', { name: 'Previous source content', exact: true })).toContainText(text);
+    await this.expect(this.comparison.getByRole('table')).toHaveCount(0);
+  }
+  async expectSelectedLineCounts(added: number, removed: number) {
+    const counts = this.evidence.getByTestId('source-line-counts');
+    await this.expect(counts).toHaveAttribute('aria-label', `${added} added lines, ${removed} removed lines`);
+    await this.expect(counts.getByText(`+${added}`, { exact: true })).toHaveCSS('color', 'rgb(5, 150, 105)');
+    await this.expect(counts.getByText(`-${removed}`, { exact: true })).toHaveCSS('color', 'rgb(220, 38, 38)');
+  }
+  async expectSelectedChangeSummary(name: string, kind: 'Added' | 'Renamed' | 'Modified' | 'Removed') {
+    await this.expect(this.evidence).toContainText(`Change: ${kind}`);
+    const colors = { Added: 'rgb(22, 163, 74)', Renamed: 'rgb(147, 51, 234)', Modified: 'rgb(37, 99, 235)', Removed: 'rgb(220, 38, 38)' };
+    await this.expect(this.evidence).toHaveCSS('border-color', colors[kind]);
+    const title = this.selectedPage.locator(':scope > div').first().getByText(name, { exact: true });
+    const titleBox = (await title.boundingBox())!;
+    this.expect((await this.evidence.boundingBox())!.y).toBeGreaterThanOrEqual(titleBox.y + titleBox.height);
+    await this.expect(this.evidence.getByRole('button', { name: kind === 'Removed' ? 'See previous content' : kind === 'Renamed' ? 'See file content changes' : kind === 'Added' ? 'See content' : 'See changes', exact: true })).toBeVisible();
+    if (kind === 'Added') await this.expect(this.evidence).not.toContainText('location and route');
+    if (kind === 'Modified') {
+      await this.expect(this.evidence).not.toContainText('location and route');
+      await this.expect(this.evidence).not.toContainText('Content differs');
+      await this.expect(this.evidence).not.toContainText('.md');
+    }
+  }
   async setSelectedBlacklisted(blacklisted: boolean) {
     await this.selectedPage.getByTitle('More options', { exact: true }).click();
     await Promise.all([
@@ -59,11 +124,8 @@ export class SourcingWorkspacePage {
     await this.expect(this.reviewActionsButton).toBeEnabled();
     await this.expect(this.selectedPage.getByText('Tracked', { exact: true })).toBeVisible();
   }
-  async setTrackingPreference(enabled: boolean) {
-    await Promise.all([
-      this.page.waitForResponse(response => response.url().endsWith('/sourcing/proposal/configuration') && response.ok(), { timeout: 10000 }),
-      this.root.getByRole('checkbox', { name: 'Track non-sensitive added pages', exact: true }).setChecked(enabled),
-    ]);
+  async expectNoAutomaticTrackingOption() {
+    await this.expect(this.root.getByRole('checkbox', { name: 'Track non-sensitive added pages', exact: true })).toHaveCount(0);
   }
   async untrackSelected() {
     await this.selectedPage.getByTitle('More options', { exact: true }).click();
@@ -82,7 +144,7 @@ export class SourcingWorkspacePage {
   }
   async compare(name: string) {
     await this.select(name);
-    await this.root.getByRole('button', { name: 'Compare captured content', exact: true }).click();
+    await this.root.getByRole('button', { name: /^(See content|See changes|See file content changes|See previous content)$/ }).click();
     await this.expect(this.comparison).toBeVisible();
     await this.expect(this.comparison.getByRole('region', { name: 'Source content comparison' })).toBeVisible();
   }

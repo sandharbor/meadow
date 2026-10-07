@@ -115,30 +115,26 @@ describe('source snapshots with the shared big graph', () => {
     expect(loadSourcingState(bundle)!.acceptedId).toBe(state.acceptedId);
   });
 
-  it.each([true, false])('hands reviewed additions to curation according to the saved preference %s', async trackNewPages => {
+  it.each([true, false])('leaves reviewed additions untracked despite the legacy preference %s', async trackNewPages => {
     await initializeSourcing(bundle);
     const initialConfigs = loadSourceNodeConfigs(bundle);
     change('add-linked-page');
     let review = await scanSourceChanges(bundle);
-    expect(review.trackNewPages).toBe(true);
+    expect(review.trackNewPages).toBeUndefined();
     const accepted = await acceptSourceSnapshot(bundle, { candidateId: review.candidate!.id, reviewToken: review.reviewToken, resolutions: {}, trackNewPages });
-    expect(accepted.trackingRequest).toEqual(trackNewPages ? {
-      snapshotId: review.candidate!.id, nodeKeys: ['source-changes/added field notes.md'].map(sourceFilePathToBundleNodeKey),
-    } : undefined);
+    expect(accepted.trackingRequest).toBeUndefined();
     const removedIds = new Set(review.orphans.filter(orphan => !orphan.removalBlockedReason).map(orphan => orphan.bundleNodeId));
     expect(loadSourceNodeConfigs(bundle)).toEqual(initialConfigs.filter(node => !removedIds.has(node.bundleNodeId)));
     expect(fs.existsSync(path.join(acceptedSourceRoot(bundle), 'source-changes/added field notes.md'))).toBe(true);
     change('add-embedded-image');
     review = await scanSourceChanges(bundle);
-    expect(review.trackNewPages).toBe(trackNewPages);
+    expect(review.trackNewPages).toBeUndefined();
     const next = await acceptSourceSnapshot(bundle, { candidateId: review.candidate!.id, reviewToken: review.reviewToken, resolutions: {} });
-    expect(next.trackingRequest).toEqual(trackNewPages ? {
-      snapshotId: review.candidate!.id, nodeKeys: ['source-changes/added sunflower.png'].map(sourceFilePathToBundleNodeKey),
-    } : undefined);
+    expect(next.trackingRequest).toBeUndefined();
     expect(loadSourceNodeConfigs(bundle).some(node => node.bundleNodeName === 'added sunflower')).toBe(false);
   }, 20000);
 
-  it.each(['direct', 'filter', 'global', 'disabled-global', 'disabled-filter'])('curation safely tracks only reviewed additions with %s sensitivity', async mode => {
+  it.each(['direct', 'filter', 'global', 'disabled-global', 'disabled-filter'])('explicit curation bulk tracking respects %s sensitivity', async mode => {
     await initializeSourcing(bundle);
     change(`add-${mode === 'direct' ? 'direct' : 'filter'}-sensitive-pages`);
     const shouldSkip = !mode.startsWith('disabled-');
@@ -162,10 +158,10 @@ describe('source snapshots with the shared big graph', () => {
     const privateKeys = ['source-changes/added confidential notes.md', 'source-changes/added confidential planning.md'];
     expect(review.trackingSensitivity).toEqual(shouldSkip ? Object.fromEntries(privateKeys.map(key => [key, mode === 'direct' ? 'source' : 'filter'])) : {});
     const accepted = await sourceCurationWorkflow.accept(bundle, { candidateId: review.candidate!.id, reviewToken: review.reviewToken, resolutions: {}, trackNewPages: true });
-    expect(accepted.trackingOutcome?.error).toBeUndefined();
-    expect(accepted.trackingOutcome?.trackedNodeKeys).toEqual([...(shouldSkip ? [] : privateKeys), 'source-changes/added public update.md'].map(sourceFilePathToBundleNodeKey));
-    expect(accepted.reviewToken).toBe((await sourcingReview(bundle)).reviewToken);
-    expect(accepted.trackingOutcome?.sensitiveSkipped.map(node => node.bundleNodeKey)).toEqual(shouldSkip ? privateKeys.map(sourceFilePathToBundleNodeKey) : []);
+    expect(accepted.trackingOutcome).toBeUndefined();
+    const outcome = await trackSnapshotAdditions(bundle, { snapshotId: review.candidate!.id, nodeKeys: [...privateKeys, 'source-changes/added public update.md'].map(sourceFilePathToBundleNodeKey) });
+    expect(outcome.trackedNodeKeys).toEqual([...(shouldSkip ? [] : privateKeys), 'source-changes/added public update.md'].map(sourceFilePathToBundleNodeKey));
+    expect(outcome.sensitiveSkipped.map(node => node.bundleNodeKey)).toEqual(shouldSkip ? privateKeys.map(sourceFilePathToBundleNodeKey) : []);
     const added = loadSourceNodeConfigs(bundle).filter(node => node.bundleNodeName.startsWith('added '));
     expect(added.map(node => node.bundleNodeName)).toEqual([...(shouldSkip ? [] : ['added confidential notes', 'added confidential planning']), 'added public update']);
     expect(loadTrackingRecords(bundle)[added.find(node => node.bundleNodeName === 'added public update')!.bundleNodeId].lastReachable?.path).toBe('source-changes/added public update.md');
@@ -192,9 +188,8 @@ describe('source snapshots with the shared big graph', () => {
       candidateId: review.candidate!.id, reviewToken: review.reviewToken, resolutions: {}, trackNewPages: true,
     });
     expect(accepted.trackingOutcome?.error).toBeUndefined();
-    expect(accepted.trackingOutcome?.sensitiveSkipped.map(node => node.bundleNodeKey)).toEqual([
-      sourceFilePathToBundleNodeKey(filename),
-    ]);
+    expect(accepted.trackingOutcome).toBeUndefined();
+    expect(loadSourceNodeConfigs(bundle).some(node => node.bundleNodeName === 'added confidential drawing')).toBe(false);
     expect(fs.existsSync(path.join(acceptedSourceRoot(bundle), filename))).toBe(true);
   }, 20000);
 
@@ -205,8 +200,7 @@ describe('source snapshots with the shared big graph', () => {
     // Simulate a filter document becoming invalid after the user reviewed sources.
     fs.writeFileSync(path.join(bundle, 'config/custom_filters.json'), '{malformed');
     const accepted = await sourceCurationWorkflow.accept(bundle, { candidateId: review.candidate!.id, reviewToken: review.reviewToken, resolutions: {} });
-    expect(accepted.trackingOutcome?.error).toBeTruthy();
-    expect(accepted.trackingOutcome?.otherSkipped.map(node => node.bundleNodeKey)).toEqual(['source-changes/added field notes.md'].map(sourceFilePathToBundleNodeKey));
+    expect(accepted.trackingOutcome).toBeUndefined();
     expect(loadSourcingState(bundle)!.acceptedId).toBe(review.candidate!.id);
     expect(loadSourceNodeConfigs(bundle).some(node => node.bundleNodeName === 'added field notes')).toBe(false);
   }, 20000);
@@ -224,8 +218,10 @@ describe('source snapshots with the shared big graph', () => {
     }] }));
     const accepted = await sourceCurationWorkflow.accept(bundle, { candidateId: review.candidate!.id, reviewToken: review.reviewToken, resolutions: {} });
     expect(accepted.trackingOutcome?.error).toBeUndefined();
-    expect(accepted.trackingOutcome?.sensitiveSkipped).toHaveLength(2);
-    expect(accepted.trackingOutcome?.trackedNodeKeys).toEqual(['source-changes/added public update.md'].map(sourceFilePathToBundleNodeKey));
+    expect(accepted.trackingOutcome).toBeUndefined();
+    const outcome = await trackSnapshotAdditions(bundle, { snapshotId: review.candidate!.id, nodeKeys: ['source-changes/added confidential notes.md', 'source-changes/added confidential planning.md', 'source-changes/added public update.md'].map(sourceFilePathToBundleNodeKey) });
+    expect(outcome.sensitiveSkipped).toHaveLength(2);
+    expect(outcome.trackedNodeKeys).toEqual(['source-changes/added public update.md'].map(sourceFilePathToBundleNodeKey));
   }, 20000);
 
   it('reads only accepted history without capturing sources or including a pending candidate', async () => {
@@ -608,7 +604,7 @@ describe('source snapshots with the shared big graph', () => {
       reviewToken: pending.reviewToken, resolutions: {} });
     expect(loadSourceNodeConfigs(bundle).some(node => node.bundleNodeId === orphan.bundleNodeId)).toBe(false);
     expect(loadSourceNodeConfigs(bundle).find(node => nodeSourcePath(node) === newName)).toBeUndefined();
-    expect(accepted.trackingRequest?.nodeKeys).toContain(sourceFilePathToBundleNodeKey(newName));
+    expect(accepted.trackingRequest).toBeUndefined();
   });
 
   it('requires an explicit choice when identical contents have more than one destination', async () => {

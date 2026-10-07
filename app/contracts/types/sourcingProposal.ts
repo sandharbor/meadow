@@ -46,6 +46,7 @@ export interface ProposalConflictResolution extends ProposalConfigurationConflic
 
 export interface ProposalTrackingDecision {
   track: boolean;
+  /** Automatic is accepted only to migrate older pending proposals. */
   origin: 'automatic' | 'explicit';
   bundleNodeId?: BundleNodeId;
   /** Fingerprint of the effective sensitivity evidence the person confirmed. */

@@ -399,16 +399,15 @@ function recoverSourcingAcceptance(bundleDirectory: string): void {
 }
 
 /** No asynchronous work may occur between these writes; recovery restores both sides after interruption. */
-export function installAcceptedSnapshot(bundleDirectory: string, previous: SourcingState, next: SourcingState, configs: BundleNodeConfig[], trackNewPages?: boolean, proposal?: SourceSnapshot['sourceProposal']): void {
+export function installAcceptedSnapshot(bundleDirectory: string, previous: SourcingState, next: SourcingState, configs: BundleNodeConfig[], proposal?: SourceSnapshot['sourceProposal']): void {
   const configPath = path.join(bundleDirectory, 'config/bundle_node_config.yaml');
   const bundleConfigPath = path.join(bundleDirectory, 'config/bundle_config.yaml');
   const bundleConfig = fs.readFileSync(bundleConfigPath, 'utf8');
   writeSourcingJson(acceptanceJournalPath(bundleDirectory), { state: previous, nodeConfig: fs.readFileSync(configPath, 'utf8'), bundleConfig });
   try {
     writeDurableDocument({ path: configPath, value: stringifyBundleNodeConfig(configs), codec: textDocumentCodec });
-    if (trackNewPages !== undefined || proposal) {
+    if (proposal) {
       const document = YAML.parseDocument(bundleConfig);
-      if (trackNewPages !== undefined) document.set('trackNewPages', trackNewPages);
       if (proposal) {
         if (!document.has('sources')) {
           for (const key of ['generationOpenKnowledgeFormatIndexSourcePath', 'generationOpenKnowledgeFormatLogSourcePath']) {

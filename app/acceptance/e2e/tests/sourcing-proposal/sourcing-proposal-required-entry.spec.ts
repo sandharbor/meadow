@@ -64,7 +64,7 @@ test('Sourcing requires repair of missing required entries before acceptance', {
   expect(proposal.current.proposed.bundleFilters.some((filter: { name: string }) => filter.name === 'Preserved during repair')).toBe(true);
   expect(fs.readFileSync(bundlePath, 'utf8')).toBe(before);
   await sourceCommand(() => sourcing.select('Incoming'));
-  await sourceCommand(() => expect(sourcing.evidence).toContainText('source is no longer connected'));
+  await sourceCommand(() => sourcing.expectSelectedRemovalReason('Disconnected'));
   await sourceCommand(() => expect(sourcing.evidence).not.toContainText('source was missing'));
   expect(fs.existsSync(path.join(testServer.sourceGraphsDir, 'multi-source/research/Incoming.md'))).toBe(true);
   await sourceCommand(() => addKeyFrame(startingSelection));

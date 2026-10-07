@@ -5,6 +5,7 @@ import { SourceMoveReview } from './SourceMoveReview.js';
 import { SourceOrphansReview } from './SourceOrphansReview.js';
 import { SourceTrackingNotice } from './SourceTrackingNotice.js';
 import { SourcingWorkspacePage } from './SourcingWorkspacePage.js';
+import { SelectedPageDetailComponent } from '../curation/SelectedPageDetailComponent.js';
 
 /** Source review through the proposal workspace, identity gate, and captured evidence. */
 export class SourceReviewWorkspace extends SourcingWorkspacePage {
@@ -26,7 +27,7 @@ export class SourceReviewWorkspace extends SourcingWorkspacePage {
     if (await this.identities.isVisible()) {
       await Promise.all([
         this.reviewPage.waitForResponse(response => response.url().endsWith('/sourcing/proposal/refresh') && response.ok()),
-        this.identities.getByRole('button', { name: 'Update sources', exact: true }).click(),
+        this.identities.getByRole('button', { name: 'Refresh sources', exact: true }).click(),
       ]);
     } else await this.updateSources();
   }
@@ -51,10 +52,6 @@ export class SourceReviewWorkspace extends SourcingWorkspacePage {
     await super.accept();
     await this.reviewExpect(this.reviewPage.getByRole('status').filter({ hasText: 'Recalculating graph…' })).not.toBeVisible();
   }
-  async expectTrackNewPages(checked: boolean) {
-    await this.reviewExpect(this.root.getByRole('checkbox', { name: 'Track non-sensitive added pages', exact: true })).toBeChecked({ checked });
-  }
-  async setTrackNewPages(checked: boolean) { await this.setTrackingPreference(checked); }
   async confirmSuggestedIdentities() {
     await this.reviewExpect(this.identities).toBeVisible();
     await this.acceptAllIdentitySuggestions();
@@ -66,18 +63,19 @@ export class SourceReviewWorkspace extends SourcingWorkspacePage {
     const deselect = this.root.getByTitle('Deselect', { exact: true });
     while (await deselect.count()) await deselect.first().click();
     await this.root.locator(`tr[data-bundle-node-key=${JSON.stringify(`file:${path}`)}]`).click();
-    await this.reviewExpect(this.evidence).toBeVisible();
+    await this.reviewExpect(this.selectedPage).toBeVisible();
   }
   async expectSensitivity(path: string, label: 'Sensitive' | 'Sensitive via filter') {
     await this.selectPath(path);
     await this.reviewExpect(this.selectedPage.getByText('Sensitive', { exact: true })).toBeVisible();
     if (label === 'Sensitive via filter') await this.reviewExpect(this.evidence).toContainText(/filter .* marks this page sensitive/);
   }
-  async expectModified(path: string) { await this.selectPath(path); await this.reviewExpect(this.evidence).toContainText('modified'); }
-  async expectAdded(path: string) { await this.selectPath(path); await this.reviewExpect(this.evidence).toContainText('added'); }
+  async expectModified(path: string) { await this.selectPath(path); await this.reviewExpect(this.evidence).toContainText('Change: Modified'); }
+  async expectAdded(path: string) { await this.selectPath(path); await this.reviewExpect(this.evidence).toContainText('Change: Added'); }
   async previewImage(path: string, route: string[]) {
     await this.selectPath(path);
-    for (const filename of route) await this.reviewExpect(this.evidence).toContainText(filename.replace(/\.md$/, ''));
+    await new SelectedPageDetailComponent(this.selectedPage, this.reviewExpect).openDetails();
+    for (const filename of route) await this.reviewExpect(this.selectedPage.getByTestId('selected-node-details').getByText(filename.replace(/\.md$/, ''), { exact: true }).filter({ visible: true }).first()).toBeVisible();
     await this.expandDetails(path);
     const image = this.comparison.getByRole('img', { name: 'after captured source', exact: true });
     await this.reviewExpect(image).toBeVisible();
@@ -92,11 +90,11 @@ export class SourceReviewWorkspace extends SourcingWorkspacePage {
     }
     this.reviewExpect(await previous.getAttribute('src')).not.toBe(await next.getAttribute('src'));
   }
-  async expectNoLongerIncluded(path: string) { await this.selectPath(path); await this.reviewExpect(this.evidence).toContainText('departing'); }
+  async expectNoLongerIncluded(path: string) { await this.selectPath(path); await this.reviewExpect(this.evidence).toContainText('Change: Removed'); }
   async expectNoRenames() { await this.reviewExpect(this.root.getByRole('button', { name: 'Review identities', exact: true })).not.toBeVisible(); }
   async expandDetails(path: string, activation: 'click' | 'keyboard' = 'click') {
     await this.selectPath(path);
-    const button = this.root.getByRole('button', { name: 'Compare captured content', exact: true });
+    const button = this.root.getByRole('button', { name: /^(See content|See changes|See file content changes|See previous content)$/ });
     if (activation === 'keyboard') await button.press('Enter'); else await button.click();
     await this.reviewExpect(this.comparison.getByRole('region', { name: 'Source content comparison', exact: true })).toBeVisible();
   }
