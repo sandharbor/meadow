@@ -18,7 +18,7 @@ const description = linkedScenarioDescription(conceptText`Use the complete edito
 selection, resize and page details. Curation inspects accepted material; sourcing stages tracking
 until acceptance. Unchanged pages retain normal details without a source-change card, and Later
 preserves both modes' choices.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '8200e571-3323-4e87-8ca1-817d55a94bee' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '8200e571-3323-4e87-8ca1-817d55a94bee' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, sourceChanges, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);
@@ -33,7 +33,12 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '8200e571-332
 
   // --- Test start ---
   for (const mode of ['curation', 'sourcing'] as const) {
-    if (mode === 'sourcing') await sourceCommand(() => sourcing.open());
+    if (mode === 'sourcing') {
+      // An unrelated source change opens a review of the same graph.
+      await sourceCommand(() => sourceChanges.apply('add-review-pages', 'sourcing-review-data'));
+      await sourceCommand(() => editor.checkSourceChanges());
+      await sourceCommand(() => sourcing.open());
+    }
     await sourceCommand(() => filters.expandFilterGroup('Folders'));
     await sourceCommand(() => filters.soloFolder('Routes'));
     await sourceCommand(() => editor.expectGraphNodePresent('file:Routes/Reference.md'));
@@ -87,5 +92,5 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '8200e571-332
   await sourceCommand(() => sourcing.accept());
   await sourceCommand(() => expect(page.getByTestId('selected-page-file:Routes/Reference.md').getByText('Not Tracked', { exact: true })).toBeVisible());
   await sourceCommand(() => checkpoint('acceptance applies the sourcing tracking choice to the curation editor'));
-  await sourceCommand(() => assertMeadowHomeState());
+  await sourceCommand(() => assertMeadowHomeState({ allowedUntracked: ['source_graphs/.source-changes.jsonl'], allowedModified: ['source_graphs/sourcing-review-data/Start.md'] }));
 });

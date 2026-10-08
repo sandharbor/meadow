@@ -225,6 +225,7 @@ async function buildSourceReview(bundleDirectory: string, attempt = 0): Promise<
     accepted: state.history.find(item => item.id === accepted.id) ?? snapshotSummary(accepted),
     ...(candidate && { candidate: snapshotSummary(candidate) }), moves, changes: distinctChanges,
     orphans, history: state.history,
+    ...(loadPendingSourceProposal(bundleDirectory) && { pendingProposal: true }),
     reviewToken: sha256(`${state.acceptedId}\0${state.candidateId ?? ''}\0${fingerprint}`),
   };
 }

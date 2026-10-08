@@ -28,7 +28,6 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '01fdc497-043
   const sources = new SourcesControl(page, expect);
   await sourceCommand(() => sources.expectNotice());
   const filters = new FilterPanelComponent(page, expect);
-  await sourceCommand(() => editor.sourceReview.open());
   await sourceCommand(() => filters.enableFilter('Frontier'));
   await sourceCommand(() => editor.expectGraphNodePresent('file:_mw_sources/source000001/Frontier.md'));
   await sourceCommand(() => sources.expectNotice());
@@ -36,7 +35,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '01fdc497-043
   await sourceCommand(() => checkpoint('frontier references and unrelated indexed pages do not prompt source registration'));
 
   // --- Test start ---
-  // Expand the normal traversal boundary.
+  // Expand the normal traversal boundary; the depth change moves into sourcing for review.
   await sourceCommand(() => editor.switchToListView());
   await sourceCommand(() => editor.clickListViewRowByNodeKey('file:_mw_sources/source000001/Start.md'));
   await sourceCommand(() => new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect).setOutlinksDepth(1));
@@ -58,9 +57,9 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '01fdc497-043
   await sourceCommand(() => sources.expectNotice());
   const config = YAML.parse(fs.readFileSync(path.join(testServer.configDir, 'bundles', slug, 'config/bundle_config.yaml'), 'utf8')) as BundleConfig;
   const referenceId = config.sources!.find(source => source.name === 'reference')!.id;
+  await sourceCommand(() => filters.disableFilter('Frontier'));
   await sourceCommand(() => filters.expandFilterGroup('Folders'));
   await sourceCommand(() => filters.expectFolderCount('reference://', 0));
-  await sourceCommand(() => editor.sourceReview.open());
   await sourceCommand(() => filters.enableFilter('Frontier'));
   await sourceCommand(() => editor.clickListViewRowByNodeKey(`file:_mw_sources/${referenceId}/Study.md`));
   await sourceCommand(() => new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect).expectPill(Pill.Frontier));

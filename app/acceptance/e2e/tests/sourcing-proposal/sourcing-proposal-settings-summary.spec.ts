@@ -15,9 +15,10 @@ test.use({ fixtureHome: Fixture.SourcingReview });
 const name = linkedScenarioName(conceptText`Sourcing summarizes staged settings and tracking edits without adding a graph change category`);
 
 const description = linkedScenarioDescription(conceptText`Review a changed source alongside staged traversal, tracking, bundle and global filters. The
-header counts the staged settings and tracking choices, and its expanded summary shows readable
-before/after values and global scope. Soloing Untracked changes presentation, while acceptance
-still applies the complete proposal.`);
+tray attached to Accept changes counts the page changes, staged settings, and tracking choices; each
+item opens readable details, including before/after values, global scope, and pages that can be
+selected in the graph. Soloing Untracked changes presentation, while acceptance still applies the
+complete proposal.`);
 test(name.name, { annotation: [{ type: 'scenario-id', description: 'd1647330-ccf7-428a-8bb5-87e69537129a' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
@@ -44,23 +45,42 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'd1647330-ccf
   await sourceCommand(() => filters.fillAndSaveCustomFilter({ name: 'Bridge emphasis', field: 'title', matchType: 'substring', value: 'Bridge' }));
   await sourceCommand(() => filters.clickAddCustomFilter());
   await sourceCommand(() => filters.fillAndSaveCustomFilter({ name: 'Shared retained review', field: 'title', matchType: 'substring', value: 'Retained', scope: 'global' }));
-  const summaryButton = sourcing.root.getByRole('button', { name: 'Settings and tracking · 3 settings · 1 tracking choices', exact: true });
-  await sourceCommand(() => expect(summaryButton).toBeVisible());
-  await sourceCommand(() => expect(summaryButton).toHaveAttribute('aria-expanded', 'false'));
+  await sourceCommand(() => sourcing.expectAcceptedChanges([/^\d+ page changes$/, '3 setting changes', '1 tracking choice']));
   await sourceCommand(() => addKeyFrame(proposalConfigurationDraft));
-  await sourceCommand(() => checkpoint('compact settings and tracking counts sit beside the proposal actions'));
-  await sourceCommand(() => summaryButton.click());
-  const summary = sourcing.root.getByRole('region', { name: 'Proposal settings summary', exact: true });
-  await sourceCommand(() => expect(summary).toContainText('Outlink depth'));
-  await sourceCommand(() => expect(summary).toContainText('Before this proposal'));
-  await sourceCommand(() => expect(summary).toContainText('Default'));
-  await sourceCommand(() => expect(summary).toContainText('Untracked'));
-  await sourceCommand(() => expect(summary).toContainText('Bridge emphasis'));
-  await sourceCommand(() => expect(summary).toContainText('Shared retained review'));
-  await sourceCommand(() => expect(summary).toContainText('All bundles'));
-  await sourceCommand(() => expect(summary).not.toContainText('bundleNodeId'));
-  await sourceCommand(() => checkpoint('expanded review names each staged setting and shows its before and after values'));
-  await sourceCommand(() => summaryButton.click());
+  await sourceCommand(() => checkpoint('the tray under Accept changes lists each kind of staged change'));
+
+  // Inspect the staged settings.
+  const settings = await sourceCommand(() => sourcing.openAcceptedChangeDetail('3 setting changes', 'Setting changes'));
+  await sourceCommand(() => expect(settings).toContainText('Outlink depth'));
+  await sourceCommand(() => expect(settings).toContainText('Before this proposal'));
+  await sourceCommand(() => expect(settings).toContainText('Default'));
+  await sourceCommand(() => expect(settings).toContainText('Bridge emphasis'));
+  await sourceCommand(() => expect(settings).toContainText('Shared retained review'));
+  await sourceCommand(() => expect(settings).toContainText('All bundles'));
+  await sourceCommand(() => expect(settings).not.toContainText('Reference'));
+  await sourceCommand(() => expect(settings).not.toContainText('bundleNodeId'));
+  await sourceCommand(() => addKeyFrame(proposalConfigurationDraft));
+  await sourceCommand(() => checkpoint('setting changes show each staged setting before and after'));
+
+  // Inspect the staged tracking choice.
+  const trackingChoices = await sourceCommand(() => sourcing.openAcceptedChangeDetail('1 tracking choice', 'Tracking choices'));
+  await sourceCommand(() => expect(settings).toBeHidden());
+  await sourceCommand(() => expect(trackingChoices).toContainText('Reference'));
+  await sourceCommand(() => expect(trackingChoices).toContainText('Untracked'));
+  await sourceCommand(() => addKeyFrame(proposalConfigurationDraft));
+  await sourceCommand(() => checkpoint('tracking choices show the untracked page'));
+
+  // Inspect a page change from the tray.
+  const pageChanges = await sourceCommand(() => sourcing.openAcceptedChangeDetail(/^\d+ page changes$/, 'Page changes'));
+  await sourceCommand(() => expect(pageChanges.getByRole('region', { name: 'Modified', exact: true })).toContainText('Start'));
+  await sourceCommand(() => expect(pageChanges.getByRole('region', { name: 'Removed', exact: true })).toContainText('Leaf'));
+  await sourceCommand(() => addKeyFrame(sourceReviewWorkspace));
+  await sourceCommand(() => sourcing.selectAcceptedPageChange('Leaf'));
+  await sourceCommand(() => sourcing.expectSelectedChangeSummary('Leaf', 'Removed'));
+  await sourceCommand(() => addKeyFrame(sourceReviewWorkspace));
+  await sourceCommand(() => checkpoint('selecting a page change in the tray selects it in the graph'));
+
+  // Solo untracked pages.
   await sourceCommand(() => filters.enableAndSoloFilter('Untracked'));
   await sourceCommand(() => sourcing.select('Reference'));
   await sourceCommand(() => sourcing.expectNoSelectedSourceChange());

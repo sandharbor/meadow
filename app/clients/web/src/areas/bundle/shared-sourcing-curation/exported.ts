@@ -17,3 +17,4 @@ export type { EditorOperations as CurationTypeEditorOperations, EditorOperations
 export type { IFilter as SourcingTypeGraphFilter } from './types/filters.js';
 
 export { SourceContentComparison as SourcingComponentContentComparison } from './components/SourceContentComparison.js';
+export { SourceOrphanDiagnosis as SourcingComponentOrphanDiagnosis } from './components/SourceOrphanDiagnosis.js';

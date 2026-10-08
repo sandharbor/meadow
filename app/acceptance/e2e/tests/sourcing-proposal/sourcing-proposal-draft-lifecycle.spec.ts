@@ -31,29 +31,15 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'c4ae489a-82e
   const savedNodes = fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8');
   const globalPath = path.join(testServer.configDir, 'app/global_custom_filters.json');
   const savedGlobal = fs.readFileSync(globalPath, 'utf8');
-  await sourceCommand(() => sourcing.open());
+  await sourceCommand(() => sourcing.openByLink('sourcing-review'));
   await sourceCommand(() => checkpoint('the new proposal begins with the saved node and filter configuration'));
 
   // --- Test start ---
-  // Keep the main choices visible and secondary actions in a keyboard-accessible menu.
+  // The header keeps refresh, Exit and Accept; an unchanged review has nothing to accept yet.
   await sourceCommand(() => sourcing.expectMainReviewActions());
-  await sourceCommand(() => expect(sourcing.reviewActionsMenu).toBeHidden());
-  await sourceCommand(() => sourcing.reviewActionsButton.press('ArrowDown'));
-  const rescan = sourcing.reviewActionsMenu.getByRole('menuitem', { name: 'Rescan sources', exact: true });
-  const discard = sourcing.reviewActionsMenu.getByRole('menuitem', { name: 'Discard proposal', exact: true });
-  await sourceCommand(() => expect(rescan).toBeFocused());
-  await sourceCommand(() => rescan.press('ArrowDown'));
-  await sourceCommand(() => expect(discard).toBeFocused());
-  await sourceCommand(() => addKeyFrame(pendingSourceProposal));
-  await sourceCommand(() => discard.press('Escape'));
-  await sourceCommand(() => expect(sourcing.reviewActionsMenu).toBeHidden());
-  await sourceCommand(() => expect(sourcing.reviewActionsButton).toBeFocused());
-  await sourceCommand(() => sourcing.openReviewActions());
-  await sourceCommand(() => sourcing.root.getByRole('heading', { name: 'Sourcing · sourcing-review', exact: true }).click());
-  await sourceCommand(() => expect(sourcing.reviewActionsMenu).toBeHidden());
-  await sourceCommand(() => checkpoint('review actions are grouped and the menu closes with Escape or an outside click'));
+  await sourceCommand(() => sourcing.expectAcceptedChanges([]));
 
-  // Stage changes and leave the review with its proposal intact.
+  // Stage changes.
   await sourceCommand(() => sourcing.select('Bridge'));
   await sourceCommand(() => sourcing.setSelectedOutlinkDepth(0));
   await sourceCommand(() => sourcing.select('Reference'));
@@ -69,6 +55,15 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'c4ae489a-82e
   expect(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).toBe(savedNodes);
   await sourceCommand(() => addKeyFrame(proposalConfigurationDraft));
   await sourceCommand(() => checkpoint('node tracking bundle-filter and global-filter drafts accumulate in one proposal'));
+
+  // Exit asks whether to keep or discard the changes; Cancel stays in review, and Keep leaves the proposal intact.
+  await sourceCommand(() => sourcing.exitButton.click());
+  await sourceCommand(() => expect(sourcing.exitReview.getByRole('button', { name: /^(Cancel|Discard changes|Keep changes)$/ })).toHaveText(['Cancel', 'Discard changes', 'Keep changes']));
+  await sourceCommand(() => addKeyFrame(pendingSourceProposal));
+  await sourceCommand(() => sourcing.exitReview.getByRole('button', { name: 'Cancel', exact: true }).click());
+  await sourceCommand(() => expect(sourcing.exitReview).toBeHidden());
+  await sourceCommand(() => expect(sourcing.root).toBeVisible());
+  await sourceCommand(() => checkpoint('exit asks whether to keep or discard changes and Cancel stays in review'));
   await sourceCommand(() => sourcing.later());
   await sourceCommand(() => list.goto());
   await sourceCommand(() => list.clickBundle('sourcing-folders'));

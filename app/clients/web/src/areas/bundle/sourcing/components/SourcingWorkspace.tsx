@@ -13,8 +13,9 @@ import { proposalRequest, proposalEditorOperations, ProposalRequestError } from 
 import { sourceChangeFilters } from './sourceChangeFilters.js';
 import { ProposalDialogs, type ProposalDialog } from './ProposalDialogs.js';
 import { SourceRegistryChanges } from './SourceRegistryChanges.js';
-import { ProposalSettingsSummary } from './ProposalSettingsSummary.js';
+import { AcceptedChangesTray, acceptedChanges } from './AcceptedChangesTray.js';
 import { SourceReviewActions } from './SourceReviewActions.js';
+import { RefreshSourcesButton } from './RefreshSourcesButton.js';
 import type { IdentityTab } from './SourceIdentityReview.js';
 import { useIdentityDecisions } from './useIdentityDecisions.js';
 
@@ -33,6 +34,7 @@ export function SourcingWorkspace({ bundleSlug, onClose, onAccepted, requestedPa
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [mutating, setBusy] = useState(false);
+  const [rescanning, setRescanning] = useState(false);
   const [loadingCount, setLoadingCount] = useState(0);
   const busyRef = useRef(false);
   const [dialog, setDialog] = useState<ProposalDialog>(null);
@@ -48,6 +50,7 @@ export function SourcingWorkspace({ bundleSlug, onClose, onAccepted, requestedPa
   }, [bundleSlug, pendingConfiguration]);
   const [selected, setSelected] = useState<Set<EncodedBundleNodeKey>>(new Set());
   const [collapsed, setCollapsed] = useState(true);
+  const acceptButton = useRef<HTMLButtonElement>(null);
   const waitForGraph = useEventually(graph);
   const reportSelection = usePlaceSelection(async references => {
     await waitForGraph(value => value !== null);
@@ -159,21 +162,19 @@ export function SourcingWorkspace({ bundleSlug, onClose, onAccepted, requestedPa
   };
   const sensitiveCount = Object.values(review?.proposal.tracking ?? {}).filter(decision => decision.needsConfirmation || decision.invalidated).length;
   const blocked = Boolean(!review || review.unresolvedIdentities.length || review.conflicts.length || review.missingRequiredEntries.length || sensitiveCount);
+  const changes = useMemo(() => review ? acceptedChanges(review, graph, sensitiveCount) : null, [review, graph, sensitiveCount]);
+  // An unchanged review has nothing worth keeping, so leaving discards it; otherwise ask.
+  const exit = () => { if (changes?.items.length) setDialog('exit'); else void finish(true); };
   return <SourceNamesProvider sources={graph?.sources ?? review?.configuration.bundle.sources ?? []}><section aria-label="Sourcing workspace" data-testid="sourcing-workspace" data-orphan-count={review?.orphans.length} className="fixed inset-x-0 bottom-0 top-[28px] z-40 flex flex-col bg-white text-neutral-800">
     <header className="flex items-center gap-3 border-b bg-blue-50 px-5 py-3">
-      <h1 className="font-semibold">Sourcing · {bundleSlug}</h1><span className="text-xs text-neutral-600">Changes are saved in this proposal until you accept.</span>
-      <SourceReviewActions busy={busy} ready={Boolean(review)} blocked={blocked} onExit={onClose}
-        onRescan={() => void mutate('refresh', {}).catch(() => {})} onDiscard={() => void finish(true)} onAccept={() => void finish(false)} />
+      <h1 className="font-semibold">Sourcing · {bundleSlug}</h1>
+      <RefreshSourcesButton compact refreshing={rescanning} disabled={busy || !review || rescanning}
+        onClick={() => { setRescanning(true); void mutate('refresh', {}).catch(() => {}).finally(() => setRescanning(false)); }} />
+      <SourceReviewActions busy={busy} blocked={blocked} acceptButton={acceptButton} onExit={exit} onAccept={() => void finish(false)} />
     </header>
-    <div className="flex flex-wrap items-center gap-4 border-b px-5 py-2 text-sm">
-      {review?.proposal.newerSourcesAvailable && <span role="status">Newer sources available. Acceptance keeps the current capture.</span>}
-      {Boolean(review?.moves.length) && <button onClick={() => setDialog('identities')}>Review identities</button>}
-      {Boolean(review?.orphans.length) && <button onClick={() => setDialog('cleanup')}>Configuration cleanup · {review?.orphans.length}</button>}
-      {Boolean(review?.conflicts.length) && <button className="text-amber-800 underline" onClick={() => setDialog('conflicts')}>Resolve {review?.conflicts.length} configuration conflicts</button>}
-      {sensitiveCount > 0 && <button className="text-amber-800 underline" onClick={() => setDialog('sensitivity')}>Review {sensitiveCount} tracking choices</button>}
-      {review && <ProposalSettingsSummary review={review} bundleSlug={bundleSlug} />}
-      <span className="text-xs text-neutral-500">View filters affect presentation. Accept applies the entire proposal.</span>
-    </div>
+    {changes && <AcceptedChangesTray changes={changes} bundleSlug={bundleSlug} acceptButton={acceptButton}
+      onDialog={setDialog} onSelectPage={key => { setSelected(new Set([key])); setCollapsed(false); }} />}
+    {review?.proposal.newerSourcesAvailable && <p role="status" className="bg-amber-50 px-5 py-2 text-sm">Newer sources available. Acceptance keeps the current capture.</p>}
     {review && <SourceRegistryChanges changes={{ before: review.proposal.original.bundle.sources ?? [], after: review.proposal.proposed.bundle.sources ?? [], stale: false, outputPathsChange: review.proposal.original.bundle.sourceOutputLayout !== review.proposal.proposed.bundle.sourceOutputLayout }} />}
     {frontierUnavailable && <p role="status" className="bg-amber-50 px-5 py-2">{frontierUnavailable}</p>}
     {error && <p role="alert" className="bg-red-50 px-5 py-2 text-red-800">{error}</p>}
@@ -188,7 +189,7 @@ export function SourcingWorkspace({ bundleSlug, onClose, onAccepted, requestedPa
       protectedBundleNodeIds={new Set([review.configuration.bundle.entryBundleNodeId, review.configuration.bundle.defaultTraversalBundleNodeId].filter((id): id is NonNullable<typeof id> => Boolean(id)))}
     /> : !review && <p className="p-5">Loading source proposal…</p>}</fieldset>
     {review && <ProposalDialogs identityChoices={identityDecisions.choices} chooseIdentities={choices => { setError(null); identityDecisions.choose(choices); }} identitySaving={identityDecisions.saving} identityBusy={mutating || loadingCount > 0}
-      identityTab={identityTab} onIdentityTabChange={setIdentityTab} identityComparison={identityComparison} onIdentityComparison={setIdentityComparison} request={operations.request} dialog={dialog} review={review} busy={busy} close={() => { if (dialog === 'identities') void reload(); setDialog(null); setPendingConfiguration(null); }} later={onClose}
+      identityTab={identityTab} onIdentityTabChange={setIdentityTab} identityComparison={identityComparison} onIdentityComparison={setIdentityComparison} request={operations.request} dialog={dialog} review={review} busy={busy} close={() => { if (dialog === 'identities') void reload(); setDialog(null); setPendingConfiguration(null); }} later={onClose} discard={() => void finish(true)}
       mutate={(operation, body) => mutate(operation, body).catch(() => {})} refresh={() => { if (pendingConfiguration) void ('trackingChange' in pendingConfiguration ? mutate('tracking', { ...pendingConfiguration.trackingChange, incorporateNewerSources: true }) : configure(pendingConfiguration, true)).then(() => { setPendingConfiguration(null); setDialog(null); }).catch(() => {}); }} />}
   </section></SourceNamesProvider>;
 }

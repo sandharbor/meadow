@@ -129,20 +129,6 @@ const BundleEditor: React.FC = () => {
   const frontierFilter = filters.find(f => f.id === 'frontier-filter');
   const viewFrontierEnabled = frontierFilter?.enabled ?? false;
   const frontierDepth = frontierFilter?.thresholdValue ?? 1;
-  const curationGraph = useMemo(() => {
-    void updateTrigger; // Graph mutations publish a revision without replacing the Graph object.
-    if (!graph) return graph;
-    const visible = new Graph();
-    visible.sources = graph.sources;
-    visible.sourceDiagnostics = graph.sourceDiagnostics;
-    visible.ignoredSourceNames = graph.ignoredSourceNames;
-    visible.sourceContentView = graph.sourceContentView;
-    const nodes = graph.getAllNodes().filter(node => !node.isFrontierNode);
-    nodes.forEach(node => visible.addNode(node));
-    graph.getAllEdges().filter(edge => visible.getNode(edge.source) && visible.getNode(edge.target)).forEach(edge => visible.addEdge(edge));
-    visible.setLinkSourceData(Object.fromEntries(nodes.map(node => [node.bundleNodeKey, graph.getAllInlinkSources(node.bundleNodeKey)])), Object.fromEntries(nodes.map(node => [node.bundleNodeKey, graph.getAllOutlinkTargets(node.bundleNodeKey)])));
-    return visible;
-  }, [graph, updateTrigger]);
 
 
   type OverrideSetting = 'inherit' | 'enabled' | 'disabled';
@@ -361,7 +347,8 @@ const BundleEditor: React.FC = () => {
     const controller = new AbortController();
     const abort = () => controller.abort();
     window.addEventListener('pagehide', abort);
-    const url = `bundles/${slug || ''}/curation/working-graph`;
+    const frontierParam = viewFrontierEnabled && !pendingSourceChanges ? `?frontierDepth=${frontierDepth}` : '';
+    const url = `bundles/${slug || ''}/curation/working-graph${frontierParam}`;
     logger.debug('Fetching working graph from:', url);
     apiRequest(url, { signal: controller.signal })
       .then(res => {
@@ -448,6 +435,9 @@ const BundleEditor: React.FC = () => {
   useEffect(() => {
     if (!graph) return;
     const controller = new AbortController();
+    // Navigation cancels the request; treat that like unmounting rather than a load failure.
+    const abort = () => controller.abort();
+    window.addEventListener('pagehide', abort);
     // Fetch bundle-config after graph is loaded
     apiRequest(
       `bundles/${slug || ''}/curation/bundle-config`,
@@ -465,7 +455,7 @@ const BundleEditor: React.FC = () => {
         if (controller.signal.aborted) return;
         logger.error('Failed to load bundle-config:', err);
       });
-    return () => controller.abort();
+    return () => { controller.abort(); window.removeEventListener('pagehide', abort); };
   }, [graph, slug, checkDraftStatus, entryBundleNodeId]);
 
   useEffect(() => {
@@ -1327,7 +1317,7 @@ const BundleEditor: React.FC = () => {
           <button className="ml-3 underline" onClick={() => { setBlacklistNotice(null); setBlacklistUndo(null); }}>Dismiss</button>
         </p>}
         {!sourcingOpen && !awaitingAcceptedGraph && <BundleNodeTabs
-          graph={curationGraph ?? graph}
+          graph={graph}
           entryBundleNodeId={entryBundleNodeId ?? undefined}
           filters={filters}
           onFiltersChange={setFilters}

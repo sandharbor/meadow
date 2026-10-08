@@ -99,6 +99,8 @@ export interface SourcingReview {
   changes: SourceFileChange[];
   orphans: SourceOrphanExplanation[];
   history: SourceSnapshotSummary[];
+  /** A source proposal is waiting, possibly holding only staged settings or tracking. */
+  pendingProposal?: boolean;
   reviewToken: string;
 }
 

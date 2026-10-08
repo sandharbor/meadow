@@ -55,7 +55,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '63b363d7-248
     await sourceCommand(() => expect(sourcing.selectedPage.getByText('Sensitive', { exact: true })).toBeVisible());
     expect(proposal.current.tracking[`file:Additions/${name}.md`]).toBeUndefined();
   }
-  await sourceCommand(() => expect(sourcing.root.getByRole('button', { name: /Review .* tracking choices/ })).toHaveCount(0));
+  await sourceCommand(() => sourcing.expectNoTrackingConfirmations());
   await sourceCommand(() => addKeyFrame(sourceReviewSensitivity));
   await sourceCommand(() => checkpoint('sensitive additions are untracked without an explicit-choice confirmation'));
   await sourceCommand(() => sourcing.accept());

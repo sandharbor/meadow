@@ -30,7 +30,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '3edbe143-aa6
   const directory = path.join(testServer.configDir, 'bundles/sourcing-review');
   const saved = fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8');
   const original = YAML.parse(saved).nodes.find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Departing');
-  await sourceCommand(() => sourcing.open());
+  await sourceCommand(() => sourcing.openByLink('sourcing-review'));
   await sourceCommand(() => checkpoint('configured pages are present before either provisional exclusion'));
 
   // --- Test start ---

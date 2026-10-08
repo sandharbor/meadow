@@ -23,7 +23,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '7437de34-d54
   await sourceCommand(() => sourceChanges.apply('add-linked-page'));
   await sourceCommand(() => editor.checkSourceChanges());
   await sourceCommand(() => editor.sourceReview.open());
-  await sourceCommand(() => expect(page.getByTestId('sourcing-workspace').getByRole('button', { name: 'Exit review', exact: true })).toBeVisible());
+  await sourceCommand(() => expect(editor.sourceReview.exitButton).toBeVisible());
   await sourceCommand(() => editor.sourceReview.expectNoAutomaticTrackingOption());
   await sourceCommand(() => addKeyFrame(sourceSnapshot));
   await sourceCommand(() => checkpoint('added page starts untracked without an automatic tracking option'));

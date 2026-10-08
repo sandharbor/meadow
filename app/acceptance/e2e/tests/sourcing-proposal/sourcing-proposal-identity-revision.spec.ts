@@ -46,7 +46,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '0724132a-c64
 
   // --- Test start ---
   // Revising identity keeps the old and new pages separate and revalidates the dependent choice.
-  await sourceCommand(() => sourcing.root.getByRole('button', { name: 'Review identities', exact: true }).click());
+  await sourceCommand(() => sourcing.reviewIdentities());
   await sourceCommand(() => sourcing.chooseIdentity('100000000002', null));
   await sourceCommand(() => sourcing.continueToGraph());
   await sourceCommand(() => sourcing.select('Gateway'));
@@ -87,12 +87,9 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '0724132a-c64
   await sourceCommand(() => addKeyFrame(sourceReviewAcceptance));
   await sourceCommand(() => checkpoint('accepted identity evidence is inspectable as read-only history'));
   await sourceCommand(() => history.getByRole('button', { name: 'Close source snapshots', exact: true }).click());
-  await sourceCommand(() => sourcing.open());
-  expect(proposal.current.id).not.toBe(pendingId);
-  expect(proposal.current.identities).toEqual({});
-  await sourceCommand(() => expect(sourcing.root.getByRole('button', { name: 'Review identities', exact: true })).toHaveCount(0));
-  await sourceCommand(() => sourcing.discard());
-  await sourceCommand(() => expect(sourcing.root).toBeHidden());
-  await sourceCommand(() => checkpoint('a new review starts a fresh proposal instead of editing accepted decisions'));
+  // Acceptance closed the proposal, so there is nothing left to reopen.
+  expect(proposal.exists).toBe(false);
+  await sourceCommand(() => expect(page.getByTestId('sourcing-status').getByRole('button', { name: /source changes? available.*Review/ })).toHaveCount(0));
+  await sourceCommand(() => checkpoint('acceptance leaves no proposal in which accepted decisions could be edited'));
   await sourceCommand(() => assertMeadowHomeState({ allowedUntracked: ['source_graphs/.source-changes.jsonl', 'source_graphs/sourcing-review-data/Petal.md', 'source_graphs/sourcing-review-data/Retained One.md', 'source_graphs/sourcing-review-data/Retained Twin.md', 'source_graphs/sourcing-review-data/Routes/Branch/Gateway.md', 'source_graphs/sourcing-review-data/Routes/Independent.md'], allowedModified: ['source_graphs/sourcing-review-data/Start.md', 'source_graphs/sourcing-review-data/Leaf.md', 'source_graphs/sourcing-review-data/Retained.md', 'source_graphs/sourcing-review-data/Routes/Branch/Bridge.md', 'source_graphs/sourcing-review-data/Routes/Reference.md'] }));
 });

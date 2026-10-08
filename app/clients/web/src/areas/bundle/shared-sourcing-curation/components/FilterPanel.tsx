@@ -314,7 +314,6 @@ const FilterPanel = React.memo<FilterPanelProps>(({
   const removalCount = filters.find(filter => filter.id === 'source-departing')?.bundleNodeSelectors[0]?.select(graph).size ?? 0;
   const otherFilters = filters.filter(f =>
     !f.hideFromFilterList
-    && (mode === 'sourcing' || f.id !== 'frontier-filter')
     && f.id !== 'search-by-title-filter'
     && (!f.isFolderFilter || showFolderFilter)
     && (!f.isNodeTypeFilter || showNodeTypeFilter)

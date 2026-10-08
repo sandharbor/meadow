@@ -24,7 +24,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'aac78272-d54
   await sourceCommand(() => list.goto());
   await sourceCommand(() => list.clickBundle('example-bundle'));
   await sourceCommand(() => editor.waitForLoad('example-bundle'));
-  await sourceCommand(() => sourcing.open());
+  await sourceCommand(() => sourcing.openByLink('example-bundle'));
   await sourceCommand(() => sourcing.select('Inversion'));
   await sourceCommand(() => sourcing.untrackSelected());
   await sourceCommand(() => sourcing.select('Cognitive Biases'));

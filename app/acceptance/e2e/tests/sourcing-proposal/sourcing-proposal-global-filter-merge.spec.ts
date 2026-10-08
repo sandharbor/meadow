@@ -35,10 +35,10 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'fe6156b8-57d
   for (const name of ['Shared review', 'Independent review', 'Obsolete review']) await sourceCommand(() => create(name));
   const defaultId = globals().find(filter => filter.name === 'Daily Notes (Sensitive)')!.id;
   const original = fs.readFileSync(globalPath, 'utf8');
+  await sourceCommand(() => sourcing.openByLink('sourcing-review'));
   await sourceCommand(() => checkpoint('accepted global filters are available to both editor modes'));
 
   // --- Test start ---
-  await sourceCommand(() => sourcing.open());
   await sourceCommand(() => panel.editCustomFilter('Shared review'));
   await sourceCommand(() => expect(page.getByRole('dialog', { name: 'Edit Custom Filter', exact: true })).toContainText('Applies to all bundles in sourcing and curation after this proposal is accepted'));
   await sourceCommand(() => panel.saveCustomFilterEdits({ note: 'Proposed shared definition' }));
@@ -60,7 +60,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'fe6156b8-57d
 
   // The field-level conflict names the shared definition while preserving compatible changes.
   await sourceCommand(() => sourcing.open());
-  await sourceCommand(() => sourcing.root.getByRole('button', { name: 'Resolve 1 configuration conflicts', exact: true }).click());
+  await sourceCommand(() => sourcing.resolveConflicts(1));
   const dialog = page.getByRole('dialog', { name: 'Resolve configuration conflicts', exact: true });
   await sourceCommand(() => expect(dialog).toContainText('Shared review'));
   await sourceCommand(() => expect(dialog).toContainText('Competing accepted definition'));

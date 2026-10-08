@@ -215,6 +215,12 @@ export class SelectedPageDetailComponent {
    * override input, fill it, and click Set. This is a "complex op" that
    * leaves the config as an unsaved draft until the user clicks Save.
    */
+  /** Add an outlink depth override, or edit the existing one. */
+  async setOutlinksDepthOverride(depth: number) {
+    await this.root.getByTitle(/^(Add|Edit) outlink depth override$/).click();
+    await this.setOutlinksDepth(depth);
+  }
+
   async addOutlinksDepthOverride(depth: number) {
     await this.expect(this.addOutlinksDepthOverrideBtn).toBeVisible();
     await this.addOutlinksDepthOverrideBtn.click();

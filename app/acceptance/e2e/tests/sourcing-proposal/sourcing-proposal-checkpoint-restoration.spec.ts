@@ -102,7 +102,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '852f3ce6-348
     await sourceCommand(() => panel.editCustomFilter('Fork review settings'));
     await sourceCommand(() => panel.saveCustomFilterEdits({ note: 'Accepted competing definition' }));
     await sourceCommand(() => sourcing.open());
-    await sourceCommand(() => sourcing.root.getByRole('button', { name: 'Resolve 1 configuration conflicts', exact: true }).click());
+    await sourceCommand(() => sourcing.resolveConflicts(1));
     const conflict = page.getByRole('dialog', { name: 'Resolve configuration conflicts', exact: true });
     await sourceCommand(() => expect(conflict.getByRole('button', { name: 'Use proposed', exact: true })).toBeVisible());
     const conflictViews = await sourceCommand(() => views());

@@ -49,8 +49,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '75df4c30-b7f
   await sourceCommand(() => checkpoint('expanded candidate includes Availability Bias while accepted configuration stays unchanged'));
 
   // Later and reload retain the original curation graph and the durable proposal.
-  await sourceCommand(() => workspace.getByRole('button', { name: 'Exit review', exact: true }).click());
-  await sourceCommand(() => expect(workspace).toBeHidden());
+  await sourceCommand(() => sourcing.later());
   await sourceCommand(() => page.reload());
   await sourceCommand(() => editor.waitForLoad('example-bundle'));
   await sourceCommand(() => editor.switchToListView());

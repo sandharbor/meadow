@@ -28,10 +28,10 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'caec0c25-923
 
   // Accept the source update.
   await sourceCommand(() => editor.sourceReview.accept());
-  await sourceCommand(() => editor.sourceReview.open());
+
+  // Show the live frontier in curation.
   await sourceCommand(() => new FilterPanelComponent(page, expect).enableFilter('Frontier'));
   await sourceCommand(() => editor.switchToListView());
-  await sourceCommand(() => page.getByRole('button', { name: 'Select None', exact: true }).click());
   await sourceCommand(() => editor.clickListViewRowByExactName('t016 ---- level 5 - frontier image'));
   const detail = new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect);
   await sourceCommand(() => detail.expectPill(Pill.Frontier));

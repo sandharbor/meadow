@@ -1,6 +1,5 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import { OrphanReview } from './OrphanReview.js';
 import { useState } from 'react';
 import { RefreshSourcesButton } from './RefreshSourcesButton.js';
 import { SourceIdentityReview, type IdentityTab } from './SourceIdentityReview.js';
@@ -36,16 +35,16 @@ function conflictValue(value: unknown): string {
   return String(value);
 }
 
-export type ProposalDialog = 'identities' | 'conflicts' | 'sensitivity' | 'refresh' | 'cleanup' | null;
+export type ProposalDialog = 'identities' | 'conflicts' | 'sensitivity' | 'refresh' | 'exit' | null;
 
-export function ProposalDialogs({ dialog, review, busy, close, later, mutate, refresh, request, identityComparison, onIdentityComparison, identityTab, onIdentityTabChange, identityChoices, chooseIdentities, identitySaving, identityBusy }: {
+export function ProposalDialogs({ dialog, review, busy, close, later, discard, mutate, refresh, request, identityComparison, onIdentityComparison, identityTab, onIdentityTabChange, identityChoices, chooseIdentities, identitySaving, identityBusy }: {
   identityChoices: Record<string, string | null>; chooseIdentities: (choices: Record<string, string | null>) => void;
   identitySaving: boolean; identityBusy: boolean;
   identityTab: IdentityTab; onIdentityTabChange: (value: IdentityTab) => void;
   identityComparison?: string; onIdentityComparison: (value: string | undefined) => void;
   request: SourcingTypeEditorOperations['request'];
   dialog: ProposalDialog; review: SourceProposalReview; busy: boolean;
-  close: () => void; later: () => void; refresh: () => void;
+  close: () => void; later: () => void; discard: () => void; refresh: () => void;
   mutate: (operation: string, body: Record<string, unknown>) => Promise<unknown>;
 }) {
   const [refreshingSources, setRefreshingSources] = useState(false);
@@ -71,7 +70,6 @@ export function ProposalDialogs({ dialog, review, busy, close, later, mutate, re
           choose={chooseIdentities} compare={move => onIdentityComparison(JSON.stringify([move.bundleNodeId, move.newPath]))} />
       </div>
     </Modal>
-    <Modal isOpen={dialog === 'cleanup'} title="Configuration cleanup" onClose={close}><OrphanReview orphans={review.orphans} hasCandidate /></Modal>
     <Modal isOpen={dialog === 'conflicts'} title="Resolve configuration conflicts" onClose={close}>
       <p className="mb-4">Saved settings changed while this proposal was pending. Choose which value to accept for each conflict.</p>
       {review.conflicts.map(conflict => <section key={JSON.stringify(conflict.path)} className="mb-4 rounded border p-3">
@@ -90,7 +88,14 @@ export function ProposalDialogs({ dialog, review, busy, close, later, mutate, re
       </section>)}
       {pendingTracking.length === 0 && <p>All tracking choices reviewed.</p>}
     </Modal>
-    <Modal isOpen={dialog === 'refresh'} title="Update sources for this change?" onClose={close} footer={<div className="flex flex-wrap justify-end gap-3"><button className={secondaryButtonStyle} disabled={busy} onClick={close}>Cancel</button><button className={primaryButtonStyle} disabled={busy} onClick={refresh}>Update sources and apply change</button></div>}>
+    <Modal isOpen={dialog === 'exit'} title="Exit review" onClose={close} className="h-auto w-full max-w-md" footer={<div className="flex flex-wrap justify-end gap-3">
+      <button className={secondaryButtonStyle} disabled={busy} onClick={close}>Cancel</button>
+      <button className={secondaryButtonStyle} disabled={busy} onClick={discard}>Discard changes</button>
+      <button className={primaryButtonStyle} disabled={busy} onClick={later}>Keep changes</button>
+    </div>}>
+      <p>Keep your changes to finish later, or discard them?</p>
+    </Modal>
+    <Modal isOpen={dialog === 'refresh'} title="Update sources for this change?" onClose={close} className="h-auto w-full max-w-lg" footer={<div className="flex flex-wrap justify-end gap-3"><button className={secondaryButtonStyle} disabled={busy} onClick={close}>Cancel</button><button className={primaryButtonStyle} disabled={busy} onClick={refresh}>Update sources and apply change</button></div>}>
       <p>Newer source material is available. Applying this traversal change will update the capture being reviewed. Cancel keeps the previous capture and settings.</p>
     </Modal>
     {comparison && <SourcingComponentContentComparison evidence={comparison} request={request} onClose={() => onIdentityComparison(undefined)} />}

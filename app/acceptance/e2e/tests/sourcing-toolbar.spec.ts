@@ -100,7 +100,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'fcb8cf0e-498
   expect(scans).toBe(5);
   await sourceCommand(() => checkpoint('compact refresh discovers another change without opening review'));
 
-  // Source review retains its rescan action through the review controls.
+  // Source review keeps the shared refresh control in its header.
   await sourceCommand(() => page.clock.resume());
   await sourceCommand(() => sourceReview.open());
   await sourceCommand(() => sourceReview.expectRefreshInHeader());
@@ -108,7 +108,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'fcb8cf0e-498
   expect(scans).toBe(5);
   await sourceCommand(() => addKeyFrame(sourceSnapshot));
   await sourceCommand(() => sourceReview.close());
-  await sourceCommand(() => checkpoint('source review retains rescan access alongside its main review actions'));
+  await sourceCommand(() => checkpoint('source review keeps refresh beside its main review actions'));
 
   // Compare pending and accepted history.
   const pendingHistory = await sourceCommand(() => editor.reviewSourceHistory());

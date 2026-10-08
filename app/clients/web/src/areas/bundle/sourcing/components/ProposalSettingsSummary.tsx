@@ -1,7 +1,5 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import { useMemo, useState } from 'react';
-import { readEditorView, writeEditorView } from '../../../../shared/utils/editorViewStorage.js';
 import type { SourceProposalReview, ProposalConfiguration } from '../../../../../../../contracts/types/sourcingProposal.js';
 import type { CustomFilterConfig } from '../../../../../../../contracts/types/customFilters.js';
 import { sameProposalValue } from '../../../../../../../shared_code/utils/proposalConfigurationMerge.js';
@@ -72,21 +70,15 @@ export function proposalSettingsEntries(review: SourceProposalReview): Entry[] {
   return entries;
 }
 
-export function ProposalSettingsSummary({ review, bundleSlug }: { review: SourceProposalReview; bundleSlug: string }) {
-  const [open, setOpen] = useState(() => readEditorView(bundleSlug, 'sourcing', 'settingsSummaryOpen', false));
-  const entries = useMemo(() => proposalSettingsEntries(review), [review]);
-  const trackingCount = entries.filter(entry => entry.tracking).length;
-  const settingsCount = entries.length - trackingCount;
-  return <div className="contents">
-    <button aria-expanded={open} aria-controls="proposal-settings-summary" onClick={() => { setOpen(!open); writeEditorView(bundleSlug, 'sourcing', 'settingsSummaryOpen', !open); }}>Settings and tracking · {settingsCount} settings · {trackingCount} tracking choices</button>
-    {open && <section id="proposal-settings-summary" aria-label="Proposal settings summary" className="order-last max-h-64 w-full overflow-auto rounded border bg-white p-3 text-xs">
-      <p className="mb-2">These changes apply when you accept. Global filter definitions apply to all bundles in both sourcing and curation.</p>
-      {entries.length ? <table className="w-full table-fixed text-left"><thead><tr><th className="w-1/4 p-2">Setting</th><th className="p-2">Before this proposal</th><th className="p-2">Proposed</th></tr></thead><tbody>{entries.map(entry => <tr key={entry.key} className="border-t align-top"><th className="p-2 font-normal"><strong>{entry.name}</strong><br />{entry.setting}</th><td className="break-words p-2">{entry.before}</td><td className="break-words p-2">{entry.after}</td></tr>)}</tbody></table> : <p>No staged settings or tracking choices.</p>}
-    </section>}
-  </div>;
-}
+export type ProposalSettingsEntry = Entry;
 
-import type { ParticipatesIn, proposalConfigurationDraft } from '../../../../../../../concepts/index.js';
-export type ProposalSettingsSummaryMeadowConceptParticipations = [
-  ParticipatesIn<typeof proposalConfigurationDraft, 'summarize-draft', typeof ProposalSettingsSummary>,
-];
+/** Before and after values for staged settings or tracking choices. */
+export function ProposalEntriesTable({ entries, label }: { entries: Entry[]; label: string }) {
+  return <table aria-label={label} className="w-full table-fixed text-left text-xs">
+    <thead className="text-neutral-500"><tr><th className="w-1/3 px-2 py-1.5 font-medium">{label}</th><th className="px-2 py-1.5 font-medium">Before this proposal</th><th className="px-2 py-1.5 font-medium">Proposed</th></tr></thead>
+    <tbody>{entries.map(entry => <tr key={entry.key} className="border-t border-neutral-100 align-top">
+      <th className="px-2 py-1.5 font-normal"><strong className="block [overflow-wrap:anywhere]">{entry.name}</strong><span className="text-neutral-500">{entry.setting}</span></th>
+      <td className="break-words px-2 py-1.5 text-neutral-600">{entry.before}</td><td className="break-words px-2 py-1.5">{entry.after}</td>
+    </tr>)}</tbody>
+  </table>;
+}

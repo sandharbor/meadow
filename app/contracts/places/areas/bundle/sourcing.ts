@@ -13,7 +13,7 @@ export const sourcingPlaces: PlaceOwnerDefinition = {
       title: 'Source review',
       history: false,
       parameters: [
-        { name: 'review', description: 'The pending source review decision being inspected', values: ['identities', 'conflicts', 'sensitivity', 'refresh', 'cleanup'] },
+        { name: 'review', description: 'The pending source review decision being inspected', values: ['identities', 'conflicts', 'sensitivity', 'refresh', 'exit'] },
         { name: 'identityTab', description: 'The active source identity review tab', values: ['confident', 'input'] },
         { name: 'identityComparison', description: 'Identity and destination of an open captured content comparison' },
         { name: 'details', description: 'Traversal details for a reviewed file, as accepted:<locator> or candidate:<locator>' },
@@ -29,5 +29,5 @@ export const sourcingPlaces: PlaceOwnerDefinition = {
     },
     { surface: 'source-snapshots', page: 'bundle', title: 'Source snapshots', dialogName: 'Source snapshots', history: false, parameters: [] },
   ],
-  extensions: [{ page: 'bundle', surface: 'source-review', parameters: [], dialogNames: ['Source identities', 'Resolve configuration conflicts', 'Review tracking sensitivity', 'Update sources for this change?', 'Configuration cleanup', 'Captured source comparison'] }],
+  extensions: [{ page: 'bundle', surface: 'source-review', parameters: [], dialogNames: ['Source identities', 'Resolve configuration conflicts', 'Review tracking sensitivity', 'Update sources for this change?', 'Exit review', 'Captured source comparison'] }],
 };

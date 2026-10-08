@@ -32,7 +32,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '12fd5e89-e49
   await sourceCommand(() => list.goto());
   await sourceCommand(() => list.clickBundle('multi-source-page'));
   await sourceCommand(() => editor.waitForLoad('multi-source-page'));
-  await sourceCommand(() => sourcing.open());
+  await sourceCommand(() => sourcing.openByLink('multi-source-page'));
   await sourceCommand(() => sourcing.select('Study'));
   await sourceCommand(() => sourcing.untrackSelected());
   await sourceCommand(() => panel.clickAddCustomFilter());

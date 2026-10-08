@@ -14,7 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { once } from 'events';
+import type { Server } from 'http';
 import express from 'express';
 import request from 'supertest';
 import {
@@ -46,8 +48,20 @@ function buildApp() {
 }
 
 describe('local control-plane security', () => {
+  let server: Server;
+  beforeAll(async () => {
+    // Supertest connects over IPv4. On macOS a wildcard IPv6 listener can share
+    // its port with an unrelated IPv4 listener, sending the test to that server.
+    server = buildApp().listen(0, '127.0.0.1');
+    await once(server, 'listening');
+  });
+  afterAll(async () => {
+    server.close();
+    await once(server, 'close');
+  });
+
   it('leaves only the minimal health response unauthenticated', async () => {
-    const response = await request(buildApp()).get('/api/health').expect(200);
+    const response = await request(server).get('/api/health').expect(200);
     expect(response.body).toEqual({ ready: true, protocol: MEADOW_CONTROL_PROTOCOL });
   });
 
@@ -56,14 +70,14 @@ describe('local control-plane security', () => {
     ['wrong', 'not-the-current-launch-capability'],
     ['prior-launch', 'test-only-prior-launch-capability'],
   ])('rejects a %s capability without reflecting it', async (_label, capability) => {
-    const call = request(buildApp()).get('/api/private');
+    const call = request(server).get('/api/private');
     if (capability) call.set(MEADOW_CAPABILITY_HEADER, capability);
     const response = await call.expect(401);
     expect(JSON.stringify(response.body)).not.toContain(capability ?? CAPABILITY);
   });
 
   it('accepts authenticated trusted-process calls without an Origin header', async () => {
-    await request(buildApp())
+    await request(server)
       .get('/api/private')
       .set(MEADOW_CAPABILITY_HEADER, CAPABILITY)
       .expect(200, { value: 'private' });
@@ -101,7 +115,7 @@ describe('local control-plane security', () => {
   });
 
   it('requires the capability for mutations too', async () => {
-    await request(buildApp()).post('/api/private').send({ mutate: true }).expect(401);
+    await request(server).post('/api/private').send({ mutate: true }).expect(401);
   });
 
   it('exchanges a bundle-scoped preview token for a clean HttpOnly read cookie', async () => {
@@ -166,7 +180,7 @@ describe('local control-plane security', () => {
   it('never lets the preview token authorize mutations or a disallowed browser origin', async () => {
     const token = createPreviewReadToken(CAPABILITY, 'example');
     const url = `/api/bundles/example/generation/published/index.html?${MEADOW_PREVIEW_TOKEN_QUERY}=${token}`;
-    await request(buildApp()).post(url).expect(401);
-    await request(buildApp()).get(url).set('Origin', 'https://attacker.example').expect(403);
+    await request(server).post(url).expect(401);
+    await request(server).get(url).set('Origin', 'https://attacker.example').expect(403);
   });
 });

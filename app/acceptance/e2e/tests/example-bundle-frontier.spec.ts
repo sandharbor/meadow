@@ -43,9 +43,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'c0c45455-93e
   await sourceCommand(() => checkpoint("example bundle editor loaded"));
 
   // --- Test start ---
-  await sourceCommand(() => editor.sourceReview.open());
-
-  // Enable frontier pages.
+  // Enable frontier pages in curation.
   await sourceCommand(() => filterPanel.enableFilter("Frontier"));
   await sourceCommand(() => page.waitForTimeout(500));
   await sourceCommand(() => addKeyFrame(frontier));
@@ -65,7 +63,6 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'c0c45455-93e
 
   void exampleBundle;
 
-  await sourceCommand(() => editor.sourceReview.discard());
   await sourceCommand(() => checkpoint("frontier exploration leaves accepted material unchanged"));
   await sourceCommand(() => assertMeadowHomeState());
 });

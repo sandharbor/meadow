@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { test, expect } from '../../src/run/test-fixtures.js';
-import { BundleListPage, BundleEditorPage, FilterPanelComponent, PreviewPublishModal } from '../../src/run/pages/index.js';
+import { BundleListPage, BundleEditorPage, FilterPanelComponent, PreviewPublishModal, SelectedPageDetailComponent, Pill, ActionButton } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
 import { sourcingReviewRedesign, sourceReviewWorkspace, sourceReviewTrigger, frontier, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../../concepts/index.js';
@@ -11,11 +11,11 @@ import { sourcingReviewRedesign, sourceReviewWorkspace, sourceReviewTrigger, fro
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.Example });
 
-const name = linkedScenarioName(conceptText`Sourcing explores the frontier without changing accepted material until acceptance`);
+const name = linkedScenarioName(conceptText`Curation shows the frontier and a depth change stages it in sourcing without changing accepted material until acceptance`);
 
-const description = linkedScenarioDescription(conceptText`With no external changes, sourcing explores live frontier beyond its captured boundary. Increasing
-traversal captures those pages into the proposal. Later preserves accepted curation and generation;
-accepting admits the new material and returns to curation without frontier exploration controls.`);
+const description = linkedScenarioDescription(conceptText`With no external changes, curation shows the live frontier beyond the accepted boundary without
+changing anything. Increasing traversal moves into sourcing and captures those pages into the proposal.
+Later preserves accepted curation and generation; accepting admits the new material.`);
 test(name.name, { annotation: [{ type: 'scenario-id', description: 'add4249e-bd6a-4747-8995-e8600181e8d1' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
@@ -28,19 +28,27 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'add4249e-bd6
   await sourceCommand(() => editor.waitForLoad('example-bundle'));
   const directory = path.join(testServer.configDir, 'bundles/example-bundle');
   const accepted = JSON.parse(fs.readFileSync(path.join(directory, 'raw/sourcing/state.json'), 'utf8')).acceptedId;
-  await sourceCommand(() => expect(page.getByRole('checkbox', { name: 'Frontier', exact: true })).toHaveCount(0));
-  await sourceCommand(() => sourcing.open());
-  await sourceCommand(() => checkpoint('sourcing opens for exploration without pending external source changes'));
+  await sourceCommand(() => checkpoint('accepted curation has no pending source changes'));
 
   // --- Test start ---
+  // Show the live frontier in curation; viewing it changes nothing.
   await sourceCommand(() => filters.enableFilter('Frontier'));
-  await sourceCommand(() => sourcing.select('Availability Bias'));
-  await sourceCommand(() => expect(sourcing.evidence).toContainText('Live frontier beyond the proposed scope'));
-  await sourceCommand(() => expect(sourcing.root.getByRole('button', { name: 'See content', exact: true })).toHaveCount(0));
+  await sourceCommand(() => editor.switchToListView());
+  await sourceCommand(() => editor.clickListViewRowByExactName('Availability Bias'));
+  const frontierPage = new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect);
+  await sourceCommand(() => frontierPage.expectPill(Pill.Frontier));
+  await sourceCommand(() => frontierPage.expectButtonDisabled(ActionButton.Track));
+  await sourceCommand(() => expect(sourcing.root).toBeHidden());
+  expect(JSON.parse(fs.readFileSync(path.join(directory, 'raw/sourcing/state.json'), 'utf8')).acceptedId).toBe(accepted);
   await sourceCommand(() => addKeyFrame(frontier));
-  await sourceCommand(() => checkpoint('boundary exploration shows live frontier separately from captured candidate material'));
-  await sourceCommand(() => sourcing.select('Cognitive Biases'));
-  await sourceCommand(() => sourcing.setSelectedOutlinkDepth(1));
+  await sourceCommand(() => checkpoint('curation shows the live frontier without changing accepted material'));
+
+  // Raising traversal depth moves into sourcing and captures the frontier page.
+  await sourceCommand(() => editor.clickListViewRowByExactName('Cognitive Biases'));
+  const parent = new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect);
+  await sourceCommand(() => parent.openDetails());
+  await sourceCommand(() => parent.setOutlinksDepthOverride(1));
+  await sourceCommand(() => expect(sourcing.root).toBeVisible());
   await sourceCommand(() => sourcing.select('Availability Bias'));
   await sourceCommand(() => expect(sourcing.evidence).toContainText('Change: Added'));
   await sourceCommand(() => expect(sourcing.root.getByRole('button', { name: 'See content', exact: true })).toBeVisible());
@@ -62,7 +70,6 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'add4249e-bd6
   await sourceCommand(() => sourcing.accept());
   await sourceCommand(() => editor.switchToListView());
   await sourceCommand(() => editor.expectListViewRowByExactNamePresent('Availability Bias'));
-  await sourceCommand(() => expect(page.getByRole('checkbox', { name: 'Frontier', exact: true })).toHaveCount(0));
   await sourceCommand(() => editor.clickPreview());
   await sourceCommand(() => preview.waitForPreviewComplete());
   expect(fs.existsSync(path.join(directory, 'raw/tracked_page_content/Availability Bias.md'))).toBe(true);

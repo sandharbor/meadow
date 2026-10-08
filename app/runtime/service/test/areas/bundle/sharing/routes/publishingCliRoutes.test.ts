@@ -14,7 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { once } from 'events';
+import type { Server } from 'http';
 import express from 'express';
 import request from 'supertest';
 import router from '../../../../../src/areas/bundle/sharing/routes/publishingCliRoutes.js';
@@ -47,11 +49,25 @@ function provider(id: string): IPublishingProviderBackend {
   };
 }
 
-function publish(body: Record<string, unknown>) {
+let server: Server;
+
+beforeAll(async () => {
   const app = express();
   app.use(express.json());
   app.use('/api', router);
-  return request(app).post('/api/bundles/example/sharing/publish').send(body);
+  // Supertest connects over IPv4. On macOS a wildcard IPv6 listener can share
+  // its port with an unrelated IPv4 listener, sending the test to that server.
+  server = app.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+});
+
+afterAll(async () => {
+  server.close();
+  await once(server, 'close');
+});
+
+function publish(body: Record<string, unknown>) {
+  return request(server).post('/api/bundles/example/sharing/publish').send(body);
 }
 
 describe('CLI publication provider selection', () => {

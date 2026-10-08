@@ -28,7 +28,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '47eff446-995
   await sourceCommand(() => list.goto());
   await sourceCommand(() => list.clickBundle('sourcing-review'));
   await sourceCommand(() => editor.waitForLoad('sourcing-review'));
-  await sourceCommand(() => sourcing.open());
+  await sourceCommand(() => sourcing.openByLink('sourcing-review'));
   await sourceCommand(() => sourcing.select('Reference'));
   await sourceCommand(() => sourcing.untrackSelected());
   await sourceCommand(() => sourcing.select('Leaf'));
@@ -63,8 +63,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '47eff446-995
   await sourceCommand(() => fs.renameSync(source, `${source}-unavailable`));
   const endExpectedErrors = expectLogErrors(/disconnected: its directory is unavailable|server responded with a status of 409/);
   try {
-    await sourceCommand(() => sourcing.openReviewActions());
-    await sourceCommand(() => sourcing.reviewActionsMenu.getByRole('menuitem', { name: 'Rescan sources', exact: true }).click());
+    await sourceCommand(() => sourcing.refreshSourcesButton.click());
     await sourceCommand(() => expect(sourcing.root.getByRole('alert')).toContainText('disconnected'));
     await sourceCommand(() => expect(proposal.serialized).toBe(beforeFailure));
     await sourceCommand(() => checkpoint('failed refresh keeps the complete proposal intact while its source is unavailable'));

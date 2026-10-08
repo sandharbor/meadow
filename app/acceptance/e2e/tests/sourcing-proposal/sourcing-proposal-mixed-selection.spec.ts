@@ -29,7 +29,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'e6c2836c-da5
   await sourceCommand(() => editor.waitForLoad('sourcing-review'));
   const directory = path.join(testServer.configDir, 'bundles/sourcing-review');
   const saved = fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8');
-  await sourceCommand(() => sourcing.open());
+  await sourceCommand(() => sourcing.openByLink('sourcing-review'));
   await sourceCommand(() => sourcing.select('Bridge'));
   await sourceCommand(() => sourcing.setSelectedOutlinkDepth(0));
   await sourceCommand(() => sourcing.select('Reference'));

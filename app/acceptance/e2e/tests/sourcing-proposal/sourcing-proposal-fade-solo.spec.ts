@@ -23,7 +23,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '3b2016ed-f84
   await sourceCommand(() => list.goto());
   await sourceCommand(() => list.clickBundle('sourcing-review'));
   await sourceCommand(() => editor.waitForLoad('sourcing-review'));
-  await sourceCommand(() => sourcing.open());
+  await sourceCommand(() => sourcing.openByLink('sourcing-review'));
   await sourceCommand(() => sourcing.expectGraphOpacity('file:Routes/Reference.md', 0.5));
   await sourceCommand(() => expect(sourcing.root.getByRole('button', { name: /^Fade / })).toHaveCount(0));
   await sourceCommand(() => checkpoint('the full source comparison begins with unchanged context faded'));

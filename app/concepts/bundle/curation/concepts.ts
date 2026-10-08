@@ -116,7 +116,7 @@ export const frontier = defineMeadowConcept({
   appAreaIds: curationArea,
   definition: conceptText`A reachable page just beyond the bundle's current traversal boundary.`,
   mechanics: [
-    conceptText`Frontier exploration belongs to sourcing. Frontier depth bounds exploration beyond the normal traversal boundary. Depth overrides on frontier-only pages are ignored, including overrides that would shorten exploration; exhausted incoming-link traversal remains exhausted. Stop and exclusion policies still apply.`,
+    conceptText`The Frontier filter shows the frontier in both curation and sourcing. Viewing it changes no sources; a depth override or other boundary edit that would admit frontier pages enters sourcing as a pending proposal. Curation shows the frontier only while no source changes are waiting for review. Frontier depth bounds exploration beyond the normal traversal boundary. Depth overrides on frontier-only pages are ignored, including overrides that would shorten exploration; exhausted incoming-link traversal remains exhausted. Stop and exclusion policies still apply.`,
     conceptText`An embedded asset at the boundary remains directly trackable without expanding ordinary page traversal. Direct embeds in HTML pages are retained, including stylesheets, scripts, images, and embedded documents. Supported images in other source formats are retained when the image extension setting is enabled.`,
   ],
   interplay: conceptText`An ordinary frontier page is visible for boundary reasoning but cannot become a ${conceptLink(coreConceptIds.tracking, "tracked bundle page")} until the graph constraints admit it; required embedded assets are the deliberate exception.`,

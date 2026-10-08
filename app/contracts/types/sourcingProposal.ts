@@ -3,7 +3,7 @@
 import type { BundleConfig } from './bundleConfig.js';
 import type { BundleNodeConfig, BundleNodeId } from './bundleNodeConfig.js';
 import type { CustomFilterConfig } from './customFilters.js';
-import type { SourceMoveCandidate, SourceSnapshotSummary } from './sourcing.js';
+import type { SourceMoveCandidate, SourceOrphanExplanation, SourceSnapshotSummary } from './sourcing.js';
 import type { EncodedBundleNodeKey } from './bundleNodeKey.js';
 
 export interface SourceNodeReview {
@@ -11,6 +11,8 @@ export interface SourceNodeReview {
   kind: 'added' | 'modified' | 'departing' | 'moved' | 'unchanged' | 'frontier';
   removalReason?: 'source-missing' | 'unreachable' | 'source-disconnected';
   orphanedConfiguration: boolean;
+  /** Why the page's saved configuration became unreachable, when acceptance removes it. */
+  orphan?: SourceOrphanExplanation;
   explanation: string;
   previousPath?: string;
   proposedPath?: string;
@@ -81,7 +83,7 @@ export interface SourceProposalReview {
   configuration: ProposalConfiguration;
   conflicts: ProposalConfigurationConflict[];
   moves: SourceMoveCandidate[];
-  orphans: import('./sourcing.js').SourceOrphanExplanation[];
+  orphans: SourceOrphanExplanation[];
   unresolvedIdentities: string[];
   missingRequiredEntries: string[];
   trackingTargets: Record<string, { bundleNodeId?: BundleNodeId; sensitivity?: string; sensitivityReasons?: string[] }>;

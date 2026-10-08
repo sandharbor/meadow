@@ -48,15 +48,15 @@ export function SourcingPanel({ bundleSlug, onAccepted, sourceChangeTrigger = 0,
   useLinkedSurface('source-review', { open, parameters: placeParameters }, {
     open: async parameters => { await enter(parameters); return true as const; }, close,
   });
-  const pending = Boolean(review?.candidate || review?.orphans.length);
+  // A kept proposal may hold only staged settings or tracking; it still needs a way back in.
+  const pending = Boolean(review?.candidate || review?.orphans.length || review?.pendingProposal);
   const count = (review?.changes.length ?? 0) + (review?.moves.length ?? 0) + (review?.orphans.length ?? 0);
   const progress = background && <span data-testid="source-background-progress" aria-hidden="true" className="absolute inset-x-0 bottom-0 h-0.5 bg-blue-500" />;
   return <>
     <SourceSnapshotsModal isOpen={snapshotsOpen} bundleSlug={bundleSlug} onClose={() => onCloseSnapshots?.()} checking={busy || background} onRecheck={() => { onCloseSnapshots?.(); void scan(false, true); }} />
     <div className="flex items-center gap-2 whitespace-nowrap text-sm" data-testid="sourcing-status" data-orphan-count={review?.orphans.length ?? 0} aria-live="polite">
-      {pending && <button className="relative overflow-hidden rounded bg-blue-100 px-3 py-1 font-medium text-blue-900" onClick={() => void enter()}>{count || ''} source change{count === 1 ? '' : 's'} available – Review{progress}</button>}
+      {pending && <button className="relative overflow-hidden rounded bg-blue-100 px-3 py-1 font-medium text-blue-900" onClick={() => void enter()}>{count ? `${count} source change${count === 1 ? '' : 's'} available` : 'Changes pending'} – Review{progress}</button>}
       <RefreshSourcesButton compact={pending} refreshing={busy} disabled={busy} backgroundBusy={background} noChanges={noChanges} onClick={() => void scan(false, false, true)}>{!pending && progress}</RefreshSourcesButton>
-      {!pending && <button className="text-xs text-blue-800" onClick={() => void enter()}>Explore sourcing</button>}
       {error && <span role="alert" className="text-red-700">{error}</span>}
     </div>
     {open && createPortal(<SourcingWorkspace requestedParameters={requestedParameters} onPlaceChange={setPlaceParameters} bundleSlug={bundleSlug} onClose={() => { close(); void scan(true); }} onAccepted={result => { onAccepted(result); onPendingChanges?.(false); }} />, document.body)}

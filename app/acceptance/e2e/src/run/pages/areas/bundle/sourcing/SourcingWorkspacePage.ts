@@ -2,6 +2,7 @@
 
 import type { Page, Expect, Locator } from '@playwright/test';
 import { SelectedPageDetailComponent } from '../curation/SelectedPageDetailComponent.js';
+import { AppPlace } from '../../../shared/AppPlace.js';
 
 /** User actions in the pending source proposal editor. */
 export class SourcingWorkspacePage {
@@ -10,8 +11,9 @@ export class SourcingWorkspacePage {
   get comparison() { return this.page.getByRole('dialog', { name: 'Captured source comparison', exact: true }); }
   get identities() { return this.page.getByRole('dialog', { name: 'Source identities', exact: true }); }
 
+  /** Sourcing opens from the review indicator, shown while source changes or a kept proposal are waiting. */
   async open() {
-    await this.page.getByTestId('sourcing-status').getByRole('button', { name: /source changes? available.*Review|Explore sourcing/ }).click();
+    await this.page.getByTestId('sourcing-status').getByRole('button', { name: /(source changes? available|Changes pending) – Review/ }).click();
     await this.expect(this.root).toBeVisible();
   }
   async expectNodeVisible(name: string, visible = true) {
@@ -121,7 +123,7 @@ export class SourcingWorkspacePage {
       this.page.waitForResponse(response => response.url().endsWith('/sourcing/proposal/tracking') && response.ok(), { timeout: 10000 }),
       this.selectedPage.getByRole('button', { name: 'Track', exact: true }).click(),
     ]);
-    await this.expect(this.reviewActionsButton).toBeEnabled();
+    await this.expect(this.refreshSourcesButton).toBeEnabled();
     await this.expect(this.selectedPage.getByText('Tracked', { exact: true })).toBeVisible();
   }
   async expectNoAutomaticTrackingOption() {
@@ -133,7 +135,7 @@ export class SourcingWorkspacePage {
       this.page.waitForResponse(response => response.url().endsWith('/sourcing/proposal/tracking') && response.ok(), { timeout: 10000 }),
       this.page.getByRole('button', { name: 'Untrack', exact: true }).click(),
     ]);
-    await this.expect(this.reviewActionsButton).toBeEnabled();
+    await this.expect(this.refreshSourcesButton).toBeEnabled();
     await this.expect(this.selectedPage.getByText('Not Tracked', { exact: true })).toBeVisible();
   }
   async setSelectedOutlinkDepth(depth: number) {
@@ -149,27 +151,30 @@ export class SourcingWorkspacePage {
     await this.expect(this.comparison.getByRole('region', { name: 'Source content comparison' })).toBeVisible();
   }
   async closeComparison() { await this.comparison.getByRole('button', { name: 'Close', exact: true }).click(); }
-  get reviewActionsButton() { return this.root.locator('header').getByRole('button', { name: 'More review actions', exact: true }); }
-  get reviewActionsMenu() { return this.root.getByRole('menu', { name: 'Review actions', exact: true }); }
+  get exitButton() { return this.root.locator('header').getByRole('button', { name: 'Exit', exact: true }); }
+  get exitReview() { return this.page.getByRole('dialog', { name: 'Exit review', exact: true }); }
   async expectMainReviewActions() {
-    await this.expect(this.root.locator('header').getByRole('button')).toHaveText(['Exit review', '', 'Accept changes']);
+    await this.expect(this.root.locator('header').getByRole('button')).toHaveText(['', 'Exit', 'Accept changes']);
+    await this.expect(this.refreshSourcesButton).toBeVisible();
   }
-  async openReviewActions() {
-    await this.reviewActionsButton.click();
-    await this.expect(this.reviewActionsMenu).toBeVisible();
-  }
+  /** Exit, discarding the proposal's changes. An unchanged review is discarded without asking. */
   async discard() {
-    await this.openReviewActions();
-    await this.reviewActionsMenu.getByRole('menuitem', { name: 'Discard proposal', exact: true }).click();
+    await this.exitButton.click();
+    if (await this.exitReview.isVisible()) await this.exitReview.getByRole('button', { name: 'Discard changes', exact: true }).click();
     await this.expect(this.root).toBeHidden();
   }
+  /** Setup only: enter sourcing by link, as the CLI or Dev Tools would, without pending source changes. */
+  async openByLink(bundleSlug: string) {
+    await new AppPlace(this.page, this.expect).open(`/bundle/${bundleSlug}?editorMode=sourcing`);
+    await this.expect(this.root).toBeVisible();
+  }
+  get refreshSourcesButton() { return this.root.locator('header').getByRole('button', { name: 'Refresh sources', exact: true }); }
   async updateSources() {
-    await this.openReviewActions();
     await Promise.all([
       this.page.waitForResponse(response => response.url().endsWith('/sourcing/proposal/refresh') && response.ok(), { timeout: 10000 }),
-      this.reviewActionsMenu.getByRole('menuitem', { name: 'Rescan sources', exact: true }).click(),
+      this.refreshSourcesButton.click(),
     ]);
-    await this.expect(this.reviewActionsButton).toBeEnabled();
+    await this.expect(this.refreshSourcesButton).toBeEnabled();
   }
   async selectIdentityTab(name: 'Confident suggestions' | 'Needs your input') {
     await this.identities.getByRole('tab', { name, exact: true }).click();
@@ -227,7 +232,7 @@ export class SourcingWorkspacePage {
       this.page.waitForResponse(response => response.url().endsWith('/sourcing/proposal/identities') && response.ok()),
       control.selectOption({ label: option }),
     ]);
-    await this.expect(this.reviewActionsButton).toBeEnabled();
+    await this.expect(this.refreshSourcesButton).toBeEnabled();
   }
   async expectCompactIdentity(id: string, choice: 'Same' | 'Different' | 'Choose', count?: number) {
     const row = this.identities.getByTestId(`source-move-${id}`).locator('xpath=ancestor::tr');
@@ -249,7 +254,7 @@ export class SourcingWorkspacePage {
       this.page.waitForResponse(response => response.url().endsWith('/sourcing/proposal/identities') && response.ok()),
       choice.click(),
     ]);
-    await this.expect(this.reviewActionsButton).toBeEnabled();
+    await this.expect(this.refreshSourcesButton).toBeEnabled();
   }
   async expectPickRequired(id: string) {
     const record = this.identities.getByTestId(`source-move-${id}`);
@@ -314,7 +319,7 @@ export class SourcingWorkspacePage {
       this.page.waitForResponse(response => response.url().endsWith('/sourcing/proposal/refresh') && response.ok()),
       this.identities.getByRole('button', { name: 'Refresh sources', exact: true }).click(),
     ]);
-    await this.expect(this.reviewActionsButton).toBeEnabled();
+    await this.expect(this.refreshSourcesButton).toBeEnabled();
   }
   async toggleIdentitySimilarity(id: string) {
     await this.showIdentity(id);
@@ -337,8 +342,66 @@ export class SourcingWorkspacePage {
     await this.expect(this.identities).toBeHidden();
   }
   get sensitivityReview() { return this.page.getByRole('dialog', { name: 'Review tracking sensitivity', exact: true }); }
+  get conflictReview() { return this.page.getByRole('dialog', { name: 'Resolve configuration conflicts', exact: true }); }
+  /** The tray attached to Accept changes that lists what acceptance applies. */
+  get acceptedChanges() { return this.root.getByRole('region', { name: 'Changes to accept', exact: true }); }
+  acceptedChange(name: string | RegExp) { return this.acceptedChanges.getByRole('button', typeof name === 'string' ? { name, exact: true } : { name }); }
+  acceptedChangeDetail(name: 'Page changes' | 'Configuration removals' | 'Setting changes' | 'Tracking choices') { return this.root.getByRole('region', { name, exact: true }); }
+  async expectAcceptedChanges(labels: Array<string | RegExp>) {
+    if (labels.length) await this.expect(this.acceptedChanges.getByRole('button')).toHaveText(labels);
+    else await this.expect(this.acceptedChanges).toHaveText('No changes yet');
+    await this.expectTrayPointsAtAccept();
+  }
+  /** The tray's caret sits under the middle of Accept changes, so the listed items read as what it applies. */
+  async expectTrayPointsAtAccept() {
+    const accept = (await this.root.getByRole('button', { name: 'Accept changes', exact: true }).boundingBox())!;
+    const caret = (await this.acceptedChanges.getByTestId('accepted-changes-caret').boundingBox())!;
+    this.expect(Math.abs(caret.x + caret.width / 2 - (accept.x + accept.width / 2))).toBeLessThanOrEqual(2);
+    // The caret reaches into the header and stops just short of the button.
+    this.expect(caret.y - (accept.y + accept.height)).toBeGreaterThanOrEqual(3);
+    this.expect(caret.y - (accept.y + accept.height)).toBeLessThanOrEqual(6);
+  }
+  async openAcceptedChangeDetail(chip: string | RegExp, name: 'Page changes' | 'Configuration removals' | 'Setting changes' | 'Tracking choices') {
+    const detail = this.acceptedChangeDetail(name);
+    if (!await detail.isVisible()) await this.acceptedChange(chip).click();
+    await this.expect(detail).toBeVisible();
+    await this.expect(this.acceptedChange(chip)).toHaveAttribute('aria-expanded', 'true');
+    return detail;
+  }
+  async closeAcceptedChangeDetail() {
+    const open = this.root.getByRole('region').filter({ has: this.page.getByRole('heading', { name: /^(Page changes|Configuration removals|Setting changes|Tracking choices)$/ }) });
+    if (await open.count()) await open.getByRole('button', { name: 'Close', exact: true }).click();
+    await this.expect(open).toHaveCount(0);
+  }
+  /** Select a page from the tray's page change list. */
+  async selectAcceptedPageChange(name: string) {
+    const detail = await this.openAcceptedChangeDetail(/^\d+ page changes?$/, 'Page changes');
+    await detail.getByTestId('accepted-page-change').filter({ hasText: name }).first().click();
+    await this.expect(detail).toBeHidden();
+    await this.expect(this.selectedPage).toBeVisible();
+    await this.expect(this.selectedPage).toContainText(name);
+  }
+  async reviewIdentities() {
+    await this.acceptedChange(/^\d+ identity decisions?$/).click();
+    await this.expect(this.identities).toBeVisible();
+  }
+  async expectNoIdentityDecisions() { await this.expect(this.root.getByRole('button', { name: /^\d+ identity decisions?$/ })).toHaveCount(0); }
+  /** Choose a side for the open conflict whose title starts with the page or filter name. */
+  async resolveConflict(name: string, choice: 'saved' | 'proposed') {
+    const section = this.conflictReview.locator('section').filter({ has: this.page.getByRole('heading', { name: new RegExp(`^${name}(?: ·|$)`) }) });
+    await Promise.all([
+      this.page.waitForResponse(response => response.url().endsWith('/sourcing/proposal/conflicts') && response.ok(), { timeout: 10000 }),
+      section.getByRole('button', { name: `Use ${choice}`, exact: true }).click(),
+    ]);
+    await this.expect(section).toHaveCount(0);
+  }
+  async resolveConflicts(count: number) {
+    await this.acceptedChange(`Resolve ${count} ${count === 1 ? 'conflict' : 'conflicts'}`).click();
+    await this.expect(this.conflictReview).toBeVisible();
+  }
+  async expectNoTrackingConfirmations() { await this.expect(this.root.getByRole('button', { name: /^Confirm \d+ tracking choices?$/ })).toHaveCount(0); }
   async reviewTrackingChoices(count: number) {
-    await this.root.getByRole('button', { name: `Review ${count} tracking choices`, exact: true }).click();
+    await this.acceptedChange(`Confirm ${count} ${count === 1 ? 'tracking choice' : 'tracking choices'}`).click();
     await this.expect(this.sensitivityReview).toBeVisible();
   }
   async resolveSensitiveTracking(filename: string, track: boolean) {
@@ -354,8 +417,10 @@ export class SourcingWorkspacePage {
     await this.root.getByRole('button', { name: 'Accept changes', exact: true }).click();
     await this.expect(this.root).toBeHidden();
   }
+  /** Exit, keeping any changes in the proposal for later. */
   async later() {
-    await this.root.getByRole('button', { name: 'Exit review', exact: true }).click();
+    await this.exitButton.click();
+    if (await this.exitReview.isVisible()) await this.exitReview.getByRole('button', { name: 'Keep changes', exact: true }).click();
     await this.expect(this.root).toBeHidden();
   }
 }

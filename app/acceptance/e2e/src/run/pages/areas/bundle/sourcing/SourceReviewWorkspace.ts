@@ -13,7 +13,7 @@ export class SourceReviewWorkspace extends SourcingWorkspacePage {
   readonly trackingNotice: SourceTrackingNotice;
   constructor(private reviewPage: Page, private reviewExpect: Expect) {
     super(reviewPage, reviewExpect);
-    this.orphans = new SourceOrphansReview(reviewPage, reviewExpect);
+    this.orphans = new SourceOrphansReview(reviewPage, reviewExpect, this);
     this.trackingNotice = new SourceTrackingNotice(reviewPage, reviewExpect);
   }
   override async open() {
@@ -22,7 +22,7 @@ export class SourceReviewWorkspace extends SourcingWorkspacePage {
   }
   async expectClosed() { await this.reviewExpect(this.root).not.toBeVisible(); }
   async checkAgain() {
-    await this.reviewExpect(this.reviewActionsButton).toBeEnabled();
+    await this.reviewExpect(this.refreshSourcesButton).toBeEnabled();
     await this.closeInspection();
     if (await this.identities.isVisible()) {
       await Promise.all([
@@ -32,12 +32,10 @@ export class SourceReviewWorkspace extends SourcingWorkspacePage {
     } else await this.updateSources();
   }
   async expectRefreshInHeader() {
-    await this.reviewExpect(this.reviewActionsButton).toBeVisible();
+    await this.reviewExpect(this.refreshSourcesButton).toBeVisible();
   }
   private async closeInspection() {
     if (await this.comparison.isVisible()) await this.closeComparison();
-    const cleanup = this.reviewPage.getByRole('dialog', { name: 'Configuration cleanup', exact: true });
-    if (await cleanup.isVisible()) await cleanup.getByRole('button', { name: 'Close', exact: true }).click();
   }
   async defer() { await this.closeInspection(); if (await this.identities.isVisible()) await this.identities.getByRole('button', { name: 'Later', exact: true }).click(); else await this.later(); }
   override async discard() {
@@ -91,7 +89,7 @@ export class SourceReviewWorkspace extends SourcingWorkspacePage {
     this.reviewExpect(await previous.getAttribute('src')).not.toBe(await next.getAttribute('src'));
   }
   async expectNoLongerIncluded(path: string) { await this.selectPath(path); await this.reviewExpect(this.evidence).toContainText('Change: Removed'); }
-  async expectNoRenames() { await this.reviewExpect(this.root.getByRole('button', { name: 'Review identities', exact: true })).not.toBeVisible(); }
+  async expectNoRenames() { await this.expectNoIdentityDecisions(); }
   async expandDetails(path: string, activation: 'click' | 'keyboard' = 'click') {
     await this.selectPath(path);
     const button = this.root.getByRole('button', { name: /^(See content|See changes|See file content changes|See previous content)$/ });

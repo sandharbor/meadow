@@ -5,6 +5,7 @@ import type { Graph } from '../../../../../../../contracts/types/graph.js';
 import { sourceReviewAppearance, sourceRemovalReasons } from '../../../../shared/utils/sourceReviewAppearance.js';
 import { SourceLineCounts, useSourceLineCounts } from './SourceLineCounts.js';
 import { PathChange } from '../../../../shared/components/PathChange.js';
+import { SourceOrphanDiagnosis } from './SourceOrphanDiagnosis.js';
 
 export function SourceComparisonEvidence({ evidence, graph, onCompare }: { evidence: SourceNodeReview; graph: Graph; onCompare: () => void }) {
   const route = (keys: SourceNodeReview['previousRoute']) => keys.map(key => graph.getNode(key)?.bundleNodeName ?? key).join(' → ') || 'Not included';
@@ -22,7 +23,8 @@ export function SourceComparisonEvidence({ evidence, graph, onCompare }: { evide
     {removed ? <>
       {content?.hasPreviousContent && <button className="font-medium underline" onClick={onCompare}>See previous content</button>}
       <details><summary className="cursor-pointer text-neutral-600">Details</summary>
-        <div className="mt-2 space-y-1"><p className="font-semibold">{reason.label}</p><p>{reason.description}</p></div>
+        <div className="mt-2 space-y-2"><div className="space-y-1"><p className="font-semibold">{reason.label}</p><p>{reason.description}</p></div>
+          {evidence.orphan && <div className="border-t border-red-200 pt-2"><SourceOrphanDiagnosis orphan={evidence.orphan} /></div>}</div>
       </details>
     </> : <>
     {evidence.kind === 'frontier' && <p>{evidence.explanation}</p>}

@@ -128,7 +128,8 @@ describe('html preview', () => {
       expect(fs.existsSync(path.join(outputDirectory, 'test blacklisted.html'))).toBe(disabled);
       expect(fs.existsSync(path.join(outputDirectory, 'superduper - blacklisted.html'))).toBe(!disabled);
     }
-  });
+    // Three complete generations need more than the single-generation default under parallel checks.
+  }, 20000);
 
   it('should process markdown with video timestamps', async () => {
     // Clear cache again to ensure fresh markdown hook loading

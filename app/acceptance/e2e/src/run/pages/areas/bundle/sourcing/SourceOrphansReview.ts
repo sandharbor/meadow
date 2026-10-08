@@ -14,126 +14,146 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import type { Page, Expect } from "@playwright/test";
+import type { Locator, Page, Expect } from "@playwright/test";
+import type { SourcingWorkspacePage } from "./SourcingWorkspacePage.js";
 
+const pageChangesChip = /^\d+ page changes?$/;
+const configurationChip = /^\d+ configuration removals?$/;
+
+/**
+ * Saved configuration that acceptance removes. Removed pages show it in their
+ * selected-page evidence; configuration that was already unreachable is listed
+ * in the tray's configuration removals.
+ */
 export class SourceOrphansReview {
+  /** The removal disclosure and diagnosis of the orphan most recently selected. */
+  private details?: Locator;
+  private diagnosis?: Locator;
+
   constructor(
     private page: Page,
     private expect: Expect,
+    private workspace: SourcingWorkspacePage,
   ) {}
 
-  private get modalTitle() {
-    return this.page.getByRole("dialog", { name: "Configuration cleanup", exact: true });
+  private get removedPageRows() {
+    return this.workspace.acceptedChangeDetail("Page changes").getByRole("region", { name: "Removed", exact: true })
+      .getByTestId("accepted-page-change").filter({ hasText: "Configuration removed" });
   }
 
-  private get orphansView() {
-    return this.modalTitle.getByTestId("orphans-view");
+  private get configurationRows() {
+    return this.page.getByRole("region", { name: "Configuration removals", exact: true }).getByTestId("accepted-configuration-removal");
   }
 
-  private get orphanRows() {
-    return this.orphansView.locator('[data-testid^="orphan-row-"]');
+  private named(rows: Locator, title: string) {
+    return rows.filter({ has: this.page.getByText(title, { exact: true }) });
   }
 
-  private orphanRow(title: string) {
-    return this.orphansView.getByTestId(`orphan-row-${title}`);
+  private async rowsIn(chip: RegExp): Promise<Locator | null> {
+    if (!await this.workspace.acceptedChange(chip).count()) return null;
+    if (chip === pageChangesChip) {
+      await this.workspace.openAcceptedChangeDetail(chip, "Page changes");
+      return this.removedPageRows;
+    }
+    await this.workspace.openAcceptedChangeDetail(chip, "Configuration removals");
+    return this.configurationRows;
+  }
+
+  private async count(title?: string) {
+    let total = 0;
+    for (const chip of [pageChangesChip, configurationChip]) {
+      const rows = await this.rowsIn(chip);
+      if (rows) total += await (title ? this.named(rows, title) : rows).count();
+    }
+    return total;
   }
 
   async waitForOpen() {
-    if (!await this.modalTitle.isVisible()) await this.page.getByTestId('sourcing-workspace').getByRole('button', { name: /^Configuration cleanup ·/ }).click();
-    await this.expect(this.modalTitle).toBeVisible();
-    await this.expect(this.orphansView).toBeVisible();
+    await this.expect(this.workspace.acceptedChanges).toBeVisible();
+    await this.expect(this.workspace.root.getByText("Loading source proposal…")).toHaveCount(0);
   }
 
-  async close() { await this.modalTitle.getByRole('button', { name: 'Close', exact: true }).click(); }
-
-  async expectClosed() {
-    await this.expect(this.modalTitle).not.toBeVisible();
-  }
+  async close() { await this.workspace.closeAcceptedChangeDetail(); }
 
   async expectSummaryCount(count: number) {
-    await this.waitForOpen();
-    await this.expect(this.modalTitle.getByTestId('source-orphans').getByRole('heading')).toHaveText(`Orphaned configuration${count >= 10 ? ` (${count})` : ''}`);
     await this.expectOrphanCount(count);
   }
 
-  async expectNotListed(title: string) {
-    const button = this.page.getByTestId('sourcing-workspace').getByRole('button', { name: /^Configuration cleanup ·/ });
-    if (!await button.isVisible()) { await this.expect(this.orphanRow(title)).toHaveCount(0); return; }
-    await this.waitForOpen();
-    await this.expect(this.orphanRow(title)).toHaveCount(0);
-  }
-
   async getOrphanCount(): Promise<number> {
-    return this.orphanRows.count();
+    const count = await this.count();
+    await this.close();
+    return count;
   }
 
   async expectOrphanCount(count: number) {
-    await this.expect(this.orphanRows).toHaveCount(count);
-  }
-
-  async expectCollapsedFile(title: string) {
-    const row = this.orphanRow(title);
-    await this.expect(row.locator('summary').first()).toBeVisible();
-    await this.expect(row).not.toHaveAttribute('open', '');
-    await this.expect(row.getByText('Why is this orphaned?', { exact: true })).not.toBeVisible();
-  }
-
-  async showHelp() {
-    await this.modalTitle.getByRole('button', { name: 'About orphaned configuration' }).hover();
-    await this.expect(this.modalTitle.getByRole('tooltip')).toBeVisible();
-    await this.expect(this.modalTitle.getByRole('tooltip')).toHaveCSS('opacity', '1');
-  }
-
-  async checkHelp() {
-    const help = this.modalTitle.getByRole('button', { name: 'About orphaned configuration' });
-    const tooltip = this.modalTitle.getByRole('tooltip');
-    await this.expect(tooltip).not.toBeVisible();
-    await help.hover();
-    await this.expect(tooltip).toBeVisible();
-    await this.expect(tooltip).toContainText('The source files are untouched.');
-    await this.modalTitle.getByRole('heading', { name: 'Configuration cleanup', level: 2, exact: true }).hover();
-    await help.focus();
-    await this.expect(tooltip).toBeVisible();
-    await help.press('Tab');
-    await this.expect(tooltip).not.toBeVisible();
-  }
-
-  async toggleExplanationWithKeyboard(title: string) {
-    const row = this.orphanRow(title);
-    const wasOpen = await row.getAttribute('open') !== null;
-    const summary = row.locator('summary').first();
-    await summary.focus();
-    await summary.press('Enter');
-    await this.expect(row.getByText('Why is this orphaned?', { exact: true })).toBeVisible({ visible: !wasOpen });
-  }
-
-  async showExplanation(title: string) {
     await this.waitForOpen();
-    const row = this.orphanRow(title);
-    if (await row.getAttribute('open') === null) await row.locator('summary').first().click();
-    await this.expect(row.getByText('Why is this orphaned?', { exact: true })).toBeVisible();
-  }
-
-  async expectExplanation(title: string, text: string) {
-    await this.expect(this.orphanRow(title)).toContainText(text);
-  }
-
-  async expectMissingLinkedFile(title: string, from: string, to: string) {
-    const row = this.orphanRow(title);
-    await this.expect(row).toContainText('links to');
-    await this.expect(row).toContainText('but that file does not exist in the filesystem.');
-    for (const filename of [from, to]) {
-      await this.expect(row.getByTestId('source-file-pill').filter({ hasText: filename }).filter({ visible: true })).toHaveAttribute('title', filename);
-    }
-    await this.expect(row.getByText('Previous route', { exact: true }).locator('..')).not.toHaveAttribute('open', '');
-  }
-
-  async showPreviousRoute(title: string) {
-    await this.orphanRow(title).getByText('Previous route', { exact: true }).click();
+    await this.expect.poll(() => this.count()).toBe(count);
+    await this.close();
   }
 
   async expectOrphanListed(title: string) {
     await this.waitForOpen();
-    await this.expect(this.orphanRow(title)).toBeVisible();
+    await this.expect.poll(() => this.count(title)).toBe(1);
+    await this.close();
+  }
+
+  async expectNotListed(title: string) {
+    await this.waitForOpen();
+    await this.expect.poll(() => this.count(title)).toBe(0);
+    await this.close();
+  }
+
+  /** Bring the orphan's removal explanation into view without opening it. */
+  async select(title: string) {
+    await this.waitForOpen();
+    await this.expect.poll(() => this.count(title)).toBe(1);
+    const removed = await this.rowsIn(pageChangesChip);
+    if (removed && await this.named(removed, title).count()) {
+      await this.named(removed, title).click();
+      await this.expect(this.workspace.acceptedChangeDetail("Page changes")).toBeHidden();
+      await this.expect(this.workspace.selectedPage).toContainText(title);
+      await this.expect(this.workspace.evidence).toContainText("Change: Removed");
+      this.details = this.workspace.evidence.locator("details");
+      this.diagnosis = this.workspace.evidence.getByTestId("source-orphan-diagnosis");
+      return;
+    }
+    const configuration = await this.rowsIn(configurationChip);
+    this.expect(configuration).not.toBeNull();
+    const row = this.named(configuration!, title);
+    await this.expect(row).toHaveCount(1);
+    this.details = row;
+    this.diagnosis = row.getByTestId("source-orphan-diagnosis");
+  }
+
+  async expectCollapsedFile(title: string) {
+    await this.select(title);
+    await this.expect(this.details!).not.toHaveAttribute("open", "");
+    await this.expect(this.diagnosis!).not.toBeVisible();
+  }
+
+  async toggleExplanationWithKeyboard(_title: string) {
+    const wasOpen = await this.details!.getAttribute("open") !== null;
+    const summary = this.details!.locator("summary").first();
+    await summary.focus();
+    await summary.press("Enter");
+    await this.expect(this.diagnosis!).toBeVisible({ visible: !wasOpen });
+  }
+
+  async showExplanation(title: string) {
+    await this.select(title);
+    if (await this.details!.getAttribute("open") === null) await this.details!.locator("summary").first().click();
+    await this.expect(this.diagnosis!).toBeVisible();
+  }
+
+  async expectExplanation(_title: string, text: string) {
+    await this.expect(this.diagnosis!).toContainText(text);
+  }
+
+  async expectMissingLinkedFile(_title: string, from: string, to: string) {
+    await this.expect(this.diagnosis!).toContainText("links to");
+    await this.expect(this.diagnosis!).toContainText("but that file does not exist in the filesystem.");
+    for (const filename of [from, to]) {
+      await this.expect(this.diagnosis!.getByTestId("source-file-pill").filter({ hasText: filename }).filter({ visible: true })).toHaveAttribute("title", filename);
+    }
   }
 }

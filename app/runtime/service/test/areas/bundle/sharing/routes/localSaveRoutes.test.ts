@@ -15,6 +15,8 @@ limitations under the License.
 */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { once } from 'events';
+import type { Server } from 'http';
 import { execFileSync } from 'child_process';
 import express from 'express';
 import fs from 'fs';
@@ -29,23 +31,30 @@ import { TestBundleSetup } from '../../../../shared/support/testBundleSetup.js';
 describe('Advanced-tab sources export (localSaveRoutes)', () => {
   const bundleSlug = 'sources-export-test';
   const testSetup = new TestBundleSetup('shared/fixtures/sources-export-bundle', bundleSlug);
-  let app: express.Express;
+  let server: Server;
   let scratchDir: string;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     testSetup.setUp();
 
-    app = express();
+    const app = express();
     app.use(express.json());
     app.use('/api', createLocalSaveRoutes({
       buildRawSourcesExportForBundle: buildFilteredSourcesExportForBundle,
       buildOpenKnowledgeFormatForBundle: buildFilteredOpenKnowledgeFormatForBundle,
     }));
 
+    // Supertest connects over IPv4. On macOS a wildcard IPv6 listener can share
+    // its port with an unrelated IPv4 listener, sending the test to that server.
+    server = app.listen(0, '127.0.0.1');
+    await once(server, 'listening');
+
     scratchDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sources-export-advanced-'));
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    server.close();
+    await once(server, 'close');
     if (fs.existsSync(scratchDir)) {
       fs.rmSync(scratchDir, { recursive: true, force: true });
     }
@@ -55,7 +64,7 @@ describe('Advanced-tab sources export (localSaveRoutes)', () => {
   it('create-zip with sourceType=raw should exclude orphaned and blacklisted pages from the ZIP', async () => {
     const zipDestination = path.join(scratchDir, 'tracked-raw-markdown.zip');
 
-    const response = await request(app)
+    const response = await request(server)
       .post(`/api/bundles/${bundleSlug}/sharing/create-zip`)
       .send({ sourceType: 'raw', destinationPath: zipDestination })
       .expect(200);
@@ -75,7 +84,7 @@ describe('Advanced-tab sources export (localSaveRoutes)', () => {
     const destDir = path.join(scratchDir, 'copied');
     fs.mkdirSync(destDir, { recursive: true });
 
-    const response = await request(app)
+    const response = await request(server)
       .post(`/api/bundles/${bundleSlug}/sharing/copy-to-directory`)
       .send({ sourceType: 'raw', destinationPath: destDir })
       .expect(200);
@@ -93,7 +102,7 @@ describe('Advanced-tab sources export (localSaveRoutes)', () => {
   it('create-zip with sourceType=okf should export an OKF bundle', async () => {
     const zipDestination = path.join(scratchDir, 'okf.zip');
 
-    const response = await request(app)
+    const response = await request(server)
       .post(`/api/bundles/${bundleSlug}/sharing/create-zip`)
       .send({ sourceType: 'okf', destinationPath: zipDestination })
       .expect(200);

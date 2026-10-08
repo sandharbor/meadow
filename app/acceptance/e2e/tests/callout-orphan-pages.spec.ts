@@ -54,8 +54,9 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'fc541bcb-6df
   const orphansModal = await sourceCommand(() => review.reviewOrphans());
   await sourceCommand(() => orphansModal.expectOrphanCount(EXPECTED_ORPHAN_COUNT));
   await sourceCommand(() => orphansModal.expectOrphanListed(CHILD_OF_BLACKLISTED));
+  await sourceCommand(() => orphansModal.showExplanation(CHILD_OF_BLACKLISTED));
   await sourceCommand(() => addKeyFrame(orphan));
-  await sourceCommand(() => checkpoint("orphans review modal lists unreachable config pages"));
+  await sourceCommand(() => checkpoint("configuration removals beside Accept changes list unreachable config pages"));
 
   // Defer, then accept the orphan cleanup.
   await sourceCommand(() => review.defer());

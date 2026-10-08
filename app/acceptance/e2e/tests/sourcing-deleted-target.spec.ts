@@ -61,21 +61,19 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'b6e58804-dcb
   const title = 't003 ---- page with section to link to';
   await sourceCommand(() => orphans.expectSummaryCount(1));
   await sourceCommand(() => orphans.expectCollapsedFile(title));
-  await sourceCommand(() => orphans.checkHelp());
-  await sourceCommand(() => orphans.showHelp());
   await sourceCommand(() => addKeyFrame(orphan));
   await sourceCommand(() => orphans.toggleExplanationWithKeyboard(title));
   await sourceCommand(() => orphans.toggleExplanationWithKeyboard(title));
   await sourceCommand(() => orphans.expectCollapsedFile(title));
   await sourceCommand(() => orphans.showExplanation(title));
   await sourceCommand(() => orphans.expectMissingLinkedFile(title, 't003 - link to section.md', `${title}.md`));
+  await sourceCommand(() => orphans.expectExplanation(title, 'Accepting removes this page’s saved configuration. The source files are untouched.'));
   await sourceCommand(() => addKeyFrame(orphan));
   expect(navigationMutations).toEqual([]);
   await sourceCommand(() => checkpoint('a surviving section link explains the missing file without showing the full route'));
 
   // Show the previous route.
-  await sourceCommand(() => orphans.showPreviousRoute(title));
-  await sourceCommand(() => orphans.expectExplanation(title, 'main page.md'));
+  await sourceCommand(() => review.expectSelectedRoute(['main page']));
   await sourceCommand(() => addKeyFrame(orphan));
   await sourceCommand(() => checkpoint('the previous route is available when requested'));
 

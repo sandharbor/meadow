@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import YAML from 'yaml';
 import { test, expect } from '../../src/run/test-fixtures.js';
-import { BundleListPage, BundleEditorPage } from '../../src/run/pages/index.js';
+import { BundleListPage, BundleEditorPage, SelectedPageDetailComponent } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
 import { sourcingReviewRedesign, pendingProposalRevalidation, sourceReviewConfigurationMerge, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../../concepts/index.js';
@@ -33,10 +33,10 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '459afd83-d7c
   await sourceCommand(() => list.goto());
   await sourceCommand(() => list.clickBundle('sourcing-review'));
   await sourceCommand(() => editor.waitForLoad('sourcing-review'));
+  await sourceCommand(() => sourcing.openByLink('sourcing-review'));
   await sourceCommand(() => checkpoint('the original saved page configuration has inherited traversal'));
 
   // --- Test start ---
-  await sourceCommand(() => sourcing.open());
   for (const name of ['Leaf', 'Reference']) {
     await sourceCommand(() => sourcing.select(name));
     await sourceCommand(() => sourcing.setSelectedOutlinkDepth(0));
@@ -59,14 +59,20 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '459afd83-d7c
   await sourceCommand(() => editor.expectLabelVisible('Leaf'));
   await sourceCommand(() => checkpoint('compatible acceptance retains both traversal fields and the later presentation choice'));
 
-  // A saved edit to the same field competes with the second proposal.
-  await sourceCommand(() => sourcing.open());
-  await sourceCommand(() => sourcing.select('Leaf'));
-  await sourceCommand(() => sourcing.setSelectedOutlinkDepth(1));
+  // A depth change in curation stages a second proposal; a saved edit to the same field competes with it.
+  await sourceCommand(() => editor.switchToListView());
+  // Leaf is still selected from the earlier label check; select it alone.
+  await sourceCommand(() => editor.clickSelectNone());
+  await sourceCommand(() => editor.clickListViewRowByExactName('Leaf'));
+  const leafDetail = new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect);
+  await sourceCommand(() => leafDetail.openDetails());
+  await sourceCommand(() => leafDetail.setOutlinksDepthOverride(1));
+  await sourceCommand(() => expect(sourcing.root).toBeVisible());
   await sourceCommand(() => sourcing.later());
+  await sourceCommand(() => editor.switchToGraphView());
   saveLeaf({ outlinksDepth: 2, inlinksDepth: 2 });
   await sourceCommand(() => sourcing.open());
-  await sourceCommand(() => sourcing.root.getByRole('button', { name: 'Resolve 1 configuration conflicts', exact: true }).click());
+  await sourceCommand(() => sourcing.resolveConflicts(1));
   const conflict = page.getByRole('dialog', { name: 'Resolve configuration conflicts', exact: true });
   await sourceCommand(() => expect(conflict).toContainText('Leaf'));
   await sourceCommand(() => expect(conflict).toContainText('Outlink depth'));
@@ -84,7 +90,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '459afd83-d7c
   expect(leaf()).toMatchObject({ outlinksDepth: 3, inlinksDepth: 2 });
   await sourceCommand(() => sourcing.later());
   await sourceCommand(() => sourcing.open());
-  await sourceCommand(() => sourcing.root.getByRole('button', { name: 'Resolve 1 configuration conflicts', exact: true }).click());
+  await sourceCommand(() => sourcing.resolveConflicts(1));
   await sourceCommand(() => expect(conflict).toContainText('3'));
   await sourceCommand(() => addKeyFrame(pendingProposalRevalidation));
   await sourceCommand(() => checkpoint('the changed saved value invalidates the old resolution and is open for renewed review'));

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "concurrently \"npm run server\" \"npm run client\"",
-    "server": "nodemon --ext ts,js,json --exec tsx src/server/index.ts",
+    "server": "nodemon --ext ts,js,json --watch src --watch ../../contracts --watch ../../shared_code --watch ../../concepts --watch ../../runtime/supervisor/src --watch ../local_services/src --exec tsx src/server/index.ts",
     "client": "vite",
     "test": "tsx --test src/server/*.test.ts"
   },

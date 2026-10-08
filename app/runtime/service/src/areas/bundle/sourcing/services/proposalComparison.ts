@@ -62,8 +62,9 @@ export async function sourceProposalComparison(directory: string, frontierDepth 
       : removalReason === 'source-missing' ? 'The source was missing when this proposal was captured.'
       : removalReason === 'source-disconnected' ? 'Its source is no longer connected to this proposed scope. Its files are untouched.'
       : proposedControl ? 'Excluded by the proposed blacklist. Remove the blacklist to restore its captured route.' : kind === 'departing' ? 'No longer reachable through the proposed links and traversal settings.' : 'Unchanged source material.';
+    const orphan = review.orphans.find(item => item.bundleNodeId === node.bundleNodeId);
     node.sourceReview = { kind, removalReason, orphanedConfiguration: departing && Boolean(previous?.conf) && !proposedControl && previous?.conf?.listType !== 'blacklist',
-      explanation: [explanation, review.orphans.find(orphan => orphan.bundleNodeId === node.bundleNodeId)?.reason].filter(Boolean).join(' '), previousPath, proposedPath, previousRoute: previous?.path ?? [], proposedRoute: departing ? [] : node.path ?? [],
+      ...(orphan && { orphan }), explanation: [explanation, orphan?.reason].filter(Boolean).join(' '), previousPath, proposedPath, previousRoute: previous?.path ?? [], proposedRoute: departing ? [] : node.path ?? [],
       sensitivityReasons: review.trackingTargets[node.bundleNodeKey]?.sensitivityReasons,
       beforeSnapshotId: accepted.id, afterSnapshotId: candidate.id };
   }
