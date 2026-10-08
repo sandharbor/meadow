@@ -7,7 +7,7 @@ import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { sourcingReviewRedesign, proposalConfigurationDraft, pendingProposalRevalidation, sourceReviewConfigurationMerge, filters, filterSensitivity, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../../concepts/index.js';
+import { sourcingReviewRedesign, pendingSourceProposal, proposalConfigurationDraft, pendingProposalRevalidation, sourceReviewConfigurationMerge, filters, filterSensitivity, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });
@@ -56,6 +56,9 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'fe6156b8-57d
   await sourceCommand(() => panel.saveCustomFilterEdits({ note: 'Competing accepted definition' }));
   await sourceCommand(() => create('Created in curation'));
   await sourceCommand(() => panel.deleteCustomFilter('Obsolete review'));
+  // The kept proposal has no source changes, yet stays reachable from the toolbar.
+  await sourceCommand(() => expect(page.getByTestId('sourcing-status').getByRole('button', { name: 'Changes pending – Review', exact: true })).toBeVisible());
+  await sourceCommand(() => addKeyFrame(pendingSourceProposal));
   await sourceCommand(() => checkpoint('accepted curation has independent global changes and one competing definition'));
 
   // The field-level conflict names the shared definition while preserving compatible changes.
