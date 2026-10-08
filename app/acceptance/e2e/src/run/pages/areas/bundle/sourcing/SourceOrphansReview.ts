@@ -17,13 +17,13 @@ limitations under the License.
 import type { Locator, Page, Expect } from "@playwright/test";
 import type { SourcingWorkspacePage } from "./SourcingWorkspacePage.js";
 
-const pageChangesChip = /^\d+ page changes?$/;
+const trackingChangesChip = /^\d+ tracking changes?$/;
 const configurationChip = /^\d+ configuration removals?$/;
 
 /**
- * Saved configuration that acceptance removes. Removed pages show it in their
- * selected-page evidence; configuration that was already unreachable is listed
- * in the tray's configuration removals.
+ * Saved configuration that acceptance removes. Removing a tracked page untracks it, so it is
+ * listed among the tray's tracking changes and explained in its selected-page evidence;
+ * configuration that was already unreachable is listed in the tray's configuration removals.
  */
 export class SourceOrphansReview {
   /** The removal disclosure and diagnosis of the orphan most recently selected. */
@@ -37,8 +37,7 @@ export class SourceOrphansReview {
   ) {}
 
   private get removedPageRows() {
-    return this.workspace.acceptedChangeDetail("Page changes").getByRole("region", { name: "Remove", exact: true })
-      .getByTestId("accepted-page-change").filter({ hasText: "Remove configuration" });
+    return this.workspace.acceptedChangeDetail("Tracking changes").getByTestId("tracking-removal");
   }
 
   private get configurationRows() {
@@ -51,8 +50,11 @@ export class SourceOrphansReview {
 
   private async rowsIn(chip: RegExp): Promise<Locator | null> {
     if (!await this.workspace.acceptedChange(chip).count()) return null;
-    if (chip === pageChangesChip) {
-      await this.workspace.openAcceptedChangeDetail(chip, "Page changes");
+    if (chip === trackingChangesChip) {
+      await this.workspace.openAcceptedChangeDetail(chip, "Tracking changes");
+      // Manual tracking changes come first; removals follow behind a toggle.
+      const toggle = this.workspace.acceptedChangeDetail("Tracking changes").getByTestId("tracking-removals-toggle");
+      if (await toggle.count() && await toggle.getAttribute("aria-expanded") === "false") await toggle.click();
       return this.removedPageRows;
     }
     await this.workspace.openAcceptedChangeDetail(chip, "Configuration removals");
@@ -61,7 +63,7 @@ export class SourceOrphansReview {
 
   private async count(title?: string) {
     let total = 0;
-    for (const chip of [pageChangesChip, configurationChip]) {
+    for (const chip of [trackingChangesChip, configurationChip]) {
       const rows = await this.rowsIn(chip);
       if (rows) total += await (title ? this.named(rows, title) : rows).count();
     }
@@ -107,14 +109,15 @@ export class SourceOrphansReview {
   async select(title: string) {
     await this.waitForOpen();
     await this.expect.poll(() => this.count(title)).toBe(1);
-    const removed = await this.rowsIn(pageChangesChip);
+    await this.workspace.deselectAll();
+    const removed = await this.rowsIn(trackingChangesChip);
     if (removed && await this.named(removed, title).count()) {
       await this.named(removed, title).click();
-      await this.expect(this.workspace.acceptedChangeDetail("Page changes")).toBeHidden();
+      await this.expect(this.workspace.acceptedChangeDetail("Tracking changes")).toBeHidden();
       await this.expect(this.workspace.selectedPage).toContainText(title);
-      await this.expect(this.workspace.evidence).toContainText("Change: Remove");
-      this.details = this.workspace.evidence.locator("details");
-      this.diagnosis = this.workspace.evidence.getByTestId("source-orphan-diagnosis");
+      await this.expect(this.workspace.changeKind).toHaveText("Remove");
+      this.details = this.workspace.evidence.getByTestId("source-removal-reason");
+      this.diagnosis = this.workspace.evidence.getByTestId("source-removal-explanation");
       return;
     }
     const configuration = await this.rowsIn(configurationChip);
@@ -152,8 +155,9 @@ export class SourceOrphansReview {
   async expectMissingLinkedFile(_title: string, from: string, to: string) {
     await this.expect(this.diagnosis!).toContainText("links to");
     await this.expect(this.diagnosis!).toContainText("but that file does not exist in the filesystem.");
+    // A file the comparison graph knows is a selectable page pill; any other file is a plain file pill.
     for (const filename of [from, to]) {
-      await this.expect(this.diagnosis!.getByTestId("source-file-pill").filter({ hasText: filename }).filter({ visible: true })).toHaveAttribute("title", filename);
+      await this.expect(this.diagnosis!.locator(`[data-testid="source-file-pill"][title="${filename}"], [data-testid="source-change-page-pill"][data-source-path="${filename}"]`).filter({ visible: true })).toHaveCount(1);
     }
   }
 }

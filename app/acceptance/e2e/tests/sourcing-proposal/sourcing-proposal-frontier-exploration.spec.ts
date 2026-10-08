@@ -50,7 +50,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'add4249e-bd6
   await sourceCommand(() => parent.setOutlinksDepthOverride(1));
   await sourceCommand(() => expect(sourcing.root).toBeVisible());
   await sourceCommand(() => sourcing.select('Availability Bias'));
-  await sourceCommand(() => expect(sourcing.evidence).toContainText('Change: Add'));
+  await sourceCommand(() => expect(sourcing.changeKind).toHaveText('Add'));
   await sourceCommand(() => expect(sourcing.root.getByRole('button', { name: 'See content', exact: true })).toBeVisible());
   await sourceCommand(() => expect(sourcing.selectedPage.getByText('Not Tracked', { exact: true })).toBeVisible());
   await sourceCommand(() => sourcing.trackSelected());
@@ -66,7 +66,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'add4249e-bd6
   await sourceCommand(() => preview.closeModal());
   await sourceCommand(() => sourcing.open());
   await sourceCommand(() => sourcing.select('Availability Bias'));
-  await sourceCommand(() => expect(sourcing.evidence).toContainText('Change: Add'));
+  await sourceCommand(() => expect(sourcing.changeKind).toHaveText('Add'));
   await sourceCommand(() => sourcing.accept());
   await sourceCommand(() => editor.switchToListView());
   await sourceCommand(() => editor.expectListViewRowByExactNamePresent('Availability Bias'));

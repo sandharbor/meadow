@@ -15,7 +15,7 @@ test.use({ fixtureHome: Fixture.SourcingReview });
 const name = linkedScenarioName(conceptText`Sourcing summarizes staged settings and tracking edits without adding a graph change category`);
 
 const description = linkedScenarioDescription(conceptText`Review a changed source alongside staged traversal, tracking, bundle and global filters. The
-tray attached to Accept changes counts the page changes, staged settings, and tracking choices; each
+tray attached to Accept changes counts the page changes, staged settings, and tracking changes; each
 item opens readable details, including before/after values, global scope, and pages that can be
 selected in the graph. Soloing Untracked changes presentation, while acceptance still applies the
 complete proposal.`);
@@ -45,7 +45,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'd1647330-ccf
   await sourceCommand(() => filters.fillAndSaveCustomFilter({ name: 'Bridge emphasis', field: 'title', matchType: 'substring', value: 'Bridge' }));
   await sourceCommand(() => filters.clickAddCustomFilter());
   await sourceCommand(() => filters.fillAndSaveCustomFilter({ name: 'Shared retained review', field: 'title', matchType: 'substring', value: 'Retained', scope: 'global' }));
-  await sourceCommand(() => sourcing.expectAcceptedChanges([/^\d+ page changes$/, '3 setting changes', '1 tracking choice']));
+  await sourceCommand(() => sourcing.expectAcceptedChanges([/^\d+ page changes$/, '3 setting changes', '4 tracking changes']));
   await sourceCommand(() => addKeyFrame(proposalConfigurationDraft));
   await sourceCommand(() => checkpoint('the tray under Accept changes lists each kind of staged change'));
 
@@ -62,13 +62,17 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'd1647330-ccf
   await sourceCommand(() => addKeyFrame(proposalConfigurationDraft));
   await sourceCommand(() => checkpoint('setting changes show each staged setting before and after'));
 
-  // Inspect the staged tracking choice.
-  const trackingChoices = await sourceCommand(() => sourcing.openAcceptedChangeDetail('1 tracking choice', 'Tracking choices'));
+  // Inspect the staged tracking change; removals that untrack pages follow behind a toggle.
+  const trackingChanges = await sourceCommand(() => sourcing.openAcceptedChangeDetail('4 tracking changes', 'Tracking changes'));
   await sourceCommand(() => expect(settings).toBeHidden());
-  await sourceCommand(() => expect(trackingChoices).toContainText('Reference'));
-  await sourceCommand(() => expect(trackingChoices).toContainText('Untracked'));
+  const untracked = trackingChanges.getByTestId('tracking-change').filter({ hasText: 'Reference' });
+  await sourceCommand(() => expect(untracked).toContainText('Not Tracked'));
+  await sourceCommand(() => expect(trackingChanges.getByTestId('tracking-removal')).toHaveCount(0));
+  await sourceCommand(() => trackingChanges.getByTestId('tracking-removals-toggle').click());
+  await sourceCommand(() => expect(trackingChanges.getByTestId('tracking-removal')).toHaveCount(3));
+  await sourceCommand(() => expect(trackingChanges.getByTestId('tracking-removal').first()).toContainText('Not Tracked (removed)'));
   await sourceCommand(() => addKeyFrame(proposalConfigurationDraft));
-  await sourceCommand(() => checkpoint('tracking choices show the untracked page'));
+  await sourceCommand(() => checkpoint('tracking changes show the untracked page and the removals that untrack pages'));
 
   // Inspect a page change from the tray.
   const pageChanges = await sourceCommand(() => sourcing.openAcceptedChangeDetail(/^\d+ page changes$/, 'Page changes'));

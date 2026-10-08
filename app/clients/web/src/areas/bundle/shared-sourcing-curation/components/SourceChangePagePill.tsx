@@ -14,7 +14,7 @@ export function SourceChangePagePill({ bundleNodeKey, graph, onSelect }: { bundl
   const path = useSourcePath(review?.previousPath ?? review?.proposedPath ?? bundleNodeKeySourceGraphPath(bundleNodeKey));
   const change = appearance && [appearance.label, review?.removalReason && sourceRemovalReasons[review.removalReason].label].filter(Boolean).join(' · ');
   const name = page?.bundleNodeName ?? path.split('/').pop() ?? bundleNodeKey;
-  return <button type="button" data-testid="source-change-page-pill" data-bundle-node-key={bundleNodeKey} onClick={() => onSelect(bundleNodeKey)}
+  return <button type="button" data-testid="source-change-page-pill" data-bundle-node-key={bundleNodeKey} data-source-path={path} onClick={() => onSelect(bundleNodeKey)}
     title={[path, change, 'Click to select'].filter(Boolean).join('\n')}
     className="inline-flex max-w-full items-baseline gap-1 rounded-md border bg-white px-1.5 py-0.5 align-middle font-medium text-neutral-800 hover:bg-neutral-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-700"
     style={{ borderColor: appearance?.color ?? '#d4d4d4' }}>

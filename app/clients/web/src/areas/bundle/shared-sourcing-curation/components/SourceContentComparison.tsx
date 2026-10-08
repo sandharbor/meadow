@@ -22,7 +22,7 @@ export function SourceContentComparison({ evidence, onClose, request }: { eviden
       const query = new URLSearchParams({ beforeId: evidence.beforeSnapshotId, afterId: evidence.afterSnapshotId,
         beforePath: evidence.previousPath ?? evidence.proposedPath ?? '', afterPath: evidence.proposedPath ?? evidence.previousPath ?? '' });
       const response = await request(`source-comparison?${query}`);
-      if (!response.ok) throw new Error('Captured source comparison is unavailable.');
+      if (!response.ok) throw new Error('These changes are unavailable.');
       const value = await response.json() as Comparison;
       if (cancelled) return;
       setComparison(value);

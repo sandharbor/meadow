@@ -57,7 +57,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '09fc160a-3e3
   await sourceCommand(() => expect(sourcing.root).toBeVisible());
   expect(configuration()).toEqual(original);
   await sourceCommand(() => sourcing.select('Outside'));
-  await sourceCommand(() => expect(sourcing.evidence).toContainText('Change: Remove'));
+  await sourceCommand(() => expect(sourcing.changeKind).toHaveText('Remove'));
   await sourceCommand(() => checkpoint('the hidden wider consequences require a sourcing proposal'));
 
   // Once sourcing is open, even a harmless leaf exclusion remains staged.

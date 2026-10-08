@@ -5,7 +5,7 @@ import type { PlaceOwnerDefinition } from '../../types.js';
 export const sourcingPlaces: PlaceOwnerDefinition = {
   owner: 'sourcing',
   surfaces: [
-    { surface: 'source-diff', page: 'bundle', title: 'Captured source comparison', dialogName: 'Captured source comparison', history: false,
+    { surface: 'source-diff', page: 'bundle', title: 'Changes', dialogName: 'Changes', history: false,
       parameters: [{ name: 'node', description: 'Source locator of the page the dialog describes', required: true }] },
     {
       surface: 'source-review',
@@ -29,5 +29,5 @@ export const sourcingPlaces: PlaceOwnerDefinition = {
     },
     { surface: 'source-snapshots', page: 'bundle', title: 'Source snapshots', dialogName: 'Source snapshots', history: false, parameters: [] },
   ],
-  extensions: [{ page: 'bundle', surface: 'source-review', parameters: [], dialogNames: ['Source identities', 'Resolve configuration conflicts', 'Review tracking sensitivity', 'Update sources for this change?', 'Exit review', 'Captured source comparison'] }],
+  extensions: [{ page: 'bundle', surface: 'source-review', parameters: [], dialogNames: ['Source identities', 'Resolve configuration conflicts', 'Review tracking sensitivity', 'Update sources for this change?', 'Exit review', 'Changes'] }],
 };

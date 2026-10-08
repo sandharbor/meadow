@@ -50,7 +50,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '0724132a-c64
   await sourceCommand(() => sourcing.chooseIdentity('100000000002', null));
   await sourceCommand(() => sourcing.continueToGraph());
   await sourceCommand(() => sourcing.select('Gateway'));
-  await sourceCommand(() => expect(sourcing.evidence).toContainText('Change: Add'));
+  await sourceCommand(() => expect(sourcing.changeKind).toHaveText('Add'));
   await sourceCommand(() => sourcing.expectNodeVisible('Bridge'));
   await sourceCommand(() => expect(sourcing.root.getByRole('button', { name: 'Accept changes', exact: true })).toBeDisabled());
   await sourceCommand(() => sourcing.reviewTrackingChoices(1));

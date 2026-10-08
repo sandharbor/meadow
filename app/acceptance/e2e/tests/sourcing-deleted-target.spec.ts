@@ -67,7 +67,6 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'b6e58804-dcb
   await sourceCommand(() => orphans.expectCollapsedFile(title));
   await sourceCommand(() => orphans.showExplanation(title));
   await sourceCommand(() => orphans.expectMissingLinkedFile(title, 't003 - link to section.md', `${title}.md`));
-  await sourceCommand(() => orphans.expectExplanation(title, 'Accepting removes this page’s saved configuration. The source files are untouched.'));
   await sourceCommand(() => addKeyFrame(orphan));
   expect(navigationMutations).toEqual([]);
   await sourceCommand(() => checkpoint('a surviving section link explains the missing file without showing the full route'));

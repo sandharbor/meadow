@@ -43,11 +43,11 @@ export class SourceMoveReview {
 
   async compareContent() {
     await this.row.getByRole('button', { name: 'Compare content', exact: true }).click();
-    await this.expect(this.page.getByRole('dialog', { name: 'Captured source comparison', exact: true }).getByRole('region', { name: 'Source content comparison' })).toBeVisible();
+    await this.expect(this.page.getByRole('dialog', { name: 'Changes', exact: true }).getByRole('region', { name: 'Source content comparison' })).toBeVisible();
   }
 
   async expectContentEdit(before: string, after: string) {
-    const diff = this.page.getByRole('dialog', { name: 'Captured source comparison', exact: true }).getByRole('region', { name: 'Source content comparison' });
+    const diff = this.page.getByRole('dialog', { name: 'Changes', exact: true }).getByRole('region', { name: 'Source content comparison' });
     await this.expect(diff.getByRole('row').filter({ hasText: before })).toHaveAttribute('data-change', 'removed');
     await this.expect(diff.getByRole('row').filter({ hasText: after })).toHaveAttribute('data-change', 'added');
   }

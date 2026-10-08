@@ -45,7 +45,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '3edbe143-aa6
   await sourceCommand(() => editor.waitForLoad('sourcing-review'));
   await sourceCommand(() => sourcing.open());
   await sourceCommand(() => sourcing.select('Departing'));
-  await sourceCommand(() => expect(sourcing.evidence).toContainText('Change: Remove'));
+  await sourceCommand(() => expect(sourcing.changeKind).toHaveText('Remove'));
   await sourceCommand(() => checkpoint('reopening restores the excluded page and its pending cleanup evidence'));
   await sourceCommand(() => sourcing.select('Bridge'));
   await sourceCommand(() => sourcing.setSelectedOutlinkDepth(3));
@@ -57,7 +57,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '3edbe143-aa6
   await sourceCommand(() => sourcing.select('Bridge'));
   await sourceCommand(() => sourcing.setSelectedBlacklisted(true));
   await sourceCommand(() => sourcing.select('Departing'));
-  await sourceCommand(() => expect(sourcing.evidence).toContainText('Change: Remove'));
+  await sourceCommand(() => expect(sourcing.changeKind).toHaveText('Remove'));
   await sourceCommand(() => sourcing.later());
   await sourceCommand(() => page.reload());
   await sourceCommand(() => editor.waitForLoad('sourcing-review'));

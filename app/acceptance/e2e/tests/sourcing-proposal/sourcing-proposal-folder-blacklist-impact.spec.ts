@@ -47,7 +47,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'c18a4909-4de
   await sourceCommand(() => expect(sourcing.root).toBeVisible());
   expect(configuration()).toEqual(original);
   await sourceCommand(() => sourcing.select('Outside'));
-  await sourceCommand(() => expect(sourcing.evidence).toContainText('Change: Remove'));
+  await sourceCommand(() => expect(sourcing.changeKind).toHaveText('Remove'));
   await sourceCommand(() => sourcing.expectSelectedRemovalReason('Not reachable'));
   await sourceCommand(() => sourcing.select('Retained'));
   await sourceCommand(() => sourcing.expectSelectedRoute(['Routes', 'Reference', 'Retained']));
@@ -64,7 +64,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'c18a4909-4de
   await sourceCommand(() => page.getByRole('button', { name: 'Remove from Blacklist', exact: true }).click());
   await sourceCommand(() => expect(sourcing.root).toBeVisible());
   await sourceCommand(() => sourcing.select('Outside'));
-  await sourceCommand(() => expect(sourcing.evidence).toContainText('Change: Add'));
+  await sourceCommand(() => expect(sourcing.changeKind).toHaveText('Add'));
   await sourceCommand(() => checkpoint('unblacklisting the folder stages the returning pages as a proposed expansion'));
   await sourceCommand(() => sourcing.accept());
   await sourceCommand(() => editor.switchToListView());

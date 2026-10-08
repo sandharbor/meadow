@@ -70,7 +70,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '9fbb91cb-48e
   await sourceCommand(() => sourcing.select('Leaf'));
   await sourceCommand(() => sourcing.expectSelectedRemovalReason('Source missing'));
   await sourceCommand(() => sourcing.select('Petal'));
-  await sourceCommand(() => expect(sourcing.evidence).toContainText('Change: Add'));
+  await sourceCommand(() => expect(sourcing.changeKind).toHaveText('Add'));
   expect(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).toBe(saved);
   await sourceCommand(() => checkpoint('resolved identities are visible in the comparison without accepting the sources'));
   await sourceCommand(() => sourcing.accept());

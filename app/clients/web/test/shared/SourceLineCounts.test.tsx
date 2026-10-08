@@ -3,7 +3,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { SourceLineCounts, useSourceLineCounts } from '../../src/areas/bundle/shared-sourcing-curation/components/SourceLineCounts.js';
-import { EditorOperationsContext } from '../../src/areas/bundle/shared-sourcing-curation/types/editorOperations.js';
+import { EditorOperationsContext, useEditorOperations } from '../../src/areas/bundle/shared-sourcing-curation/types/editorOperations.js';
 import type { SourceNodeReview } from '../../../../contracts/types/sourcingProposal.js';
 import { SourceComparisonEvidence } from '../../src/areas/bundle/shared-sourcing-curation/components/SourceComparisonEvidence.js';
 import { Graph } from '../../../../contracts/types/graph.js';
@@ -16,7 +16,7 @@ const evidence: SourceNodeReview = { kind: 'modified', orphanedConfiguration: fa
 const response = (before: string | null, after: string | null, binary = false) => globalThis.Response.json({ before, after, binary });
 
 function CountsForEvidence({ evidence }: { evidence: SourceNodeReview }) {
-  const result = useSourceLineCounts(evidence);
+  const result = useSourceLineCounts(evidence, useEditorOperations().request);
   return <SourceLineCounts counts={result?.counts} removed={evidence.kind === 'departing'} />;
 }
 
@@ -46,6 +46,13 @@ describe('captured source line counts', () => {
     } else expect(screen.queryByTestId('source-line-counts')).not.toBeInTheDocument();
   });
 
+  it('uses counts computed with the review without requesting the comparison', async () => {
+    const request = vi.fn();
+    render(<EditorOperationsContext.Provider value={{ mode: 'sourcing', request }}><CountsForEvidence evidence={{ ...evidence, lineCounts: { added: 3, removed: 1 } }} /></EditorOperationsContext.Provider>);
+    expect(screen.getByTestId('source-line-counts')).toHaveAttribute('aria-label', '3 added lines, 1 removed lines');
+    expect(request).not.toHaveBeenCalled();
+  });
+
   it('ignores a late response for the prior capture when the reviewed capture changes', async () => {
     let resolveOld!: (value: ComparisonResponse) => void;
     const request = vi.fn().mockImplementationOnce(() => new Promise<ComparisonResponse>(resolve => { resolveOld = resolve; }))
@@ -63,36 +70,37 @@ describe('captured source line counts', () => {
     const request = vi.fn().mockResolvedValue(response('One\nTwo', 'One\nTwo'));
     const onCompare = vi.fn();
     render(<EditorOperationsContext.Provider value={{ mode: 'sourcing', request }}>
-      <SourceComparisonEvidence evidence={{ ...evidence, kind: 'departing', proposedPath: undefined, removalReason: 'unreachable', orphanedConfiguration: true }} graph={new Graph()} onCompare={onCompare} />
+      <SourceComparisonEvidence evidence={{ ...evidence, kind: 'departing', proposedPath: undefined, removalReason: 'unreachable', orphanedConfiguration: true }} graph={new Graph()} onCompare={onCompare} onSelectPage={vi.fn()} />
     </EditorOperationsContext.Provider>);
     expect(await screen.findByTestId('source-line-counts')).toHaveAttribute('aria-label', '2 removed lines');
     expect(screen.getByText('-2')).toBeInTheDocument();
     expect(screen.queryByText('+0')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'See previous content' }));
     expect(onCompare).toHaveBeenCalledOnce();
-    const disclosure = screen.getByText('Details').closest('details')!;
+    const disclosure = screen.getByTestId('source-removal-reason');
     expect(disclosure).not.toHaveAttribute('open');
-    fireEvent.click(screen.getByText('Details'));
+    fireEvent.click(screen.getByText('Not reachable'));
     expect(disclosure).toHaveAttribute('open');
-    expect(disclosure).toHaveTextContent('Not reachable');
-    expect(disclosure).toHaveTextContent('Excluded by the proposed traversal, links, or blacklist boundaries.');
+    expect(disclosure).toHaveTextContent('An upstream change breaks the route to this page');
     expect(screen.queryByText(/Orphaned configuration|location and route/)).not.toBeInTheDocument();
   });
 
   it.each([null, '', ' \n\t'])('omits See previous content when the previous page has no content (%s)', async before => {
     const request = vi.fn().mockResolvedValue(response(before, null));
     await act(async () => { render(<EditorOperationsContext.Provider value={{ mode: 'sourcing', request }}>
-      <SourceComparisonEvidence evidence={{ ...evidence, kind: 'departing' }} graph={new Graph()} onCompare={vi.fn()} />
+      <SourceComparisonEvidence evidence={{ ...evidence, kind: 'departing' }} graph={new Graph()} onCompare={vi.fn()} onSelectPage={vi.fn()} />
     </EditorOperationsContext.Provider>); });
     expect(screen.queryByRole('button', { name: 'See previous content' })).not.toBeInTheDocument();
   });
 
-  it('shows the accepted content alone for a removed page', async () => {
+  it('shows the accepted content as deleted lines under the removed path for a removed page', async () => {
     const request = vi.fn().mockResolvedValue(response('Previous page content', 'Newer content outside the proposed scope'));
     render(<SourceContentComparison evidence={{ ...evidence, kind: 'departing', proposedPath: undefined }} request={request} onClose={vi.fn()} />);
-    expect(await screen.findByRole('region', { name: 'Previous source content' })).toHaveTextContent('Previous page content');
+    const previous = await screen.findByRole('region', { name: 'Previous source content' });
+    expect(previous).toHaveTextContent('Previous page content');
+    expect(previous.querySelector('td.text-danger-600')).toHaveTextContent('-');
+    expect(screen.getByRole('group', { name: 'Remove: page.md' })).toBeInTheDocument();
     expect(screen.queryByText('Newer content outside the proposed scope')).not.toBeInTheDocument();
-    expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
 
   it('loads only the accepted image for a removed page even if the newer capture still has the image', async () => {

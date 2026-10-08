@@ -16,7 +16,7 @@ export const sourceReviewAppearance = {
 /** The removal explanation is identical in the filter tooltip and selected-page disclosure. */
 export const sourceRemovalReasons = {
   'source-missing': { label: 'Source missing', description: 'Missing on disk when the proposed capture was made.' },
-  'source-disconnected': { label: 'Disconnected', description: 'Its source was removed from the proposed registry.' },
+  'source-disconnected': { label: 'Disconnected', description: 'Its source was removed from the proposed registry. Its files are untouched.' },
   blacklisted: { label: 'Blacklisted', description: 'This page is blacklisted in the proposed configuration.' },
   unreachable: { label: 'Not reachable', description: 'An upstream change breaks the route to this page: a blacklisted page, a removed link, a missing source, or traversal settings.' },
 };

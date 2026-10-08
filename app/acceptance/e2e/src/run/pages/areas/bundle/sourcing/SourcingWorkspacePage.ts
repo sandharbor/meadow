@@ -8,7 +8,7 @@ import { AppPlace } from '../../../shared/AppPlace.js';
 export class SourcingWorkspacePage {
   constructor(private page: Page, private expect: Expect) {}
   get root() { return this.page.getByTestId('sourcing-workspace'); }
-  get comparison() { return this.page.getByRole('dialog', { name: 'Captured source comparison', exact: true }); }
+  get comparison() { return this.page.getByRole('dialog', { name: 'Changes', exact: true }); }
   get identities() { return this.page.getByRole('dialog', { name: 'Source identities', exact: true }); }
 
   /** Sourcing opens from the review indicator, shown while source changes or a kept proposal are waiting. */
@@ -27,10 +27,15 @@ export class SourcingWorkspacePage {
   async expectAddedContent(text: string) {
     await this.expect(this.comparison.locator('[data-change="added"]')).toContainText([text]);
   }
-  async select(name: string) {
-    await this.root.getByRole('button', { name: 'List View', exact: true }).click();
+  /** Deselect every selected page from the selection sidebar, if any are selected. An open tray detail covers the sidebar, so it closes first. */
+  async deselectAll() {
+    await this.closeAcceptedChangeDetail();
     const deselect = this.root.getByTitle('Deselect', { exact: true });
     while (await deselect.count()) await deselect.first().click();
+  }
+  async select(name: string) {
+    await this.root.getByRole('button', { name: 'List View', exact: true }).click();
+    await this.deselectAll();
     await this.root.locator('tr').filter({ has: this.page.getByText(name, { exact: true }) }).click();
     await this.expect(this.selectedPage).toBeVisible();
   }
@@ -46,6 +51,8 @@ export class SourcingWorkspacePage {
   }
   get selectedPage() { return this.root.locator('[data-testid^="selected-page-"]'); }
   get evidence() { return this.root.getByRole('region', { name: 'Source review evidence', exact: true }); }
+  /** What accepting does to the selected page: Add, Rename, Modify, or Remove. */
+  get changeKind() { return this.evidence.getByTestId('source-change-kind'); }
   async expectNoSelectedSourceChange() {
     await this.expect(this.selectedPage).toBeVisible();
     await this.expect(this.evidence).toHaveCount(0);
@@ -66,13 +73,20 @@ export class SourcingWorkspacePage {
     }
     await this.expect(this.evidence.getByRole('button', { name: 'See file content changes', exact: true })).toBeVisible();
   }
-  async expectSelectedRemovalReason(label: 'Source missing' | 'Not reachable' | 'Disconnected') {
+  /** The reason heads a disclosure; Not reachable opens to the upstream break, the others to their description. */
+  async expectSelectedRemovalReason(label: 'Source missing' | 'Not reachable' | 'Disconnected' | 'Blacklisted') {
+    // The explanation is the most specific available: an upstream break, a file-level diagnosis, or the reason's description.
     await this.expect(this.selectedPage.getByRole('button', { name: 'Details before removal', exact: true })).toBeVisible();
-    const details = this.evidence.locator('details');
-    if (await details.getAttribute('open') === null) await details.getByText('Details', { exact: true }).click();
-    await this.expect(details.getByText(label, { exact: true })).toBeVisible();
-    const descriptions = { 'Source missing': 'Missing on disk when the proposed capture was made.', 'Not reachable': 'Excluded by the proposed traversal, links, or blacklist boundaries.', Disconnected: 'Its source was removed from the proposed registry.' };
-    await this.expect(details.getByText(descriptions[label], { exact: true })).toBeVisible();
+    const details = this.evidence.getByTestId('source-removal-reason');
+    await this.expect(details.locator('summary')).toHaveText(label);
+    if (await details.getAttribute('open') === null) await details.locator('summary').click();
+    const explanations = {
+      'Source missing': /Missing on disk when the proposed capture was made\.|does not exist in the filesystem\./,
+      'Not reachable': /no longer links to|is blacklisted|is missing|source is disconnected|traversal settings stop|filesystem/,
+      Disconnected: /Its source was removed from the proposed registry\./,
+      Blacklisted: /This page is blacklisted in the proposed configuration\./,
+    };
+    await this.expect(details.getByTestId('source-removal-explanation')).toContainText(explanations[label]);
     await this.expect(this.evidence).not.toContainText('location and route');
     await this.expect(this.evidence).not.toContainText('Orphaned configuration');
   }
@@ -87,8 +101,8 @@ export class SourcingWorkspacePage {
   }
   async seePreviousContent(text: string) {
     await this.evidence.getByRole('button', { name: 'See previous content', exact: true }).click();
+    // A removal shows its previous content as deleted lines.
     await this.expect(this.comparison.getByRole('region', { name: 'Previous source content', exact: true })).toContainText(text);
-    await this.expect(this.comparison.getByRole('table')).toHaveCount(0);
   }
   async expectSelectedLineCounts(added: number, removed: number) {
     const counts = this.evidence.getByTestId('source-line-counts');
@@ -97,11 +111,11 @@ export class SourcingWorkspacePage {
     await this.expect(counts.getByText(`-${removed}`, { exact: true })).toHaveCSS('color', 'rgb(220, 38, 38)');
   }
   async expectSelectedChangeSummary(name: string, kind: 'Add' | 'Rename' | 'Modify' | 'Remove') {
-    await this.expect(this.evidence).toContainText(`Change: ${kind}`);
+    await this.expect(this.changeKind).toHaveText(kind);
     // Evidence shares the proposal's light blue; only the change name carries its category color.
     const colors = { Add: 'rgb(22, 163, 74)', Rename: 'rgb(147, 51, 234)', Modify: 'rgb(37, 99, 235)', Remove: 'rgb(220, 38, 38)' };
     await this.expect(this.evidence).toHaveCSS('background-color', 'rgb(239, 246, 255)');
-    await this.expect(this.evidence.getByText(kind, { exact: true })).toHaveCSS('color', colors[kind]);
+    await this.expect(this.changeKind).toHaveCSS('color', colors[kind]);
     const title = this.selectedPage.locator(':scope > div').first().getByText(name, { exact: true });
     const titleBox = (await title.boundingBox())!;
     this.expect((await this.evidence.boundingBox())!.y).toBeGreaterThanOrEqual(titleBox.y + titleBox.height);
@@ -348,7 +362,7 @@ export class SourcingWorkspacePage {
   /** The tray attached to Accept changes that lists what acceptance applies. */
   get acceptedChanges() { return this.root.getByRole('region', { name: 'Changes to accept', exact: true }); }
   acceptedChange(name: string | RegExp) { return this.acceptedChanges.getByRole('button', typeof name === 'string' ? { name, exact: true } : { name }); }
-  acceptedChangeDetail(name: 'Page changes' | 'Configuration removals' | 'Setting changes' | 'Tracking choices') { return this.root.getByRole('region', { name, exact: true }); }
+  acceptedChangeDetail(name: 'Page changes' | 'Configuration removals' | 'Setting changes' | 'Tracking changes') { return this.root.getByRole('region', { name, exact: true }); }
   async expectAcceptedChanges(labels: Array<string | RegExp>) {
     if (labels.length) await this.expect(this.acceptedChanges.getByRole('button')).toHaveText(labels);
     else await this.expect(this.acceptedChanges).toHaveText('No changes yet');
@@ -363,7 +377,7 @@ export class SourcingWorkspacePage {
     this.expect(caret.y - (accept.y + accept.height)).toBeGreaterThanOrEqual(3);
     this.expect(caret.y - (accept.y + accept.height)).toBeLessThanOrEqual(6);
   }
-  async openAcceptedChangeDetail(chip: string | RegExp, name: 'Page changes' | 'Configuration removals' | 'Setting changes' | 'Tracking choices') {
+  async openAcceptedChangeDetail(chip: string | RegExp, name: 'Page changes' | 'Configuration removals' | 'Setting changes' | 'Tracking changes') {
     const detail = this.acceptedChangeDetail(name);
     if (!await detail.isVisible()) await this.acceptedChange(chip).click();
     await this.expect(detail).toBeVisible();
@@ -371,12 +385,13 @@ export class SourcingWorkspacePage {
     return detail;
   }
   async closeAcceptedChangeDetail() {
-    const open = this.root.getByRole('region').filter({ has: this.page.getByRole('heading', { name: /^(Page changes|Configuration removals|Setting changes|Tracking choices)$/ }) });
+    const open = this.root.getByRole('region').filter({ has: this.page.getByRole('heading', { name: /^(Page changes|Configuration removals|Setting changes|Tracking changes)$/ }) });
     if (await open.count()) await open.getByRole('button', { name: 'Close', exact: true }).click();
     await this.expect(open).toHaveCount(0);
   }
-  /** Select a page from the tray's page change list. */
+  /** Select a page from the tray's page change list. Tray selections add to the selection, so start from an empty one to inspect a single page. */
   async selectAcceptedPageChange(name: string) {
+    await this.deselectAll();
     const detail = await this.openAcceptedChangeDetail(/^\d+ page changes?$/, 'Page changes');
     await detail.getByTestId('accepted-page-change').filter({ hasText: name }).first().click();
     await this.expect(detail).toBeHidden();

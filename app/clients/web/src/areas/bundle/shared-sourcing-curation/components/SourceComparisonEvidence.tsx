@@ -55,7 +55,7 @@ export function SourceComparisonEvidence({ evidence, graph, onCompare, onSelectP
   const compareLabel = evidence.kind === 'frontier' || settingsOnly || (removed && !content?.hasPreviousContent) ? null
     : removed ? 'See previous content' : added ? 'See content' : renamed ? 'See file content changes' : 'See changes';
   return <section aria-label="Source review evidence" className="my-3 space-y-2 rounded border border-blue-200 bg-blue-50 p-3 text-xs">
-    <div className="flex items-center gap-2 font-semibold"><span style={{ color: appearance.color }}>{appearance.label}</span>
+    <div className="flex items-center gap-2 font-semibold"><span data-testid="source-change-kind" style={{ color: appearance.color }}>{appearance.label}</span>
       <span className="ml-auto flex items-center gap-2"><SourceLineCounts counts={content?.counts} removed={removed} />
         {compareLabel && <button type="button" aria-label={compareLabel} title={compareLabel} onClick={onCompare}
           className="inline-flex items-center gap-1 rounded border border-blue-200 bg-white px-1.5 py-0.5 font-medium text-neutral-700 hover:border-blue-300 hover:bg-blue-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-700">
@@ -66,15 +66,15 @@ export function SourceComparisonEvidence({ evidence, graph, onCompare, onSelectP
       {evidence.modification.settings.length > 0 && <p>{sourceModificationKinds.config.label}: {evidence.modification.settings.map(describeSetting).join(', ')}</p>}
     </div>}
     {removed ? <>
-      {/* The reason heads a disclosure holding the most specific explanation: the upstream break, then the file-level diagnosis, then the reason itself. */}
+      {/* The reason heads a disclosure holding the most specific explanation: the upstream break, then the file-level diagnosis, then the reason's description. */}
       <details data-testid="source-removal-reason" className="group">
         <summary className="flex cursor-pointer list-none items-center gap-1 font-medium text-neutral-700">
           <svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10" className="-rotate-90 text-neutral-500 group-open:rotate-0"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" strokeWidth="1.5" /></svg>
           {reason.label}
         </summary>
-        <div className="mt-1.5 pl-3.5">
+        <div data-testid="source-removal-explanation" className="mt-1.5 pl-3.5">
           {evidence.removalCause ? <RemovalCause cause={evidence.removalCause} graph={graph} onSelect={onSelectPage} />
-            : evidence.removalReason === 'unreachable' && evidence.orphan?.diagnosis ? <SourceOrphanSentence orphan={evidence.orphan} pill={path => <PathPill path={path} graph={graph} onSelect={onSelectPage} />} />
+            : evidence.orphan?.diagnosis ? <SourceOrphanSentence orphan={evidence.orphan} pill={path => <PathPill path={path} graph={graph} onSelect={onSelectPage} />} />
             : <p>{reason.description}</p>}
         </div>
       </details>
