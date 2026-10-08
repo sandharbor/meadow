@@ -17,6 +17,7 @@ import { bundleSources, splitSourceGraphPath, sourceForNode } from '../../../../
 import type { BundleSource } from '../../../../../../../contracts/types/bundleConfig.js';
 import { equivalentSnapshotPath, sourceProposalContext } from '../../../../shared/source-snapshot/sourceRegistrySnapshots.js';
 import fs from 'node:fs';
+import { lineChangeCounts } from '../../../../../../../shared_code/utils/lineChanges.js';
 import { readSourceBlob, retainCandidateSourceTree, SourceCaptureChangedError } from '../../../../shared/source-snapshot/sourceGit.js';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
@@ -343,19 +344,38 @@ export function sourceComparison(bundleDirectory: string, beforeId: string, afte
   const state = loadSourcingState(bundleDirectory);
   const allowed = new Set([...(state?.history.map(item => item.id) ?? []), state?.candidateId]);
   if (!allowed.has(beforeId) || !allowed.has(afterId)) throw new SourcingError('Snapshot is not available in this bundle', 404);
-  const read = (id: string, relative: string) => {
-    const snapshot = loadSourceSnapshot(bundleDirectory, id);
+  return snapshotComparison(bundleDirectory, loadSourceSnapshot(bundleDirectory, beforeId), loadSourceSnapshot(bundleDirectory, afterId), beforePath, afterPath);
+}
+
+const tooLargeForComparison = '[File is too large for the inline comparison]';
+
+/** Captured content of one file in two loaded snapshots; images and other binary files carry no text. */
+export function snapshotComparison(bundleDirectory: string, before: SourceSnapshot, after: SourceSnapshot, beforePath: string, afterPath: string): ReturnType<typeof sourceComparison> {
+  const read = (snapshot: SourceSnapshot, relative: string) => {
     if (!snapshot.files[relative]) return null;
-    if (snapshot.files[relative].size > 1024 * 1024) return '[File is too large for the inline comparison]';
-    return snapshot.git ? readSourceBlob(snapshot.git, relative).toString('utf8') : fs.readFileSync(sourcePath(snapshotSourceRoot(bundleDirectory, id), relative), 'utf8');
+    if (snapshot.files[relative].size > 1024 * 1024) return tooLargeForComparison;
+    return snapshot.git ? readSourceBlob(snapshot.git, relative).toString('utf8') : fs.readFileSync(sourcePath(snapshotSourceRoot(bundleDirectory, snapshot.id), relative), 'utf8');
   };
   if (sourceImageType(afterPath || beforePath)) return {
     before: null, after: null, binary: true,
-    beforeImage: Boolean(loadSourceSnapshot(bundleDirectory, beforeId).files[beforePath]),
-    afterImage: Boolean(loadSourceSnapshot(bundleDirectory, afterId).files[afterPath]),
+    beforeImage: Boolean(before.files[beforePath]),
+    afterImage: Boolean(after.files[afterPath]),
   };
   const binary = !/\.(md|txt|html|svg|css|js|json|yaml)$/i.test(afterPath || beforePath);
-  return binary ? { before: null, after: null, binary } : { before: read(beforeId, beforePath), after: read(afterId, afterPath), binary };
+  return binary ? { before: null, after: null, binary } : { before: read(before, beforePath), after: read(after, afterPath), binary };
+}
+
+/**
+ * Line counts as the content comparison shows them, or null when there is no inline text diff.
+ * A departing page counts only its previous content as removed. `hasPreviousContent` says whether
+ * there is anything to show for it.
+ */
+export function snapshotLineCounts(bundleDirectory: string, before: SourceSnapshot, after: SourceSnapshot, beforePath: string, afterPath: string, departing: boolean) {
+  const content = snapshotComparison(bundleDirectory, before, after, beforePath, afterPath);
+  const next = departing ? null : content.after;
+  const lineCounts = content.binary || [content.before, next].includes(tooLargeForComparison) ? null : lineChangeCounts(content.before, next);
+  const hasPreviousContent = content.binary ? content.beforeImage ?? Boolean(before.files[beforePath]) : Boolean(content.before?.trim());
+  return { lineCounts, hasPreviousContent };
 }
 
 import type { ParticipatesIn, sourceSnapshot } from '../../../../../../../concepts/index.js';

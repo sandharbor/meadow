@@ -2,18 +2,19 @@
 
 import { useEffect, useState } from 'react';
 import type { SourceNodeReview } from '../../../../../../../contracts/types/sourcingProposal.js';
-import { lineChangeCounts } from '../../../../../shared_components/ConfigFileExplorer/lineChanges.js';
-import { useEditorOperations } from '../types/editorOperations.js';
+import { lineChangeCounts } from '../../../../../../../shared_code/utils/lineChanges.js';
+import type { EditorOperations } from '../types/editorOperations.js';
 
-export function useSourceLineCounts(evidence: SourceNodeReview) {
-  const { request } = useEditorOperations();
+export function useSourceLineCounts(evidence: SourceNodeReview, request: EditorOperations['request']) {
   const query = new URLSearchParams({ beforeId: evidence.beforeSnapshotId, afterId: evidence.afterSnapshotId,
     beforePath: evidence.previousPath ?? evidence.proposedPath ?? '', afterPath: evidence.proposedPath ?? evidence.previousPath ?? '' }).toString();
   const kind = evidence.kind;
   const previousPath = evidence.previousPath;
+  // The comparison review computes counts with the graph; only evidence assembled elsewhere is fetched here.
+  const precomputed = evidence.lineCounts !== undefined;
   const [result, setResult] = useState<{ query: string; kind: SourceNodeReview['kind']; counts?: { added: number; removed: number }; hasPreviousContent: boolean } | null>(null);
   useEffect(() => {
-    if (kind === 'frontier' || kind === 'unchanged') return;
+    if (precomputed || kind === 'frontier' || kind === 'unchanged') return;
     let cancelled = false;
     const read = async () => {
       const response = await request(`source-comparison?${query}`);
@@ -27,7 +28,8 @@ export function useSourceLineCounts(evidence: SourceNodeReview) {
     };
     void read().catch(() => { /* The comparison remains available through See changes. */ });
     return () => { cancelled = true; };
-  }, [query, kind, previousPath, request]);
+  }, [precomputed, query, kind, previousPath, request]);
+  if (precomputed) return { query, kind, counts: evidence.lineCounts ?? undefined, hasPreviousContent: evidence.hasPreviousContent ?? false };
   return result?.query === query && result.kind === kind ? result : null;
 }
 

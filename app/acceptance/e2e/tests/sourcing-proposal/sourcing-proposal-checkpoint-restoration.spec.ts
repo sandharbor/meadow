@@ -49,8 +49,8 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '852f3ce6-348
   await sourceCommand(() => sourcing.select('Leaf'));
   await sourceCommand(() => sourcing.untrackSelected());
   await sourceCommand(() => sourcing.clearSelection());
-  await sourceCommand(() => panel.enableAndSoloFilter('Added'));
-  await sourceCommand(() => panel.clickShowTitlesOnFilter('Added'));
+  await sourceCommand(() => panel.enableAndSoloFilter('Add'));
+  await sourceCommand(() => panel.clickShowTitlesOnFilter('Add'));
   await sourceCommand(() => sourcing.select('Safe One'));
   await sourceCommand(() => editor.switchToGraphView());
   await sourceCommand(() => page.getByTestId('graph-canvas').hover());

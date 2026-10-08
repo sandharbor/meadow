@@ -167,13 +167,13 @@ export function SourcingWorkspace({ bundleSlug, onClose, onAccepted, requestedPa
   const exit = () => { if (changes?.items.length) setDialog('exit'); else void finish(true); };
   return <SourceNamesProvider sources={graph?.sources ?? review?.configuration.bundle.sources ?? []}><section aria-label="Sourcing workspace" data-testid="sourcing-workspace" data-orphan-count={review?.orphans.length} className="fixed inset-x-0 bottom-0 top-[28px] z-40 flex flex-col bg-white text-neutral-800">
     <header className="flex items-center gap-3 border-b bg-blue-50 px-5 py-3">
-      <h1 className="font-semibold">Sourcing · {bundleSlug}</h1>
+      <h1 className="font-semibold">Page changes</h1>
       <RefreshSourcesButton compact refreshing={rescanning} disabled={busy || !review || rescanning}
         onClick={() => { setRescanning(true); void mutate('refresh', {}).catch(() => {}).finally(() => setRescanning(false)); }} />
       <SourceReviewActions busy={busy} blocked={blocked} acceptButton={acceptButton} onExit={exit} onAccept={() => void finish(false)} />
     </header>
-    {changes && <AcceptedChangesTray changes={changes} bundleSlug={bundleSlug} acceptButton={acceptButton}
-      onDialog={setDialog} onSelectPage={key => { setSelected(new Set([key])); setCollapsed(false); }} />}
+    {changes && <AcceptedChangesTray changes={changes} graph={graph} bundleSlug={bundleSlug} acceptButton={acceptButton} request={operations.request}
+      onDialog={setDialog} onSelectPage={key => { setSelected(previous => new Set([key, ...[...previous].filter(other => other !== key)])); setCollapsed(false); }} />}
     {review?.proposal.newerSourcesAvailable && <p role="status" className="bg-amber-50 px-5 py-2 text-sm">Newer sources available. Acceptance keeps the current capture.</p>}
     {review && <SourceRegistryChanges changes={{ before: review.proposal.original.bundle.sources ?? [], after: review.proposal.proposed.bundle.sources ?? [], stale: false, outputPathsChange: review.proposal.original.bundle.sourceOutputLayout !== review.proposal.proposed.bundle.sourceOutputLayout }} />}
     {frontierUnavailable && <p role="status" className="bg-amber-50 px-5 py-2">{frontierUnavailable}</p>}

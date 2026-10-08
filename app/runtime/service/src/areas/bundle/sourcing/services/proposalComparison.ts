@@ -1,7 +1,8 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import type { IBundleNode } from '../../../../../../../contracts/types/IBundleNode.js';
-import type { SourceNodeReview } from '../../../../../../../contracts/types/sourcingProposal.js';
+import type { SourceNodeReview, SourceRemovalCause, SourceSettingChange } from '../../../../../../../contracts/types/sourcingProposal.js';
+import type { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
 import { applyNodeConfigsToNodes, applySensitiveFromApiData } from '../../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 import { bundleNodeKeySourceGraphPath } from '../../../../../../../shared_code/utils/bundleNodeKey.js';
 import { serializeWorkingGraphOutput } from '../../../../shared/bundle-graph/workingGraphService.js';
@@ -9,6 +10,46 @@ import { availableSnapshotGraph, discoverSourceSnapshot, loadSourceSnapshot, sna
 import { loadProposalConfiguration } from './proposalStore.js';
 import { reviewSourceProposal } from './proposalReview.js';
 import { liveSourceLinks } from '../../../../shared/source-snapshot/sourceDiscovery.js';
+import { snapshotLineCounts } from './sourceReview.js';
+
+/**
+ * Saved settings that shape the graph. Gaining or losing a record is tracking, which is reviewed
+ * separately, so only blacklisting is compared when either side has no record.
+ */
+function settingChanges(before: BundleNodeConfig | undefined, after: BundleNodeConfig | undefined): SourceSettingChange[] {
+  const changes: SourceSettingChange[] = [];
+  const blacklisted = (config?: BundleNodeConfig) => config?.listType === 'blacklist';
+  if (blacklisted(before) !== blacklisted(after)) changes.push({ setting: 'blacklist', before: blacklisted(before), after: blacklisted(after) });
+  if (!before || !after) return changes;
+  for (const setting of ['outlinksDepth', 'inlinksDepth'] as const) {
+    const old = before[setting], next = after[setting];
+    if (old !== next) changes.push({ setting, ...(old !== undefined && { before: old }), ...(next !== undefined && { after: next }) });
+  }
+  const members = (config: BundleNodeConfig) => config.bundleNodeKind === 'collection' ? [...config.memberBundleNodeIds].sort() : [];
+  if (members(before).join() !== members(after).join()) changes.push({ setting: 'members', before: members(before), after: members(after) });
+  return changes;
+}
+
+/**
+ * Walk the accepted route from the root and report the first page that departs. A departing page that is
+ * blacklisted, missing, or disconnected is the cause itself; otherwise the page before it no longer reaches it,
+ * either because the link is gone or because traversal settings stop short of it.
+ */
+function removalCause(node: IBundleNode, byKey: Map<string, IBundleNode>, outlinks: Record<string, string[]>, inlinks: Record<string, string[]>, remap: (key: IBundleNode['bundleNodeKey']) => IBundleNode['bundleNodeKey']): SourceRemovalCause | undefined {
+  const route = (node.sourceReview?.previousRoute ?? []).map(remap);
+  if (route[route.length - 1] !== node.bundleNodeKey) route.push(node.bundleNodeKey);
+  for (let index = 0; index < route.length; index += 1) {
+    const at = route[index], review = byKey.get(at)?.sourceReview;
+    if (review?.kind !== 'departing') continue;
+    const links = route.length - 1 - index;
+    if (review.removalReason && review.removalReason !== 'unreachable') return { kind: review.removalReason, at, links };
+    if (index === 0) return undefined;
+    const from = route[index - 1];
+    const linked = outlinks[from]?.includes(at) || inlinks[from]?.includes(at);
+    return { kind: linked ? 'traversal' : 'link-removed', from, at, links };
+  }
+  return undefined;
+}
 
 /** Candidate material plus departing accepted nodes and their original connections. */
 export async function sourceProposalComparison(directory: string, frontierDepth = 0) {
@@ -54,21 +95,32 @@ export async function sourceProposalComparison(directory: string, frontierDepth 
       && accepted.files[previousPath].digest !== candidate.files[proposedPath].digest;
     const presence = previousPath ? candidate.sourceAvailability?.[previousPath] : undefined;
     const removalReason = !departing ? undefined : presence === 'missing' ? 'source-missing'
-      : presence === 'disconnected' ? 'source-disconnected' : 'unreachable';
-    const kind: SourceNodeReview['kind'] = departing ? 'departing' : changedIdentity ? 'moved' : !previous ? 'added' : modified ? 'modified' : 'unchanged';
+      : presence === 'disconnected' ? 'source-disconnected' : proposedControl ? 'blacklisted' : 'unreachable';
+    const settings = previous && !departing ? settingChanges(previous.conf, node.conf) : [];
+    const kind: SourceNodeReview['kind'] = departing ? 'departing' : changedIdentity ? 'moved' : !previous ? 'added' : modified || settings.length ? 'modified' : 'unchanged';
     const explanation = kind === 'added' ? 'Newly included in the proposed material.'
-      : kind === 'modified' ? 'Content differs between the accepted and proposed captures.'
+      : kind === 'modified' ? (modified ? 'Content differs between the accepted and proposed captures.' : 'Saved settings differ between the accepted and proposed configuration.')
       : kind === 'moved' ? 'The confirmed rename or move preserves this page’s identity and configuration.'
       : removalReason === 'source-missing' ? 'The source was missing when this proposal was captured.'
       : removalReason === 'source-disconnected' ? 'Its source is no longer connected to this proposed scope. Its files are untouched.'
       : proposedControl ? 'Excluded by the proposed blacklist. Remove the blacklist to restore its captured route.' : kind === 'departing' ? 'No longer reachable through the proposed links and traversal settings.' : 'Unchanged source material.';
     const orphan = review.orphans.find(item => item.bundleNodeId === node.bundleNodeId);
+    // Counted here so lists of changes show their line counts without a request per page.
+    const comparedPath = previousPath ?? proposedPath;
+    const counts = kind !== 'unchanged' && comparedPath ? snapshotLineCounts(directory, accepted, candidate, comparedPath, proposedPath ?? comparedPath, departing) : undefined;
     node.sourceReview = { kind, removalReason, orphanedConfiguration: departing && Boolean(previous?.conf) && !proposedControl && previous?.conf?.listType !== 'blacklist',
       ...(orphan && { orphan }), explanation: [explanation, orphan?.reason].filter(Boolean).join(' '), previousPath, proposedPath, previousRoute: previous?.path ?? [], proposedRoute: departing ? [] : node.path ?? [],
+      ...((kind === 'modified' || kind === 'moved') && { modification: { source: Boolean(modified), settings } }),
+      ...(counts && { lineCounts: counts.lineCounts, hasPreviousContent: counts.hasPreviousContent }),
       sensitivityReasons: review.trackingTargets[node.bundleNodeKey]?.sensitivityReasons,
       beforeSnapshotId: accepted.id, afterSnapshotId: candidate.id };
   }
   const remap = (key: IBundleNode['bundleNodeKey']) => correspondence.get(key) ?? key;
+  const byKey = new Map(nodes.map(node => [node.bundleNodeKey, node]));
+  for (const node of nodes) if (node.sourceReview?.removalReason === 'unreachable') {
+    const cause = removalCause(node, byKey, after.allOutlinkTargets, after.allInlinkSources, remap);
+    if (cause) node.sourceReview.removalCause = cause;
+  }
   const edges = new Map(after.edges.map(edge => [`${edge.bundleEdgeKind}:${edge.source}:${edge.target}`, edge]));
   for (const old of before.edges) {
     const edge = { ...old, source: remap(old.source), target: remap(old.target) };

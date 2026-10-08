@@ -96,16 +96,18 @@ export class SourcingWorkspacePage {
     await this.expect(counts.getByText(`+${added}`, { exact: true })).toHaveCSS('color', 'rgb(5, 150, 105)');
     await this.expect(counts.getByText(`-${removed}`, { exact: true })).toHaveCSS('color', 'rgb(220, 38, 38)');
   }
-  async expectSelectedChangeSummary(name: string, kind: 'Added' | 'Renamed' | 'Modified' | 'Removed') {
+  async expectSelectedChangeSummary(name: string, kind: 'Add' | 'Rename' | 'Modify' | 'Remove') {
     await this.expect(this.evidence).toContainText(`Change: ${kind}`);
-    const colors = { Added: 'rgb(22, 163, 74)', Renamed: 'rgb(147, 51, 234)', Modified: 'rgb(37, 99, 235)', Removed: 'rgb(220, 38, 38)' };
-    await this.expect(this.evidence).toHaveCSS('border-color', colors[kind]);
+    // Evidence shares the proposal's light blue; only the change name carries its category color.
+    const colors = { Add: 'rgb(22, 163, 74)', Rename: 'rgb(147, 51, 234)', Modify: 'rgb(37, 99, 235)', Remove: 'rgb(220, 38, 38)' };
+    await this.expect(this.evidence).toHaveCSS('background-color', 'rgb(239, 246, 255)');
+    await this.expect(this.evidence.getByText(kind, { exact: true })).toHaveCSS('color', colors[kind]);
     const title = this.selectedPage.locator(':scope > div').first().getByText(name, { exact: true });
     const titleBox = (await title.boundingBox())!;
     this.expect((await this.evidence.boundingBox())!.y).toBeGreaterThanOrEqual(titleBox.y + titleBox.height);
-    await this.expect(this.evidence.getByRole('button', { name: kind === 'Removed' ? 'See previous content' : kind === 'Renamed' ? 'See file content changes' : kind === 'Added' ? 'See content' : 'See changes', exact: true })).toBeVisible();
-    if (kind === 'Added') await this.expect(this.evidence).not.toContainText('location and route');
-    if (kind === 'Modified') {
+    await this.expect(this.evidence.getByRole('button', { name: kind === 'Remove' ? 'See previous content' : kind === 'Rename' ? 'See file content changes' : kind === 'Add' ? 'See content' : 'See changes', exact: true })).toBeVisible();
+    if (kind === 'Add') await this.expect(this.evidence).not.toContainText('location and route');
+    if (kind === 'Modify') {
       await this.expect(this.evidence).not.toContainText('location and route');
       await this.expect(this.evidence).not.toContainText('Content differs');
       await this.expect(this.evidence).not.toContainText('.md');

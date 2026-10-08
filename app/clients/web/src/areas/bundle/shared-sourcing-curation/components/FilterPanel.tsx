@@ -311,18 +311,19 @@ const FilterPanel = React.memo<FilterPanelProps>(({
     filter.id === 'outlink-gap-filter' || filter.id === 'inlink-gap-filter'
   ));
   const showGapFilter = gapFilters.length > 1;
-  const removalCount = filters.find(filter => filter.id === 'source-departing')?.bundleNodeSelectors[0]?.select(graph).size ?? 0;
+  // A source change appears only when it has pages; its breakdown then lists every reason, including empty ones.
+  const sourceChangeCount = (id: string) => filters.find(filter => filter.id === id)?.bundleNodeSelectors[0]?.select(graph).size ?? 0;
   const otherFilters = filters.filter(f =>
     !f.hideFromFilterList
     && f.id !== 'search-by-title-filter'
     && (!f.isFolderFilter || showFolderFilter)
     && (!f.isNodeTypeFilter || showNodeTypeFilter)
     && (!f.isGapFilter || showGapFilter)
-    && (f.group !== 'source-changes' || (f.parentFilterId === 'source-departing'
-      ? removalCount > 0
-      : (f.bundleNodeSelectors[0]?.select(graph).size ?? 0) > 0))
-  ).sort((a, b) => Number(b.group === 'source-changes') - Number(a.group === 'source-changes'));
-  const sourceCountDigits = Math.max(1, ...otherFilters.filter(filter => filter.group === 'source-changes')
+    && (f.group !== 'source-changes' || sourceChangeCount(f.parentFilterId ?? f.id) > 0)
+  );
+  const sourceChangeFilters = otherFilters.filter(filter => filter.group === 'source-changes');
+  const pageFilters = otherFilters.filter(filter => filter.group !== 'source-changes');
+  const sourceCountDigits = Math.max(1, ...sourceChangeFilters
     .map(filter => String(filter.bundleNodeSelectors[0]?.select(graph).size ?? 0).length));
   const searchText = searchInputs['search-by-title-filter'] || '';
   const hasSearchText = searchText.length > 0;
@@ -366,6 +367,291 @@ const FilterPanel = React.memo<FilterPanelProps>(({
       isHidden: false,
       actions: gapFilter.actions.filter(action => action.type !== 'show_titles'),
     }));
+  };
+
+  const renderFilter = (filter: IFilter) => {
+    if (filter.parentFilterId && !expandedFilterGroups.has(filter.parentFilterId)) return null;
+    const hasChildFilters = otherFilters.some(child => child.parentFilterId === filter.id);
+    const sourceChangeCount = filter.group === 'source-changes' ? filter.bundleNodeSelectors[0]?.select(graph).size ?? 0 : 0;
+    const sourceRowOpacity = filter.group === 'source-changes' && sourceChangeCount === 0 ? 0.65 : 1;
+    const sourceHighlight = filter.actions.find(action => action.type === 'highlight');
+    const threshold = thresholdInputs[filter.id] ?? filter.thresholdValue ?? 5;
+    const isExpandableFilter = Boolean(filter.isFolderFilter || filter.isNodeTypeFilter || filter.isGapFilter);
+    const isExpanded = expandedFilterGroups.has(filter.id);
+    const hasActiveGroupSettings = isExpandableFilter && filterGroupHasActiveSettings(filter);
+    const gapDescription = filter.id === 'outlink-gap-filter'
+      ? `Pages with ${threshold} or more outlinks that do not show in the graph`
+      : filter.id === 'inlink-gap-filter'
+      ? `Pages with ${threshold} or more inlinks that do not show in the graph`
+      : null;
+    const tooltipDescription = filter.group === 'source-changes' && !filter.parentFilterId
+      ? null : filter.descriptionNode || gapDescription || filter.description;
+    return (
+    <div
+      key={filter.id}
+      data-source-change-filter={filter.group === 'source-changes' ? filter.name : undefined}
+      className={`space-y-2 ${filter.parentFilterId ? 'ml-4 border-l pl-2' : ''}`}
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2 min-w-0 flex-1">
+          {filter.group === 'source-changes' ? (
+            <>
+              {hasChildFilters ? (
+                <button type="button" aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${filter.name}`} aria-expanded={isExpanded}
+                  onClick={() => toggleFilterGroup(filter.id)} style={{ opacity: sourceRowOpacity }} className="flex h-4 w-4 shrink-0 items-center justify-center rounded text-gray-500 hover:text-gray-900">
+                  <svg className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`} viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                    <path d="M5.5 3.5L10 8l-4.5 4.5V3.5z" />
+                  </svg>
+                </button>
+              ) : <span className="h-4 w-4 shrink-0" aria-hidden="true" />}
+              <span className="flex shrink-0 items-center justify-center text-xs tabular-nums"
+                style={{ width: filter.parentFilterId ? `max(1rem, ${sourceCountDigits}ch)` : `max(1.5rem, calc(${sourceCountDigits}ch + 1rem))`, opacity: sourceRowOpacity }}>
+                {sourceChangeCount > 0 && <span data-source-change-count
+                  className={`inline-flex h-6 shrink-0 items-center justify-center rounded-full text-xs font-medium tabular-nums ${filter.id === 'source-unchanged' ? 'bg-gray-100 text-gray-500 opacity-40' : filter.parentFilterId ? 'text-gray-700' : 'border-2 text-gray-700'} ${filter.parentFilterId ? '' : sourceChangeCount < 10 ? 'w-6' : 'min-w-6 px-1.5'}`}
+                  style={filter.id === 'source-unchanged' || filter.parentFilterId ? undefined : { borderColor: sourceHighlight?.color ?? '#fdba74', borderStyle: sourceHighlight?.isDashed ? 'dashed' : 'solid' }}>
+                  {sourceChangeCount}
+                </span>}
+              </span>
+              <span style={{ opacity: sourceRowOpacity, marginLeft: filter.parentFilterId ? '0.125rem' : '0.5rem' }} className="min-w-0 truncate text-sm text-gray-700">{filter.name}</span>
+            </>
+          ) : isExpandableFilter ? (
+            <button
+              type="button"
+              onClick={() => toggleFilterGroup(filter.id)}
+              className="flex min-w-0 items-center gap-2 rounded text-sm text-gray-700 hover:text-gray-900"
+              aria-expanded={isExpanded}
+              aria-controls={`${filter.id}-contents`}
+              aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${filter.name}`}
+            >
+              <svg
+                className={`h-4 w-4 flex-shrink-0 text-gray-500 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+                viewBox="0 0 16 16"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path d="M5.5 3.5L10 8l-4.5 4.5V3.5z" />
+              </svg>
+              <span className="truncate">{filter.name}</span>
+              {hasActiveGroupSettings && (
+                <span
+                  className="h-2 w-2 flex-shrink-0 rounded-full bg-main-500 ring-2 ring-main-100"
+                  title={`${filter.name} has active settings`}
+                  data-testid={`active-filter-group-${filter.id}`}
+                  aria-label={`${filter.name} has active settings`}
+                />
+              )}
+            </button>
+          ) : (
+            <>
+              <input
+                type="checkbox"
+                id={`${filter.id}-enabled`}
+                checked={filter.enabled}
+                onChange={(e) => handleFilterEnabledChange(filter, e.target.checked)}
+                className={`form-checkbox h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 flex-shrink-0 transition-opacity duration-200 ${!filter.enabled ? 'opacity-50' : ''}`}
+              />
+              <label htmlFor={`${filter.id}-enabled`} className={`text-sm text-gray-700 flex items-center min-w-0 transition-opacity duration-200 ${!filter.enabled ? 'opacity-50' : ''}`}>
+                <span className="truncate">{filter.name}</span>
+                {filter.id === 'untracked-filter' && untrackedNodeCount !== undefined && untrackedNodeCount > 0 && (
+                  <span className="ml-1.5 px-1.5 py-0.5 text-xs font-medium bg-warning-100 text-warning-700 rounded flex-shrink-0">
+                    {untrackedNodeCount}
+                  </span>
+                )}
+              </label>
+            </>
+          )}
+          {tooltipDescription && (
+            <span className="relative ml-1 group cursor-default">
+              <span className={`w-3.5 h-3.5 inline-flex items-center justify-center rounded-full border border-gray-400 text-gray-500 text-[10px] -translate-y-0.5 transition-opacity duration-[125ms] ${isPanelHovered ? (sourceRowOpacity < 1 ? 'opacity-[0.65]' : filter.enabled ? 'opacity-100' : 'opacity-50') : 'opacity-0'}`}>
+                ?
+              </span>
+              <span
+                role="tooltip"
+                className="pointer-events-none fixed ml-2 w-64 p-2 bg-white text-gray-700 text-xs rounded border border-gray-200 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-[9999]"
+              >
+                {tooltipDescription}
+              </span>
+            </span>
+          )}
+        </div>
+        {isExpanded && hasActiveGroupSettings && (
+          <button
+            type="button"
+            onClick={() => resetFilterGroup(filter)}
+            className="ml-2 flex-shrink-0 rounded bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700 hover:bg-blue-100"
+            title={`Reset ${filter.isFolderFilter ? 'folder' : filter.isNodeTypeFilter ? 'type' : 'gap'} filters`}
+          >
+            Reset
+          </button>
+        )}
+        {filter.enabled && !isExpandableFilter && (
+          <div style={{ opacity: sourceRowOpacity }} className="flex space-x-1 flex-shrink-0 ml-2">
+            {filter.id.startsWith('custom-') && (
+              <button
+                onClick={() => handleEditCustomFilter(filter.id)}
+                className="w-6 h-6 flex items-center justify-center rounded bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-600"
+                title="Edit"
+              >
+                <svg className="w-3 h-3" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M12.1 1.5a1.5 1.5 0 012.1 2.1l-9.1 9.2-2.8.7.7-2.8 9.1-9.2zM11 3.4l1.6 1.6" />
+                </svg>
+              </button>
+            )}
+            {(() => {
+              const hasShowTitles = filter.actions.some(a => a.type === 'show_titles');
+              return (
+                <button
+                  onClick={() => {
+                    const newActions = hasShowTitles
+                      ? filter.actions.filter(a => a.type !== 'show_titles')
+                      : [...filter.actions, { type: 'show_titles' as const }];
+                    onFilterChange(filter.id, { actions: newActions });
+                  }}
+                  className={`w-6 h-6 flex items-center justify-center rounded text-xs font-bold ${
+                    hasShowTitles
+                      ? 'bg-green-600 text-white'
+                      : 'bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-600'
+                  }`}
+                  title="Show text labels"
+                >
+                  T
+                </button>
+              );
+            })()}
+            <button
+              onClick={() => onFilterChange(filter.id, { isSolo: !filter.isSolo })}
+              className={`w-6 h-6 flex items-center justify-center rounded ${
+                filter.isSolo
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-600'
+              }`}
+              title="Solo"
+            >
+              <svg className="w-3 h-3" viewBox="0 0 16 16" fill="currentColor">
+                <circle cx="8" cy="8" r="4" />
+              </svg>
+            </button>
+            {!filter.cannotHide && (
+              <button
+                onClick={() => onFilterChange(filter.id, { isHidden: !filter.isHidden })}
+                className={`w-6 h-6 flex items-center justify-center rounded ${
+                  filter.isHidden
+                    ? 'bg-red-500 text-white'
+                    : 'bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-600'
+                }`}
+                title="Hide"
+              >
+                <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <path d="M2 10s3-6 8-6 8 6 8 6-3 6-8 6-8-6-8-6z" />
+                  <circle cx="10" cy="10" r="2.5" />
+                  <path d="M3 17L17 3" strokeLinecap="round" />
+                </svg>
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+      {isExpanded && isExpandableFilter && (
+        <div id={`${filter.id}-contents`}>
+          {filter.isFolderFilter && (
+            <FolderFilterTree filter={filter} pages={pages} sources={graph.sources} onFilterChange={onFilterChange} />
+          )}
+          {filter.isNodeTypeFilter && (
+            <NodeTypeFilterList filter={filter} graph={graph} onFilterChange={onFilterChange} />
+          )}
+          {filter.isGapFilter && (
+            <GapFilterList
+              filters={gapFilters}
+              graph={graph}
+              thresholdInputs={thresholdInputs}
+              onEnabledChange={(gapFilter, enabled) => { void handleFilterEnabledChange(gapFilter, enabled); }}
+              onFilterChange={onFilterChange}
+              onThresholdChange={(filterId, value) => setThresholdInputs(previous => ({
+                ...previous,
+                [filterId]: value,
+              }))}
+            />
+          )}
+        </div>
+      )}
+      {filter.enabled && filter.showSearchInput &&
+        filter.bundleNodeSelectors.length > 0 && (
+        <div className="ml-6">
+          <input
+            type="text"
+            value={searchInputs[filter.id] || ''}
+            onChange={(e) => {
+              const newValue = e.target.value;
+              setSearchInputs(prev => ({
+                ...prev,
+                [filter.id]: newValue
+              }));
+            }}
+            placeholder="Type to search titles..."
+            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
+        </div>
+      )}
+      {filter.enabled && filter.showThresholdInput &&
+        filter.bundleNodeSelectors.length > 0 && (
+        <div className="ml-6 flex items-center space-x-2">
+          <label className="text-xs text-gray-500">{filter.thresholdLabel ?? 'Gap \u2265:'}</label>
+          <input
+            type="number"
+            min="1"
+            max={filter.thresholdMax}
+            value={thresholdInputs[filter.id] ?? filter.thresholdValue ?? 5}
+            onChange={(e) => {
+              let newValue = Math.max(1, parseInt(e.target.value) || 1);
+              if (filter.thresholdMax) newValue = Math.min(filter.thresholdMax, newValue);
+              setThresholdInputs(prev => ({
+                ...prev,
+                [filter.id]: newValue
+              }));
+            }}
+            className="w-16 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
+        </div>
+      )}
+      {filter.enabled && filter.group !== 'source-changes' && (() => {
+        const highlightAction = filter.actions.find(a => a.type === 'highlight');
+        const sensitiveAction = filter.actions.find(a => a.type === 'mark_sensitive');
+        const showLabelsAction = filter.actions.find(a => a.type === 'show_labels');
+        return (
+          <>
+            {(highlightAction || sensitiveAction) && (
+              <div className="ml-6 flex items-center space-x-2 text-xs text-gray-500">
+                {highlightAction && highlightAction.type === 'highlight' && (
+                  <svg className="w-4 h-4" viewBox="0 0 16 16">
+                    <circle
+                      cx="8"
+                      cy="8"
+                      r="5.5"
+                      fill="none"
+                      stroke={highlightAction.color}
+                      strokeWidth="2"
+                      strokeDasharray={highlightAction.isDashed ? '2 2' : 'none'}
+                    />
+                  </svg>
+                )}
+                {sensitiveAction && (
+                  <>
+                    <span className="font-bold">+</span>
+                    <span>sensitive</span>
+                  </>
+                )}
+              </div>
+            )}
+            {showLabelsAction && (
+              <div className="ml-6 flex items-center space-x-2 text-xs text-gray-500">
+                <span>Shows page labels when active</span>
+              </div>
+            )}
+          </>
+        );
+      })()}
+    </div>
+    );
   };
 
   return (
@@ -469,292 +755,12 @@ const FilterPanel = React.memo<FilterPanelProps>(({
           </button>
         </div>
         <div className="space-y-3">
-          {mode === 'sourcing' && <h3 className="border-b pb-2 pt-2 text-xs font-semibold uppercase tracking-wide text-neutral-600">Source changes</h3>}
-          {otherFilters.map((filter, index) => {
-            if (filter.parentFilterId && !expandedFilterGroups.has(filter.parentFilterId)) return null;
-            const hasChildFilters = otherFilters.some(child => child.parentFilterId === filter.id);
-            const sourceChangeCount = filter.group === 'source-changes' ? filter.bundleNodeSelectors[0]?.select(graph).size ?? 0 : 0;
-            const sourceRowOpacity = filter.group === 'source-changes' && sourceChangeCount === 0 ? 0.65 : 1;
-            const sourceHighlight = filter.actions.find(action => action.type === 'highlight');
-            const threshold = thresholdInputs[filter.id] ?? filter.thresholdValue ?? 5;
-            const isExpandableFilter = Boolean(filter.isFolderFilter || filter.isNodeTypeFilter || filter.isGapFilter);
-            const isExpanded = expandedFilterGroups.has(filter.id);
-            const hasActiveGroupSettings = isExpandableFilter && filterGroupHasActiveSettings(filter);
-            const gapDescription = filter.id === 'outlink-gap-filter'
-              ? `Pages with ${threshold} or more outlinks that do not show in the graph`
-              : filter.id === 'inlink-gap-filter'
-              ? `Pages with ${threshold} or more inlinks that do not show in the graph`
-              : null;
-            const tooltipDescription = filter.group === 'source-changes' && !filter.parentFilterId
-              ? null : filter.descriptionNode || gapDescription || filter.description;
-            return (
-            <div
-              key={filter.id}
-              data-source-change-filter={filter.group === 'source-changes' ? filter.name : undefined}
-              className={`space-y-2 ${filter.parentFilterId ? 'ml-4 border-l pl-2' : ''}`}
-            >
-              {mode === 'sourcing' && filter.group !== 'source-changes' && (index === 0 || otherFilters[index - 1].group === 'source-changes') && <h3 className="border-b pb-2 pt-2 text-xs font-semibold uppercase tracking-wide text-neutral-600">Page filters</h3>}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2 min-w-0 flex-1">
-                  {filter.group === 'source-changes' ? (
-                    <>
-                      {hasChildFilters ? (
-                        <button type="button" aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${filter.name}`} aria-expanded={isExpanded}
-                          onClick={() => toggleFilterGroup(filter.id)} style={{ opacity: sourceRowOpacity }} className="flex h-4 w-4 shrink-0 items-center justify-center rounded text-gray-500 hover:text-gray-900">
-                          <svg className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`} viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-                            <path d="M5.5 3.5L10 8l-4.5 4.5V3.5z" />
-                          </svg>
-                        </button>
-                      ) : <span className="h-4 w-4 shrink-0" aria-hidden="true" />}
-                      <span className="flex shrink-0 items-center justify-center text-xs tabular-nums"
-                        style={{ width: filter.parentFilterId === 'source-departing' ? `max(1rem, ${sourceCountDigits}ch)` : `max(1.5rem, calc(${sourceCountDigits}ch + 1rem))`, opacity: sourceRowOpacity }}>
-                        {sourceChangeCount > 0 && <span data-source-change-count
-                          className={`inline-flex h-6 shrink-0 items-center justify-center rounded-full text-xs font-medium tabular-nums ${filter.id === 'source-unchanged' ? 'bg-gray-100 text-gray-500 opacity-40' : filter.parentFilterId ? 'text-gray-700' : 'border-2 text-gray-700'} ${filter.parentFilterId ? '' : sourceChangeCount < 10 ? 'w-6' : 'min-w-6 px-1.5'}`}
-                          style={filter.id === 'source-unchanged' || filter.parentFilterId ? undefined : { borderColor: sourceHighlight?.color ?? '#fdba74', borderStyle: sourceHighlight?.isDashed ? 'dashed' : 'solid' }}>
-                          {sourceChangeCount}
-                        </span>}
-                      </span>
-                      <span style={{ opacity: sourceRowOpacity, marginLeft: filter.parentFilterId === 'source-departing' ? '0.125rem' : '0.5rem' }} className="min-w-0 truncate text-sm text-gray-700">{filter.name}</span>
-                    </>
-                  ) : isExpandableFilter ? (
-                    <button
-                      type="button"
-                      onClick={() => toggleFilterGroup(filter.id)}
-                      className="flex min-w-0 items-center gap-2 rounded text-sm text-gray-700 hover:text-gray-900"
-                      aria-expanded={isExpanded}
-                      aria-controls={`${filter.id}-contents`}
-                      aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${filter.name}`}
-                    >
-                      <svg
-                        className={`h-4 w-4 flex-shrink-0 text-gray-500 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
-                        viewBox="0 0 16 16"
-                        fill="currentColor"
-                        aria-hidden="true"
-                      >
-                        <path d="M5.5 3.5L10 8l-4.5 4.5V3.5z" />
-                      </svg>
-                      <span className="truncate">{filter.name}</span>
-                      {hasActiveGroupSettings && (
-                        <span
-                          className="h-2 w-2 flex-shrink-0 rounded-full bg-main-500 ring-2 ring-main-100"
-                          title={`${filter.name} has active settings`}
-                          data-testid={`active-filter-group-${filter.id}`}
-                          aria-label={`${filter.name} has active settings`}
-                        />
-                      )}
-                    </button>
-                  ) : (
-                    <>
-                      <input
-                        type="checkbox"
-                        id={`${filter.id}-enabled`}
-                        checked={filter.enabled}
-                        onChange={(e) => handleFilterEnabledChange(filter, e.target.checked)}
-                        className={`form-checkbox h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 flex-shrink-0 transition-opacity duration-200 ${!filter.enabled ? 'opacity-50' : ''}`}
-                      />
-                      <label htmlFor={`${filter.id}-enabled`} className={`text-sm text-gray-700 flex items-center min-w-0 transition-opacity duration-200 ${!filter.enabled ? 'opacity-50' : ''}`}>
-                        <span className="truncate">{filter.name}</span>
-                        {filter.id === 'untracked-filter' && untrackedNodeCount !== undefined && untrackedNodeCount > 0 && (
-                          <span className="ml-1.5 px-1.5 py-0.5 text-xs font-medium bg-warning-100 text-warning-700 rounded flex-shrink-0">
-                            {untrackedNodeCount}
-                          </span>
-                        )}
-                      </label>
-                    </>
-                  )}
-                  {tooltipDescription && (
-                    <span className="relative ml-1 group cursor-default">
-                      <span className={`w-3.5 h-3.5 inline-flex items-center justify-center rounded-full border border-gray-400 text-gray-500 text-[10px] -translate-y-0.5 transition-opacity duration-[125ms] ${isPanelHovered ? (sourceRowOpacity < 1 ? 'opacity-[0.65]' : filter.enabled ? 'opacity-100' : 'opacity-50') : 'opacity-0'}`}>
-                        ?
-                      </span>
-                      <span
-                        role="tooltip"
-                        className="pointer-events-none fixed ml-2 w-64 p-2 bg-white text-gray-700 text-xs rounded border border-gray-200 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-[9999]"
-                      >
-                        {tooltipDescription}
-                      </span>
-                    </span>
-                  )}
-                </div>
-                {isExpanded && hasActiveGroupSettings && (
-                  <button
-                    type="button"
-                    onClick={() => resetFilterGroup(filter)}
-                    className="ml-2 flex-shrink-0 rounded bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700 hover:bg-blue-100"
-                    title={`Reset ${filter.isFolderFilter ? 'folder' : filter.isNodeTypeFilter ? 'type' : 'gap'} filters`}
-                  >
-                    Reset
-                  </button>
-                )}
-                {filter.enabled && !isExpandableFilter && (
-                  <div style={{ opacity: sourceRowOpacity }} className="flex space-x-1 flex-shrink-0 ml-2">
-                    {filter.id.startsWith('custom-') && (
-                      <button
-                        onClick={() => handleEditCustomFilter(filter.id)}
-                        className="w-6 h-6 flex items-center justify-center rounded bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-600"
-                        title="Edit"
-                      >
-                        <svg className="w-3 h-3" viewBox="0 0 16 16" fill="currentColor">
-                          <path d="M12.1 1.5a1.5 1.5 0 012.1 2.1l-9.1 9.2-2.8.7.7-2.8 9.1-9.2zM11 3.4l1.6 1.6" />
-                        </svg>
-                      </button>
-                    )}
-                    {(() => {
-                      const hasShowTitles = filter.actions.some(a => a.type === 'show_titles');
-                      return (
-                        <button
-                          onClick={() => {
-                            const newActions = hasShowTitles
-                              ? filter.actions.filter(a => a.type !== 'show_titles')
-                              : [...filter.actions, { type: 'show_titles' as const }];
-                            onFilterChange(filter.id, { actions: newActions });
-                          }}
-                          className={`w-6 h-6 flex items-center justify-center rounded text-xs font-bold ${
-                            hasShowTitles
-                              ? 'bg-green-600 text-white'
-                              : 'bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-600'
-                          }`}
-                          title="Show text labels"
-                        >
-                          T
-                        </button>
-                      );
-                    })()}
-                    <button
-                      onClick={() => onFilterChange(filter.id, { isSolo: !filter.isSolo })}
-                      className={`w-6 h-6 flex items-center justify-center rounded ${
-                        filter.isSolo
-                          ? 'bg-blue-500 text-white'
-                          : 'bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-600'
-                      }`}
-                      title="Solo"
-                    >
-                      <svg className="w-3 h-3" viewBox="0 0 16 16" fill="currentColor">
-                        <circle cx="8" cy="8" r="4" />
-                      </svg>
-                    </button>
-                    {!filter.cannotHide && (
-                      <button
-                        onClick={() => onFilterChange(filter.id, { isHidden: !filter.isHidden })}
-                        className={`w-6 h-6 flex items-center justify-center rounded ${
-                          filter.isHidden
-                            ? 'bg-red-500 text-white'
-                            : 'bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-600'
-                        }`}
-                        title="Hide"
-                      >
-                        <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
-                          <path d="M2 10s3-6 8-6 8 6 8 6-3 6-8 6-8-6-8-6z" />
-                          <circle cx="10" cy="10" r="2.5" />
-                          <path d="M3 17L17 3" strokeLinecap="round" />
-                        </svg>
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-              {isExpanded && isExpandableFilter && (
-                <div id={`${filter.id}-contents`}>
-                  {filter.isFolderFilter && (
-                    <FolderFilterTree filter={filter} pages={pages} sources={graph.sources} onFilterChange={onFilterChange} />
-                  )}
-                  {filter.isNodeTypeFilter && (
-                    <NodeTypeFilterList filter={filter} graph={graph} onFilterChange={onFilterChange} />
-                  )}
-                  {filter.isGapFilter && (
-                    <GapFilterList
-                      filters={gapFilters}
-                      graph={graph}
-                      thresholdInputs={thresholdInputs}
-                      onEnabledChange={(gapFilter, enabled) => { void handleFilterEnabledChange(gapFilter, enabled); }}
-                      onFilterChange={onFilterChange}
-                      onThresholdChange={(filterId, value) => setThresholdInputs(previous => ({
-                        ...previous,
-                        [filterId]: value,
-                      }))}
-                    />
-                  )}
-                </div>
-              )}
-              {filter.enabled && filter.showSearchInput &&
-                filter.bundleNodeSelectors.length > 0 && (
-                <div className="ml-6">
-                  <input
-                    type="text"
-                    value={searchInputs[filter.id] || ''}
-                    onChange={(e) => {
-                      const newValue = e.target.value;
-                      setSearchInputs(prev => ({
-                        ...prev,
-                        [filter.id]: newValue
-                      }));
-                    }}
-                    placeholder="Type to search titles..."
-                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                </div>
-              )}
-              {filter.enabled && filter.showThresholdInput &&
-                filter.bundleNodeSelectors.length > 0 && (
-                <div className="ml-6 flex items-center space-x-2">
-                  <label className="text-xs text-gray-500">{filter.thresholdLabel ?? 'Gap \u2265:'}</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max={filter.thresholdMax}
-                    value={thresholdInputs[filter.id] ?? filter.thresholdValue ?? 5}
-                    onChange={(e) => {
-                      let newValue = Math.max(1, parseInt(e.target.value) || 1);
-                      if (filter.thresholdMax) newValue = Math.min(filter.thresholdMax, newValue);
-                      setThresholdInputs(prev => ({
-                        ...prev,
-                        [filter.id]: newValue
-                      }));
-                    }}
-                    className="w-16 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                </div>
-              )}
-              {filter.enabled && filter.group !== 'source-changes' && (() => {
-                const highlightAction = filter.actions.find(a => a.type === 'highlight');
-                const sensitiveAction = filter.actions.find(a => a.type === 'mark_sensitive');
-                const showLabelsAction = filter.actions.find(a => a.type === 'show_labels');
-                return (
-                  <>
-                    {(highlightAction || sensitiveAction) && (
-                      <div className="ml-6 flex items-center space-x-2 text-xs text-gray-500">
-                        {highlightAction && highlightAction.type === 'highlight' && (
-                          <svg className="w-4 h-4" viewBox="0 0 16 16">
-                            <circle
-                              cx="8"
-                              cy="8"
-                              r="5.5"
-                              fill="none"
-                              stroke={highlightAction.color}
-                              strokeWidth="2"
-                              strokeDasharray={highlightAction.isDashed ? '2 2' : 'none'}
-                            />
-                          </svg>
-                        )}
-                        {sensitiveAction && (
-                          <>
-                            <span className="font-bold">+</span>
-                            <span>sensitive</span>
-                          </>
-                        )}
-                      </div>
-                    )}
-                    {showLabelsAction && (
-                      <div className="ml-6 flex items-center space-x-2 text-xs text-gray-500">
-                        <span>Shows page labels when active</span>
-                      </div>
-                    )}
-                  </>
-                );
-              })()}
-            </div>
-          );
-          })}
+          {mode === 'sourcing' && <div data-testid="source-changes-filter-group" className="-mx-2 space-y-3 rounded-lg bg-blue-50 px-2 pb-3">
+            <h3 className="border-b border-blue-200 pb-2 pt-2 text-xs font-semibold uppercase tracking-wide text-neutral-600">Page changes</h3>
+            {sourceChangeFilters.map(renderFilter)}
+          </div>}
+          {mode === 'sourcing' && pageFilters.length > 0 && <h3 className="border-b pb-2 pt-2 text-xs font-semibold uppercase tracking-wide text-neutral-600">Page filters</h3>}
+          {pageFilters.map(renderFilter)}
         </div>
       </div>
 

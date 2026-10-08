@@ -65,8 +65,8 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '859397f6-6a4
   await sourceCommand(() => filters.expandFilterGroup('Folders'));
   await sourceCommand(() => filters.expandFolder('Routes'));
   await sourceCommand(() => filters.hideFolder('Routes/Branch'));
-  await sourceCommand(() => filters.enableAndSoloFilter('Added'));
-  await sourceCommand(() => filters.clickShowTitlesOnFilter('Added'));
+  await sourceCommand(() => filters.enableAndSoloFilter('Add'));
+  await sourceCommand(() => filters.clickShowTitlesOnFilter('Add'));
   await sourceCommand(() => filters.openMixFilters());
   await sourceCommand(() => filters.chooseMixOperator('Any'));
   await sourceCommand(() => filters.closeMixFilters());

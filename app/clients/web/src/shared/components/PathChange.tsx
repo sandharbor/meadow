@@ -18,13 +18,16 @@ export function splitPathChange(before: string, after: string) {
   };
 }
 
+const removedClass = 'rounded bg-red-50 px-0.5 text-red-800 decoration-red-400';
+const addedClass = 'rounded bg-main-50 px-0.5 text-main-900 no-underline';
+
 function Highlight({ before, after, side, directories = false }: { before: string; after: string; side: 'before' | 'after'; directories?: boolean }) {
   const delta = splitPathChange(before, after);
   const changed = delta[side];
   const fragments = directories ? changed.split(/(\/)/) : [changed];
   return <>{delta.prefix}{fragments.map((fragment, index) => !fragment ? null : directories && fragment === '/' ? fragment : side === 'before'
-    ? <del key={index} className="rounded bg-red-50 px-0.5 text-red-800 decoration-red-400">{fragment}</del>
-    : <ins key={index} className="rounded bg-main-50 px-0.5 text-main-900 no-underline">{fragment}</ins>)}{delta.suffix}</>;
+    ? <del key={index} className={removedClass}>{fragment}</del>
+    : <ins key={index} className={addedClass}>{fragment}</ins>)}{delta.suffix}</>;
 }
 
 export function PathChange({ before, after, compact = false }: { before: string; after: string; compact?: boolean }) {
@@ -47,6 +50,14 @@ export function PathChange({ before, after, compact = false }: { before: string;
         </span>;
       })}
     </span>
+  </span>;
+}
+
+/** A path that exists on only one side, marked like the changed text in PathChange. */
+export function PathPresence({ path, side }: { path: string; side: 'before' | 'after' }) {
+  path = useSourcePath(path);
+  return <span role="group" aria-label={`${side === 'before' ? 'Remove' : 'Add'}: ${path}`} className="block min-w-0 text-sm [overflow-wrap:anywhere]" data-testid="source-path-presence">
+    {side === 'before' ? <del aria-hidden="true" className={removedClass}>{path}</del> : <ins aria-hidden="true" className={addedClass}>{path}</ins>}
   </span>;
 }
 

@@ -27,6 +27,8 @@ import { DisabledTooltip } from '../../../../shared/components/DisabledTooltip';
 import { NodeFolderDetails } from './NodeFolderDetails.js';
 import { SourceComparisonEvidence } from './SourceComparisonEvidence.js';
 import { useEditorKeySet } from '../utils/useEditorViewValue.js';
+import { sourceReviewAppearance } from '../../../../shared/utils/sourceReviewAppearance.js';
+import { useLatestSelection, LatestSelectionDivider } from './LatestSelection.js';
 
 interface BundleNodeSelectionSidebarProps {
   bundleSlug: string;
@@ -73,6 +75,27 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
   onShowLinks,
 }) => {
   const [openDropdownBundleNodeKey, setOpenDropdownBundleNodeKey] = useState<EncodedBundleNodeKey | null>(null);
+  const latest = useLatestSelection(selectedNodeKeys, onSelectedNodeKeysChange);
+  const removalCause = (key: EncodedBundleNodeKey) => {
+    const review = graph.getNode(key)?.sourceReview;
+    return review?.kind === 'departing' ? review.removalCause : undefined;
+  };
+  /** A route step outlined in the color of what accepting does to that page. */
+  const pathStep = (stepKey: EncodedBundleNodeKey, label: string, ownerKey: EncodedBundleNodeKey) => {
+    const review = graph.getNode(stepKey)?.sourceReview;
+    const appearance = review && review.kind !== 'unchanged' && review.kind !== 'frontier' ? sourceReviewAppearance[review.kind] : null;
+    const cause = removalCause(ownerKey);
+    const isBreak = cause?.at === stepKey;
+    return <button
+      onClick={() => latest.select(stepKey)}
+      className={`px-2 py-0.5 text-xs rounded border bg-white text-neutral-700 hover:bg-neutral-100 cursor-pointer ${appearance ? '' : 'border-neutral-300 hover:border-neutral-400'}`}
+      style={appearance ? { borderColor: appearance.color, boxShadow: isBreak ? `0 0 0 1.5px ${appearance.color}` : undefined } : undefined}
+      title={appearance ? `${label} · ${appearance.label}${isBreak ? ' · route breaks here' : ''}` : `Select "${label}"`}
+      data-route-break={isBreak || undefined}
+    >
+      {label}
+    </button>;
+  };
   const [dropdownButtonRect, setDropdownButtonRect] = useState<{ x: number; y: number } | null>(null);
   const [openDetailsBundleNodeKeys, setOpenDetailsBundleNodeKeys] = useEditorKeySet(bundleSlug, 'openDetailsNodes');
   const [outlinksDepthInputsByBundleNodeKey, setOutlinksDepthInputsByBundleNodeKey] = useState<Record<string, string>>({});
@@ -391,16 +414,24 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
             .map((id, originalIndex) => ({ id, originalIndex, page: graph.getNode(id) }))
             .filter((x): x is { id: EncodedBundleNodeKey; originalIndex: number; page: IBundleNode } => Boolean(x.page))
             .sort((a, b) => {
-              // Always order untracked + (effectively) sensitive pages to the top.
+              // The latest selection action stays above earlier selections.
+              const aLatest = latest.isEarlier(a.id) ? 1 : 0;
+              const bLatest = latest.isEarlier(b.id) ? 1 : 0;
+              if (aLatest !== bLatest) return aLatest - bLatest;
+              // Within each group, untracked + (effectively) sensitive pages come first.
               // For all other pages, keep the existing selection order (newest-first insertion).
               const aPriority = !a.page.tracked && isEffectivelySensitive(a.page) ? 0 : 1;
               const bPriority = !b.page.tracked && isEffectivelySensitive(b.page) ? 0 : 1;
               if (aPriority !== bPriority) return aPriority - bPriority;
               return a.originalIndex - b.originalIndex;
             })
-            .map(({ page }) => ({ page, depths: remainingTraversalDepths(page!), inheritedDepths: inheritedTraversalDepths(page!) }))
-            .map(({ page, depths, inheritedDepths }) => (
-              <div key={page!.bundleNodeKey} className="p-4 hover:bg-neutral-50" data-testid={`selected-page-${page!.bundleNodeKey}`}>
+            .map(({ page }, index, all) => ({ page, depths: remainingTraversalDepths(page!), inheritedDepths: inheritedTraversalDepths(page!),
+              firstEarlier: latest.isEarlier(page.bundleNodeKey) && (index === 0 || !latest.isEarlier(all[index - 1].page.bundleNodeKey)) }))
+            .map(({ page, depths, inheritedDepths, firstEarlier }) => (
+              <React.Fragment key={page!.bundleNodeKey}>
+              {firstEarlier && <LatestSelectionDivider count={latest.earlierCount} collapsed={latest.earlierCollapsed} onToggle={latest.toggleEarlier} />}
+              {!(latest.earlierCollapsed && latest.isEarlier(page.bundleNodeKey)) &&
+              <div ref={latest.cardRef(page.bundleNodeKey)} className={`p-4 transition-colors duration-1000 ${latest.isFlashing(page.bundleNodeKey) ? 'bg-blue-50' : 'hover:bg-neutral-50'}`} data-testid={`selected-page-${page!.bundleNodeKey}`}>
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium truncate flex-1 mr-2">{page!.data?.bundleNodeName || page!.label}</span>
                   <div className="flex items-center gap-1 flex-none">
@@ -461,7 +492,7 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
                     </button>
                   </div>
                 </div>
-                {page!.sourceReview && page!.sourceReview.kind !== 'unchanged' && <SourceComparisonEvidence evidence={page!.sourceReview} graph={graph} onCompare={() => onPreviewPage(page!.bundleNodeKey)} />}
+                {page!.sourceReview && page!.sourceReview.kind !== 'unchanged' && <SourceComparisonEvidence evidence={page!.sourceReview} graph={graph} onCompare={() => onPreviewPage(page!.bundleNodeKey)} onSelectPage={latest.select} />}
                 <div className="mt-1 flex flex-wrap gap-1">
                   <span className={`inline-block px-2 py-0.5 rounded-full text-xs ${
                     page!.tracked
@@ -623,13 +654,7 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
                                 return (
                                   <>
                                     <div className="flex items-center">
-                                      <button
-                                        onClick={() => onSelectedNodeKeysChange(new Set([...selectedNodeKeys, firstBundleNodeKey]))}
-                                        className="px-2 py-0.5 text-xs rounded border border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100 hover:border-neutral-400 cursor-pointer"
-                                        title={`Select "${firstLabel}"`}
-                                      >
-                                        {firstLabel}
-                                      </button>
+                                      {pathStep(firstBundleNodeKey, firstLabel, page!.bundleNodeKey)}
                                       <span className="mx-1 text-neutral-400 text-xs">-&gt;</span>
                                     </div>
                                     <button
@@ -641,13 +666,7 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
                                     </button>
                                     <span className="mx-1 text-neutral-400 text-xs">-&gt;</span>
                                     <div className="flex items-center">
-                                      <button
-                                        onClick={() => onSelectedNodeKeysChange(new Set([...selectedNodeKeys, lastBundleNodeKey]))}
-                                        className="px-2 py-0.5 text-xs rounded border border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100 hover:border-neutral-400 cursor-pointer"
-                                        title={`Select "${lastLabel}"`}
-                                      >
-                                        {lastLabel}
-                                      </button>
+                                      {pathStep(lastBundleNodeKey, lastLabel, page!.bundleNodeKey)}
                                     </div>
                                   </>
                                 );
@@ -659,13 +678,7 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
                                   const isLast = idx === page!.path!.length - 1;
                                   return (
                                     <div key={`${page!.bundleNodeKey}-path-${pathBundleNodeKey}-${idx}`} className="flex items-center">
-                                      <button
-                                        onClick={() => onSelectedNodeKeysChange(new Set([...selectedNodeKeys, pathBundleNodeKey]))}
-                                        className="px-2 py-0.5 text-xs rounded border border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100 hover:border-neutral-400 cursor-pointer"
-                                        title={`Select "${label}"`}
-                                      >
-                                        {label}
-                                      </button>
+                                      {pathStep(pathBundleNodeKey, label, page!.bundleNodeKey)}
                                       {!isLast && <span className="mx-1 text-neutral-400 text-xs">-&gt;</span>}
                                     </div>
                                   );
@@ -1011,7 +1024,8 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
                     </div>
                   )}
                 </div>
-              </div>
+              </div>}
+              </React.Fragment>
             ))}
         </div>
         </div>

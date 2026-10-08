@@ -72,11 +72,11 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'd1647330-ccf
 
   // Inspect a page change from the tray.
   const pageChanges = await sourceCommand(() => sourcing.openAcceptedChangeDetail(/^\d+ page changes$/, 'Page changes'));
-  await sourceCommand(() => expect(pageChanges.getByRole('region', { name: 'Modified', exact: true })).toContainText('Start'));
-  await sourceCommand(() => expect(pageChanges.getByRole('region', { name: 'Removed', exact: true })).toContainText('Leaf'));
+  await sourceCommand(() => expect(pageChanges.getByRole('region', { name: 'Modify', exact: true })).toContainText('Start'));
+  await sourceCommand(() => expect(pageChanges.getByRole('region', { name: 'Remove', exact: true })).toContainText('Leaf'));
   await sourceCommand(() => addKeyFrame(sourceReviewWorkspace));
   await sourceCommand(() => sourcing.selectAcceptedPageChange('Leaf'));
-  await sourceCommand(() => sourcing.expectSelectedChangeSummary('Leaf', 'Removed'));
+  await sourceCommand(() => sourcing.expectSelectedChangeSummary('Leaf', 'Remove'));
   await sourceCommand(() => addKeyFrame(sourceReviewWorkspace));
   await sourceCommand(() => checkpoint('selecting a page change in the tray selects it in the graph'));
 

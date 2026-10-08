@@ -42,7 +42,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '98d3a524-50f
   await sourceCommand(() => sourcing.setSelectedBlacklisted(true));
   for (const name of ['Leaf', 'Departing', 'Outside']) {
     await sourceCommand(() => sourcing.select(name));
-    await sourceCommand(() => expect(sourcing.evidence).toContainText('Change: Removed'));
+    await sourceCommand(() => expect(sourcing.evidence).toContainText('Change: Remove'));
     await sourceCommand(() => sourcing.expectSelectedRemovalReason('Not reachable'));
   }
   expect(nodes()).toEqual(original);
@@ -61,7 +61,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '98d3a524-50f
   await sourceCommand(() => expect(sourcing.root).toBeVisible());
   await sourceCommand(() => sourcing.expectNoAutomaticTrackingOption());
   await sourceCommand(() => sourcing.select('Departing'));
-  await sourceCommand(() => expect(sourcing.evidence).toContainText('Change: Added'));
+  await sourceCommand(() => expect(sourcing.evidence).toContainText('Change: Add'));
   await sourceCommand(() => expect(sourcing.selectedPage.getByText('Not Tracked', { exact: true })).toBeVisible());
   await sourceCommand(() => checkpoint('returning pages have fresh tracking choices without the cleaned override'));
   await sourceCommand(() => sourcing.accept());

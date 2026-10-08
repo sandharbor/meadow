@@ -17,7 +17,7 @@ limitations under the License.
 import React, { useMemo, useState } from 'react';
 import { HtmlVisualDiffer } from './HtmlVisualDiffer';
 import { matchInlineChanges, type InlineDiffPart } from './inlineChanges.js';
-import { contentLines, computeLCS } from './lineChanges.js';
+import { contentLines, computeLCS } from '../../../../shared_code/utils/lineChanges.js';
 
 interface DiffViewProps {
   originalContent: string | null;

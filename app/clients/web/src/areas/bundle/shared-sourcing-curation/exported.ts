@@ -18,3 +18,4 @@ export type { IFilter as SourcingTypeGraphFilter } from './types/filters.js';
 
 export { SourceContentComparison as SourcingComponentContentComparison } from './components/SourceContentComparison.js';
 export { SourceOrphanDiagnosis as SourcingComponentOrphanDiagnosis } from './components/SourceOrphanDiagnosis.js';
+export { useSourceLineCounts as useSourcingStateLineCounts } from './components/SourceLineCounts.js';

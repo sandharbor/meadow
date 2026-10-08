@@ -37,12 +37,12 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'cf10d7e1-184
   await sourceCommand(() => sourcing.open());
   await sourceCommand(() => sourcing.chooseIdentity('100000000003', 'Routes/Reference Renamed.md'));
   await sourceCommand(() => sourcing.continueToGraph());
-  await sourceCommand(() => filters.expandFilterGroup('Removed'));
-  for (const [name, count] of [['Added', 1], ['Renamed', 1], ['Modified', 2], ['Removed', 3], ['Source missing', 1], ['Not reachable', 2], ['Disconnected', 0], ['Unchanged', 1]] as const) {
+  await sourceCommand(() => filters.expandFilterGroup('Remove'));
+  for (const [name, count] of [['Add', 1], ['Rename', 1], ['Modify', 2], ['Remove', 3], ['Source missing', 1], ['Not reachable', 2], ['Disconnected', 0], ['Unchanged', 1]] as const) {
     await sourceCommand(() => filters.expectSourceChangeCount(name, count));
   }
   await sourceCommand(() => sourcing.select('Leaf'));
-  await sourceCommand(() => sourcing.expectSelectedChangeSummary('Leaf', 'Removed'));
+  await sourceCommand(() => sourcing.expectSelectedChangeSummary('Leaf', 'Remove'));
   await sourceCommand(() => sourcing.expectRemovedLineCount(4));
   await sourceCommand(() => addKeyFrame(sourceReviewWorkspace));
   await sourceCommand(() => sourcing.seePreviousContent('Excluding this page has no effect on any other page.'));
@@ -55,7 +55,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'cf10d7e1-184
   await sourceCommand(() => sourcing.expectSelectedRoute(['Start', 'Bridge', 'Departing']));
   await sourceCommand(() => addKeyFrame(sourceReviewWorkspace));
   await sourceCommand(() => sourcing.select('Bridge'));
-  await sourceCommand(() => sourcing.expectSelectedChangeSummary('Bridge', 'Modified'));
+  await sourceCommand(() => sourcing.expectSelectedChangeSummary('Bridge', 'Modify'));
   await sourceCommand(() => sourcing.expectSelectedLineCounts(1, 1));
   await sourceCommand(() => addKeyFrame(sourceReviewWorkspace));
   await sourceCommand(() => sourcing.compare('Bridge'));
@@ -63,13 +63,13 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'cf10d7e1-184
   await sourceCommand(() => checkpoint('captured evidence distinguishes a missing file from the removed route'));
   await sourceCommand(() => sourcing.closeComparison());
   await sourceCommand(() => sourcing.select('Reference Renamed'));
-  await sourceCommand(() => sourcing.expectSelectedChangeSummary('Reference Renamed', 'Renamed'));
+  await sourceCommand(() => sourcing.expectSelectedChangeSummary('Reference Renamed', 'Rename'));
   await sourceCommand(() => sourcing.expectSelectedLineCounts(0, 0));
   await sourceCommand(() => sourcing.expectSelectedRename('Routes/Reference.md', 'Routes/Reference Renamed.md'));
   await sourceCommand(() => sourcing.expectNodeVisible('Reference', false));
   await sourceCommand(() => addKeyFrame(sourceReviewWorkspace));
   await sourceCommand(() => sourcing.select('Safe One'));
-  await sourceCommand(() => sourcing.expectSelectedChangeSummary('Safe One', 'Added'));
+  await sourceCommand(() => sourcing.expectSelectedChangeSummary('Safe One', 'Add'));
   await sourceCommand(() => addKeyFrame(sourceReviewWorkspace));
   await sourceCommand(() => sourcing.clearSelection());
   const reviewed = proposal.current;
@@ -77,13 +77,13 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'cf10d7e1-184
   await sourceCommand(() => checkpoint('each category has an exact count and the confirmed rename is one comparison node'));
 
   // Solo and hide can combine with folder filters without changing any proposal decisions.
-  await sourceCommand(() => filters.clickSoloOnFilter('Removed'));
+  await sourceCommand(() => filters.clickSoloOnFilter('Remove'));
   await sourceCommand(() => editor.expectListViewRowCount(3));
-  await sourceCommand(() => filters.clickSoloOnFilter('Removed'));
+  await sourceCommand(() => filters.clickSoloOnFilter('Remove'));
   await sourceCommand(() => filters.expandFilterGroup('Folders'));
   await sourceCommand(() => filters.expandFolder('Routes'));
   await sourceCommand(() => filters.soloFolder('Routes'));
-  await sourceCommand(() => filters.clickSoloOnFilter('Modified'));
+  await sourceCommand(() => filters.clickSoloOnFilter('Modify'));
   await sourceCommand(() => filters.hideFolder('Routes/Branch'));
   await sourceCommand(() => sourcing.expectNodeVisible('Reference Renamed'));
   await sourceCommand(() => sourcing.expectNodeVisible('Bridge', false));

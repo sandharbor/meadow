@@ -68,8 +68,8 @@ export class SourceReviewWorkspace extends SourcingWorkspacePage {
     await this.reviewExpect(this.selectedPage.getByText('Sensitive', { exact: true })).toBeVisible();
     if (label === 'Sensitive via filter') await this.reviewExpect(this.evidence).toContainText(/filter .* marks this page sensitive/);
   }
-  async expectModified(path: string) { await this.selectPath(path); await this.reviewExpect(this.evidence).toContainText('Change: Modified'); }
-  async expectAdded(path: string) { await this.selectPath(path); await this.reviewExpect(this.evidence).toContainText('Change: Added'); }
+  async expectModified(path: string) { await this.selectPath(path); await this.reviewExpect(this.evidence).toContainText('Change: Modify'); }
+  async expectAdded(path: string) { await this.selectPath(path); await this.reviewExpect(this.evidence).toContainText('Change: Add'); }
   async previewImage(path: string, route: string[]) {
     await this.selectPath(path);
     await new SelectedPageDetailComponent(this.selectedPage, this.reviewExpect).openDetails();
@@ -88,7 +88,7 @@ export class SourceReviewWorkspace extends SourcingWorkspacePage {
     }
     this.reviewExpect(await previous.getAttribute('src')).not.toBe(await next.getAttribute('src'));
   }
-  async expectNoLongerIncluded(path: string) { await this.selectPath(path); await this.reviewExpect(this.evidence).toContainText('Change: Removed'); }
+  async expectNoLongerIncluded(path: string) { await this.selectPath(path); await this.reviewExpect(this.evidence).toContainText('Change: Remove'); }
   async expectNoRenames() { await this.expectNoIdentityDecisions(); }
   async expandDetails(path: string, activation: 'click' | 'keyboard' = 'click') {
     await this.selectPath(path);

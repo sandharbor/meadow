@@ -39,7 +39,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'ba79e6c7-4b5
   await sourceCommand(() => expect(sourcing.root).toBeVisible());
   expect(fs.readFileSync(configPath, 'utf8')).toBe(saved);
   await sourceCommand(() => sourcing.select('Outside'));
-  await sourceCommand(() => expect(sourcing.evidence).toContainText('Change: Removed'));
+  await sourceCommand(() => expect(sourcing.evidence).toContainText('Change: Remove'));
   await sourceCommand(() => sourcing.expectSelectedRemovalReason('Not reachable'));
   await sourceCommand(() => sourcing.expectSelectedRoute(['Start', 'Bridge', 'Departing']));
   await sourceCommand(() => sourcing.select('Retained'));

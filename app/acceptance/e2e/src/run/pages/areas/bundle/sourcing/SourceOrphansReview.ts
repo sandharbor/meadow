@@ -37,8 +37,8 @@ export class SourceOrphansReview {
   ) {}
 
   private get removedPageRows() {
-    return this.workspace.acceptedChangeDetail("Page changes").getByRole("region", { name: "Removed", exact: true })
-      .getByTestId("accepted-page-change").filter({ hasText: "Configuration removed" });
+    return this.workspace.acceptedChangeDetail("Page changes").getByRole("region", { name: "Remove", exact: true })
+      .getByTestId("accepted-page-change").filter({ hasText: "Remove configuration" });
   }
 
   private get configurationRows() {
@@ -112,7 +112,7 @@ export class SourceOrphansReview {
       await this.named(removed, title).click();
       await this.expect(this.workspace.acceptedChangeDetail("Page changes")).toBeHidden();
       await this.expect(this.workspace.selectedPage).toContainText(title);
-      await this.expect(this.workspace.evidence).toContainText("Change: Removed");
+      await this.expect(this.workspace.evidence).toContainText("Change: Remove");
       this.details = this.workspace.evidence.locator("details");
       this.diagnosis = this.workspace.evidence.getByTestId("source-orphan-diagnosis");
       return;

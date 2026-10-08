@@ -7,14 +7,14 @@ import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/
 import type { SourceProposalReview, SourceNodeReview } from '../../../../../../../contracts/types/sourcingProposal.js';
 import { readEditorView, writeEditorView } from '../../../../shared/utils/editorViewStorage.js';
 import { sourceReviewAppearance } from '../../../../shared/utils/sourceReviewAppearance.js';
-import { proposalSettingsEntries, ProposalEntriesTable } from './ProposalSettingsSummary.js';
+import { proposalSettingsEntries, ProposalEntriesTable, TrackingChangesTable } from './ProposalSettingsSummary.js';
 import type { ProposalDialog } from './ProposalDialogs.js';
 import type { SourceOrphanExplanation } from '../../../../../../../contracts/types/sourcing.js';
-import { SourcingComponentOrphanDiagnosis } from '../../shared-sourcing-curation/exported.js';
+import { SourcingComponentContentComparison, SourcingComponentOrphanDiagnosis, useSourcingStateLineCounts, type SourcingTypeEditorOperations } from '../../shared-sourcing-curation/exported.js';
 import { SourcePath } from './SourceReviewPresentation.js';
 
 type Detail = 'pages' | 'configuration' | 'settings' | 'tracking';
-const detailTitles: Record<Detail, string> = { pages: 'Page changes', configuration: 'Configuration removals', settings: 'Setting changes', tracking: 'Tracking choices' };
+const detailTitles: Record<Detail, string> = { pages: 'Page changes', configuration: 'Configuration removals', settings: 'Setting changes', tracking: 'Tracking changes' };
 /** The caret's base width; its height reaches to just below Accept changes. */
 const caretWidth = 22, caretGap = 4;
 type Item = { id: string; label: string; blocker?: boolean } & ({ detail: Detail } | { dialog: Exclude<ProposalDialog, null> });
@@ -27,6 +27,9 @@ export function acceptedChanges(review: SourceProposalReview, graph: Graph | nul
   const entries = proposalSettingsEntries(review);
   const settings = entries.filter(entry => !entry.tracking), tracking = entries.filter(entry => entry.tracking);
   const pages = (graph?.getAllNodes() ?? []).filter(node => pageKinds.some(kind => node.sourceReview?.kind === kind));
+  // Removing a tracked page drops its saved configuration, which untracks it.
+  const removals = pages.filter(page => page.sourceReview?.orphanedConfiguration && !page.sourceReview.orphan?.removalBlockedReason)
+    .map(page => ({ key: page.bundleNodeKey, name: page.bundleNodeName }));
   // Configuration that was already unreachable has no comparison node, so it is listed separately.
   const unlisted = graph ? review.orphans.filter(orphan => !pages.some(page => page.sourceReview?.orphan?.bundleNodeId === orphan.bundleNodeId)) : [];
   const items: Item[] = [
@@ -34,25 +37,33 @@ export function acceptedChanges(review: SourceProposalReview, graph: Graph | nul
     ...unlisted.length ? [{ id: 'configuration', label: plural(unlisted.length, 'configuration removal', 'configuration removals'), detail: 'configuration' as const }] : [],
     ...review.moves.length ? [{ id: 'identities', label: plural(review.moves.length, 'identity decision', 'identity decisions'), dialog: 'identities' as const }] : [],
     ...settings.length ? [{ id: 'settings', label: plural(settings.length, 'setting change', 'setting changes'), detail: 'settings' as const }] : [],
-    ...tracking.length ? [{ id: 'tracking', label: plural(tracking.length, 'tracking choice', 'tracking choices'), detail: 'tracking' as const }] : [],
+    ...tracking.length + removals.length ? [{ id: 'tracking', label: plural(tracking.length + removals.length, 'tracking change', 'tracking changes'), detail: 'tracking' as const }] : [],
     ...review.conflicts.length ? [{ id: 'conflicts', label: `Resolve ${plural(review.conflicts.length, 'conflict', 'conflicts')}`, dialog: 'conflicts' as const, blocker: true }] : [],
     ...sensitiveCount ? [{ id: 'sensitivity', label: `Confirm ${plural(sensitiveCount, 'tracking choice', 'tracking choices')}`, dialog: 'sensitivity' as const, blocker: true }] : [],
   ];
-  return { items, pages, unlisted, settings, tracking };
+  return { items, pages, unlisted, settings, tracking, removals };
 }
 
 /** What Accept changes applies, attached to the Accept button so each staged change can be inspected. */
-export function AcceptedChangesTray({ changes, bundleSlug, acceptButton, onDialog, onSelectPage }: {
+export function AcceptedChangesTray({ changes, graph, bundleSlug, acceptButton, request, onDialog, onSelectPage }: {
   changes: ReturnType<typeof acceptedChanges>;
+  graph: Graph | null;
   bundleSlug: string;
   acceptButton: RefObject<HTMLButtonElement>;
+  request: SourcingTypeEditorOperations['request'];
   onDialog: (dialog: Exclude<ProposalDialog, null>) => void;
   onSelectPage: (key: EncodedBundleNodeKey) => void;
 }) {
   const [open, setOpen] = useState<Detail | null>(() => readEditorView<Detail | null>(bundleSlug, 'sourcing', 'acceptedChangesDetail', null));
   const show = useCallback((detail: Detail | null) => { setOpen(detail); writeEditorView(bundleSlug, 'sourcing', 'acceptedChangesDetail', detail); }, [bundleSlug]);
-  const { items, pages, unlisted, settings, tracking } = changes;
+  const { items, pages, unlisted, settings, tracking, removals } = changes;
+  const selectEntryPage = (page: { bundleNodeId?: string; bundleNodeKey?: EncodedBundleNodeKey }) => {
+    const key = graph?.getAllNodes().find(node => page.bundleNodeId && node.bundleNodeId === page.bundleNodeId)?.bundleNodeKey ?? page.bundleNodeKey;
+    if (key && graph?.getNode(key)) { show(null); onSelectPage(key); }
+  };
   const visible = open && items.some(item => 'detail' in item && item.detail === open) ? open : null;
+  // Comparing a page keeps Page changes open underneath, so the next page is one click away.
+  const [compared, setCompared] = useState<IBundleNode | null>(null);
 
   const row = useRef<HTMLDivElement>(null);
   const tray = useRef<HTMLDivElement>(null);
@@ -80,7 +91,7 @@ export function AcceptedChangesTray({ changes, bundleSlug, acceptButton, onDialo
   }, [visible, show]);
 
   const close = () => { const chip = row.current?.querySelector<HTMLButtonElement>(`[data-change-item="${visible}"]`); show(null); chip?.focus(); };
-  return <div ref={row} className="relative flex justify-end border-b px-5 pb-1.5 pt-1" onKeyDown={event => { if (event.key === 'Escape' && visible) { event.stopPropagation(); close(); } }}>
+  return <div ref={row} className="relative flex justify-end border-b px-5 pb-1.5 pt-1" onKeyDown={event => { if (event.key === 'Escape' && visible && !compared) { event.stopPropagation(); close(); } }}>
     <div ref={tray} role="region" aria-label="Changes to accept" data-testid="accepted-changes"
       className="relative flex max-w-full flex-wrap items-center justify-end gap-x-2 gap-y-1.5 rounded-lg border border-blue-700 bg-blue-50 px-1.5 py-1.5 text-sm shadow-sm">
       {caret !== null && <svg aria-hidden="true" data-testid="accepted-changes-caret" width={caretWidth} height={caret.height + 1} viewBox={`0 0 ${caretWidth} ${caret.height + 1}`}
@@ -111,12 +122,13 @@ export function AcceptedChangesTray({ changes, bundleSlug, acceptButton, onDialo
         <button type="button" aria-label="Close" className="ml-auto rounded px-1.5 text-lg leading-none text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800" onClick={close}>×</button>
       </header>
       <div className="p-3">
-        {visible === 'pages' && <PageChanges pages={pages} onSelect={key => { show(null); onSelectPage(key); }} />}
+        {visible === 'pages' && <PageChanges pages={pages} request={request} onCompare={setCompared} onSelect={key => { show(null); onSelectPage(key); }} />}
         {visible === 'configuration' && <Explained text="These pages were already unreachable before this proposal, so they are not in the graph. Accepting removes their saved configuration. The source files are untouched."><ConfigurationRemovals orphans={unlisted} /></Explained>}
-        {visible === 'settings' && <Explained text="Global filter definitions apply to all bundles in both sourcing and curation."><ProposalEntriesTable label="Setting" entries={settings} /></Explained>}
-        {visible === 'tracking' && <Explained text="Tracking choices made in this review. Pages without a choice keep their current tracking."><ProposalEntriesTable label="Page" entries={tracking} /></Explained>}
+        {visible === 'settings' && <Explained text="Global filter definitions apply to all bundles in both sourcing and curation."><ProposalEntriesTable label="Setting" entries={settings} onSelectPage={selectEntryPage} /></Explained>}
+        {visible === 'tracking' && <TrackingChangesTable entries={tracking} removals={removals} onSelectPage={selectEntryPage} />}
       </div>
     </section>}
+    {compared?.sourceReview && <SourcingComponentContentComparison evidence={compared.sourceReview} request={request} onClose={() => setCompared(null)} />}
   </div>;
 }
 
@@ -142,7 +154,7 @@ function PageKindDots({ pages, inverted }: { pages: IBundleNode[]; inverted: boo
     <span key={kind} className={`h-2 w-2 rounded-full ${inverted ? 'ring-1 ring-white' : ''}`} style={{ backgroundColor: sourceReviewAppearance[kind].color }} />)}</span>;
 }
 
-function PageChanges({ pages, onSelect }: { pages: IBundleNode[]; onSelect: (key: EncodedBundleNodeKey) => void }) {
+function PageChanges({ pages, request, onCompare, onSelect }: { pages: IBundleNode[]; request: SourcingTypeEditorOperations['request']; onCompare: (page: IBundleNode) => void; onSelect: (key: EncodedBundleNodeKey) => void }) {
   return <div className="space-y-3">{pageKinds.map(kind => {
     const matching = pages.filter(page => page.sourceReview?.kind === kind).sort((a, b) => a.bundleNodeName.localeCompare(b.bundleNodeName));
     if (!matching.length) return null;
@@ -151,14 +163,41 @@ function PageChanges({ pages, onSelect }: { pages: IBundleNode[]; onSelect: (key
       <h3 className="mb-1 flex items-center gap-2 px-2 text-xs font-semibold uppercase tracking-wide" style={{ color: appearance.color }}>
         <span aria-hidden="true" className="h-2 w-2 rounded-full" style={{ backgroundColor: appearance.color }} />{appearance.label}<span className="font-normal text-neutral-500">{matching.length}</span>
       </h3>
-      <ul>{matching.map(page => <li key={page.bundleNodeKey}>
-        <button type="button" data-testid="accepted-page-change" data-bundle-node-key={page.bundleNodeKey} className="flex w-full items-baseline gap-2 rounded px-2 py-1 text-left hover:bg-blue-50 focus-visible:bg-blue-50 focus-visible:outline-none" onClick={() => onSelect(page.bundleNodeKey)}>
-          <span className="min-w-0 flex-1 truncate">{page.bundleNodeName}</span>
-          {page.sourceReview?.orphan && !page.sourceReview.orphan.removalBlockedReason && <span className="shrink-0 rounded bg-red-50 px-1.5 text-xs text-red-800">Configuration removed</span>}
-        </button>
-      </li>)}</ul>
+      <PageChangeRows pages={matching} request={request} onCompare={onCompare} onSelect={onSelect} />
     </section>;
   })}</div>;
+}
+
+/** A section's rows share columns; a count column appears only when some row in the section has a nonzero value. */
+function PageChangeRows({ pages, request, onCompare, onSelect }: { pages: IBundleNode[]; request: SourcingTypeEditorOperations['request']; onCompare: (page: IBundleNode) => void; onSelect: (key: EncodedBundleNodeKey) => void }) {
+  const counts = pages.map(page => page.sourceReview?.lineCounts);
+  // Each count column is as wide as its widest value, so short counts sit close to the page name.
+  const width = (side: 'added' | 'removed') => counts.some(count => (count?.[side] ?? 0) > 0)
+    ? `${Math.max(...counts.map(count => String(count?.[side] ?? 0).length)) + 1}ch` : null;
+  const columns = { added: width('added'), removed: width('removed') };
+  return <ul>{pages.map(page => <PageChangeRow key={page.bundleNodeKey} page={page} request={request} columns={columns} onCompare={onCompare} onSelect={onSelect} />)}</ul>;
+}
+
+/** One row of the Page changes table: View, added lines, removed lines, then the page. */
+function PageChangeRow({ page, request, columns, onCompare, onSelect }: { page: IBundleNode; request: SourcingTypeEditorOperations['request']; columns: { added: string | null; removed: string | null }; onCompare: (page: IBundleNode) => void; onSelect: (key: EncodedBundleNodeKey) => void }) {
+  const review = page.sourceReview!;
+  const content = useSourcingStateLineCounts(review, request);
+  const removed = review.kind === 'departing';
+  const counts = content?.counts;
+  const canCompare = removed ? content?.hasPreviousContent : review.modification?.source !== false;
+  return <li className="flex items-center gap-1.5 rounded px-2 hover:bg-blue-50">
+    <span className="w-6 shrink-0">{canCompare && <button type="button" aria-label={`View ${page.bundleNodeName}`} title="View changes" onClick={() => onCompare(page)}
+      className="flex h-6 w-6 items-center justify-center rounded text-neutral-500 hover:bg-blue-100 hover:text-neutral-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-700">
+      <svg aria-hidden="true" className="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 10s3-6 8-6 8 6 8 6-3 6-8 6-8-6-8-6z" /><circle cx="10" cy="10" r="2.5" /></svg>
+    </button>}</span>
+    {columns.added && <span data-testid="accepted-page-added-lines" style={{ width: columns.added }} className={`shrink-0 text-right text-xs font-medium tabular-nums text-success-600 ${counts?.added === 0 ? 'opacity-20' : ''}`}>{counts && !removed ? `+${counts.added}` : ''}</span>}
+    {columns.removed && <span data-testid="accepted-page-removed-lines" style={{ width: columns.removed }} className={`shrink-0 text-right text-xs font-medium tabular-nums text-danger-600 ${counts?.removed === 0 ? 'opacity-20' : ''}`}>{counts ? `-${counts.removed}` : ''}</span>}
+    <button type="button" data-testid="accepted-page-change" data-bundle-node-key={page.bundleNodeKey} className="flex min-w-0 flex-1 items-baseline gap-2 py-1 pl-1 text-left focus-visible:bg-blue-50 focus-visible:outline-none" onClick={() => onSelect(page.bundleNodeKey)}>
+      <span className="min-w-0 flex-1 truncate">{page.bundleNodeName}
+        {/* Names omit the extension; anything other than a Markdown page shows it. */}
+        {page.bundleNodeKind === 'file' && page.fileType && page.fileType !== 'md' && <span className="text-neutral-400">.{page.fileType}</span>}</span>
+    </button>
+  </li>;
 }
 
 import type { ParticipatesIn, proposalConfigurationDraft } from '../../../../../../../concepts/index.js';
