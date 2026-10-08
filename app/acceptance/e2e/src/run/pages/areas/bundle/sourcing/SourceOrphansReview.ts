@@ -44,8 +44,9 @@ export class SourceOrphansReview {
     return this.page.getByRole("region", { name: "Configuration removals", exact: true }).getByTestId("accepted-configuration-removal");
   }
 
+  /** Tracking removals show the page name; configuration removals show the path and name the page in their label. */
   private named(rows: Locator, title: string) {
-    return rows.filter({ has: this.page.getByText(title, { exact: true }) });
+    return rows.filter({ has: this.page.getByText(title, { exact: true }).or(this.page.locator(`summary[aria-label=${JSON.stringify(`Details ${title}`)}]`)) });
   }
 
   private async rowsIn(chip: RegExp): Promise<Locator | null> {

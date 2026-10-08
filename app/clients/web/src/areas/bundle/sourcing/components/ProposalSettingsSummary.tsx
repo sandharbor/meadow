@@ -4,7 +4,7 @@ import type { SourceProposalReview, ProposalConfiguration } from '../../../../..
 import type { CustomFilterConfig } from '../../../../../../../contracts/types/customFilters.js';
 import { sameProposalValue } from '../../../../../../../shared_code/utils/proposalConfigurationMerge.js';
 import { bundleNodeKeySourceGraphPath } from '../../../../../../../shared_code/utils/bundleNodeKey.js';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';
 import { TrackingStatePills, type TrackingState } from '../../../../shared/components/TrackingStatePills.js';
 
@@ -60,6 +60,8 @@ export function proposalSettingsEntries(review: SourceProposalReview): Entry[] {
       before: label(state(before)), after: label(state(after)), tracking: { before: state(before), after: state(after), notes: [] } });
   }
   for (const [key, decision] of Object.entries(review.proposal.tracking)) {
+    // Track added pages lists its own decisions separately.
+    if (decision.origin === 'additions') continue;
     const before = original.nodes.find(node => node.bundleNodeId === decision.bundleNodeId);
     const name = proposed.nodes.find(node => node.bundleNodeId === decision.bundleNodeId)?.bundleNodeName ?? before?.bundleNodeName ?? bundleNodeKeySourceGraphPath(key as EncodedBundleNodeKey);
     const after: TrackingState = decision.track ? 'tracked' : 'untracked';
@@ -98,43 +100,61 @@ export function ProposalEntriesTable({ entries, label, onSelectPage }: { entries
   </table>;
 }
 
-/** A tracked page whose saved configuration acceptance removes because the page leaves the bundle. */
-export type TrackingRemoval = { key: EncodedBundleNodeKey; name: string };
+/** A page named in a tracking group that has no staged decision of its own. */
+export type TrackingPage = { key: EncodedBundleNodeKey; name: string };
+
+const byName = (pages: TrackingPage[]) => [...pages].sort((a, b) => a.name.localeCompare(b.name));
+const trackingColumns = 'grid grid-cols-[minmax(0,1fr)_9rem_0.75rem_10rem] items-center gap-x-2';
+
+/** One page's tracking before and proposed, as a whole-row button that selects the page. */
+function TrackingRow({ name, testId, before, after, onSelect }: { name: string; testId: string; before: ReactNode; after: ReactNode; onSelect?: () => void }) {
+  return <button type="button" role="row" data-testid={testId} disabled={!onSelect} onClick={onSelect} title={`Select "${name}"`}
+    className={`${trackingColumns} w-full rounded border-t border-neutral-100 px-2 py-1.5 text-left enabled:hover:bg-blue-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-700`}>
+    <span role="cell" className="font-semibold [overflow-wrap:anywhere]">{name}</span>
+    <span role="cell" className="opacity-50">{before}</span>
+    <span aria-hidden="true" className="text-neutral-400">→</span>
+    <span role="cell" className="flex flex-wrap items-center gap-1">{after}</span>
+  </button>;
+}
+
+/** A group of pages behind a quiet toggle, listed in name order. */
+function TrackingGroup({ label, testId, pages, open, onToggle, children }: { label: string; testId: string; pages: TrackingPage[]; open: boolean; onToggle?: () => void; children: (page: TrackingPage) => ReactNode }) {
+  if (!pages.length) return null;
+  return <>
+    {onToggle && <button type="button" aria-expanded={open} data-testid={testId} onClick={onToggle}
+      className="flex w-full items-center gap-1 border-t border-neutral-100 px-2 py-1.5 text-neutral-500 hover:text-neutral-800">
+      {label}
+      <svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10" className={open ? undefined : '-rotate-90'}><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" strokeWidth="1.5" /></svg>
+    </button>}
+    {open && byName(pages).map(children)}
+  </>;
+}
 
 /**
  * Tracking changes as whole-row buttons: the page, its earlier state faded, an arrow, and the proposed state.
- * Changes made in this review come first; removals that untrack pages follow behind a small toggle.
+ * Changes made in this review come first. Sensitive additions that Track added pages skips follow, then the
+ * pages it tracks and the removals that untrack pages, each behind a small toggle unless it is the only group.
  */
-export function TrackingChangesTable({ entries, removals, onSelectPage }: { entries: Entry[]; removals: TrackingRemoval[]; onSelectPage: SelectEntryPage }) {
-  const [showRemovals, setShowRemovals] = useState(false);
-  const removalsVisible = showRemovals || !entries.length;
-  // Fixed state columns keep separate row grids aligned.
-  const columns = 'grid grid-cols-[minmax(0,1fr)_9rem_0.75rem_10rem] items-center gap-x-2';
+export function TrackingChangesTable({ entries, removals, automatic = [], sensitiveSkipped = [], onSelectPage }: {
+  entries: Entry[]; removals: TrackingPage[]; automatic?: TrackingPage[]; sensitiveSkipped?: TrackingPage[]; onSelectPage: SelectEntryPage;
+}) {
+  const [shown, setShown] = useState<{ automatic: boolean; removals: boolean }>({ automatic: false, removals: false });
+  const groups = [entries.length, sensitiveSkipped.length, automatic.length, removals.length].filter(Boolean).length;
+  const toggle = (group: 'automatic' | 'removals') => groups > 1 ? () => setShown(current => ({ ...current, [group]: !current[group] })) : undefined;
+  const select = (page: TrackingPage) => () => onSelectPage({ bundleNodeKey: page.key });
   return <div role="table" aria-label="Tracking changes" className="text-xs">
-    <div role="row" className={`${columns} px-2 py-1.5 font-medium text-neutral-500`}>
+    <div role="row" className={`${trackingColumns} px-2 py-1.5 font-medium text-neutral-500`}>
       <span role="columnheader">Page</span><span role="columnheader">Before</span><span aria-hidden="true" /><span role="columnheader">Proposed</span>
     </div>
-    {entries.map(entry => entry.tracking && <button key={entry.key} type="button" role="row" data-testid="tracking-change" disabled={!entry.page}
-      onClick={() => entry.page && onSelectPage(entry.page)} title={`Select "${entry.name}"`}
-      className={`${columns} w-full rounded border-t border-neutral-100 px-2 py-1.5 text-left enabled:hover:bg-blue-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-700`}>
-      <span role="cell" className="font-semibold [overflow-wrap:anywhere]">{entry.name}</span>
-      <span role="cell" className="opacity-50"><TrackingStatePills state={entry.tracking.before} /></span>
-      <span aria-hidden="true" className="text-neutral-400">→</span>
-      <span role="cell" className="flex flex-wrap items-center gap-1"><TrackingStatePills state={entry.tracking.after} />
-        {entry.tracking.notes.map(note => <span key={note} className="text-amber-800">{note}</span>)}</span>
-    </button>)}
-    {removals.length > 0 && entries.length > 0 && <button type="button" aria-expanded={showRemovals} data-testid="tracking-removals-toggle" onClick={() => setShowRemovals(shown => !shown)}
-      className="flex items-center gap-1 border-t border-neutral-100 px-2 py-1.5 text-neutral-500 hover:text-neutral-800">
-      and {removals.length} {removals.length === 1 ? 'removal' : 'removals'}
-      <svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10" className={showRemovals ? undefined : '-rotate-90'}><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" strokeWidth="1.5" /></svg>
-    </button>}
-    {removalsVisible && [...removals].sort((a, b) => a.name.localeCompare(b.name)).map(removal => <button key={removal.key} type="button" role="row" data-testid="tracking-removal"
-      onClick={() => onSelectPage({ bundleNodeKey: removal.key })} title={`Select "${removal.name}"`}
-      className={`${columns} w-full rounded border-t border-neutral-100 px-2 py-1.5 text-left hover:bg-blue-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-700`}>
-      <span role="cell" className="font-semibold [overflow-wrap:anywhere]">{removal.name}</span>
-      <span role="cell" className="opacity-50"><TrackingStatePills state="tracked" /></span>
-      <span aria-hidden="true" className="text-neutral-400">→</span>
-      <span role="cell"><TrackingStatePills state="untracked" removed /></span>
-    </button>)}
+    {entries.map(entry => entry.tracking && <TrackingRow key={entry.key} testId="tracking-change" name={entry.name} onSelect={entry.page && (() => onSelectPage(entry.page!))}
+      before={<TrackingStatePills state={entry.tracking.before} />}
+      after={<><TrackingStatePills state={entry.tracking.after} />{entry.tracking.notes.map(note => <span key={note} className="text-amber-800">{note}</span>)}</>} />)}
+    {sensitiveSkipped.length > 0 && <p data-testid="tracking-sensitive-skipped-heading" className="border-t border-neutral-100 px-2 pb-0.5 pt-2 font-medium text-amber-800">Sensitive · not tracked automatically</p>}
+    {byName(sensitiveSkipped).map(page => <TrackingRow key={page.key} testId="tracking-sensitive-skipped" name={page.name} onSelect={select(page)}
+      before={<TrackingStatePills state="untracked" />} after={<><TrackingStatePills state="untracked" /><span className="inline-block rounded-full bg-danger-100 px-2 py-0.5 text-danger-800">Sensitive</span></>} />)}
+    <TrackingGroup label={`Tracked automatically · ${automatic.length}`} testId="tracking-automatic-toggle" pages={automatic} open={shown.automatic || groups === 1} onToggle={toggle('automatic')}>
+      {page => <TrackingRow key={page.key} testId="tracking-automatic" name={page.name} onSelect={select(page)} before={<TrackingStatePills state="untracked" />} after={<TrackingStatePills state="tracked" />} />}</TrackingGroup>
+    <TrackingGroup label={`and ${removals.length} ${removals.length === 1 ? 'removal' : 'removals'}`} testId="tracking-removals-toggle" pages={removals} open={shown.removals || groups === 1} onToggle={toggle('removals')}>
+      {page => <TrackingRow key={page.key} testId="tracking-removal" name={page.name} onSelect={select(page)} before={<TrackingStatePills state="tracked" />} after={<TrackingStatePills state="untracked" removed />} />}</TrackingGroup>
   </div>;
 }

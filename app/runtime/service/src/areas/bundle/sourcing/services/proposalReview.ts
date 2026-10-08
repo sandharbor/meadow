@@ -54,13 +54,31 @@ export async function reviewSourceProposal(directory: string): Promise<SourcePro
     });
     const missingRequiredEntries = [...new Set([...(proposal.requiredEntryRepair ?? []), ...missingSnapshotRoles(candidate, configuration.bundle, configuration.nodes).map(node => node.bundleNodeName)])];
     let trackingTargets: SourceProposalReview['trackingTargets'] = {};
+    let additionTracking: SourceProposalReview['additionTracking'] = { enabled: Boolean(proposal.trackAdditions), eligible: [], sensitiveSkipped: [] };
     if (!missingRequiredEntries.length && !unresolvedIdentities.length) {
       const identities = Object.fromEntries(knownIdentities.filter(node => node.bundleNodeKind !== 'collection').map(node => {
         const destination = proposal.identities[node.bundleNodeId];
         const located = typeof destination === 'string' ? relinkSourceNode(node, destination, candidate.sources) : node;
         return [serializeBundleNodeKey(bundleNodeKeyFromConfig(located)), node.bundleNodeId];
       }));
-      const tracking = await sourcingQueryPrepareProposalTracking(directory, candidate.id, configuration, proposal.tracking, identities);
+      const prepare = (decisions: PendingSourceProposal['tracking']) => sourcingQueryPrepareProposalTracking(directory, candidate.id, configuration, decisions, identities);
+      let tracking = await prepare(proposal.tracking);
+      // Track added pages covers each safe untracked addition without an explicit choice. Its decisions are
+      // recalculated here, so refreshed material and changed sensitivity are reflected; a second pass runs only
+      // when the covered pages change.
+      const acceptedKeys = new Set<string>((beforeGraph?.nodes ?? []).map(node => node.bundleNodeKey));
+      const chosen = (key: string) => proposal.tracking[key] && proposal.tracking[key].origin !== 'additions';
+      const additions = Object.entries(tracking.targets).filter(([key, target]) => !acceptedKeys.has(key) && !target.bundleNodeId && !chosen(key));
+      additionTracking = { enabled: Boolean(proposal.trackAdditions),
+        eligible: additions.filter(([, target]) => !target.sensitivity).map(([key]) => key),
+        sensitiveSkipped: additions.filter(([, target]) => target.sensitivity).map(([key]) => key) };
+      const covered = new Set(additionTracking.enabled ? additionTracking.eligible : []);
+      const current = Object.keys(proposal.tracking).filter(key => proposal.tracking[key].origin === 'additions');
+      if (current.length !== covered.size || current.some(key => !covered.has(key))) {
+        const decisions = Object.fromEntries(Object.entries(proposal.tracking).filter(([, decision]) => decision.origin !== 'additions'));
+        for (const key of covered) decisions[key] = proposal.tracking[key]?.origin === 'additions' ? proposal.tracking[key] : { track: true, origin: 'additions' };
+        tracking = await prepare(decisions);
+      }
       configuration.nodes = tracking.nodes;
       trackingTargets = tracking.targets;
       if (!sameProposalValue(tracking.tracking, proposal.tracking)) {
@@ -72,7 +90,7 @@ export async function reviewSourceProposal(directory: string): Promise<SourcePro
     const pendingIdentityIds = new Set(moves.filter(move => proposal.identities[move.bundleNodeId] !== null).map(move => move.bundleNodeId));
     const orphans = explainSourceOrphans(directory, candidate, afterGraph, configuration.nodes, configuration.bundle, true)
       .filter(orphan => !pendingIdentityIds.has(orphan.bundleNodeId));
-    return { proposal, configuration, conflicts, moves, orphans, unresolvedIdentities, missingRequiredEntries, trackingTargets,
+    return { proposal, configuration, conflicts, moves, orphans, unresolvedIdentities, missingRequiredEntries, trackingTargets, additionTracking,
       accepted: snapshotSummary(accepted), candidate: snapshotSummary(candidate), reviewToken: proposalReviewToken(directory, proposal) };
   });
 }

@@ -57,11 +57,12 @@ export function validateSourceProposal(value: unknown): asserts value is Pending
     || typeof value.newerSourcesAvailable !== 'boolean'
     || ![value.acceptedSnapshotId, value.candidateSnapshotId].every(id => typeof id === 'string' && /^[a-f0-9]{32}$/.test(id))
     || !isPlainObject(value.identities) || Object.values(value.identities).some(destination => destination !== null && typeof destination !== 'string')
-    || !isPlainObject(value.tracking) || !Array.isArray(value.resolutions)) throw new SourcingError('Invalid pending source proposal');
+    || !isPlainObject(value.tracking) || !Array.isArray(value.resolutions)
+    || (value.trackAdditions !== undefined && typeof value.trackAdditions !== 'boolean')) throw new SourcingError('Invalid pending source proposal');
   validateProposalConfiguration(value.original);
   validateProposalConfiguration(value.proposed);
   for (const decision of Object.values(value.tracking)) {
-    if (!isPlainObject(decision) || typeof decision.track !== 'boolean' || !['automatic', 'explicit'].includes(String(decision.origin))
+    if (!isPlainObject(decision) || typeof decision.track !== 'boolean' || !['automatic', 'explicit', 'additions'].includes(String(decision.origin))
       || (decision.confirmedSensitivity !== undefined && typeof decision.confirmedSensitivity !== 'string')
       || (decision.needsConfirmation !== undefined && typeof decision.needsConfirmation !== 'boolean')
       || (decision.identityChanged !== undefined && typeof decision.identityChanged !== 'boolean')

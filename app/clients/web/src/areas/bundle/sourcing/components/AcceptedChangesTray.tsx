@@ -12,6 +12,7 @@ import type { ProposalDialog } from './ProposalDialogs.js';
 import type { SourceOrphanExplanation } from '../../../../../../../contracts/types/sourcing.js';
 import { SourcingComponentContentComparison, SourcingComponentOrphanDiagnosis, useSourcingStateLineCounts, type SourcingTypeEditorOperations } from '../../shared-sourcing-curation/exported.js';
 import { SourcePath } from './SourceReviewPresentation.js';
+import { bundleNodeKeySourceGraphPath } from '../../../../../../../shared_code/utils/bundleNodeKey.js';
 
 type Detail = 'pages' | 'configuration' | 'settings' | 'tracking';
 const detailTitles: Record<Detail, string> = { pages: 'Page changes', configuration: 'Configuration removals', settings: 'Setting changes', tracking: 'Tracking changes' };
@@ -30,33 +31,43 @@ export function acceptedChanges(review: SourceProposalReview, graph: Graph | nul
   // Removing a tracked page drops its saved configuration, which untracks it.
   const removals = pages.filter(page => page.sourceReview?.orphanedConfiguration && !page.sourceReview.orphan?.removalBlockedReason)
     .map(page => ({ key: page.bundleNodeKey, name: page.bundleNodeName }));
+  // Track added pages: the safe additions it tracks while on, and the sensitive ones it never tracks.
+  const named = (key: string) => ({ key: key as EncodedBundleNodeKey, name: graph?.getNode(key as EncodedBundleNodeKey)?.bundleNodeName ?? bundleNodeKeySourceGraphPath(key as EncodedBundleNodeKey) });
+  const { enabled, eligible, sensitiveSkipped } = review.additionTracking;
+  const additions = { enabled, available: eligible.length + sensitiveSkipped.length > 0,
+    automatic: enabled ? eligible.map(named) : [], sensitiveSkipped: enabled ? sensitiveSkipped.map(named) : [] };
+  const trackingCount = tracking.length + removals.length + additions.automatic.length;
   // Configuration that was already unreachable has no comparison node, so it is listed separately.
   const unlisted = graph ? review.orphans.filter(orphan => !pages.some(page => page.sourceReview?.orphan?.bundleNodeId === orphan.bundleNodeId)) : [];
+  // Identity decisions come first: they are made before the graph opens.
   const items: Item[] = [
+    ...review.moves.length ? [{ id: 'identities', label: plural(review.moves.length, 'identity decision', 'identity decisions'), dialog: 'identities' as const }] : [],
     ...pages.length ? [{ id: 'pages', label: plural(pages.length, 'page change', 'page changes'), detail: 'pages' as const }] : [],
     ...unlisted.length ? [{ id: 'configuration', label: plural(unlisted.length, 'configuration removal', 'configuration removals'), detail: 'configuration' as const }] : [],
-    ...review.moves.length ? [{ id: 'identities', label: plural(review.moves.length, 'identity decision', 'identity decisions'), dialog: 'identities' as const }] : [],
     ...settings.length ? [{ id: 'settings', label: plural(settings.length, 'setting change', 'setting changes'), detail: 'settings' as const }] : [],
-    ...tracking.length + removals.length ? [{ id: 'tracking', label: plural(tracking.length + removals.length, 'tracking change', 'tracking changes'), detail: 'tracking' as const }] : [],
+    // Skipped sensitive additions are listed in Tracking changes, so its chip stays available for them.
+    ...trackingCount || additions.sensitiveSkipped.length ? [{ id: 'tracking', label: plural(trackingCount, 'tracking change', 'tracking changes'), detail: 'tracking' as const }] : [],
     ...review.conflicts.length ? [{ id: 'conflicts', label: `Resolve ${plural(review.conflicts.length, 'conflict', 'conflicts')}`, dialog: 'conflicts' as const, blocker: true }] : [],
     ...sensitiveCount ? [{ id: 'sensitivity', label: `Confirm ${plural(sensitiveCount, 'tracking choice', 'tracking choices')}`, dialog: 'sensitivity' as const, blocker: true }] : [],
   ];
-  return { items, pages, unlisted, settings, tracking, removals };
+  return { items, pages, unlisted, settings, tracking, removals, additions };
 }
 
 /** What Accept changes applies, attached to the Accept button so each staged change can be inspected. */
-export function AcceptedChangesTray({ changes, graph, bundleSlug, acceptButton, request, onDialog, onSelectPage }: {
+export function AcceptedChangesTray({ changes, graph, bundleSlug, acceptButton, request, busy = false, onTrackAdditions, onDialog, onSelectPage }: {
   changes: ReturnType<typeof acceptedChanges>;
   graph: Graph | null;
   bundleSlug: string;
   acceptButton: RefObject<HTMLButtonElement>;
   request: SourcingTypeEditorOperations['request'];
+  busy?: boolean;
+  onTrackAdditions: (enabled: boolean) => void;
   onDialog: (dialog: Exclude<ProposalDialog, null>) => void;
   onSelectPage: (key: EncodedBundleNodeKey) => void;
 }) {
   const [open, setOpen] = useState<Detail | null>(() => readEditorView<Detail | null>(bundleSlug, 'sourcing', 'acceptedChangesDetail', null));
   const show = useCallback((detail: Detail | null) => { setOpen(detail); writeEditorView(bundleSlug, 'sourcing', 'acceptedChangesDetail', detail); }, [bundleSlug]);
-  const { items, pages, unlisted, settings, tracking, removals } = changes;
+  const { items, pages, unlisted, settings, tracking, removals, additions } = changes;
   const selectEntryPage = (page: { bundleNodeId?: string; bundleNodeKey?: EncodedBundleNodeKey }) => {
     const key = graph?.getAllNodes().find(node => page.bundleNodeId && node.bundleNodeId === page.bundleNodeId)?.bundleNodeKey ?? page.bundleNodeKey;
     if (key && graph?.getNode(key)) { show(null); onSelectPage(key); }
@@ -114,6 +125,16 @@ export function AcceptedChangesTray({ changes, graph, bundleSlug, acceptButton, 
           {'detail' in item && <svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10" className={expanded ? 'rotate-180' : undefined}><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" strokeWidth="1.5" /></svg>}
         </button>;
       })}
+      {(additions.available || additions.enabled) && <span data-testid="track-additions" className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-white px-2.5 py-0.5 font-medium text-blue-900">
+        <label className="inline-flex cursor-pointer items-center gap-1.5">
+          <input type="checkbox" className="h-3.5 w-3.5 rounded border-blue-300 text-blue-700 focus:ring-blue-700" checked={additions.enabled} disabled={busy}
+            onChange={event => onTrackAdditions(event.target.checked)} />
+          Track added pages
+        </label>
+        {additions.sensitiveSkipped.length > 0 && <button type="button" data-testid="track-additions-sensitive" title="Show the sensitive pages that stay untracked"
+          className="text-amber-800 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-700" onClick={() => show('tracking')}>
+          · {additions.sensitiveSkipped.length} sensitive skipped</button>}
+      </span>}
     </div>
     {visible && <section aria-label={detailTitles[visible]}
       className="absolute right-5 top-full z-50 mt-1 max-h-[60vh] w-[min(38rem,calc(100vw-2.5rem))] overflow-auto rounded-lg border border-neutral-200 bg-white text-sm shadow-xl">
@@ -125,7 +146,7 @@ export function AcceptedChangesTray({ changes, graph, bundleSlug, acceptButton, 
         {visible === 'pages' && <PageChanges pages={pages} request={request} onCompare={setCompared} onSelect={key => { show(null); onSelectPage(key); }} />}
         {visible === 'configuration' && <Explained text="These pages were already unreachable before this proposal, so they are not in the graph. Accepting removes their saved configuration. The source files are untouched."><ConfigurationRemovals orphans={unlisted} /></Explained>}
         {visible === 'settings' && <Explained text="Global filter definitions apply to all bundles in both sourcing and curation."><ProposalEntriesTable label="Setting" entries={settings} onSelectPage={selectEntryPage} /></Explained>}
-        {visible === 'tracking' && <TrackingChangesTable entries={tracking} removals={removals} onSelectPage={selectEntryPage} />}
+        {visible === 'tracking' && <TrackingChangesTable entries={tracking} removals={removals} automatic={additions.automatic} sensitiveSkipped={additions.sensitiveSkipped} onSelectPage={selectEntryPage} />}
       </div>
     </section>}
     {compared?.sourceReview && <SourcingComponentContentComparison evidence={compared.sourceReview} request={request} onClose={() => setCompared(null)} />}
@@ -137,12 +158,12 @@ function Explained({ text, children }: { text: string; children: ReactNode }) {
 }
 
 function ConfigurationRemovals({ orphans }: { orphans: SourceOrphanExplanation[] }) {
-  return <ul className="divide-y divide-neutral-100">{[...orphans].sort((a, b) => a.title.localeCompare(b.title)).map(orphan => <li key={orphan.bundleNodeId}>
+  // The full path identifies each page on its own; the folder reads muted and the file name stands out.
+  return <ul className="divide-y divide-neutral-100">{[...orphans].sort((a, b) => a.path.localeCompare(b.path)).map(orphan => <li key={orphan.bundleNodeId}>
     <details data-testid="accepted-configuration-removal" className="group px-2 py-1.5 text-xs">
       <summary className="flex cursor-pointer list-none items-baseline gap-2 rounded hover:bg-neutral-50" aria-label={`Details ${orphan.title}`}>
         <span aria-hidden="true" className="text-neutral-400 group-open:rotate-90">›</span>
-        <span className="shrink-0 text-sm text-neutral-800">{orphan.title}</span>
-        <span className="min-w-0 truncate text-neutral-500"><SourcePath value={orphan.path} /></span>
+        <span className="min-w-0"><SourcePath value={orphan.path} /></span>
       </summary>
       <div className="ml-4 mt-2"><SourcingComponentOrphanDiagnosis orphan={orphan} /></div>
     </details>

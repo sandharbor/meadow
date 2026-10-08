@@ -16,10 +16,10 @@ export function SourceOrphanSentence({ orphan, pill = path => <FilePill path={pa
   return <p className="leading-relaxed [overflow-wrap:anywhere]">{sentence}</p>;
 }
 
-/** Explains why a removed page's saved configuration is no longer reachable. */
+/** Explains why a removed page's saved configuration is no longer reachable. The consequence of acceptance is stated once for the whole list; only a blocked removal adds its own. */
 export function SourceOrphanDiagnosis({ orphan }: { orphan: SourceOrphanExplanation }) {
   return <div data-testid="source-orphan-diagnosis" className="space-y-1">
     <SourceOrphanSentence orphan={orphan} />
-    <p className="text-neutral-600">{orphan.removalBlockedReason ?? 'Accepting removes this page’s saved configuration. The source files are untouched.'}</p>
+    {orphan.removalBlockedReason && <p className="text-amber-800">{orphan.removalBlockedReason}</p>}
   </div>;
 }

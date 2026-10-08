@@ -72,8 +72,11 @@ export interface ProposalConflictResolution extends ProposalConfigurationConflic
 
 export interface ProposalTrackingDecision {
   track: boolean;
-  /** Automatic is accepted only to migrate older pending proposals. */
-  origin: 'automatic' | 'explicit';
+  /**
+   * Automatic is accepted only to migrate older pending proposals. Additions come from the proposal's
+   * Track added pages choice and are recalculated with every review; an explicit choice replaces them.
+   */
+  origin: 'automatic' | 'explicit' | 'additions';
   bundleNodeId?: BundleNodeId;
   /** Fingerprint of the effective sensitivity evidence the person confirmed. */
   confirmedSensitivity?: string;
@@ -100,6 +103,15 @@ export interface PendingSourceProposal {
   newerSourcesAvailable: boolean;
   /** An explicitly requested refresh could not rebuild these required entries. */
   requiredEntryRepair?: string[];
+  /** Track every safe added page that has no explicit choice. Each new proposal starts without it. */
+  trackAdditions?: boolean;
+}
+
+/** Added pages without an explicit tracking choice: the safe ones Track added pages covers, and the sensitive ones it skips. */
+export interface ProposalAdditionTracking {
+  enabled: boolean;
+  eligible: string[];
+  sensitiveSkipped: string[];
 }
 
 export interface SourceProposalReview {
@@ -111,6 +123,7 @@ export interface SourceProposalReview {
   unresolvedIdentities: string[];
   missingRequiredEntries: string[];
   trackingTargets: Record<string, { bundleNodeId?: BundleNodeId; sensitivity?: string; sensitivityReasons?: string[] }>;
+  additionTracking: ProposalAdditionTracking;
   accepted: SourceSnapshotSummary;
   candidate: SourceSnapshotSummary;
   reviewToken: string;

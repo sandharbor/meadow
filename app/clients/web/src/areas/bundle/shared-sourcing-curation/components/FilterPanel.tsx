@@ -390,29 +390,34 @@ const FilterPanel = React.memo<FilterPanelProps>(({
     <div
       key={filter.id}
       data-source-change-filter={filter.group === 'source-changes' ? filter.name : undefined}
-      className={`space-y-2 ${filter.parentFilterId ? 'ml-4 border-l pl-2' : ''}`}
+      className={`space-y-2 ${filter.parentFilterId && filter.group !== 'source-changes' ? 'ml-4 border-l pl-2' : ''}`}
     >
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2 min-w-0 flex-1">
+        {/* A source change with a breakdown opens from anywhere on its name, count, or caret; the caret stays the keyboard control. */}
+        <div className={`flex items-center space-x-2 min-w-0 flex-1 ${filter.group === 'source-changes' && hasChildFilters ? '-my-1 cursor-pointer rounded py-1 hover:bg-blue-100/60' : ''}`}
+          data-source-change-toggle={filter.group === 'source-changes' && hasChildFilters ? filter.id : undefined}
+          onClick={filter.group === 'source-changes' && hasChildFilters ? () => toggleFilterGroup(filter.id) : undefined}>
           {filter.group === 'source-changes' ? (
             <>
               {hasChildFilters ? (
                 <button type="button" aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${filter.name}`} aria-expanded={isExpanded}
-                  onClick={() => toggleFilterGroup(filter.id)} style={{ opacity: sourceRowOpacity }} className="flex h-4 w-4 shrink-0 items-center justify-center rounded text-gray-500 hover:text-gray-900">
-                  <svg className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`} viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                  onClick={event => { event.stopPropagation(); toggleFilterGroup(filter.id); }} style={{ opacity: sourceRowOpacity }} className="flex h-4 w-2.5 shrink-0 items-center justify-center rounded text-gray-500 hover:text-gray-900">
+                  {/* The view box hugs the triangle so the caret takes little width beside the count. */}
+                  <svg className={`h-3 w-2.5 transition-transform ${isExpanded ? 'rotate-90' : ''}`} viewBox="3.5 2 9 12" fill="currentColor" aria-hidden="true">
                     <path d="M5.5 3.5L10 8l-4.5 4.5V3.5z" />
                   </svg>
                 </button>
-              ) : <span className="h-4 w-4 shrink-0" aria-hidden="true" />}
+              ) : <span className="h-4 w-2.5 shrink-0" aria-hidden="true" />}
+              {/* A breakdown row aligns with its parent: its count sits under the parent's bubble and its label under the parent's label. */}
               <span className="flex shrink-0 items-center justify-center text-xs tabular-nums"
-                style={{ width: filter.parentFilterId ? `max(1rem, ${sourceCountDigits}ch)` : `max(1.5rem, calc(${sourceCountDigits}ch + 1rem))`, opacity: sourceRowOpacity }}>
+                style={{ width: `max(1.5rem, calc(${sourceCountDigits}ch + 1rem))`, marginLeft: '0.125rem', opacity: sourceRowOpacity }}>
                 {sourceChangeCount > 0 && <span data-source-change-count
                   className={`inline-flex h-6 shrink-0 items-center justify-center rounded-full text-xs font-medium tabular-nums ${filter.id === 'source-unchanged' ? 'bg-gray-100 text-gray-500 opacity-40' : filter.parentFilterId ? 'text-gray-700' : 'border-2 text-gray-700'} ${filter.parentFilterId ? '' : sourceChangeCount < 10 ? 'w-6' : 'min-w-6 px-1.5'}`}
                   style={filter.id === 'source-unchanged' || filter.parentFilterId ? undefined : { borderColor: sourceHighlight?.color ?? '#fdba74', borderStyle: sourceHighlight?.isDashed ? 'dashed' : 'solid' }}>
                   {sourceChangeCount}
                 </span>}
               </span>
-              <span style={{ opacity: sourceRowOpacity, marginLeft: filter.parentFilterId ? '0.125rem' : '0.5rem' }} className="min-w-0 truncate text-sm text-gray-700">{filter.name}</span>
+              <span style={{ opacity: sourceRowOpacity, marginLeft: '0.375rem' }} className={`min-w-0 truncate text-sm ${filter.parentFilterId ? 'text-gray-600' : 'text-gray-700'}`}>{filter.name}</span>
             </>
           ) : isExpandableFilter ? (
             <button

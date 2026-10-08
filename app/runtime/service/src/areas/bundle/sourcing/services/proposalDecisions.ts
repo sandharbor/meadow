@@ -63,6 +63,12 @@ export async function resolveProposalConflicts(directory: string, revision: numb
   });
 }
 
+/** Turning Track added pages off drops the decisions it made; the next review recalculates them while it is on. */
+export async function chooseProposalAdditionTracking(directory: string, revision: number, enabled: boolean) {
+  return editSourceProposal(directory, revision, proposal => ({ ...proposal, trackAdditions: enabled,
+    tracking: enabled ? proposal.tracking : Object.fromEntries(Object.entries(proposal.tracking).filter(([, decision]) => decision.origin !== 'additions')) }));
+}
+
 /** Mixed selections operate only on candidates and return every skipped comparison node. */
 export async function chooseProposalTracking(directory: string, revision: number, keys: string[], track: boolean, confirmSensitive = false, incorporateNewerSources = false) {
   const review = await reviewSourceProposal(directory);

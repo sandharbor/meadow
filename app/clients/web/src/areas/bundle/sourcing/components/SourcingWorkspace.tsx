@@ -173,6 +173,7 @@ export function SourcingWorkspace({ bundleSlug, onClose, onAccepted, requestedPa
       <SourceReviewActions busy={busy} blocked={blocked} acceptButton={acceptButton} onExit={exit} onAccept={() => void finish(false)} />
     </header>
     {changes && <AcceptedChangesTray changes={changes} graph={graph} bundleSlug={bundleSlug} acceptButton={acceptButton} request={operations.request}
+      busy={busy} onTrackAdditions={enabled => void mutate('track-additions', { enabled }).catch(() => {})}
       onDialog={setDialog} onSelectPage={key => { setSelected(previous => new Set([key, ...[...previous].filter(other => other !== key)])); setCollapsed(false); }} />}
     {review?.proposal.newerSourcesAvailable && <p role="status" className="bg-amber-50 px-5 py-2 text-sm">Newer sources available. Acceptance keeps the current capture.</p>}
     {review && <SourceRegistryChanges changes={{ before: review.proposal.original.bundle.sources ?? [], after: review.proposal.proposed.bundle.sources ?? [], stale: false, outputPathsChange: review.proposal.original.bundle.sourceOutputLayout !== review.proposal.proposed.bundle.sourceOutputLayout }} />}

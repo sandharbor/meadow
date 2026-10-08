@@ -9,7 +9,7 @@ import { discardSourceProposal, validateProposalConfiguration } from '../service
 import { reviewSourceProposal } from '../services/proposalReview.js';
 import { updateSourceProposalCapture, checkSourceProposalUpdates } from '../services/proposalCapture.js';
 import { acceptSourceProposal } from '../services/proposalAcceptance.js';
-import { chooseProposalIdentities, chooseProposalTracking, resolveProposalConflicts } from '../services/proposalDecisions.js';
+import { chooseProposalAdditionTracking, chooseProposalIdentities, chooseProposalTracking, resolveProposalConflicts } from '../services/proposalDecisions.js';
 import { directory, handle } from './routeUtils.js';
 import { sourceProposalComparison } from '../services/proposalComparison.js';
 import { applyBlacklistEdit, undoBlacklistEdit } from '../services/blacklistReview.js';
@@ -85,6 +85,12 @@ export function createProposalRoutes() {
     if (!Array.isArray(nodeKeys) || nodeKeys.some(key => typeof key !== 'string') || typeof track !== 'boolean') throw new SourcingError('Expected pages and a tracking choice', 400);
     const result = await chooseProposalTracking(directory(req), revision(req), nodeKeys as string[], track, confirmSensitive === true, incorporateNewerSources === true);
     return { ...await reviewSourceProposal(directory(req)), skippedTrackingKeys: result.skipped };
+  }));
+  router.post('/bundles/:bundleSlug/sourcing/proposal/track-additions', handle(async req => {
+    const { enabled } = body(req);
+    if (typeof enabled !== 'boolean') throw new SourcingError('Expected whether to track added pages', 400);
+    await chooseProposalAdditionTracking(directory(req), revision(req), enabled);
+    return reviewSourceProposal(directory(req));
   }));
   router.post('/bundles/:bundleSlug/sourcing/proposal/discard', handle(async req => {
     await discardSourceProposal(directory(req), revision(req));
