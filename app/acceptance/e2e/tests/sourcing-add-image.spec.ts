@@ -23,6 +23,8 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'bf4dde21-65c
   await sourceCommand(() => sourceChanges.apply('add-embedded-image'));
   await sourceCommand(() => editor.checkSourceChanges());
   await sourceCommand(() => editor.sourceReview.open());
+  // This scenario is about explicit tracking choices, so Track added pages is off.
+  await sourceCommand(() => editor.sourceReview.setTrackAdditions(false));
   await sourceCommand(() => editor.sourceReview.previewImage('source-changes/added sunflower.png', ['main page.md', 't006 - embedded media.md']));
   await sourceCommand(() => addKeyFrame(sourceSnapshot));
   await sourceCommand(() => checkpoint('the shared added image has a thumbnail and a real inclusion route'));

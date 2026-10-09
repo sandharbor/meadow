@@ -61,3 +61,9 @@
 @media (prefers-reduced-motion: reduce) {
   .source-chip-panel { animation: none; }
 }
+
+/* A panel that opens with the bar waits for its chip to fade in first; the delay keeps it hidden meanwhile. */
+.source-chip-panel-after-chip {
+  animation-delay: 180ms;
+  animation-fill-mode: backwards;
+}

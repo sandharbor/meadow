@@ -39,7 +39,7 @@ export function placeExamples(options: { sourceGraphsDir: string }): Record<stri
     "bundle:rename": [at("rename")],
     "bundle:edit-details": [at("edit-details")],
     "bundle:source-diff": [{ ...at("source-diff", { node: "file:main page.md" }), editorMode: "sourcing" }],
-    "bundle:source-review": [at("source-review"), at("source-review", { review: "identities", identityTab: "input" })],
+    "bundle:source-review": [at("source-review"), at("source-review", { review: "identities" })],
     "bundle:manage-sources": [at("manage-sources", { mode: "manage" })],
     "bundle:source-snapshots": [at("source-snapshots")],
     "bundle:node-links": [at("node-links", { node: "file:main page.md" })],

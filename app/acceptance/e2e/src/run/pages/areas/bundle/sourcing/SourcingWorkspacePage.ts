@@ -15,6 +15,11 @@ export class SourcingWorkspacePage {
   async open() {
     await this.page.getByTestId('sourcing-status').getByRole('button', { name: /(source changes? available|Changes pending) – Review/ }).click();
     await this.expect(this.root).toBeVisible();
+    await this.expectLoaded();
+  }
+  /** The editor beneath shows through until review has loaded what it shows, so wait for that before using it. */
+  async expectLoaded() {
+    await this.expect(this.root.getByRole('status', { name: 'Loading page changes', exact: true })).toHaveCount(0);
   }
   async expectNodeVisible(name: string, visible = true) {
     const row = this.root.locator('tr').filter({ has: this.page.getByText(name, { exact: true }) });
@@ -142,8 +147,18 @@ export class SourcingWorkspacePage {
     await this.expect(this.refreshSourcesButton).toBeEnabled();
     await this.expect(this.selectedPage.getByText('Tracked', { exact: true })).toBeVisible();
   }
-  async expectNoAutomaticTrackingOption() {
-    await this.expect(this.root.getByRole('checkbox', { name: 'Track non-sensitive added pages', exact: true })).toHaveCount(0);
+  /** Track added pages, shown beside the changes to accept when there are added pages without a tracking choice. */
+  get trackAdditionsOption() { return this.root.getByRole('checkbox', { name: 'Track added pages', exact: true }); }
+  async expectTrackAdditions(checked: boolean) { await this.expect(this.trackAdditionsOption).toBeChecked({ checked }); }
+  async setTrackAdditions(on: boolean) {
+    await this.expect(this.trackAdditionsOption).toBeVisible();
+    if (await this.trackAdditionsOption.isChecked() === on) return;
+    await Promise.all([
+      this.page.waitForResponse(response => response.url().endsWith('/sourcing/proposal/track-additions') && response.ok(), { timeout: 10000 }),
+      // The checkbox reflects the saved proposal, so it changes once the server confirms.
+      this.trackAdditionsOption.click(),
+    ]);
+    await this.expectTrackAdditions(on);
   }
   async untrackSelected() {
     await this.selectedPage.getByTitle('More options', { exact: true }).click();
@@ -169,9 +184,13 @@ export class SourcingWorkspacePage {
   async closeComparison() { await this.comparison.getByRole('button', { name: 'Close', exact: true }).click(); }
   get exitButton() { return this.root.locator('header').getByRole('button', { name: 'Exit', exact: true }); }
   get exitReview() { return this.page.getByRole('dialog', { name: 'Exit changes review', exact: true }); }
+  /** The bar reads refresh, then what Accept changes applies, then Accept changes, then the close button. */
   async expectMainReviewActions() {
-    await this.expect(this.root.locator('header').getByRole('button')).toHaveText(['', 'Exit', 'Accept changes']);
-    await this.expect(this.refreshSourcesButton).toBeVisible();
+    const accept = this.root.locator('header').getByRole('button', { name: 'Accept changes', exact: true });
+    for (const control of [this.refreshSourcesButton, accept, this.exitButton]) await this.expect(control).toBeVisible();
+    const [refresh, acceptBox, exit] = await Promise.all([this.refreshSourcesButton, accept, this.exitButton].map(control => control.boundingBox()));
+    this.expect(refresh!.x).toBeLessThan(acceptBox!.x);
+    this.expect(acceptBox!.x).toBeLessThan(exit!.x);
   }
   /** Exit, discarding the proposal's changes. An unchanged review is discarded without asking. */
   async discard() {
@@ -192,134 +211,123 @@ export class SourcingWorkspacePage {
     ]);
     await this.expect(this.refreshSourcesButton).toBeEnabled();
   }
-  async selectIdentityTab(name: 'Confident suggestions' | 'Needs your input') {
-    await this.identities.getByRole('tab', { name, exact: true }).click();
-    await this.expect(this.identities.getByRole('tab', { name, exact: true })).toHaveAttribute('aria-selected', 'true');
+  /**
+   * The identity review row that holds a file: its own row, or the row of the group of files that share its rename,
+   * whose Details lists each file.
+   */
+  private identityHolder(id: string) {
+    return this.identities.locator(`[data-testid="source-move-${id}"]:not([data-testid="source-identity-group"] [data-testid="source-move-${id}"]), [data-testid="source-identity-group"][data-identity-ids*=${JSON.stringify(`"${id}"`)}]`);
   }
+  private async saving(action: () => Promise<void>) {
+    if (!await this.identityBackdrop.isVisible()) { await action(); return; }
+    await Promise.all([this.page.waitForResponse(response => response.url().endsWith('/sourcing/proposal/identities') && response.ok(), { timeout: 10000 }), action()]);
+  }
+  /** Bring a file's row into view, opening its group's Details when the file shares a rename with others. */
   protected async showIdentityRecord(record: Locator) {
     await this.expect(this.identities).toBeVisible();
-    const panel = record.locator('xpath=ancestor::*[@role="tabpanel"]');
-    if (await panel.getAttribute('hidden') !== null) {
-      const confident = await this.identities.getByRole('tab', { name: 'Confident suggestions', exact: true }).getAttribute('aria-selected');
-      await this.selectIdentityTab(confident === 'true' ? 'Needs your input' : 'Confident suggestions');
+    const group = record.locator('xpath=ancestor::*[@data-testid="source-identity-group"]');
+    if (await group.count()) {
+      const details = group.getByTestId('source-identity-details').first();
+      if (await details.getAttribute('aria-expanded') !== 'true') await details.click();
     }
-    const ancestors = record.locator('xpath=ancestor::details');
-    for (const ancestor of await ancestors.all()) {
-      if (await ancestor.getAttribute('open') === null) await ancestor.locator(':scope > summary').click();
-    }
-    const details = record.getByTestId('source-identity-record');
-    if (await details.count() && await details.getAttribute('open') === null) await details.getByTestId('source-identity-record-summary').click();
+    await record.scrollIntoViewIfNeeded();
     await this.expect(record).toBeVisible();
   }
   async showIdentity(id: string) {
-    await this.showIdentityRecord(this.identities.getByTestId(`source-move-${id}`));
+    const group = this.identities.locator(`[data-testid="source-identity-group"][data-identity-ids*=${JSON.stringify(`"${id}"`)}]`);
+    if (await group.count()) {
+      const details = group.getByTestId('source-identity-details').first();
+      if (await details.getAttribute('aria-expanded') !== 'true') await details.click();
+    }
+    await this.showIdentityRecord(this.identityRow(id));
   }
+  /** A group of files whose shared rename moves them from one folder to another. */
   private directoryIdentityGroup(before: string, after: string) {
-    return this.identities.getByTestId('source-identity-group').filter({ has: this.page.getByRole('group', { name: `Changed directories: ${before} → ${after}`, exact: true }) });
+    const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return this.identities.getByTestId('source-identity-group').filter({ has: this.page.getByRole('group', { name: new RegExp(`^Moved(?: and renamed)?: ${escape(before)}/.* → ${escape(after)}/`) }) });
   }
   async expectDirectoryGroupCollapsed(before: string, after: string, count: number) {
     const group = this.directoryIdentityGroup(before, after);
     await this.expect(group).toHaveCount(1);
-    await this.expect(group).not.toHaveAttribute('open');
-    await this.expect(group.locator('xpath=ancestor::tr').getByRole('combobox', { name: `Identity choice: Same, ${count} files`, exact: true })).toBeVisible();
-    await this.expect(group.getByRole('radio')).toHaveCount(0);
+    await this.expect(group.getByTestId('source-identity-details').first()).toHaveAttribute('aria-expanded', 'false');
+    await this.expect(group).toContainText(`+ ${count - 1} more ${count === 2 ? 'file' : 'files'} renamed the same way`);
+    await this.expect(group.getByTestId('source-identity-switch').first()).toHaveAttribute('data-current-choice', 'same');
+    await this.expect(group.getByTestId(/^source-move-/)).toHaveCount(0);
   }
   async openDirectoryGroup(before: string, after: string) {
-    const group = this.directoryIdentityGroup(before, after);
-    await group.getByTestId('source-identity-group-summary').click();
-    await this.expect(group).toHaveAttribute('open');
+    const details = this.directoryIdentityGroup(before, after).getByTestId('source-identity-details').first();
+    await details.click();
+    await this.expect(details).toHaveAttribute('aria-expanded', 'true');
   }
   async expectDirectoryGroupExpanded(before: string, after: string, count: number) {
     const group = this.directoryIdentityGroup(before, after);
-    await this.expect(group).toHaveAttribute('open');
-    await this.expect(group.locator('fieldset[data-testid^="source-move-"]')).toHaveCount(count);
-    await group.getByTestId('source-identity-group-summary').scrollIntoViewIfNeeded();
+    await this.expect(group.getByTestId('source-identity-details').first()).toHaveAttribute('aria-expanded', 'true');
+    await this.expect(group.getByTestId(/^source-move-/)).toHaveCount(count);
+    await group.scrollIntoViewIfNeeded();
   }
-  async chooseCompactIdentity(id: string, option: string, currentChoice?: 'Same' | 'Different' | 'Choose') {
-    const record = this.identities.getByTestId(`source-move-${id}`);
-    const panel = record.locator('xpath=ancestor::*[@role="tabpanel"]');
-    if (await panel.getAttribute('hidden') !== null) {
-      const confident = await this.identities.getByRole('tab', { name: 'Confident suggestions', exact: true }).getAttribute('aria-selected');
-      await this.selectIdentityTab(confident === 'true' ? 'Needs your input' : 'Confident suggestions');
-    }
-    const row = record.locator('xpath=ancestor::tr');
-    const control = currentChoice ? row.getByRole('combobox', { name: new RegExp(`^Identity choice: ${currentChoice}(?:,|$)`) }) : row.getByTestId('source-identity-choice');
-    await Promise.all([
-      this.page.waitForResponse(response => response.url().endsWith('/sourcing/proposal/identities') && response.ok()),
-      control.selectOption({ label: option }),
-    ]);
-    await this.expect(this.refreshSourcesButton).toBeEnabled();
+  /** Change the file's row, or its group's row, to Same page or New page. */
+  async chooseCompactIdentity(id: string, option: string, _currentChoice?: 'Same' | 'Different' | 'Choose') {
+    const holder = this.identityHolder(id);
+    await holder.scrollIntoViewIfNeeded();
+    await this.saving(() => holder.getByTestId('source-identity-switch').first().getByRole('button', { name: /^(Same|Pick)/.test(option) ? 'Same page' : 'New page', exact: true }).click());
   }
   async expectCompactIdentity(id: string, choice: 'Same' | 'Different' | 'Choose', count?: number) {
-    const row = this.identities.getByTestId(`source-move-${id}`).locator('xpath=ancestor::tr');
-    await this.expect(row.getByRole('combobox', { name: `Identity choice: ${choice}${count !== undefined ? `, ${count} ${count === 1 ? 'file' : 'files'}` : ''}`, exact: true })).toBeVisible();
+    const holder = this.identityHolder(id);
+    await this.expect(holder.getByTestId('source-identity-switch').first()).toHaveAttribute('data-current-choice', choice === 'Same' ? 'same' : choice === 'Different' ? 'different' : 'input');
+    if (count !== undefined && count > 1) await this.expect(holder).toContainText(`+ ${count - 1} more`);
   }
-  async chooseInputIdentity(id: string, destination: string | null) {
-    await this.selectIdentityTab('Needs your input');
-    const row = this.identities.getByTestId(`source-move-${id}`).locator('xpath=ancestor::tr');
-    const controls = row.getByTestId('source-identity-direct-choices');
-    if (await row.getByTestId('source-identity-pick').count()) {
-      await this.expect(controls).toHaveCount(0);
-      await this.chooseIdentity(id, destination);
-      return;
-    }
-    const same = controls.getByRole('radio', { name: /^Same(?: —|$)/ });
-    const choice = destination === null ? controls.getByRole('radio', { name: 'Different', exact: true })
-      : await same.count() === 1 ? same : controls.locator(`[data-identity-destination=${JSON.stringify(destination)}]`);
-    await Promise.all([
-      this.page.waitForResponse(response => response.url().endsWith('/sourcing/proposal/identities') && response.ok()),
-      choice.click(),
-    ]);
-    await this.expect(this.refreshSourcesButton).toBeEnabled();
+  /** Press a file's Same page or New page without waiting for the choice to save, as while a save is held. */
+  async pressIdentity(id: string, choice: 'Same page' | 'New page') {
+    await this.showIdentity(id);
+    await this.identityRow(id).getByRole('button', { name: choice, exact: true }).click();
   }
+  /** The group holding a file shows mixed choices once its files no longer share one answer. */
+  async expectMixedIdentityGroup(id: string) {
+    const group = this.identities.locator(`[data-testid="source-identity-group"][data-identity-ids*=${JSON.stringify(`"${id}"`)}]`);
+    await this.expect(group.getByTestId('source-identity-switch').first()).toHaveAttribute('data-current-choice', 'mixed');
+    await this.expect(group).toContainText('mixed choices');
+  }
+  async chooseInputIdentity(id: string, destination: string | null) { await this.chooseIdentity(id, destination); }
+  /** A file with several possible matches lists them as options, none chosen yet. */
   async expectPickRequired(id: string) {
-    const record = this.identities.getByTestId(`source-move-${id}`);
-    const row = record.locator('xpath=ancestor::tr');
-    await this.expect(row.getByTestId('source-identity-direct-choices')).toHaveCount(0);
-    await this.expect(row.getByTestId('source-identity-pick')).toHaveText('Pick');
-    await this.expect(record.getByTestId('source-identity-record')).not.toHaveAttribute('open');
-    await record.getByTestId('source-identity-record-summary').scrollIntoViewIfNeeded();
+    const row = this.identityRow(id);
+    await this.expect(row.locator('li[data-identity-destination]').first()).toBeVisible();
+    await this.expect(row.getByRole('radio', { checked: true })).toHaveCount(0);
+    await row.scrollIntoViewIfNeeded();
   }
+  /** The file change and its Same page / New page switch share one row. */
   async expectChoicesAlignedWithSummary(id: string) {
-    const record = this.identities.getByTestId(`source-move-${id}`);
-    const choices = record.locator('xpath=ancestor::tr').getByTestId('source-identity-direct-choices');
-    const header = record.getByTestId('source-identity-record-summary');
-    const left = await choices.boundingBox();
-    const right = await header.boundingBox();
-    this.expect(left).not.toBeNull(); this.expect(right).not.toBeNull();
-    this.expect(Math.abs(left!.y + left!.height / 2 - right!.y - right!.height / 2)).toBeLessThanOrEqual(2);
-    await this.expect(choices.getByRole('radio', { name: 'Same', exact: true })).toBeInViewport();
-    await this.expect(choices.getByRole('radio', { name: 'Different', exact: true })).toBeInViewport();
+    const row = this.identityRow(id);
+    const choices = (await row.getByTestId('source-identity-switch').boundingBox())!;
+    const summary = (await row.getByRole('group', { name: /→/ }).first().boundingBox())!;
+    this.expect(Math.abs(choices.y + choices.height / 2 - summary.y - summary.height / 2)).toBeLessThanOrEqual(4);
+    await this.expect(row.getByRole('button', { name: 'Same page', exact: true })).toBeInViewport();
+    await this.expect(row.getByRole('button', { name: 'New page', exact: true })).toBeInViewport();
   }
   async expectInputIdentity(id: string, destination: string | null) {
-    const record = this.identities.getByTestId(`source-move-${id}`);
-    const row = record.locator('xpath=ancestor::tr');
-    if (await row.getByTestId('source-identity-pick').count()) {
-      await this.showIdentity(id);
-      const choice = destination === null ? record.getByRole('radio', { name: 'Different', exact: true })
-        : record.locator(`[data-identity-destination=${JSON.stringify(destination)}]`).getByRole('radio', { name: 'Pick', exact: true });
+    const row = this.identityRow(id);
+    if (await row.locator('li[data-identity-destination]').count()) {
+      const choice = destination === null ? row.getByRole('radio', { name: 'None of these — it’s a new page', exact: true })
+        : row.locator(`li[data-identity-destination=${JSON.stringify(destination)}]`).getByRole('radio');
       await this.expect(choice).toBeChecked();
       return;
     }
-    const controls = row.getByTestId('source-identity-direct-choices');
-    const choice = destination === null ? controls.getByRole('radio', { name: 'Different', exact: true })
-      : controls.locator(`[data-identity-destination=${JSON.stringify(destination)}]`);
-    await this.expect(choice).toBeChecked();
+    await this.expectIdentityDecision(id, destination === null ? 'New page' : 'Same page');
   }
+  /** Save the suggested choice for every likely rename not yet decided, as Confirm does. */
   async acceptAllIdentitySuggestions() {
-    await this.selectIdentityTab('Confident suggestions');
-    await Promise.all([
-      this.page.waitForResponse(response => response.url().endsWith('/sourcing/proposal/identities') && response.ok()),
-      this.identities.getByRole('button', { name: 'Accept all suggestions', exact: true }).click(),
-    ]);
+    const switches = this.identitySection('Likely renamed').getByTestId('source-identity-switch');
+    for (const control of await switches.all()) {
+      if (await control.getAttribute('data-current-choice') !== 'same') continue;
+      await this.saving(() => control.getByRole('button', { name: 'Same page', exact: true }).click());
+    }
   }
+  /** The panel heading and its Confirm stay in place while the identity list scrolls. */
   async expectIdentityActionsStayVisibleWhenScrolling() {
-    const panel = this.identities.getByRole('tabpanel', { name: 'Confident suggestions', exact: true });
-    const list = panel.getByTestId('source-identity-list');
-    const actions = [this.identities.getByRole('heading', { name: 'Source identities', exact: true }), panel.getByRole('button', { name: 'Accept all suggestions', exact: true })];
+    const list = this.identities.getByTestId('source-identity-list');
+    const actions = [this.identities.getByRole('heading', { name: 'Source identities', exact: true }), this.identityButton('Confirm')];
     const before = await Promise.all(actions.map(action => action.boundingBox()));
     this.expect(before.every(Boolean)).toBe(true);
-    this.expect(before[0]!.y).toBeLessThan((await panel.boundingBox())!.y);
     await list.evaluate(element => { element.scrollTop = element.scrollHeight; });
     await this.expect.poll(() => list.evaluate(element => element.scrollTop)).toBeGreaterThan(0);
     for (const [index, action] of actions.entries()) {
@@ -328,31 +336,18 @@ export class SourcingWorkspacePage {
     }
   }
   async scrollIdentityListToStart() {
-    await this.identities.getByRole('tabpanel').getByTestId('source-identity-list').evaluate(element => { element.scrollTop = 0; });
-  }
-  /** The bar's refresh stays usable above the identity panel. */
-  async refreshIdentitySources() {
-    await Promise.all([
-      this.page.waitForResponse(response => response.url().endsWith('/sourcing/proposal/refresh') && response.ok()),
-      this.refreshSourcesButton.click(),
-    ]);
-    await this.expect(this.refreshSourcesButton).toBeEnabled();
+    await this.identities.getByTestId('source-identity-list').evaluate(element => { element.scrollTop = 0; });
   }
   async toggleIdentitySimilarity(id: string) {
     await this.showIdentity(id);
-    await this.identities.getByTestId(`source-move-${id}`).locator('summary').filter({ hasText: 'Similarity' }).click();
+    const row = this.identityRow(id);
+    const details = row.getByTestId('source-identity-details').first();
+    if (await details.getAttribute('aria-expanded') !== 'true') await details.click();
+    await row.locator('summary').filter({ hasText: 'Similarity' }).first().click();
   }
   async chooseIdentity(id: string, destination: string | null) {
     await this.showIdentity(id);
-    const group = this.identities.getByTestId(`source-move-${id}`);
-    const choice = destination ? group.locator(`[data-identity-destination=${JSON.stringify(destination)}]`).getByRole('radio', { name: /^(Same|Pick)$/ })
-      : group.getByRole('radio', { name: 'Different', exact: true });
-    await Promise.all([
-      this.page.waitForResponse(response => response.url().endsWith('/sourcing/proposal/identities') && response.ok(), { timeout: 10000 }),
-      choice.click(),
-    ]);
-    await this.showIdentity(id);
-    await this.expect(choice).toBeChecked();
+    await this.decideIdentity(id, destination);
   }
   /** The dimming behind identity review while it is required. */
   get identityBackdrop() { return this.root.getByTestId('chip-panel-backdrop'); }
@@ -390,9 +385,11 @@ export class SourcingWorkspacePage {
     await this.acceptedChange(/^\d+ identity decisions?$/).click();
     await this.expect(this.identities).toBeVisible();
   }
-  /** Confirm required identity review; the graph opens once every choice is saved. */
+  /** Finish identity review: Confirm when it is required, otherwise Update any edits or close it. */
   async confirmIdentities() {
-    await this.identityButton('Confirm').click();
+    if (await this.identityButton('Confirm').count()) await this.identityButton('Confirm').click();
+    else if (await this.identityButton('Update').isEnabled()) await this.updateIdentities();
+    else await this.identityButton('Cancel').click();
     await this.expect(this.identities).toBeHidden();
   }
   /** Apply the edits made while revisiting identity review. */
@@ -403,10 +400,16 @@ export class SourcingWorkspacePage {
     ]);
     await this.expect(this.identities).toBeHidden();
   }
-  async continueToGraph() {
-    await this.identities.getByRole('button', { name: 'Continue to graph', exact: true }).click();
-    await this.expect(this.identities).toBeHidden();
+  /** The bar's refresh stays usable above the identity panel. */
+  async refreshIdentitySources() {
+    await Promise.all([
+      this.page.waitForResponse(response => response.url().endsWith('/sourcing/proposal/refresh') && response.ok()),
+      this.refreshSourcesButton.click(),
+    ]);
+    await this.expect(this.refreshSourcesButton).toBeEnabled();
   }
+  /** Confirm identity review and continue to the graph. */
+  async continueToGraph() { await this.confirmIdentities(); }
   get sensitivityReview() { return this.page.getByRole('dialog', { name: 'Review tracking sensitivity', exact: true }); }
   get conflictReview() { return this.page.getByRole('dialog', { name: 'Resolve configuration conflicts', exact: true }); }
   /** The tray attached to Accept changes that lists what acceptance applies. */
@@ -418,14 +421,13 @@ export class SourcingWorkspacePage {
     else await this.expect(this.acceptedChanges).toHaveText('No changes yet');
     await this.expectTrayPointsAtAccept();
   }
-  /** The tray's caret sits under the middle of Accept changes, so the listed items read as what it applies. */
+  /** The bubble of changes sits just left of Accept changes, its tail pointing into the button. */
   async expectTrayPointsAtAccept() {
     const accept = (await this.root.getByRole('button', { name: 'Accept changes', exact: true }).boundingBox())!;
-    const caret = (await this.acceptedChanges.getByTestId('accepted-changes-caret').boundingBox())!;
-    this.expect(Math.abs(caret.x + caret.width / 2 - (accept.x + accept.width / 2))).toBeLessThanOrEqual(2);
-    // The caret reaches into the header and stops just short of the button.
-    this.expect(caret.y - (accept.y + accept.height)).toBeGreaterThanOrEqual(3);
-    this.expect(caret.y - (accept.y + accept.height)).toBeLessThanOrEqual(6);
+    const tail = (await this.root.getByTestId('accepted-changes-tail').boundingBox())!;
+    this.expect(accept.x - (tail.x + tail.width)).toBeGreaterThanOrEqual(0);
+    this.expect(accept.x - (tail.x + tail.width)).toBeLessThanOrEqual(6);
+    this.expect(Math.abs(tail.y + tail.height / 2 - (accept.y + accept.height / 2))).toBeLessThanOrEqual(2);
   }
   async openAcceptedChangeDetail(chip: string | RegExp, name: 'Page changes' | 'Configuration removals' | 'Setting changes' | 'Tracking changes') {
     const detail = this.acceptedChangeDetail(name);

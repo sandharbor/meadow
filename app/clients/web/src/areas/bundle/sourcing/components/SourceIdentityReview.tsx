@@ -4,6 +4,7 @@ import { useId, useState, type ReactNode } from 'react';
 import type { SourceMoveCandidate } from '../../../../../../../contracts/types/sourcing.js';
 import { sourceIdentityRecommendations, type SourceIdentityRecommendation } from '../../../../../../../shared_code/utils/sourceMoveResolutions.js';
 import { PathChange } from '../../../../shared/components/PathChange.js';
+import { useSourcePathFormatter } from '../../../../shared/components/SourceNames.js';
 import { MoveSimilarity } from './MoveSimilarity.js';
 import { MoveTraversal } from './MoveTraversal.js';
 import { groupSourceIdentities, identityChoice, identitySummaryMove, type IdentityChoice, type SourceIdentityGroup } from './groupSourceIdentities.js';
@@ -70,6 +71,7 @@ function IdentityRow({ record, choices, busy, choose, compare }: { record: Sourc
 /** One file with several possible matches: choose one of them, or none. */
 function MatchChoiceRow({ record, choices, busy, choose, compare }: { record: SourceIdentityRecommendation; choices: Choices; busy: boolean; choose: Choose; compare: Compare }) {
   const name = useId();
+  const format = useSourcePathFormatter();
   const [open, setOpen] = useState<string | null>(null);
   const selected = record.decided ? choices[record.id] : undefined;
   const radio = (checked: boolean, onChange: () => void, children: ReactNode) => <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2">
@@ -79,7 +81,7 @@ function MatchChoiceRow({ record, choices, busy, choose, compare }: { record: So
       <span className="font-medium text-neutral-700">{record.moves[0].oldPath}</span> · {record.moves.length} possible matches
     </p>
     <ul className="divide-y divide-neutral-100">
-      {record.moves.map(move => <li key={move.newPath} data-identity-destination={move.newPath}>
+      {record.moves.map(move => <li key={move.newPath} role="group" aria-label={`Match with ${format(move.newPath)}`} data-identity-destination={move.newPath}>
         <div className="flex items-center gap-3 px-3 py-2">
           {radio(selected === move.newPath, () => choose({ [record.id]: move.newPath }), <span className="min-w-0"><PathChange compact before={move.oldPath} after={move.newPath} /></span>)}
           <DetailsButton open={open === move.newPath} onToggle={() => setOpen(value => value === move.newPath ? null : move.newPath)} />

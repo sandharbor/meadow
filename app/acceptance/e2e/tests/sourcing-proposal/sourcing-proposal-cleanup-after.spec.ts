@@ -16,7 +16,7 @@ const name = linkedScenarioName(conceptText`Acceptance cleans unreachable config
 
 const description = linkedScenarioDescription(conceptText`Combine a staged ${conceptLink(bridgeExclusion.id, 'bridge exclusion')} with an externally removed leaf link. Acceptance removes both
 unreachable configurations, retains the causal blacklist, and leaves source files untouched.
-Re-expansion has fresh tracking decisions and cannot revive the cleaned page's depth override.`);
+Re-expansion tracks returning pages afresh and cannot revive the cleaned page's identity or depth override.`);
 
 test(name.name, { annotation: [{ type: 'scenario-id', description: '98d3a524-50f8-46a4-9213-a5404ef8c6ce' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
   // --- Setup ---
@@ -59,16 +59,20 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '98d3a524-50f
   await sourceCommand(() => editor.rightClickRow('Bridge'));
   await sourceCommand(() => page.getByRole('button', { name: 'Remove from Blacklist', exact: true }).click());
   await sourceCommand(() => expect(sourcing.root).toBeVisible());
-  await sourceCommand(() => sourcing.expectNoAutomaticTrackingOption());
+  await sourceCommand(() => sourcing.expectTrackAdditions(true));
   await sourceCommand(() => sourcing.select('Departing'));
   await sourceCommand(() => expect(sourcing.changeKind).toHaveText('Add'));
-  await sourceCommand(() => expect(sourcing.selectedPage.getByText('Not Tracked', { exact: true })).toBeVisible());
-  await sourceCommand(() => checkpoint('returning pages have fresh tracking choices without the cleaned override'));
+  // Returning pages are fresh additions: tracked by default, without the cleaned override.
+  await sourceCommand(() => expect(sourcing.selectedPage.getByText('Tracked', { exact: true })).toBeVisible());
+  await sourceCommand(() => checkpoint('returning pages are fresh additions without the cleaned override'));
   await sourceCommand(() => sourcing.accept());
   await sourceCommand(() => editor.switchToListView());
   await sourceCommand(() => editor.expectListViewRowByExactNamePresent('Departing'));
   await sourceCommand(() => editor.expectListViewRowByExactNameNotPresent('Leaf'));
-  expect(nodes().some(node => node.bundleNodeName === 'Departing')).toBe(false);
+  // Departing is tracked afresh: a new identity, without the cleaned depth override.
+  const returning = nodes().find(node => node.bundleNodeName === 'Departing') as { bundleNodeId: string; outlinksDepth?: number } | undefined;
+  expect(returning?.bundleNodeId).not.toBe('100000000004');
+  expect(returning?.outlinksDepth).toBeUndefined();
   await sourceCommand(() => checkpoint('accepted re-expansion admits returning material without resurrecting its old configuration'));
   await sourceCommand(() => assertMeadowHomeState({ allowedUntracked: ['source_graphs/.source-changes.jsonl'], allowedModified: ['source_graphs/sourcing-review-data/Start.md'] }));
 });

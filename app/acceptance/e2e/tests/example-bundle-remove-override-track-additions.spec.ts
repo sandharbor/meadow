@@ -10,10 +10,10 @@ import { sourcingReviewRedesign, overrides, sourceSnapshot, bundleNodeKey, conce
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.Example });
 
-const name = linkedScenarioName(conceptText`Removing the example depth override leaves newly accepted pages untracked`);
+const name = linkedScenarioName(conceptText`Removing the example depth override tracks the newly reached pages by default`);
 
 const description = linkedScenarioDescription(conceptText`Remove the example bundle's zero-depth override and accept the three pages newly
-reached by its inherited depth. The newly admitted pages start untracked.`);
+reached by its inherited depth. Track added pages is on, so the newly admitted pages are tracked.`);
 test(name.name, { annotation: [{ type: 'scenario-id', description: 'b3137f45-5155-4892-9e2e-f3a0a08da7c6' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page, checkpoint, addKeyFrame, assertMeadowHomeState,
 }) => {
@@ -47,14 +47,14 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'b3137f45-515
   await sourceCommand(() => addKeyFrame(overrides));
   await sourceCommand(() => checkpoint('the inherited boundary and its newly reached pages await acceptance'));
 
-  await sourceCommand(() => editor.sourceReview.expectNoAutomaticTrackingOption());
+  await sourceCommand(() => editor.sourceReview.expectTrackAdditions(true));
   for (const name of additions) {
     await sourceCommand(() => editor.sourceReview.expectAdded(`${name}.md`));
   }
   await sourceCommand(() => addKeyFrame(sourceSnapshot));
   await sourceCommand(() => checkpoint('all three newly reachable pages are ready for acceptance and later curation'));
 
-  // Accept the source update and verify the additions remain untracked.
+  // Accept the source update and verify the additions are tracked.
   await sourceCommand(() => editor.sourceReview.accept());
   await sourceCommand(() => addKeyFrame(sourceSnapshot));
   await sourceCommand(() => expect(page.getByRole('alert').filter({ hasText: 'automatic tracking could not finish' })).not.toBeVisible());
@@ -64,11 +64,11 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'b3137f45-515
   await sourceCommand(() => editor.clickSelectNone());
   for (const name of additions) {
     await sourceCommand(() => editor.clickListViewRowByExactName(name));
-    await sourceCommand(() => new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect).expectPill(Pill.NotTracked));
+    await sourceCommand(() => new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect).expectPill(Pill.Tracked));
     await sourceCommand(() => editor.clickSelectNone());
   }
   await sourceCommand(() => addKeyFrame(bundleNodeKey));
-  await sourceCommand(() => checkpoint('all three accepted pages remain untracked'));
+  await sourceCommand(() => checkpoint('all three accepted pages are tracked'));
 
   await sourceCommand(() => assertMeadowHomeState());
 });

@@ -19,6 +19,7 @@ export class SourceReviewWorkspace extends SourcingWorkspacePage {
   override async open() {
     if (!await this.root.isVisible()) await super.open();
     await this.reviewExpect(this.root).toBeVisible();
+    await this.expectLoaded();
   }
   async expectClosed() { await this.reviewExpect(this.root).not.toBeVisible(); }
   async checkAgain() {
@@ -38,7 +39,17 @@ export class SourceReviewWorkspace extends SourcingWorkspacePage {
   private async closeInspection() {
     if (await this.comparison.isVisible()) await this.closeComparison();
   }
-  async defer() { await this.closeInspection(); if (await this.identities.isVisible()) await this.identities.getByRole('button', { name: 'Later', exact: true }).click(); else await this.later(); }
+  /** Leave review keeping the proposal: a required identity review's Cancel does this; a revisit's Cancel only closes the panel. */
+  async defer() {
+    await this.closeInspection();
+    if (await this.identities.isVisible()) {
+      const required = await this.identityBackdrop.isVisible();
+      await this.identityButton('Cancel').click();
+      if (required) { await this.expectClosed(); return; }
+      await this.reviewExpect(this.identities).toBeHidden();
+    }
+    await this.later();
+  }
   override async discard() {
     await this.closeInspection();
     await super.discard();
@@ -54,7 +65,7 @@ export class SourceReviewWorkspace extends SourcingWorkspacePage {
   async confirmSuggestedIdentities() {
     await this.reviewExpect(this.identities).toBeVisible();
     await this.acceptAllIdentitySuggestions();
-    await this.reviewExpect(this.identities.getByRole('button', { name: 'Continue to graph', exact: true })).toBeEnabled();
+    await this.reviewExpect(this.identityButton('Confirm')).toBeEnabled();
   }
   private async selectPath(path: string) {
     await this.closeInspection();
@@ -109,7 +120,8 @@ export class SourceReviewWorkspace extends SourcingWorkspacePage {
   }
   async moveFrom(originalPath: string) {
     const change = this.reviewPage.locator(`[data-testid="source-path-change"][title^=${JSON.stringify(`${originalPath} → `)}]`);
-    const row = this.identities.locator('fieldset').filter({ has: change });
+    await this.openIdentityGroups();
+    const row = this.identities.locator('[data-testid^="source-move-"]').filter({ has: change });
     await this.showIdentityRecord(row);
     return new SourceMoveReview(row, this.reviewExpect, this.reviewPage);
   }
@@ -118,11 +130,31 @@ export class SourceReviewWorkspace extends SourcingWorkspacePage {
     await this.showIdentityRecord(row);
     return new SourceMoveReview(row, this.reviewExpect, this.reviewPage);
   }
-  async expectIdentityChoiceRequired() { await this.reviewExpect(this.identities.getByRole('button', { name: 'Continue to graph', exact: true })).toBeDisabled(); }
-  async expectMove(kind: 'Renamed' | 'Moved' | 'Moved and renamed', before: string, after: string) {
-    await this.showIdentityRecord(this.identities.getByRole('group', { name: `${kind}: ${before} → ${after}`, exact: true, includeHidden: true }));
+  /** Identity review must be completed before the graph, though Confirm may already be able to apply suggestions. */
+  async expectIdentityReviewRequired() {
+    await this.reviewExpect(this.identities).toBeVisible();
+    await this.reviewExpect(this.identityBackdrop).toBeVisible();
   }
-  async expectMoveCount(count: number) { await this.reviewExpect(this.identities.locator('fieldset[data-testid^="source-move-"]')).toHaveCount(count); }
+  async expectIdentityChoiceRequired() { await this.reviewExpect(this.identityButton('Confirm')).toBeDisabled(); }
+  /** Files that share a rename are listed under their group's Details. */
+  private async openIdentityGroups() {
+    for (const details of await this.identities.getByTestId('source-identity-group').getByTestId('source-identity-details').all()) {
+      if (await details.getAttribute('aria-expanded') !== 'true') await details.click();
+    }
+  }
+  async expectMove(kind: 'Renamed' | 'Moved' | 'Moved and renamed', before: string, after: string) {
+    await this.reviewExpect(this.identities).toBeVisible();
+    await this.openIdentityGroups();
+    await this.showIdentityRecord(this.identities.locator('[data-testid^="source-move-"]').filter({ has: this.reviewPage.getByRole('group', { name: `${kind}: ${before} → ${after}`, exact: true }) }).first());
+  }
+  /** The number of files identity review asks about, counting each file in a shared rename. */
+  async expectMoveCount(count: number) {
+    await this.reviewExpect(this.identities).toBeVisible();
+    await this.reviewExpect.poll(() => this.identities.evaluate(panel => new Set([
+      ...[...panel.querySelectorAll('[data-testid^="source-move-"]')].map(row => row.getAttribute('data-testid')!.slice('source-move-'.length)),
+      ...[...panel.querySelectorAll('[data-testid="source-identity-group"]')].flatMap(group => JSON.parse(group.getAttribute('data-identity-ids') ?? '[]') as string[]),
+    ]).size)).toBe(count);
+  }
   async expectMoveListed(nodeId: string) { await this.showIdentity(nodeId); }
   async expectReadyToAccept() { await this.reviewExpect(this.root.getByRole('button', { name: 'Accept changes', exact: true })).toBeEnabled(); }
   async applyOrphanRemovals() { await this.accept(); }

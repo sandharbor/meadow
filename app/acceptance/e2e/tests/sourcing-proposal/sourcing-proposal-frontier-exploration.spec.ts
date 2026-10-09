@@ -52,9 +52,9 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'add4249e-bd6
   await sourceCommand(() => sourcing.select('Availability Bias'));
   await sourceCommand(() => expect(sourcing.changeKind).toHaveText('Add'));
   await sourceCommand(() => expect(sourcing.root.getByRole('button', { name: 'See content', exact: true })).toBeVisible());
-  await sourceCommand(() => expect(sourcing.selectedPage.getByText('Not Tracked', { exact: true })).toBeVisible());
-  await sourceCommand(() => sourcing.trackSelected());
-  await sourceCommand(() => checkpoint('the traversal edit captures the frontier page and explicit tracking prepares it for generation'));
+  // Track added pages tracks the captured page, preparing it for generation.
+  await sourceCommand(() => expect(sourcing.selectedPage.getByText('Tracked', { exact: true })).toBeVisible());
+  await sourceCommand(() => checkpoint('the traversal edit captures the frontier page and tracks it for generation'));
   await sourceCommand(() => sourcing.later());
   await sourceCommand(() => editor.switchToListView());
   await sourceCommand(() => editor.expectListViewRowByExactNameNotPresent('Availability Bias'));

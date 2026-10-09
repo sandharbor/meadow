@@ -99,13 +99,18 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '59b627f9-402
   await sourceCommand(() => sourceReview.open());
   const rename = await sourceCommand(() => sourceReview.moveFrom('t003 ---- page with section to link to.md'));
   await sourceCommand(() => rename.keepSeparate());
+  await sourceCommand(() => sourceReview.continueToGraph());
   await sourceCommand(() => expect(sourceReview.root.getByRole('button', { name: 'Accept changes', exact: true })).toBeEnabled());
   await sourceCommand(() => sourceChanges.apply('remove-incoming-link'));
   gate = new Promise<void>(resolve => { release = resolve; });
   await sourceCommand(() => page.clock.fastForward(60000));
   expect(scans).toBe(3);
   await sourceCommand(() => expect(status.getByTestId('source-background-progress')).not.toBeVisible());
+  // The decision survives the background check; identity review reopens from its chip to show it.
+  await sourceCommand(() => sourceReview.openIdentities());
   await sourceCommand(() => rename.expectSeparateSelected());
+  await sourceCommand(() => sourceReview.identityButton('Cancel').click());
+  await sourceCommand(() => expect(sourceReview.identities).toBeHidden());
   await sourceCommand(() => expect(sourceReview.root.getByRole('status')).toContainText('Newer sources available'));
   await sourceCommand(() => checkpoint('source review discovers newer material without replacing the reviewed capture or its decisions'));
 

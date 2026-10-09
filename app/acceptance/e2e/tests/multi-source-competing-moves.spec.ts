@@ -47,7 +47,10 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'a429b1b9-137
   // Accept the source update.
   await sourceCommand(() => editor.sourceReview.accept());
   const updated = bundleConfig.readNodes();
-  expect(updated.filter(node => node.bundleNodeName === 'Inside' && node.sourceGraphSubdirectory === 'Moved')).toHaveLength(0);
+  // Both destinations are tracked as new pages; neither takes the old identity.
+  const destinations = updated.filter(node => node.bundleNodeName === 'Inside' && node.sourceGraphSubdirectory === 'Moved');
+  expect(destinations).toHaveLength(2);
+  expect(destinations.some(node => node.bundleNodeId === original.bundleNodeId)).toBe(false);
   expect(updated.some(node => node.bundleNodeId === original.bundleNodeId)).toBe(false);
   await sourceCommand(() => editor.switchToListView());
   for (const source of ['source000002', 'source000003']) await sourceCommand(() => editor.expectListViewNodeVisible(`file:_mw_sources/${source}/Moved/Inside.md`, true));

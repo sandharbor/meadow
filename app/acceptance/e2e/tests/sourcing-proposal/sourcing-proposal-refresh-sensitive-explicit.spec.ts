@@ -33,6 +33,8 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'ab8aa245-22d
   await sourceCommand(() => sourceChanges.apply('add-review-pages', 'sourcing-review-data'));
   await sourceCommand(() => editor.checkSourceChanges());
   await sourceCommand(() => sourcing.open());
+  // This scenario is about explicit tracking choices, so Track added pages is off.
+  await sourceCommand(() => sourcing.setTrackAdditions(false));
   for (const name of ['Safe One', 'Safe Two']) {
     await sourceCommand(() => sourcing.select(name));
     await sourceCommand(() => expect(sourcing.selectedPage.getByText('Not Tracked', { exact: true })).toBeVisible());

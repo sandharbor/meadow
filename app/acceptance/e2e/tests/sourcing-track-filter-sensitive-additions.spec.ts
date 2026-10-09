@@ -7,11 +7,11 @@ import { sourcingReviewRedesign, sourceSnapshot, sensitive, filterSensitivity, c
 
 test.use({ bundleMode: "single-file" });
 
-const name = linkedScenarioName(conceptText`Sourcing acceptance leaves filter-sensitive additions untracked and uses the ordinary untracked filter`);
+const name = linkedScenarioName(conceptText`Sourcing acceptance tracks safe additions and leaves filter-sensitive additions in the ordinary untracked filter`);
 
 const description = linkedScenarioDescription(conceptText`Enable a custom filter's Mark Sensitive action, then add matching pages without source
-sensitivity markings. Acceptance should leave those effectively sensitive pages untracked
-and leave the safe addition untracked as well.`);
+sensitivity markings. Acceptance tracks the safe additions and leaves those effectively sensitive pages
+untracked in the ordinary Untracked filter.`);
 test(name.name, { annotation: [{ type: 'scenario-id', description: '4d83d151-9db8-4af0-8e65-7b701110951f' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
@@ -20,7 +20,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '4d83d151-9db
   await sourceCommand(() => checkpoint('the accepted bundle is ready for new additions'));
 
   // --- Test start ---
-  // Establish an earlier untracked addition.
+  // Establish an earlier addition, tracked by default.
   await sourceCommand(() => sourceChanges.apply('add-embedded-image'));
   await sourceCommand(() => editor.checkSourceChanges());
   await sourceCommand(() => editor.sourceReview.open());
@@ -41,17 +41,18 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '4d83d151-9db
   await sourceCommand(() => addKeyFrame(sourceSnapshot, filterSensitivity));
   await sourceCommand(() => checkpoint('source review identifies sensitive additions before acceptance'));
 
-  // Accept all additions untracked, then inspect them through the normal filter.
+  // Accept the additions: the safe ones are tracked, and the sensitive ones remain in the normal Untracked filter.
   await sourceCommand(() => editor.sourceReview.accept());
   await sourceCommand(() => editor.switchToListView());
   await sourceCommand(() => filters.enableAndSoloFilter('Untracked'));
-  for (const name of [...privateNames, 'added sunflower', 'added public update']) {
+  for (const name of privateNames) {
     await sourceCommand(() => editor.clickListViewRowByExactName(name));
     await sourceCommand(() => new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect).expectPill(Pill.NotTracked));
     await sourceCommand(() => editor.clickSelectNone());
   }
+  for (const name of ['added sunflower', 'added public update']) await sourceCommand(() => editor.expectListViewRowByExactNameNotPresent(name));
   await sourceCommand(() => addKeyFrame(sensitive, filterSensitivity));
-  await sourceCommand(() => checkpoint('all accepted additions remain untracked and available for ordinary curation'));
+  await sourceCommand(() => checkpoint('sensitive additions remain untracked for ordinary curation while safe additions are tracked'));
 
   await sourceCommand(() => skipMeadowHomeStateCheck());
 });

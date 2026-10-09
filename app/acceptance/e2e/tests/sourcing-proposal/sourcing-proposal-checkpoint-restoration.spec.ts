@@ -42,6 +42,8 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '852f3ce6-348
   await sourceCommand(() => sourceChanges.apply('add-review-pages', 'sourcing-review-data'));
   await sourceCommand(() => editor.checkSourceChanges());
   await sourceCommand(() => sourcing.open());
+  // This scenario is about explicit tracking choices, so Track added pages is off.
+  await sourceCommand(() => sourcing.setTrackAdditions(false));
   await sourceCommand(() => panel.editCustomFilter('Fork review settings'));
   await sourceCommand(() => panel.saveCustomFilterEdits({ note: 'Proposed fork definition' }));
   await sourceCommand(() => sourcing.select('Safe One'));

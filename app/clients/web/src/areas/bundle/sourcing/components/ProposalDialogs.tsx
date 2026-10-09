@@ -97,7 +97,7 @@ export function ProposalDialogs({ dialog, review, busy, close, later, discard, m
         is modal: the rest of the screen dims and only Cancel or Confirm leave it. The bar stays above the
         dimming, so its refresh still updates the proposal. */}
     {dialog === 'identities' && <ChipPanel anchor='[data-change-item="identities"]' label="Source identities" role="dialog" modal={required}
-      appearDelay={required ? 200 : 0} onDismiss={close}
+      afterChipFade={required} onDismiss={close}
       className="h-[min(70vh,44rem)] w-[min(48rem,calc(100vw-2rem))]">
       <header className="flex shrink-0 items-center gap-3 rounded-t-lg border-b border-neutral-100 px-5 py-3">
         <h2 className="text-lg font-semibold">Source identities</h2>

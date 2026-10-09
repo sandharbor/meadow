@@ -13,9 +13,10 @@ import { sourcingReviewRedesign, pendingProposalRevalidation, sourceReviewSensit
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });
 
-const name = linkedScenarioName(conceptText`Deferred proposals keep additions untracked when accepted sensitivity policy changes`);
+const name = linkedScenarioName(conceptText`Deferred proposals stop tracking additions that accepted sensitivity policy now marks sensitive`);
 
-const description = linkedScenarioDescription(conceptText`Defer a proposal, change accepted sensitivity policy, and reopen the same capture. Untracked additions remain untracked without requiring explicit confirmation.
+const description = linkedScenarioDescription(conceptText`Defer a proposal whose safe additions Track added pages tracks, change accepted sensitivity policy, and reopen the
+same capture. The additions the policy now marks sensitive become untracked without requiring explicit confirmation.
 Checkpoints preserve the pending decisions and their current sensitivity evidence.`);
 test(name.name, { annotation: [{ type: 'scenario-id', description: '3e04d1b9-c0b5-4cc8-add8-195f0b7d1537' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
   // --- Setup ---
@@ -33,11 +34,11 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '3e04d1b9-c0b
   await sourceCommand(() => sourcing.open());
   for (const name of ['Safe One', 'Safe Two']) {
     await sourceCommand(() => sourcing.select(name));
-    await sourceCommand(() => expect(sourcing.selectedPage.getByText('Not Tracked', { exact: true })).toBeVisible());
+    await sourceCommand(() => expect(sourcing.selectedPage.getByText('Tracked', { exact: true })).toBeVisible());
   }
-  for (const name of ['Safe One', 'Safe Two']) expect(proposal.current.tracking[`file:Additions/${name}.md`]).toBeUndefined();
+  for (const name of ['Safe One', 'Safe Two']) expect(proposal.current.tracking[`file:Additions/${name}.md`]).toMatchObject({ track: true, origin: 'additions' });
   const captured = proposal.current.candidateSnapshotId;
-  await sourceCommand(() => checkpoint('safe additions start untracked'));
+  await sourceCommand(() => checkpoint('safe additions are tracked by Track added pages'));
 
   // --- Test start ---
   // Reopening must assess saved policy against the original capture.
@@ -56,8 +57,9 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '3e04d1b9-c0b
     expect(proposal.current.tracking[`file:Additions/${name}.md`]).toBeUndefined();
   }
   await sourceCommand(() => sourcing.expectNoTrackingConfirmations());
+  await sourceCommand(() => expect(sourcing.root.getByTestId('track-additions-sensitive')).toContainText('sensitive skipped'));
   await sourceCommand(() => addKeyFrame(sourceReviewSensitivity));
-  await sourceCommand(() => checkpoint('sensitive additions are untracked without an explicit-choice confirmation'));
+  await sourceCommand(() => checkpoint('newly sensitive additions are untracked without an explicit-choice confirmation'));
   await sourceCommand(() => sourcing.accept());
   const nodes = YAML.parse(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).nodes;
   expect(nodes.some((node: { bundleNodeName: string }) => node.bundleNodeName === 'Safe One')).toBe(false);

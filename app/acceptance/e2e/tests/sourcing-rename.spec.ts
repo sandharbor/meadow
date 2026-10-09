@@ -40,11 +40,11 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '86ec9574-29c
   // Open source review.
   const review = editor.sourceReview;
   await sourceCommand(() => review.open());
-  await sourceCommand(() => review.expectIdentityChoiceRequired());
+  await sourceCommand(() => review.expectIdentityReviewRequired());
   await sourceCommand(() => review.expectMove('Renamed', `${originalTitle}.md`, `${renamedTitle}.md`));
   const rename = await sourceCommand(() => review.moveFrom(`${originalTitle}.md`));
   await sourceCommand(() => addKeyFrame(sourceMove));
-  await sourceCommand(() => checkpoint('proposed rename requires an explicit identity decision'));
+  await sourceCommand(() => checkpoint('proposed rename opens required identity review with the rename suggested'));
 
   // Inspect the unchanged traversal route.
   await sourceCommand(() => review.confirmSuggestedIdentities());

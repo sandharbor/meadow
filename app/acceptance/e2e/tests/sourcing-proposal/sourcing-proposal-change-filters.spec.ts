@@ -94,7 +94,8 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'cf10d7e1-184
   const nodes = YAML.parse(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).nodes;
   for (const name of ['Leaf', 'Departing', 'Outside', 'Reference']) expect(nodes.some((node: { bundleNodeName: string }) => node.bundleNodeName === name)).toBe(false);
   expect(nodes.find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Reference Renamed')?.bundleNodeId).toBe('100000000003');
-  expect(nodes.some((node: { bundleNodeName: string }) => node.bundleNodeName === 'Safe One')).toBe(false);
+  // Safe One is an addition, tracked by Track added pages.
+  expect(nodes.some((node: { bundleNodeName: string }) => node.bundleNodeName === 'Safe One')).toBe(true);
   await sourceCommand(() => editor.switchToListView());
   await sourceCommand(() => editor.expectListViewRowByExactNamePresent('Safe One'));
   await sourceCommand(() => editor.expectListViewRowByExactNamePresent('Reference Renamed'));

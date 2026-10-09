@@ -19,7 +19,8 @@ export function SourceReviewActions({ busy, blocked, loading = false, acceptButt
     {refresh && <span className="mr-0.5 shrink-0">{refresh}</span>}
     {changes}
     {/* The spinner sits 10px left of Accept without taking space, so it fades out as the changes fade in beside it. */}
-    <span className="relative w-0 shrink-0 self-stretch">
+    {/* -ml-2 cancels the flex gap before this zero-width slot, so the bubble's tail stays close to Accept. */}
+    <span className="relative -ml-2 w-0 shrink-0 self-stretch">
       <span data-testid="source-review-loading" role={loading ? 'status' : undefined} aria-label={loading ? 'Loading page changes' : undefined}
         className={`absolute right-0.5 top-1/2 flex -translate-y-1/2 transition-opacity duration-200 ${loading ? 'opacity-100' : 'pointer-events-none opacity-0'}`}><Spinner /></span>
     </span>

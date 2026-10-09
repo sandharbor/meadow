@@ -12,11 +12,11 @@ import { sourcingReviewRedesign, pendingSourceProposal, sourceReviewSensitivity,
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });
 
-const name = linkedScenarioName(conceptText`Sourcing starts additions untracked and preserves explicit selection tracking`);
+const name = linkedScenarioName(conceptText`Sourcing tracks safe additions by default, skips sensitive ones, and keeps explicit choices`);
 
-const description = linkedScenarioDescription(conceptText`All additions start untracked, including safe and sensitive pages. Explicit tracking
-and untracking use the ordinary selection controls and survive refresh. All source material
-is accepted, the ordinary Untracked filter finds the remaining choices, and preview warns about them.`);
+const description = linkedScenarioDescription(conceptText`Track added pages starts on: safe additions are tracked and sensitive ones are skipped.
+An explicit untrack through the ordinary selection controls overrides the default and survives refresh. All source
+material is accepted, the ordinary Untracked filter finds the remaining choices, and preview warns about them.`);
 test(name.name, { annotation: [{ type: 'scenario-id', description: '33353032-44bd-4d0e-a8e8-e43617f5628f' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
@@ -36,32 +36,31 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '33353032-44b
   await sourceCommand(() => sourcing.open());
   for (const name of ['Safe One', 'Safe Two']) {
     await sourceCommand(() => sourcing.select(name));
-    await sourceCommand(() => expect(sourcing.selectedPage.getByText('Not Tracked', { exact: true })).toBeVisible());
+    await sourceCommand(() => expect(sourcing.selectedPage.getByText('Tracked', { exact: true })).toBeVisible());
   }
   for (const name of ['Secret', 'Policy Draft']) {
     await sourceCommand(() => sourcing.select(name));
     await sourceCommand(() => expect(sourcing.selectedPage.getByText('Not Tracked', { exact: true })).toBeVisible());
     await sourceCommand(() => expect(sourcing.selectedPage.getByText('Sensitive', { exact: true })).toBeVisible());
   }
-  await sourceCommand(() => sourcing.expectNoAutomaticTrackingOption());
+  await sourceCommand(() => sourcing.expectTrackAdditions(true));
+  await sourceCommand(() => expect(sourcing.root.getByTestId('track-additions-sensitive')).toHaveText('· 2 sensitive skipped'));
   await sourceCommand(() => filters.enableAndSoloFilter('Untracked'));
-  for (const name of ['Safe One', 'Safe Two', 'Secret', 'Policy Draft']) await sourceCommand(() => editor.expectListViewRowByExactNamePresent(name));
+  for (const name of ['Secret', 'Policy Draft']) await sourceCommand(() => editor.expectListViewRowByExactNamePresent(name));
+  for (const name of ['Safe One', 'Safe Two']) await sourceCommand(() => editor.expectListViewRowByExactNameNotPresent(name));
   await sourceCommand(() => addKeyFrame(sourceReviewSensitivity));
-  await sourceCommand(() => checkpoint('all additions start untracked and can be reviewed through the ordinary filter'));
+  await sourceCommand(() => checkpoint('safe additions are tracked by default while sensitive additions stay untracked'));
 
-  // Track one inspected page and leave the others untracked.
-  await sourceCommand(() => sourcing.select('Safe One'));
-  await sourceCommand(() => sourcing.trackSelected());
+  // An explicit untrack overrides the default and survives refresh.
   await sourceCommand(() => filters.clickSoloOnFilter('Untracked'));
   await sourceCommand(() => sourcing.select('Safe Two'));
-  await sourceCommand(() => sourcing.trackSelected());
   await sourceCommand(() => sourcing.untrackSelected());
   await sourceCommand(() => sourcing.updateSources());
   await sourceCommand(() => sourcing.select('Safe One'));
   await sourceCommand(() => expect(sourcing.selectedPage.getByText('Tracked', { exact: true })).toBeVisible());
   await sourceCommand(() => sourcing.select('Safe Two'));
   await sourceCommand(() => expect(sourcing.selectedPage.getByText('Not Tracked', { exact: true })).toBeVisible());
-  await sourceCommand(() => checkpoint('explicit tracking choices survive refresh without automatic tracking'));
+  await sourceCommand(() => checkpoint('an explicit untrack overrides the default and survives refresh'));
   await sourceCommand(() => sourcing.accept());
   const directory = path.join(testServer.configDir, 'bundles/sourcing-review');
   const nodes = YAML.parse(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).nodes;

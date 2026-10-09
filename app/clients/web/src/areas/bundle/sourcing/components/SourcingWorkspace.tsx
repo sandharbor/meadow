@@ -158,25 +158,38 @@ export function SourcingWorkspace({ bundleSlug, onClose, onAccepted, requestedPa
   // The bar covers the editor header exactly, so the editor below keeps its place.
   const [headerHeight] = useState(() => document.querySelector('[data-testid="bundle-editor-header"]')?.getBoundingClientRect().height || 49);
   const [leaving, setLeaving] = useState<'content' | 'bar' | null>(null);
-  const ready = Boolean(graph && review) && leaving !== 'bar';
+  // Review replaces the editor once its graph is ready, or when the graph cannot open until required entries are
+  // repaired; identity review instead keeps the editor visible, dimmed, behind its panel.
+  const ready = Boolean(review && (graph || review.missingRequiredEntries.length)) && leaving !== 'bar';
   // The bar's changes and refresh appear together once their contents are final: with the graph, or when the
   // proposal cannot open its graph yet (identities, required entries, or an error) and they are needed to proceed.
   const settled = Boolean(review && (graph || review.unresolvedIdentities.length || review.missingRequiredEntries.length || error));
   useEffect(() => { onReadyChange?.(ready); }, [ready, onReadyChange]);
   /** The Page changes group collapses, then the bar slides away over the restored editor, then the workspace closes. */
+  // Each step follows the previous animation's end rather than a timer, so it completes on the page's own timeline.
+  const bar = useRef<HTMLElement>(null);
   const leave = useCallback((then: () => void) => {
     const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     const group = root.current?.querySelector<HTMLElement>('[data-testid="source-changes-filter-group"]');
-    if (reduced) { then(); return; }
+    if (reduced || !bar.current) { then(); return; }
+    let done = false;
+    const close = () => { if (!done) { done = true; then(); } };
+    const slideAway = () => {
+      bar.current?.addEventListener('transitionend', close, { once: true });
+      bar.current?.addEventListener('transitioncancel', close, { once: true });
+      setLeaving('bar');
+    };
     setLeaving('content');
-    group?.animate([{ maxHeight: `${group.scrollHeight}px`, opacity: 1 }, { maxHeight: '0px', opacity: 0 }], { duration: 180, easing: 'ease-in', fill: 'forwards' });
-    window.setTimeout(() => { setLeaving('bar'); window.setTimeout(then, 200); }, group ? 180 : 0);
+    const collapse = group?.animate?.([{ maxHeight: `${group.scrollHeight}px`, opacity: 1 }, { maxHeight: '0px', opacity: 0 }], { duration: 180, easing: 'ease-in', fill: 'forwards' });
+    if (collapse) collapse.finished.then(slideAway, slideAway); else slideAway();
   }, []);
   const finish = async (discard: boolean) => {
     setBusy(true); setError(null);
     try {
       const result = await proposalRequest<{ trackingOutcome?: SnapshotTrackingOutcome }>(bundleSlug, discard ? 'discard' : 'accept', { revision: reviewRef.current?.proposal.revision, reviewToken: reviewRef.current?.reviewToken });
-      leave(() => { onAccepted(result); onClose(); });
+      // The editor learns of the result first, so it waits for the accepted graph instead of showing its previous one.
+      onAccepted(result);
+      leave(onClose);
     } catch (err) { setError(err instanceof Error ? err.message : String(err)); }
     finally { setBusy(false); }
   };
@@ -202,7 +215,7 @@ export function SourcingWorkspace({ bundleSlug, onClose, onAccepted, requestedPa
   // An unchanged review has nothing worth keeping, so leaving discards it; otherwise ask.
   const exit = () => { if (changes?.items.length) setDialog('exit'); else void finish(true); };
   return <SourceNamesProvider sources={graph?.sources ?? review?.configuration.bundle.sources ?? []}><section ref={root} aria-label="Sourcing workspace" data-testid="sourcing-workspace" data-orphan-count={review?.orphans.length} className="fixed inset-x-0 bottom-0 top-[28px] z-40 flex flex-col text-neutral-800">
-    <header style={{ height: headerHeight }} className={`source-bar relative flex shrink-0 ${dialog === 'identities' && (identityRequired || unresolvedIdentities) ? 'z-40' : 'z-10'} items-center gap-3 border-b bg-blue-50 px-4 ${leaving === 'bar' ? 'source-bar-leaving' : ''}`}>
+    <header ref={bar} style={{ height: headerHeight }} className={`source-bar relative flex shrink-0 ${dialog === 'identities' && (identityRequired || unresolvedIdentities) ? 'z-40' : 'z-10'} items-center gap-3 border-b bg-blue-50 px-4 ${leaving === 'bar' ? 'source-bar-leaving' : ''}`}>
       {/* The bar's controls sit with Accept changes; the heading remains for assistive technology. */}
       <h1 className="sr-only">Page changes</h1>
       <SourceReviewActions busy={busy} blocked={blocked || !settled} loading={!settled && !leaving} acceptButton={acceptButton} onExit={exit} onAccept={() => void finish(false)}

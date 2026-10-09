@@ -7,9 +7,10 @@ import { sourcingReviewRedesign, sourceSnapshot, conceptText, linkedScenarioName
 
 test.use({ bundleMode: "single-file" });
 
-const name = linkedScenarioName(conceptText`Sourcing leaves later additions untracked after reopening the bundle`);
+const name = linkedScenarioName(conceptText`Turning off Track added pages applies to one review; the next review starts with it on`);
 
-const description = linkedScenarioDescription(conceptText`Accept new pages untracked. Later additions remain untracked after reopening the bundle.`);
+const description = linkedScenarioDescription(conceptText`Turn off Track added pages and accept a new page untracked. After reopening the bundle, a
+later review starts with Track added pages on again and accepts its addition tracked.`);
 test(name.name, { annotation: [{ type: 'scenario-id', description: '1529fd21-a754-4e10-aa6e-d48eff2a6f10' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   const workflows = new Workflows(page, expect);
@@ -23,8 +24,9 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '1529fd21-a75
   await sourceCommand(() => sourceChanges.apply('add-linked-page'));
   await sourceCommand(() => editor.checkSourceChanges());
   await sourceCommand(() => editor.sourceReview.open());
-  await sourceCommand(() => editor.sourceReview.expectNoAutomaticTrackingOption());
-  await sourceCommand(() => checkpoint('the new page is ready to accept without tracking'));
+  await sourceCommand(() => editor.sourceReview.expectTrackAdditions(true));
+  await sourceCommand(() => editor.sourceReview.setTrackAdditions(false));
+  await sourceCommand(() => checkpoint('Track added pages is turned off for this review'));
 
   // Accept the source update.
   await sourceCommand(() => editor.sourceReview.accept());
@@ -45,16 +47,16 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '1529fd21-a75
   await sourceCommand(() => sourceChanges.apply('add-embedded-image'));
   await sourceCommand(() => editor.checkSourceChanges());
   await sourceCommand(() => editor.sourceReview.open());
-  await sourceCommand(() => editor.sourceReview.expectNoAutomaticTrackingOption());
+  await sourceCommand(() => editor.sourceReview.expectTrackAdditions(true));
   await sourceCommand(() => addKeyFrame(sourceSnapshot));
-  await sourceCommand(() => checkpoint('a later source review also starts additions untracked'));
+  await sourceCommand(() => checkpoint('a later source review starts with Track added pages on again'));
 
   // Accept the source update.
   await sourceCommand(() => editor.sourceReview.accept());
   await sourceCommand(() => editor.switchToListView());
   await sourceCommand(() => editor.clickListViewRowByExactName('added sunflower'));
-  await sourceCommand(() => new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect).expectPill(Pill.NotTracked));
-  await sourceCommand(() => checkpoint('the later image also remains untracked'));
+  await sourceCommand(() => new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect).expectPill(Pill.Tracked));
+  await sourceCommand(() => checkpoint('the later image is tracked'));
 
   await sourceCommand(() => skipMeadowHomeStateCheck());
 });
