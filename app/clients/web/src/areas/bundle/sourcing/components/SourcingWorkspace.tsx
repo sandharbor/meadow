@@ -23,7 +23,11 @@ type PendingEdit = ProposalConfiguration | { trackingChange: Record<string, unkn
 
 type Comparison = SourceProposalReview & { frontierUnavailable?: string; graph: { nodes: IBundleNode[]; edges: IEdge[]; sources: Graph['sources']; allInlinkSources: Record<string, EncodedBundleNodeKey[]>; allOutlinkTargets: Record<string, EncodedBundleNodeKey[]> } };
 
-export function SourcingWorkspace({ bundleSlug, onClose, onAccepted, requestedParameters, onPlaceChange }: { bundleSlug: string; onClose: () => void; onAccepted: (result: { trackingOutcome?: SnapshotTrackingOutcome }) => void; requestedParameters: Readonly<Record<string, string>>; onPlaceChange: (parameters: Readonly<Record<string, string>>) => void }) {
+/**
+ * Page changes opens over the curation editor: its bar slides over the editor header, and the editor below
+ * stays visible until the proposal's graph is ready (`onReadyChange`). Leaving plays the entrance in reverse.
+ */
+export function SourcingWorkspace({ bundleSlug, onClose, onAccepted, requestedParameters, onPlaceChange, onReadyChange }: { bundleSlug: string; onClose: () => void; onAccepted: (result: { trackingOutcome?: SnapshotTrackingOutcome }) => void; requestedParameters: Readonly<Record<string, string>>; onPlaceChange: (parameters: Readonly<Record<string, string>>) => void; onReadyChange?: (ready: boolean) => void }) {
   const [review, setReview] = useState<SourceProposalReview | null>(null);
   const reviewRef = useRef(review);
   const frontierDepthRef = useRef(0);
@@ -152,11 +156,29 @@ export function SourcingWorkspace({ bundleSlug, onClose, onAccepted, requestedPa
     if (!graphRef.current) return;
     await operations.request('bundle-config', { method: 'POST', body: JSON.stringify({ configs: buildNodeConfigs(graphRef.current.getAllNodes()) }) });
   }, [operations]);
+  const root = useRef<HTMLElement>(null);
+  // The bar covers the editor header exactly, so the editor below keeps its place.
+  const [headerHeight] = useState(() => document.querySelector('[data-testid="bundle-editor-header"]')?.getBoundingClientRect().height || 49);
+  const [leaving, setLeaving] = useState<'content' | 'bar' | null>(null);
+  const ready = Boolean(graph && review) && leaving !== 'bar';
+  // The bar's changes and refresh appear together once their contents are final: with the graph, or when the
+  // proposal cannot open its graph yet (identities, required entries, or an error) and they are needed to proceed.
+  const settled = Boolean(review && (graph || review.unresolvedIdentities.length || review.missingRequiredEntries.length || error));
+  useEffect(() => { onReadyChange?.(ready); }, [ready, onReadyChange]);
+  /** The Page changes group collapses, then the bar slides away over the restored editor, then the workspace closes. */
+  const leave = useCallback((then: () => void) => {
+    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const group = root.current?.querySelector<HTMLElement>('[data-testid="source-changes-filter-group"]');
+    if (reduced) { then(); return; }
+    setLeaving('content');
+    group?.animate([{ maxHeight: `${group.scrollHeight}px`, opacity: 1 }, { maxHeight: '0px', opacity: 0 }], { duration: 180, easing: 'ease-in', fill: 'forwards' });
+    window.setTimeout(() => { setLeaving('bar'); window.setTimeout(then, 200); }, group ? 180 : 0);
+  }, []);
   const finish = async (discard: boolean) => {
     setBusy(true); setError(null);
     try {
       const result = await proposalRequest<{ trackingOutcome?: SnapshotTrackingOutcome }>(bundleSlug, discard ? 'discard' : 'accept', { revision: reviewRef.current?.proposal.revision, reviewToken: reviewRef.current?.reviewToken });
-      onAccepted(result); onClose();
+      leave(() => { onAccepted(result); onClose(); });
     } catch (err) { setError(err instanceof Error ? err.message : String(err)); }
     finally { setBusy(false); }
   };
@@ -165,16 +187,19 @@ export function SourcingWorkspace({ bundleSlug, onClose, onAccepted, requestedPa
   const changes = useMemo(() => review ? acceptedChanges(review, graph, sensitiveCount) : null, [review, graph, sensitiveCount]);
   // An unchanged review has nothing worth keeping, so leaving discards it; otherwise ask.
   const exit = () => { if (changes?.items.length) setDialog('exit'); else void finish(true); };
-  return <SourceNamesProvider sources={graph?.sources ?? review?.configuration.bundle.sources ?? []}><section aria-label="Sourcing workspace" data-testid="sourcing-workspace" data-orphan-count={review?.orphans.length} className="fixed inset-x-0 bottom-0 top-[28px] z-40 flex flex-col bg-white text-neutral-800">
-    <header className="flex items-center gap-3 border-b bg-blue-50 px-5 py-3">
-      <h1 className="font-semibold">Page changes</h1>
-      <RefreshSourcesButton compact refreshing={rescanning} disabled={busy || !review || rescanning}
-        onClick={() => { setRescanning(true); void mutate('refresh', {}).catch(() => {}).finally(() => setRescanning(false)); }} />
-      <SourceReviewActions busy={busy} blocked={blocked} acceptButton={acceptButton} onExit={exit} onAccept={() => void finish(false)} />
+  return <SourceNamesProvider sources={graph?.sources ?? review?.configuration.bundle.sources ?? []}><section ref={root} aria-label="Sourcing workspace" data-testid="sourcing-workspace" data-orphan-count={review?.orphans.length} className="fixed inset-x-0 bottom-0 top-[28px] z-40 flex flex-col text-neutral-800">
+    <header style={{ height: headerHeight }} className={`source-bar relative z-10 flex shrink-0 items-center gap-3 border-b bg-blue-50 px-4 ${leaving === 'bar' ? 'source-bar-leaving' : ''}`}>
+      {/* The bar's controls sit with Accept changes; the heading remains for assistive technology. */}
+      <h1 className="sr-only">Page changes</h1>
+      <SourceReviewActions busy={busy} blocked={blocked} acceptButton={acceptButton} onExit={exit} onAccept={() => void finish(false)}
+        refresh={settled && <span className="source-bar-contents inline-flex"><RefreshSourcesButton compact refreshing={rescanning} disabled={busy || !review || rescanning}
+          onClick={() => { setRescanning(true); void mutate('refresh', {}).catch(() => {}).finally(() => setRescanning(false)); }} /></span>}
+        changes={settled && changes && <div className="source-bar-contents flex min-w-0"><AcceptedChangesTray changes={changes} graph={graph} bundleSlug={bundleSlug} request={operations.request}
+          busy={busy} onTrackAdditions={enabled => void mutate('track-additions', { enabled }).catch(() => {})}
+          onDialog={setDialog} onSelectPage={key => { setSelected(previous => new Set([key, ...[...previous].filter(other => other !== key)])); setCollapsed(false); }} /></div>} />
     </header>
-    {changes && <AcceptedChangesTray changes={changes} graph={graph} bundleSlug={bundleSlug} acceptButton={acceptButton} request={operations.request}
-      busy={busy} onTrackAdditions={enabled => void mutate('track-additions', { enabled }).catch(() => {})}
-      onDialog={setDialog} onSelectPage={key => { setSelected(previous => new Set([key, ...[...previous].filter(other => other !== key)])); setCollapsed(false); }} />}
+    {/* Until the graph is ready, and while leaving, the editor beneath shows through; the body still takes clicks so it cannot be edited meanwhile. */}
+    <div className={`flex min-h-0 flex-1 flex-col ${ready ? 'bg-white' : ''} ${leaving === 'bar' ? 'invisible' : ''}`}>
     {review?.proposal.newerSourcesAvailable && <p role="status" className="bg-amber-50 px-5 py-2 text-sm">Newer sources available. Acceptance keeps the current capture.</p>}
     {review && <SourceRegistryChanges changes={{ before: review.proposal.original.bundle.sources ?? [], after: review.proposal.proposed.bundle.sources ?? [], stale: false, outputPathsChange: review.proposal.original.bundle.sourceOutputLayout !== review.proposal.proposed.bundle.sourceOutputLayout }} />}
     {frontierUnavailable && <p role="status" className="bg-amber-50 px-5 py-2">{frontierUnavailable}</p>}
@@ -188,9 +213,10 @@ export function SourcingWorkspace({ bundleSlug, onClose, onAccepted, requestedPa
       onPreviewPage={() => setNotice('Select Details to compare the captured source content.')} hasDraftChanges={false} onRefresh={() => void reload()} onRefreshNodeConfigs={() => void reload()}
       untrackedNodeCount={graph.getAllNodes().filter(node => !node.tracked).length} bundleNodeConfigs={review.configuration.nodes}
       protectedBundleNodeIds={new Set([review.configuration.bundle.entryBundleNodeId, review.configuration.bundle.defaultTraversalBundleNodeId].filter((id): id is NonNullable<typeof id> => Boolean(id)))}
-    /> : !review && <p className="p-5">Loading source proposal…</p>}</fieldset>
+    /> : null}</fieldset>
+    </div>
     {review && <ProposalDialogs identityChoices={identityDecisions.choices} chooseIdentities={choices => { setError(null); identityDecisions.choose(choices); }} identitySaving={identityDecisions.saving} identityBusy={mutating || loadingCount > 0}
-      identityTab={identityTab} onIdentityTabChange={setIdentityTab} identityComparison={identityComparison} onIdentityComparison={setIdentityComparison} request={operations.request} dialog={dialog} review={review} busy={busy} close={() => { if (dialog === 'identities') void reload(); setDialog(null); setPendingConfiguration(null); }} later={onClose} discard={() => void finish(true)}
+      identityTab={identityTab} onIdentityTabChange={setIdentityTab} identityComparison={identityComparison} onIdentityComparison={setIdentityComparison} request={operations.request} dialog={dialog} review={review} busy={busy} close={() => { if (dialog === 'identities') void reload(); setDialog(null); setPendingConfiguration(null); }} later={() => leave(onClose)} discard={() => void finish(true)}
       mutate={(operation, body) => mutate(operation, body).catch(() => {})} refresh={() => { if (pendingConfiguration) void ('trackingChange' in pendingConfiguration ? mutate('tracking', { ...pendingConfiguration.trackingChange, incorporateNewerSources: true }) : configure(pendingConfiguration, true)).then(() => { setPendingConfiguration(null); setDialog(null); }).catch(() => {}); }} />}
   </section></SourceNamesProvider>;
 }

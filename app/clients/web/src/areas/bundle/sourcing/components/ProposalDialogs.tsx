@@ -88,7 +88,7 @@ export function ProposalDialogs({ dialog, review, busy, close, later, discard, m
       </section>)}
       {pendingTracking.length === 0 && <p>All tracking choices reviewed.</p>}
     </Modal>
-    <Modal isOpen={dialog === 'exit'} title="Exit review" onClose={close} className="h-auto w-full max-w-md" footer={<div className="flex flex-wrap justify-end gap-3">
+    <Modal isOpen={dialog === 'exit'} title="Exit changes review" onClose={close} className="h-auto w-full max-w-md" footer={<div className="flex flex-wrap justify-end gap-3">
       <button className={secondaryButtonStyle} disabled={busy} onClick={close}>Cancel</button>
       <button className={secondaryButtonStyle} disabled={busy} onClick={discard}>Discard changes</button>
       <button className={primaryButtonStyle} disabled={busy} onClick={later}>Keep changes</button>

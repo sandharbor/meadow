@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { useEditorViewValue } from '../utils/useEditorViewValue.js';
-import React, { useState } from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 /* eslint-disable react/prop-types */
 import { IFilter } from '../types/filters';
 import { createSearchByTitleSelector, createOutlinkDiscrepancySelector, createInlinkDiscrepancySelector } from '../types/filters';
@@ -322,6 +322,19 @@ const FilterPanel = React.memo<FilterPanelProps>(({
     && (f.group !== 'source-changes' || sourceChangeCount(f.parentFilterId ?? f.id) > 0)
   );
   const sourceChangeFilters = otherFilters.filter(filter => filter.group === 'source-changes');
+  // Page changes grows in once its filters arrive, so entering review reads as the editor gaining a section.
+  const sourceGroupRef = useRef<HTMLDivElement>(null);
+  const sourceGroupShown = useRef(false);
+  const hasSourceChangeFilters = sourceChangeFilters.length > 0;
+  useLayoutEffect(() => {
+    const group = sourceGroupRef.current;
+    if (!group || !hasSourceChangeFilters || sourceGroupShown.current) return;
+    sourceGroupShown.current = true;
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || !group.animate) return;
+    group.style.overflow = 'hidden';
+    group.animate([{ maxHeight: '0px', opacity: 0 }, { maxHeight: `${group.scrollHeight}px`, opacity: 1 }], { duration: 250, easing: 'ease-out' })
+      .finished.then(() => { group.style.overflow = ''; }, () => { group.style.overflow = ''; });
+  }, [hasSourceChangeFilters]);
   const pageFilters = otherFilters.filter(filter => filter.group !== 'source-changes');
   const sourceCountDigits = Math.max(1, ...sourceChangeFilters
     .map(filter => String(filter.bundleNodeSelectors[0]?.select(graph).size ?? 0).length));
@@ -760,7 +773,7 @@ const FilterPanel = React.memo<FilterPanelProps>(({
           </button>
         </div>
         <div className="space-y-3">
-          {mode === 'sourcing' && <div data-testid="source-changes-filter-group" className="-mx-2 space-y-3 rounded-lg bg-blue-50 px-2 pb-3">
+          {mode === 'sourcing' && <div ref={sourceGroupRef} data-testid="source-changes-filter-group" className="-mx-2 space-y-3 rounded-lg bg-blue-50 px-2 pb-3">
             <h3 className="border-b border-blue-200 pb-2 pt-2 text-xs font-semibold uppercase tracking-wide text-neutral-600">Page changes</h3>
             {sourceChangeFilters.map(renderFilter)}
           </div>}

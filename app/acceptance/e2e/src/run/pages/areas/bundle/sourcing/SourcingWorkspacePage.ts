@@ -168,7 +168,7 @@ export class SourcingWorkspacePage {
   }
   async closeComparison() { await this.comparison.getByRole('button', { name: 'Close', exact: true }).click(); }
   get exitButton() { return this.root.locator('header').getByRole('button', { name: 'Exit', exact: true }); }
-  get exitReview() { return this.page.getByRole('dialog', { name: 'Exit review', exact: true }); }
+  get exitReview() { return this.page.getByRole('dialog', { name: 'Exit changes review', exact: true }); }
   async expectMainReviewActions() {
     await this.expect(this.root.locator('header').getByRole('button')).toHaveText(['', 'Exit', 'Accept changes']);
     await this.expect(this.refreshSourcesButton).toBeVisible();

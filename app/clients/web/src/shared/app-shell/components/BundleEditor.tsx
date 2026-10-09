@@ -1069,7 +1069,7 @@ const BundleEditor: React.FC = () => {
 
   return (
     <SourceNamesProvider sources={graph.sources}><div style={sourcingOpen ? { visibility: 'hidden' } : undefined} className="w-full h-full overflow-hidden flex flex-col">
-      <div className="flex border-b border-neutral-200 items-center py-2 flex-shrink-0">
+      <div data-testid="bundle-editor-header" className="flex border-b border-neutral-200 items-center py-2 flex-shrink-0">
         <button
           className="ml-4 px-3 py-1 bg-neutral-200 rounded hover:bg-neutral-300"
           onClick={() => navigateInApp({ page: 'bundle-list' })}

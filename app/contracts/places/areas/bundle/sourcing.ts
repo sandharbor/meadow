@@ -29,5 +29,5 @@ export const sourcingPlaces: PlaceOwnerDefinition = {
     },
     { surface: 'source-snapshots', page: 'bundle', title: 'Source snapshots', dialogName: 'Source snapshots', history: false, parameters: [] },
   ],
-  extensions: [{ page: 'bundle', surface: 'source-review', parameters: [], dialogNames: ['Source identities', 'Resolve configuration conflicts', 'Review tracking sensitivity', 'Update sources for this change?', 'Exit review', 'Changes'] }],
+  extensions: [{ page: 'bundle', surface: 'source-review', parameters: [], dialogNames: ['Source identities', 'Resolve configuration conflicts', 'Review tracking sensitivity', 'Update sources for this change?', 'Exit changes review', 'Changes'] }],
 };

@@ -17,9 +17,11 @@ export function SourcingPanel({ bundleSlug, onAccepted, sourceChangeTrigger = 0,
   bundleSlug: string; hasDraftChanges: boolean; onAccepted: (result: { trackingOutcome?: SnapshotTrackingOutcome }) => void;
 }) {
   const [open, setOpen] = useState(false);
+  // Curation stays in place until the page changes graph is ready to replace it.
+  const [ready, setReady] = useState(false);
   const [placeParameters, setPlaceParameters] = useState<Readonly<Record<string, string>>>({});
   const [requestedParameters, setRequestedParameters] = useState<Readonly<Record<string, string>>>({});
-  useEffect(() => { onModeChange?.(open); }, [open, onModeChange]);
+  useEffect(() => { onModeChange?.(open && ready); }, [open, ready, onModeChange]);
   const { review, busy, setBusy, background, noChanges, error, setError, scan } = useSourceStatus(bundleSlug, onPendingChanges);
   const requested = useIsSurfaceRequested();
   const openRef = useRef(open);
@@ -30,7 +32,7 @@ export function SourcingPanel({ bundleSlug, onAccepted, sourceChangeTrigger = 0,
     catch (err) { setError(String(err)); }
     finally { setBusy(false); }
   }, [bundleSlug, setBusy, setError]);
-  const close = useCallback(() => { setOpen(false); setRequestedParameters({}); setPlaceParameters({}); }, []);
+  const close = useCallback(() => { setOpen(false); setReady(false); setRequestedParameters({}); setPlaceParameters({}); }, []);
   useEditorMode(open ? 'sourcing' : 'curation', async mode => {
     if (mode === 'sourcing') await enter(); else close();
   });
@@ -59,6 +61,6 @@ export function SourcingPanel({ bundleSlug, onAccepted, sourceChangeTrigger = 0,
       <RefreshSourcesButton compact={pending} refreshing={busy} disabled={busy} backgroundBusy={background} noChanges={noChanges} onClick={() => void scan(false, false, true)}>{!pending && progress}</RefreshSourcesButton>
       {error && <span role="alert" className="text-red-700">{error}</span>}
     </div>
-    {open && createPortal(<SourcingWorkspace requestedParameters={requestedParameters} onPlaceChange={setPlaceParameters} bundleSlug={bundleSlug} onClose={() => { close(); void scan(true); }} onAccepted={result => { onAccepted(result); onPendingChanges?.(false); }} />, document.body)}
+    {open && createPortal(<SourcingWorkspace onReadyChange={setReady} requestedParameters={requestedParameters} onPlaceChange={setPlaceParameters} bundleSlug={bundleSlug} onClose={() => { close(); void scan(true); }} onAccepted={result => { onAccepted(result); onPendingChanges?.(false); }} />, document.body)}
   </>;
 }

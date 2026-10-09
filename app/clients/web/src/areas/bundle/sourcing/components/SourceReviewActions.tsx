@@ -1,17 +1,24 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import type { RefObject } from 'react';
+import type { ReactNode, RefObject } from 'react';
 
-export function SourceReviewActions({ busy, blocked, acceptButton, onExit, onAccept }: {
+/** What accepting applies points into Accept changes; leaving is the quiet action after it. */
+export function SourceReviewActions({ busy, blocked, acceptButton, refresh, changes, onExit, onAccept }: {
   busy: boolean;
+  refresh?: ReactNode;
   blocked: boolean;
   acceptButton?: RefObject<HTMLButtonElement>;
+  changes?: ReactNode;
   onExit: () => void;
   onAccept: () => void;
 }) {
-  return <div className="ml-auto flex shrink-0 items-center gap-3">
-    {/* Leaving is the uncommon path, so it is a quiet text action beside the primary Accept. */}
-    <button className="rounded px-2 py-1 text-sm font-medium text-neutral-600 hover:text-neutral-900 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-700 disabled:opacity-40" disabled={busy} onClick={onExit}>Exit</button>
-    <button ref={acceptButton} className="rounded bg-blue-700 px-3 py-2 font-semibold text-white hover:bg-blue-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700 disabled:opacity-40" disabled={busy || blocked} onClick={onAccept}>Accept changes</button>
+  return <div className="ml-auto flex min-w-0 items-center gap-2">
+    {refresh && <span className="mr-0.5 shrink-0">{refresh}</span>}
+    {changes}
+    <button ref={acceptButton} className="shrink-0 rounded bg-blue-700 px-3 py-1 text-sm font-semibold text-white hover:bg-blue-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700 disabled:opacity-40" disabled={busy || blocked} onClick={onAccept}>Accept changes</button>
+    {/* A close control: its accessible name stays Exit, and it still asks whether to keep the proposal. */}
+    <button aria-label="Exit" title="Exit changes review" className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-neutral-500 hover:bg-blue-100 hover:text-neutral-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-700 disabled:opacity-40" disabled={busy} onClick={onExit}>
+      <svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12"><path d="M2 2 10 10M10 2 2 10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
+    </button>
   </div>;
 }

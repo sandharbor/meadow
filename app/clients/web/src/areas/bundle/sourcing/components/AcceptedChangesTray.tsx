@@ -1,6 +1,6 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Graph } from '../../../../../../../contracts/types/graph.js';
 import type { IBundleNode } from '../../../../../../../contracts/types/IBundleNode.js';
 import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';
@@ -16,8 +16,6 @@ import { bundleNodeKeySourceGraphPath } from '../../../../../../../shared_code/u
 
 type Detail = 'pages' | 'configuration' | 'settings' | 'tracking';
 const detailTitles: Record<Detail, string> = { pages: 'Page changes', configuration: 'Configuration removals', settings: 'Setting changes', tracking: 'Tracking changes' };
-/** The caret's base width; its height reaches to just below Accept changes. */
-const caretWidth = 22, caretGap = 4;
 type Item = { id: string; label: string; blocker?: boolean } & ({ detail: Detail } | { dialog: Exclude<ProposalDialog, null> });
 
 const pageKinds = ['added', 'moved', 'modified', 'departing'] as const satisfies readonly SourceNodeReview['kind'][];
@@ -54,11 +52,10 @@ export function acceptedChanges(review: SourceProposalReview, graph: Graph | nul
 }
 
 /** What Accept changes applies, attached to the Accept button so each staged change can be inspected. */
-export function AcceptedChangesTray({ changes, graph, bundleSlug, acceptButton, request, busy = false, onTrackAdditions, onDialog, onSelectPage }: {
+export function AcceptedChangesTray({ changes, graph, bundleSlug, request, busy = false, onTrackAdditions, onDialog, onSelectPage }: {
   changes: ReturnType<typeof acceptedChanges>;
   graph: Graph | null;
   bundleSlug: string;
-  acceptButton: RefObject<HTMLButtonElement>;
   request: SourcingTypeEditorOperations['request'];
   busy?: boolean;
   onTrackAdditions: (enabled: boolean) => void;
@@ -77,23 +74,6 @@ export function AcceptedChangesTray({ changes, graph, bundleSlug, acceptButton, 
   const [compared, setCompared] = useState<IBundleNode | null>(null);
 
   const row = useRef<HTMLDivElement>(null);
-  const tray = useRef<HTMLDivElement>(null);
-  const [caret, setCaret] = useState<{ right: number; height: number } | null>(null);
-  useLayoutEffect(() => {
-    const measure = () => {
-      const button = acceptButton.current?.getBoundingClientRect(), bubble = tray.current?.getBoundingClientRect();
-      setCaret(button && bubble ? {
-        // Offsets are measured inside the bubble's 1px border.
-        right: Math.max(12, bubble.right - 1 - (button.left + button.width / 2) - caretWidth / 2),
-        height: Math.max(8, bubble.top - button.bottom - caretGap),
-      } : null);
-    };
-    measure();
-    const observer = new ResizeObserver(measure);
-    for (const element of [acceptButton.current, tray.current]) if (element) observer.observe(element);
-    window.addEventListener('resize', measure);
-    return () => { observer.disconnect(); window.removeEventListener('resize', measure); };
-  }, [acceptButton, items.length]);
   useEffect(() => {
     if (!visible) return;
     const outside = (event: PointerEvent) => { if (!row.current?.contains(event.target as Node)) show(null); };
@@ -102,20 +82,15 @@ export function AcceptedChangesTray({ changes, graph, bundleSlug, acceptButton, 
   }, [visible, show]);
 
   const close = () => { const chip = row.current?.querySelector<HTMLButtonElement>(`[data-change-item="${visible}"]`); show(null); chip?.focus(); };
-  return <div ref={row} className="relative flex justify-end border-b px-5 pb-1.5 pt-1" onKeyDown={event => { if (event.key === 'Escape' && visible && !compared) { event.stopPropagation(); close(); } }}>
-    <div ref={tray} role="region" aria-label="Changes to accept" data-testid="accepted-changes"
-      className="relative flex max-w-full flex-wrap items-center justify-end gap-x-2 gap-y-1.5 rounded-lg border border-blue-700 bg-blue-50 px-1.5 py-1.5 text-sm shadow-sm">
-      {caret !== null && <svg aria-hidden="true" data-testid="accepted-changes-caret" width={caretWidth} height={caret.height + 1} viewBox={`0 0 ${caretWidth} ${caret.height + 1}`}
-        className="absolute z-10 overflow-visible text-blue-700" style={{ right: caret.right, top: -(caret.height + 1) }}>
-        {/* The fill extends over the tray's top border so the caret and bubble read as one shape. */}
-        <path d={`M0 ${caret.height + 1} L${caretWidth / 2} 0.5 L${caretWidth} ${caret.height + 1} Z`} className="fill-blue-50" />
-        <path d={`M0.5 ${caret.height} L${caretWidth / 2} 0.5 L${caretWidth - 0.5} ${caret.height}`} fill="none" stroke="currentColor" strokeLinejoin="round" />
-      </svg>}
+  // The bubble sits in the header just left of Accept changes, its tail pointing into the button.
+  return <div ref={row} className="relative -mr-1 flex min-w-0 items-center" onKeyDown={event => { if (event.key === 'Escape' && visible && !compared) { event.stopPropagation(); close(); } }}>
+    <div role="region" aria-label="Changes to accept" data-testid="accepted-changes"
+      className="relative flex min-w-0 flex-nowrap items-center gap-1.5 overflow-x-auto rounded-lg border border-blue-700/40 bg-blue-50 px-[7px] py-[5px] text-xs">
       {!items.length && <span className="px-1 py-0.5 text-xs font-medium text-blue-900/60">No changes yet</span>}
       {items.map(item => {
         const expanded = 'detail' in item ? visible === item.detail : undefined;
         return <button key={item.id} type="button" data-change-item={item.id} aria-expanded={expanded} aria-haspopup={'dialog' in item ? 'dialog' : undefined}
-          className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-blue-700 ${item.blocker
+          className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-2 py-0.5 font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-blue-700 ${item.blocker
             ? 'border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100'
             : expanded ? 'border-blue-700 bg-blue-700 text-white' : 'border-blue-200 bg-white text-blue-900 hover:border-blue-300 hover:bg-blue-100'}`}
           onClick={() => 'dialog' in item ? (show(null), onDialog(item.dialog)) : show(expanded ? null : item.detail)}>
@@ -125,7 +100,7 @@ export function AcceptedChangesTray({ changes, graph, bundleSlug, acceptButton, 
           {'detail' in item && <svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10" className={expanded ? 'rotate-180' : undefined}><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" strokeWidth="1.5" /></svg>}
         </button>;
       })}
-      {(additions.available || additions.enabled) && <span data-testid="track-additions" className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-white px-2.5 py-0.5 font-medium text-blue-900">
+      {(additions.available || additions.enabled) && <span data-testid="track-additions" className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-blue-200 bg-white px-2.5 py-0.5 font-medium text-blue-900">
         <label className="inline-flex cursor-pointer items-center gap-1.5">
           <input type="checkbox" className="h-3.5 w-3.5 rounded border-blue-300 text-blue-700 focus:ring-blue-700" checked={additions.enabled} disabled={busy}
             onChange={event => onTrackAdditions(event.target.checked)} />
@@ -136,8 +111,12 @@ export function AcceptedChangesTray({ changes, graph, bundleSlug, acceptButton, 
           · {additions.sensitiveSkipped.length} sensitive skipped</button>}
       </span>}
     </div>
+    {/* The tail paints over the bubble's right border, so the notch reads as part of the bubble rather than a shape beside it. */}
+    <svg aria-hidden="true" data-testid="accepted-changes-tail" width="13" height="14" viewBox="0 0 13 14" className="relative z-10 -ml-[1.5px] shrink-0 text-blue-700/40">
+      <path d="M0 0 L12.5 7 L0 14 Z" className="fill-blue-50" /><path d="M0.75 0.5 L12 7 L0.75 13.5" fill="none" stroke="currentColor" strokeLinejoin="round" />
+    </svg>
     {visible && <section aria-label={detailTitles[visible]}
-      className="absolute right-5 top-full z-50 mt-1 max-h-[60vh] w-[min(38rem,calc(100vw-2.5rem))] overflow-auto rounded-lg border border-neutral-200 bg-white text-sm shadow-xl">
+      className="absolute right-0 top-full z-50 mt-2 max-h-[60vh] w-[min(38rem,calc(100vw-2.5rem))] overflow-auto rounded-lg border border-neutral-200 bg-white text-sm shadow-xl">
       <header className="sticky top-0 flex items-center gap-3 border-b border-neutral-100 bg-white px-4 py-2.5">
         <h2 className="font-semibold">{detailTitles[visible]}</h2>
         <button type="button" aria-label="Close" className="ml-auto rounded px-1.5 text-lg leading-none text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800" onClick={close}>×</button>
