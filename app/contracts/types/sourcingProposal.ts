@@ -103,7 +103,7 @@ export interface PendingSourceProposal {
   newerSourcesAvailable: boolean;
   /** An explicitly requested refresh could not rebuild these required entries. */
   requiredEntryRepair?: string[];
-  /** Track every safe added page that has no explicit choice. Each new proposal starts without it. */
+  /** Track every safe added page that has no explicit choice. On unless explicitly turned off. */
   trackAdditions?: boolean;
 }
 

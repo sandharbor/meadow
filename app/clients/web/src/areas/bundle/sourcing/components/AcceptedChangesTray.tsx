@@ -12,6 +12,8 @@ import type { ProposalDialog } from './ProposalDialogs.js';
 import type { SourceOrphanExplanation } from '../../../../../../../contracts/types/sourcing.js';
 import { SourcingComponentContentComparison, SourcingComponentOrphanDiagnosis, useSourcingStateLineCounts, type SourcingTypeEditorOperations } from '../../shared-sourcing-curation/exported.js';
 import { SourcePath } from './SourceReviewPresentation.js';
+import { ChipPanel } from './ChipPanel.js';
+import { createPortal } from 'react-dom';
 import { bundleNodeKeySourceGraphPath } from '../../../../../../../shared_code/utils/bundleNodeKey.js';
 
 type Detail = 'pages' | 'configuration' | 'settings' | 'tracking';
@@ -52,14 +54,17 @@ export function acceptedChanges(review: SourceProposalReview, graph: Graph | nul
 }
 
 /** What Accept changes applies, attached to the Accept button so each staged change can be inspected. */
-export function AcceptedChangesTray({ changes, graph, bundleSlug, request, busy = false, onTrackAdditions, onDialog, onSelectPage }: {
+export function AcceptedChangesTray({ changes, graph, bundleSlug, request, busy = false, openDialog = null, onTrackAdditions, onDialog, onCloseDialog, onSelectPage }: {
   changes: ReturnType<typeof acceptedChanges>;
   graph: Graph | null;
   bundleSlug: string;
   request: SourcingTypeEditorOperations['request'];
   busy?: boolean;
   onTrackAdditions: (enabled: boolean) => void;
+  /** The dialog currently open; a chip whose panel is open closes it when clicked again. */
+  openDialog?: ProposalDialog;
   onDialog: (dialog: Exclude<ProposalDialog, null>) => void;
+  onCloseDialog: () => void;
   onSelectPage: (key: EncodedBundleNodeKey) => void;
 }) {
   const [open, setOpen] = useState<Detail | null>(() => readEditorView<Detail | null>(bundleSlug, 'sourcing', 'acceptedChangesDetail', null));
@@ -74,9 +79,15 @@ export function AcceptedChangesTray({ changes, graph, bundleSlug, request, busy 
   const [compared, setCompared] = useState<IBundleNode | null>(null);
 
   const row = useRef<HTMLDivElement>(null);
+  const panel = useRef<HTMLElement>(null);
   useEffect(() => {
     if (!visible) return;
-    const outside = (event: PointerEvent) => { if (!row.current?.contains(event.target as Node)) show(null); };
+    const outside = (event: PointerEvent) => {
+      const target = event.target as Node;
+      // A dialog opened from the panel, such as a comparison, is part of it.
+      if (row.current?.contains(target) || panel.current?.contains(target) || (target instanceof Element && target.closest('[role="dialog"]'))) return;
+      show(null);
+    };
     document.addEventListener('pointerdown', outside);
     return () => document.removeEventListener('pointerdown', outside);
   }, [visible, show]);
@@ -88,19 +99,21 @@ export function AcceptedChangesTray({ changes, graph, bundleSlug, request, busy 
       className="relative flex min-w-0 flex-nowrap items-center gap-1.5 overflow-x-auto rounded-lg border border-blue-700/40 bg-blue-50 px-[7px] py-[5px] text-xs">
       {!items.length && <span className="px-1 py-0.5 text-xs font-medium text-blue-900/60">No changes yet</span>}
       {items.map(item => {
-        const expanded = 'detail' in item ? visible === item.detail : undefined;
+        const expanded = 'detail' in item ? visible === item.detail : item.id === 'identities' ? openDialog === 'identities' : undefined;
         return <button key={item.id} type="button" data-change-item={item.id} aria-expanded={expanded} aria-haspopup={'dialog' in item ? 'dialog' : undefined}
           className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-2 py-0.5 font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-blue-700 ${item.blocker
             ? 'border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100'
             : expanded ? 'border-blue-700 bg-blue-700 text-white' : 'border-blue-200 bg-white text-blue-900 hover:border-blue-300 hover:bg-blue-100'}`}
-          onClick={() => 'dialog' in item ? (show(null), onDialog(item.dialog)) : show(expanded ? null : item.detail)}>
+          onClick={() => 'dialog' in item ? (show(null), expanded ? onCloseDialog() : onDialog(item.dialog)) : show(expanded ? null : item.detail)}>
           {item.blocker && <span aria-hidden="true">⚠</span>}
           {item.id === 'pages' && <PageKindDots pages={pages} inverted={Boolean(expanded)} />}
           {item.label}
-          {'detail' in item && <svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10" className={expanded ? 'rotate-180' : undefined}><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" strokeWidth="1.5" /></svg>}
+          {/* Chips that open a panel under themselves show the same arrow; identity review is one of them. */}
+          {('detail' in item || item.id === 'identities') && <svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10" className={expanded ? 'rotate-180' : undefined}><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" strokeWidth="1.5" /></svg>}
         </button>;
       })}
-      {(additions.available || additions.enabled) && <span data-testid="track-additions" className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-blue-200 bg-white px-2.5 py-0.5 font-medium text-blue-900">
+      {/* Only shown when there are added pages it would cover; they are known once identities are resolved. */}
+      {additions.available && <span data-testid="track-additions" className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-blue-200 bg-white px-2.5 py-0.5 font-medium text-blue-900">
         <label className="inline-flex cursor-pointer items-center gap-1.5">
           <input type="checkbox" className="h-3.5 w-3.5 rounded border-blue-300 text-blue-700 focus:ring-blue-700" checked={additions.enabled} disabled={busy}
             onChange={event => onTrackAdditions(event.target.checked)} />
@@ -115,20 +128,21 @@ export function AcceptedChangesTray({ changes, graph, bundleSlug, request, busy 
     <svg aria-hidden="true" data-testid="accepted-changes-tail" width="13" height="14" viewBox="0 0 13 14" className="relative z-10 -ml-[1.5px] shrink-0 text-blue-700/40">
       <path d="M0 0 L12.5 7 L0 14 Z" className="fill-blue-50" /><path d="M0.75 0.5 L12 7 L0.75 13.5" fill="none" stroke="currentColor" strokeLinejoin="round" />
     </svg>
-    {visible && <section aria-label={detailTitles[visible]}
-      className="absolute right-0 top-full z-50 mt-2 max-h-[60vh] w-[min(38rem,calc(100vw-2.5rem))] overflow-auto rounded-lg border border-neutral-200 bg-white text-sm shadow-xl">
-      <header className="sticky top-0 flex items-center gap-3 border-b border-neutral-100 bg-white px-4 py-2.5">
+    {visible && <ChipPanel anchor={`[data-change-item="${visible}"]`} label={detailTitles[visible]} panelRef={panel} className="w-[min(38rem,calc(100vw-2rem))]">
+      <header className="flex items-center gap-3 rounded-t-lg border-b border-neutral-100 bg-white px-4 py-2.5">
         <h2 className="font-semibold">{detailTitles[visible]}</h2>
         <button type="button" aria-label="Close" className="ml-auto rounded px-1.5 text-lg leading-none text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800" onClick={close}>×</button>
       </header>
-      <div className="p-3">
+      <div className="max-h-[60vh] overflow-auto p-3">
         {visible === 'pages' && <PageChanges pages={pages} request={request} onCompare={setCompared} onSelect={key => { show(null); onSelectPage(key); }} />}
         {visible === 'configuration' && <Explained text="These pages were already unreachable before this proposal, so they are not in the graph. Accepting removes their saved configuration. The source files are untouched."><ConfigurationRemovals orphans={unlisted} /></Explained>}
         {visible === 'settings' && <Explained text="Global filter definitions apply to all bundles in both sourcing and curation."><ProposalEntriesTable label="Setting" entries={settings} onSelectPage={selectEntryPage} /></Explained>}
         {visible === 'tracking' && <TrackingChangesTable entries={tracking} removals={removals} automatic={additions.automatic} sensitiveSkipped={additions.sensitiveSkipped} onSelectPage={selectEntryPage} />}
       </div>
-    </section>}
-    {compared?.sourceReview && <SourcingComponentContentComparison evidence={compared.sourceReview} request={request} onClose={() => setCompared(null)} />}
+    </ChipPanel>}
+    {/* The comparison opens above the chip panel it came from. */}
+    {compared?.sourceReview && createPortal(<SourcingComponentContentComparison evidence={compared.sourceReview} request={request} onClose={() => setCompared(null)} />,
+      document.querySelector('[data-testid="sourcing-workspace"]') ?? document.body)}
   </div>;
 }
 

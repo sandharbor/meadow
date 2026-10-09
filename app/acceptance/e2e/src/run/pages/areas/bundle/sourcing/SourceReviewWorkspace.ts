@@ -24,10 +24,11 @@ export class SourceReviewWorkspace extends SourcingWorkspacePage {
   async checkAgain() {
     await this.reviewExpect(this.refreshSourcesButton).toBeEnabled();
     await this.closeInspection();
+    // The bar's refresh stays usable above the identity panel.
     if (await this.identities.isVisible()) {
       await Promise.all([
         this.reviewPage.waitForResponse(response => response.url().endsWith('/sourcing/proposal/refresh') && response.ok()),
-        this.identities.getByRole('button', { name: 'Refresh sources', exact: true }).click(),
+        this.refreshSourcesButton.click(),
       ]);
     } else await this.updateSources();
   }

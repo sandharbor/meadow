@@ -54,7 +54,7 @@ export async function reviewSourceProposal(directory: string): Promise<SourcePro
     });
     const missingRequiredEntries = [...new Set([...(proposal.requiredEntryRepair ?? []), ...missingSnapshotRoles(candidate, configuration.bundle, configuration.nodes).map(node => node.bundleNodeName)])];
     let trackingTargets: SourceProposalReview['trackingTargets'] = {};
-    let additionTracking: SourceProposalReview['additionTracking'] = { enabled: Boolean(proposal.trackAdditions), eligible: [], sensitiveSkipped: [] };
+    let additionTracking: SourceProposalReview['additionTracking'] = { enabled: proposal.trackAdditions !== false, eligible: [], sensitiveSkipped: [] };
     if (!missingRequiredEntries.length && !unresolvedIdentities.length) {
       const identities = Object.fromEntries(knownIdentities.filter(node => node.bundleNodeKind !== 'collection').map(node => {
         const destination = proposal.identities[node.bundleNodeId];
@@ -69,7 +69,7 @@ export async function reviewSourceProposal(directory: string): Promise<SourcePro
       const acceptedKeys = new Set<string>((beforeGraph?.nodes ?? []).map(node => node.bundleNodeKey));
       const chosen = (key: string) => proposal.tracking[key] && proposal.tracking[key].origin !== 'additions';
       const additions = Object.entries(tracking.targets).filter(([key, target]) => !acceptedKeys.has(key) && !target.bundleNodeId && !chosen(key));
-      additionTracking = { enabled: Boolean(proposal.trackAdditions),
+      additionTracking = { enabled: proposal.trackAdditions !== false,
         eligible: additions.filter(([, target]) => !target.sensitivity).map(([key]) => key),
         sensitiveSkipped: additions.filter(([, target]) => target.sensitivity).map(([key]) => key) };
       const covered = new Set(additionTracking.enabled ? additionTracking.eligible : []);

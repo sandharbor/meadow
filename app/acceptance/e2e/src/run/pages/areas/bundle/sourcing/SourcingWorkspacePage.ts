@@ -316,7 +316,7 @@ export class SourcingWorkspacePage {
   async expectIdentityActionsStayVisibleWhenScrolling() {
     const panel = this.identities.getByRole('tabpanel', { name: 'Confident suggestions', exact: true });
     const list = panel.getByTestId('source-identity-list');
-    const actions = [this.identities.getByRole('button', { name: 'Refresh sources', exact: true }), panel.getByRole('button', { name: 'Accept all suggestions', exact: true })];
+    const actions = [this.identities.getByRole('heading', { name: 'Source identities', exact: true }), panel.getByRole('button', { name: 'Accept all suggestions', exact: true })];
     const before = await Promise.all(actions.map(action => action.boundingBox()));
     this.expect(before.every(Boolean)).toBe(true);
     this.expect(before[0]!.y).toBeLessThan((await panel.boundingBox())!.y);
@@ -330,10 +330,11 @@ export class SourcingWorkspacePage {
   async scrollIdentityListToStart() {
     await this.identities.getByRole('tabpanel').getByTestId('source-identity-list').evaluate(element => { element.scrollTop = 0; });
   }
+  /** The bar's refresh stays usable above the identity panel. */
   async refreshIdentitySources() {
     await Promise.all([
       this.page.waitForResponse(response => response.url().endsWith('/sourcing/proposal/refresh') && response.ok()),
-      this.identities.getByRole('button', { name: 'Refresh sources', exact: true }).click(),
+      this.refreshSourcesButton.click(),
     ]);
     await this.expect(this.refreshSourcesButton).toBeEnabled();
   }
@@ -352,6 +353,51 @@ export class SourcingWorkspacePage {
     ]);
     await this.showIdentity(id);
     await this.expect(choice).toBeChecked();
+  }
+  /** The dimming behind identity review while it is required. */
+  get identityBackdrop() { return this.root.getByTestId('chip-panel-backdrop'); }
+  identityRow(id: string) { return this.identities.getByTestId(`source-move-${id}`); }
+  identitySection(name: 'Choose a match' | 'Likely renamed' | 'Already decided') { return this.identities.getByRole('region', { name: new RegExp(`^${name}\\b`) }); }
+  identityButton(name: 'Cancel' | 'Confirm' | 'Update') { return this.identities.getByRole('button', { name, exact: true }); }
+  /**
+   * Decide a file in identity review: a destination keeps it as the same page, null makes it a new page. While
+   * review is required each choice saves immediately; on a revisit it stays a draft until Update.
+   */
+  async decideIdentity(id: string, destination: string | null) {
+    const row = this.identityRow(id);
+    const candidates = row.locator('li[data-identity-destination]');
+    const control = await candidates.count()
+      ? destination ? row.locator(`li[data-identity-destination=${JSON.stringify(destination)}]`).getByRole('radio')
+        : row.getByRole('radio', { name: 'None of these — it’s a new page', exact: true })
+      : row.getByRole('button', { name: destination ? 'Same page' : 'New page', exact: true });
+    const saves = await this.identityBackdrop.isVisible();
+    await Promise.all([
+      ...saves ? [this.page.waitForResponse(response => response.url().endsWith('/sourcing/proposal/identities') && response.ok(), { timeout: 10000 })] : [],
+      control.click(),
+    ]);
+    if (await candidates.count()) await this.expect(control).toBeChecked();
+    else await this.expect(control).toHaveAttribute('aria-pressed', 'true');
+  }
+  async expectIdentityDecision(id: string, choice: 'Same page' | 'New page' | 'Undecided') {
+    await this.expect(this.identityRow(id).getByTestId('source-identity-switch')).toHaveAttribute('data-current-choice', choice === 'Same page' ? 'same' : choice === 'New page' ? 'different' : 'input');
+  }
+  /** Open identity review from its chip. */
+  async openIdentities() {
+    await this.acceptedChange(/^\d+ identity decisions?$/).click();
+    await this.expect(this.identities).toBeVisible();
+  }
+  /** Confirm required identity review; the graph opens once every choice is saved. */
+  async confirmIdentities() {
+    await this.identityButton('Confirm').click();
+    await this.expect(this.identities).toBeHidden();
+  }
+  /** Apply the edits made while revisiting identity review. */
+  async updateIdentities() {
+    await Promise.all([
+      this.page.waitForResponse(response => response.url().endsWith('/sourcing/proposal/identities') && response.ok(), { timeout: 10000 }),
+      this.identityButton('Update').click(),
+    ]);
+    await this.expect(this.identities).toBeHidden();
   }
   async continueToGraph() {
     await this.identities.getByRole('button', { name: 'Continue to graph', exact: true }).click();

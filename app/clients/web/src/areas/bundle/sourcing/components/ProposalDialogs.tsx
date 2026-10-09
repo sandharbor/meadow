@@ -1,13 +1,14 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import { useState } from 'react';
-import { RefreshSourcesButton } from './RefreshSourcesButton.js';
-import { SourceIdentityReview, type IdentityTab } from './SourceIdentityReview.js';
+import { useEffect, useRef, useState } from 'react';
+import { SourceIdentityReview, identityConfirmation } from './SourceIdentityReview.js';
+import { sourceIdentityRecommendations } from '../../../../../../../shared_code/utils/sourceMoveResolutions.js';
 import { SourcingComponentContentComparison } from '../../shared-sourcing-curation/exported.js';
 import type { SourcingTypeEditorOperations } from '../../shared-sourcing-curation/exported.js';
 import Modal from '../../../../shared/components/Modal.js';
 import type { SourceProposalReview } from '../../../../../../../contracts/types/sourcingProposal.js';
 import { SourcePath } from './SourceReviewPresentation.js';
+import { ChipPanel } from './ChipPanel.js';
 import { proposalSettingLabels } from './ProposalSettingsSummary.js';
 import { bundleNodeKeySourceGraphPath, parseBundleNodeKey } from '../../../../../../../shared_code/utils/bundleNodeKey.js';
 
@@ -37,39 +38,91 @@ function conflictValue(value: unknown): string {
 
 export type ProposalDialog = 'identities' | 'conflicts' | 'sensitivity' | 'refresh' | 'exit' | null;
 
-export function ProposalDialogs({ dialog, review, busy, close, later, discard, mutate, refresh, request, identityComparison, onIdentityComparison, identityTab, onIdentityTabChange, identityChoices, chooseIdentities, identitySaving, identityBusy }: {
+export function ProposalDialogs({ dialog, review, busy, close, later, discard, mutate, refresh, request, identityRequired, identityComparison, onIdentityComparison, identityChoices, chooseIdentities, identitySaving, identityBusy }: {
+  /** Whether this identity review visit is required; it stays so until the panel closes. */
+  identityRequired: boolean;
   identityChoices: Record<string, string | null>; chooseIdentities: (choices: Record<string, string | null>) => void;
   identitySaving: boolean; identityBusy: boolean;
-  identityTab: IdentityTab; onIdentityTabChange: (value: IdentityTab) => void;
   identityComparison?: string; onIdentityComparison: (value: string | undefined) => void;
   request: SourcingTypeEditorOperations['request'];
   dialog: ProposalDialog; review: SourceProposalReview; busy: boolean;
   close: () => void; later: () => void; discard: () => void; refresh: () => void;
   mutate: (operation: string, body: Record<string, unknown>) => Promise<unknown>;
 }) {
-  const [refreshingSources, setRefreshingSources] = useState(false);
-  const refreshSources = async () => {
-    setRefreshingSources(true);
-    try { await mutate('refresh', {}); }
-    finally { setRefreshingSources(false); }
+  // While identities are unresolved, identity review is required: each choice saves as it is made, so Cancel can
+  // leave review without losing them. Once everything is decided, a revisit edits a draft that Update applies and
+  // Cancel discards, closing only the panel.
+  const required = identityRequired;
+  const [draft, setDraft] = useState<Record<string, string | null>>({});
+  const edits = Object.fromEntries(Object.entries(draft).filter(([id, value]) => identityChoices[id] !== value));
+  const shownChoices = required ? identityChoices : { ...identityChoices, ...draft };
+  useEffect(() => { if (dialog !== 'identities') setDraft({}); }, [dialog]);
+  // A refresh that brings undecided files makes review required again; edits in progress are kept by saving them.
+  useEffect(() => {
+    if (!required || !Object.keys(draft).length) return;
+    chooseIdentities(draft); setDraft({});
+  }, [required, draft, chooseIdentities]);
+  // Files decided before this visit, or before the files under review last changed, are listed apart as already decided.
+  const choicesRef = useRef(identityChoices);
+  choicesRef.current = identityChoices;
+  const reviewedIds = [...new Set(review.moves.map(move => move.bundleNodeId))].sort().join();
+  const [previouslyDecided, setPreviouslyDecided] = useState<ReadonlySet<string>>(new Set());
+  useEffect(() => {
+    if (dialog !== 'identities') return;
+    setPreviouslyDecided(new Set(sourceIdentityRecommendations(review.moves, choicesRef.current).filter(record => record.decided).map(record => record.id)));
+    // Only opening the panel or a change in the files under review takes a new snapshot.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dialog, reviewedIds]);
+  // Confirm applies the suggested choice to each untouched likely rename, then continues once every choice is saved.
+  const confirmation = identityConfirmation(review.moves, identityChoices);
+  const [confirming, setConfirming] = useState(false);
+  useEffect(() => {
+    if (!confirming || identitySaving || identityBusy || review.unresolvedIdentities.length) return;
+    setConfirming(false);
+    close();
+  }, [confirming, identitySaving, identityBusy, review.unresolvedIdentities.length, close]);
+  const confirm = () => {
+    if (Object.keys(confirmation.defaults).length) chooseIdentities(confirmation.defaults);
+    setConfirming(true);
+  };
+  const update = () => {
+    chooseIdentities(edits); setDraft({});
+    setConfirming(true);
   };
   const comparedMove = dialog === 'identities' ? review.moves.find(move => JSON.stringify([move.bundleNodeId, move.newPath]) === identityComparison) : undefined;
   const comparison = comparedMove ? { kind: 'moved' as const, orphanedConfiguration: false, explanation: 'Proposed identity correspondence', previousPath: comparedMove.oldPath, proposedPath: comparedMove.newPath, previousRoute: comparedMove.previousRoute, proposedRoute: comparedMove.currentRoute, beforeSnapshotId: review.accepted.id, afterSnapshotId: review.candidate.id } : undefined;
   const pendingTracking = Object.entries(review.proposal.tracking).filter(([, decision]) => decision.needsConfirmation || decision.invalidated);
   return <>
-    <Modal isOpen={dialog === 'identities'} title="Source identities" onClose={later} allowContentScroll={false}
-      headerActions={<RefreshSourcesButton compact refreshing={refreshingSources} disabled={busy || refreshingSources} onClick={() => void refreshSources()} />}
-      footer={<div className="flex flex-wrap justify-end gap-3">
-      {identitySaving && <span role="status" className="mr-auto self-center text-sm text-neutral-500">Saving choices…</span>}
-      <button className={secondaryButtonStyle} onClick={later}>Later</button>
-      <button className={primaryButtonStyle} disabled={busy || review.unresolvedIdentities.length > 0} onClick={close}>Continue to graph</button>
-    </div>}>
-      <div className="flex h-full min-h-0 flex-col">
-        <p className="mb-4 shrink-0">Some files may have moved.  Take a look.</p>
-        <SourceIdentityReview moves={review.moves} choices={identityChoices} busy={identityBusy} tab={identityTab} onTabChange={onIdentityTabChange}
-          choose={chooseIdentities} compare={move => onIdentityComparison(JSON.stringify([move.bundleNodeId, move.newPath]))} />
+    {/* Identity review opens from its chip. While identities are unresolved the graph cannot open, so the panel
+        is modal: the rest of the screen dims and only Cancel or Confirm leave it. The bar stays above the
+        dimming, so its refresh still updates the proposal. */}
+    {dialog === 'identities' && <ChipPanel anchor='[data-change-item="identities"]' label="Source identities" role="dialog" modal={required}
+      appearDelay={required ? 200 : 0} onDismiss={close}
+      className="h-[min(70vh,44rem)] w-[min(48rem,calc(100vw-2rem))]">
+      <header className="flex shrink-0 items-center gap-3 rounded-t-lg border-b border-neutral-100 px-5 py-3">
+        <h2 className="text-lg font-semibold">Source identities</h2>
+      </header>
+      <div className="flex min-h-0 flex-1 flex-col px-5 py-4">
+        <div className="mb-4 shrink-0 space-y-1">
+          <p>Some files that were part of this bundle are gone, and new files look like them.</p>
+          <p className="text-sm text-neutral-600"><strong className="font-semibold text-neutral-800">Same page</strong> keeps the page’s tracking and settings. <strong className="font-semibold text-neutral-800">New page</strong> removes the old page and starts the new file fresh.</p>
+        </div>
+        <SourceIdentityReview moves={review.moves} choices={shownChoices} busy={identityBusy || confirming} previouslyDecided={previouslyDecided}
+          choose={required ? chooseIdentities : choices => setDraft(current => ({ ...current, ...choices }))} compare={move => onIdentityComparison(JSON.stringify([move.bundleNodeId, move.newPath]))} />
       </div>
-    </Modal>
+      <footer className="flex shrink-0 flex-wrap items-center justify-end gap-3 border-t border-neutral-100 px-5 py-3">
+        <span role="status" className="mr-auto text-sm text-neutral-500">{identitySaving ? 'Saving choices…'
+          : confirmation.remaining ? `Choose a match for ${confirmation.remaining} more ${confirmation.remaining === 1 ? 'file' : 'files'}.` : ''}</span>
+        {required ? <>
+          {/* Cancel leaves review; choices made so far are kept with the proposal, and nothing applies until Accept changes. */}
+          <button className={secondaryButtonStyle} onClick={later}>Cancel</button>
+          <button className={primaryButtonStyle} disabled={busy || confirming || confirmation.remaining > 0} onClick={confirm}>Confirm</button>
+        </> : <>
+          <button className={secondaryButtonStyle} onClick={close}>Cancel</button>
+          <button className={primaryButtonStyle} disabled={busy || confirming || !Object.keys(edits).length} onClick={update}>Update</button>
+        </>}
+      </footer>
+    </ChipPanel>}
     <Modal isOpen={dialog === 'conflicts'} title="Resolve configuration conflicts" onClose={close}>
       <p className="mb-4">Saved settings changed while this proposal was pending. Choose which value to accept for each conflict.</p>
       {review.conflicts.map(conflict => <section key={JSON.stringify(conflict.path)} className="mb-4 rounded border p-3">

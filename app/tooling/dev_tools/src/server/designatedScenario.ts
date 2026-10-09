@@ -21,6 +21,36 @@ const WORKFLOW_BUNDLES: Record<string, string> = {
   navigateToBigBundlePreview: 'meadow-test-bundle-big',
 };
 
+/** The values of the E2E workflows' Fixture and Bundle enums, so specs may name a fixture or bundle by member. */
+function workflowEnumValues(projectRoot: string): Map<string, string> {
+  const file = path.join(projectRoot, 'app/acceptance/e2e/src/run/workflows.ts');
+  const ast = ts.createSourceFile(file, fs.readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true);
+  const values = new Map<string, string>();
+  ast.forEachChild(node => {
+    if (!ts.isEnumDeclaration(node) || !['Fixture', 'Bundle'].includes(node.name.text)) return;
+    for (const member of node.members) {
+      if (member.initializer && ts.isStringLiteralLike(member.initializer)) values.set(`${node.name.text}.${member.name.getText(ast)}`, member.initializer.text);
+    }
+  });
+  return values;
+}
+
+/** Specs live anywhere under the E2E tests directory; a change names its spec by file name, as the coverage lint checks. */
+function designatedSpecPath(projectRoot: string, filename: string): string {
+  const find = (directory: string): string | undefined => {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const candidate = path.join(directory, entry.name);
+      const found = entry.isDirectory() ? find(candidate) : entry.name === filename ? candidate : undefined;
+      if (found) return found;
+    }
+    return undefined;
+  };
+  const tests = path.join(projectRoot, 'app/acceptance/e2e/tests');
+  const found = find(tests);
+  if (!found) throw new Error(`No E2E scenario named ${filename} under ${tests}`);
+  return found;
+}
+
 function fixtureBundlesUsingGraph(projectRoot: string, fixtureName: string, graph: string): string[] {
   const bundles = path.join(homeFixturesDirectory(projectRoot), fixtureName, 'bundles');
   if (!fs.existsSync(bundles)) return [];
@@ -39,16 +69,19 @@ function fixtureBundlesUsingGraph(projectRoot: string, fixtureName: string, grap
  * source-change coverage lint guarantees the literal apply call exists.
  */
 export function designatedScenarioStart(projectRoot: string, change: SourceChangeDefinition): DesignatedScenarioStart {
-  const specPath = path.join(projectRoot, 'app/acceptance/e2e/tests', change.e2e);
+  const specPath = designatedSpecPath(projectRoot, change.e2e);
   const source = fs.readFileSync(specPath, 'utf8');
   const ast = ts.createSourceFile(specPath, source, ts.ScriptTarget.Latest, true);
   let fixtureName = DEFAULT_FIXTURE;
   let sourceGraph: string | undefined;
   const mentioned: { text: string; position: number }[] = [];
+  const enums = workflowEnumValues(projectRoot);
+  const literal = (node: ts.Node) => ts.isStringLiteralLike(node) ? node.text : ts.isPropertyAccessExpression(node) ? enums.get(node.getText(ast)) : undefined;
   const visit = (node: ts.Node) => {
-    if (ts.isPropertyAssignment(node) && node.name.getText(ast) === 'fixtureHome' && ts.isStringLiteralLike(node.initializer)) {
-      fixtureName = node.initializer.text;
+    if (ts.isPropertyAssignment(node) && node.name.getText(ast) === 'fixtureHome') {
+      fixtureName = literal(node.initializer) ?? fixtureName;
     }
+    if (ts.isPropertyAccessExpression(node) && enums.has(node.getText(ast))) mentioned.push({ text: enums.get(node.getText(ast))!, position: node.getStart(ast) });
     if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)
       && node.expression.expression.getText(ast) === 'sourceChanges' && node.expression.name.text === 'apply') {
       const [id, graph] = node.arguments;

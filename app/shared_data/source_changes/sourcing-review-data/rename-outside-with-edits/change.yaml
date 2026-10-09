@@ -1,0 +1,17 @@
+id: rename-outside-with-edits
+label: Rename a page and extend it
+action: "Rename Outside to Beyond, add a short paragraph, and update the link from Departing."
+check: "Review asks for a choice on Beyond, since it is similar to Outside but not enough to suggest a rename; earlier identity choices stay decided."
+e2e: sourcing-proposal-identity-later-additions.spec.ts
+categories: [rename]
+sourceGraph: sourcing-review-data
+operations:
+  - move: { from: Outside.md, to: Beyond.md }
+  - replaceText:
+      path: Beyond.md
+      before: "This page is outside the bridge folder and leaves scope when that route is excluded."
+      after: "This page is outside the bridge folder and leaves scope when that route is excluded.\n\nIt was renamed and extended slightly."
+  - replaceText:
+      path: Departing.md
+      before: "[[Outside]]"
+      after: "[[Beyond]]"

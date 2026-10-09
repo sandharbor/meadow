@@ -14,7 +14,6 @@ export const sourcingPlaces: PlaceOwnerDefinition = {
       history: false,
       parameters: [
         { name: 'review', description: 'The pending source review decision being inspected', values: ['identities', 'conflicts', 'sensitivity', 'refresh', 'exit'] },
-        { name: 'identityTab', description: 'The active source identity review tab', values: ['confident', 'input'] },
         { name: 'identityComparison', description: 'Identity and destination of an open captured content comparison' },
         { name: 'details', description: 'Traversal details for a reviewed file, as accepted:<locator> or candidate:<locator>' },
       ],
