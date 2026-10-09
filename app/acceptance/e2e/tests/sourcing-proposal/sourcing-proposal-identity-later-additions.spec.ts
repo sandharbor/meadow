@@ -55,7 +55,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '3f58ea0a-6f0
   await sourceCommand(() => sourcing.expectIdentityDecision('100000000002', 'Same page'));
   await sourceCommand(() => sourcing.expectIdentityDecision('100000000003', 'New page'));
   await sourceCommand(() => sourcing.expectIdentityDecision('100000000007', 'Same page'));
-  await sourceCommand(() => expect(sourcing.identityRow('100000000006').locator('li[data-identity-destination="Retained One.md"]').getByRole('radio')).toBeChecked());
+  await sourceCommand(() => sourcing.expectIdentityMatch('100000000006', 'Retained One.md'));
   expect(proposal.current.identities).toEqual(earlier);
   await sourceCommand(() => addKeyFrame(sourceChangesDuringReview));
   await sourceCommand(() => checkpoint('after a refresh only the new file needs a choice and earlier decisions stay decided'));

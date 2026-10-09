@@ -14,7 +14,7 @@ import { reviewSourceProposal } from '../../../../src/areas/bundle/sourcing/serv
 import { updateSourceProposalCapture, checkSourceProposalUpdates } from '../../../../src/areas/bundle/sourcing/services/proposalCapture.js';
 import { acceptSourceProposal } from '../../../../src/areas/bundle/sourcing/services/proposalAcceptance.js';
 import { discardSourceProposal, loadPendingSourceProposal, saveSourceProposal } from '../../../../src/areas/bundle/sourcing/services/proposalStore.js';
-import { chooseProposalIdentities, chooseProposalTracking, resolveProposalConflicts } from '../../../../src/areas/bundle/sourcing/services/proposalDecisions.js';
+import { chooseProposalAdditionTracking, chooseProposalIdentities, chooseProposalTracking, resolveProposalConflicts } from '../../../../src/areas/bundle/sourcing/services/proposalDecisions.js';
 import { fileNodeKeyFromSourceFilePath, serializeBundleNodeKey } from '../../../../../../shared_code/utils/bundleNodeKey.js';
 
 vi.mock('../../../../src/shared/utils/configDirectory/gitUtils/gitStatusUtils.js', async importOriginal => ({
@@ -91,6 +91,9 @@ describe('captured proposal lifecycle', () => {
 
   it('leaves a rejected rename untracked until its existing identity is confirmed', async () => {
     let review = await reviewSourceProposal(directory);
+    // This scenario is about explicit choices, so Track added pages is off.
+    await chooseProposalAdditionTracking(directory, review.proposal.revision, false);
+    review = await reviewSourceProposal(directory);
     fs.renameSync(path.join(source, 'Bridge.md'), path.join(source, 'Renamed.md'));
     fs.writeFileSync(path.join(source, 'Start.md'), 'The source entry.\n\n[[Renamed]]');
     await updateSourceProposalCapture(directory, review.proposal.revision, { refresh: true });
@@ -108,6 +111,9 @@ describe('captured proposal lifecycle', () => {
 
   it('removes legacy automatic choices while preserving explicit choices and accepted tracking', async () => {
     let review = await reviewSourceProposal(directory);
+    // This scenario is about explicit choices, so Track added pages is off.
+    await chooseProposalAdditionTracking(directory, review.proposal.revision, false);
+    review = await reviewSourceProposal(directory);
     const draft = structuredClone(review.proposal.proposed);
     draft.bundle.defaultOutlinksDepth = 3;
     draft.bundle.trackNewPages = true;
@@ -170,8 +176,36 @@ describe('captured proposal lifecycle', () => {
     expect(loadSourceNodeConfigs(directory)).toEqual(changed);
   });
 
+  it('tracks safe additions by default while explicit choices win and turning it off drops them', async () => {
+    let review = await reviewSourceProposal(directory);
+    const draft = structuredClone(review.proposal.proposed);
+    draft.bundle.defaultOutlinksDepth = 3;
+    await updateSourceProposalCapture(directory, review.proposal.revision, { configuration: draft });
+    review = await reviewSourceProposal(directory);
+    expect(review.additionTracking).toMatchObject({ enabled: true, eligible: [key('Extra.md')], sensitiveSkipped: [] });
+    expect(review.proposal.tracking[key('Extra.md')]).toMatchObject({ track: true, origin: 'additions' });
+    expect(review.configuration.nodes.some(node => node.bundleNodeName === 'Extra')).toBe(true);
+    const id = review.proposal.tracking[key('Extra.md')].bundleNodeId;
+    review = await reviewSourceProposal(directory);
+    expect(review.proposal.tracking[key('Extra.md')].bundleNodeId).toBe(id);
+    await chooseProposalTracking(directory, review.proposal.revision, [key('Extra.md')], false);
+    review = await reviewSourceProposal(directory);
+    expect(review.proposal.tracking[key('Extra.md')]).toMatchObject({ track: false, origin: 'explicit' });
+    expect(review.additionTracking.eligible).toEqual([]);
+    expect(review.configuration.nodes.some(node => node.bundleNodeName === 'Extra')).toBe(false);
+    await chooseProposalTracking(directory, review.proposal.revision, [key('Extra.md')], true);
+    await chooseProposalAdditionTracking(directory, (await reviewSourceProposal(directory)).proposal.revision, false);
+    review = await reviewSourceProposal(directory);
+    expect(review.additionTracking.enabled).toBe(false);
+    expect(Object.values(review.proposal.tracking).some(decision => decision.origin === 'additions')).toBe(false);
+    expect(review.proposal.tracking[key('Extra.md')]).toMatchObject({ track: true, origin: 'explicit' });
+  });
+
   it('isolates boundary drafts and accepts exactly the reviewed bytes with their tracking decisions', async () => {
     let review = await reviewSourceProposal(directory);
+    // This scenario is about explicit choices, so Track added pages is off.
+    await chooseProposalAdditionTracking(directory, review.proposal.revision, false);
+    review = await reviewSourceProposal(directory);
     const acceptedId = review.accepted.id;
     const draft = structuredClone(review.proposal.proposed);
     draft.bundle.defaultOutlinksDepth = 3;

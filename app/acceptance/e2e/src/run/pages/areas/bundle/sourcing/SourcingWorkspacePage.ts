@@ -381,6 +381,10 @@ export class SourcingWorkspacePage {
   async expectIdentityDecision(id: string, choice: 'Same page' | 'New page' | 'Undecided') {
     await this.expect(this.identityRow(id).getByTestId('source-identity-switch')).toHaveAttribute('data-current-choice', choice === 'Same page' ? 'same' : choice === 'New page' ? 'different' : 'input');
   }
+  /** For a file with several possible matches, the chosen destination's option is selected. */
+  async expectIdentityMatch(id: string, destination: string) {
+    await this.expect(this.identityRow(id).locator(`li[data-identity-destination=${JSON.stringify(destination)}]`).getByRole('radio')).toBeChecked();
+  }
   /** Open identity review from its chip. */
   async openIdentities() {
     await this.acceptedChange(/^\d+ identity decisions?$/).click();
