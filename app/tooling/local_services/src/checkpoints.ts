@@ -107,13 +107,14 @@ function ensureRepository(repo: string, sharedObjectsDirectory?: string): Record
 }
 
 /** Write a work tree's files, including ignored ones, into a tree object. */
-function treeOf(repo: string, workTree: string, objectEnv: Record<string, string>, excludes: string[] = []): string {
+async function treeOf(repo: string, workTree: string, objectEnv: Record<string, string>, excludes: string[] = []): Promise<string> {
   const index = path.join(os.tmpdir(), `meadow-checkpoint-index-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   try {
     const env = { ...objectEnv, GIT_INDEX_FILE: index };
     // The application keeps running while a checkpoint is captured, so a
     // generated file can vanish between listing and reading. Retry until one
-    // pass sees a consistent tree.
+    // pass sees a consistent tree, waiting longer each time so a burst of
+    // writes (a preview rebuilding its output, say) can finish.
     for (let attempt = 1; ; attempt++) {
       try {
         fs.rmSync(index, { force: true });
@@ -121,7 +122,8 @@ function treeOf(repo: string, workTree: string, objectEnv: Record<string, string
         return git(repo, ["write-tree"], { env });
       } catch (error) {
         const vanished = /unable to stat|No such file or directory|unable to index file/.test(String((error as { stderr?: unknown }).stderr ?? error));
-        if (!vanished || attempt >= 5) throw error;
+        if (!vanished || attempt >= 8) throw error;
+        await new Promise(resolve => setTimeout(resolve, 50 * attempt));
       }
     }
   } finally {
@@ -241,9 +243,9 @@ export async function captureCheckpoint(options: CaptureCheckpointOptions): Prom
       fs.writeFileSync(path.join(staging, HOME_GIT_OBJECTS_FILE), storeHomeObjects(options.repo, homeGit, objectEnv));
     }
 
-    const stagingTree = treeOf(options.repo, staging, objectEnv);
-    const homeTree = fs.existsSync(options.homeDirectory) ? treeOf(options.repo, options.homeDirectory, objectEnv, EXCLUDED_HOME_PATHS) : null;
-    const homeGitTree = fs.existsSync(homeGit) ? treeOf(options.repo, homeGit, objectEnv, ["objects"]) : null;
+    const stagingTree = await treeOf(options.repo, staging, objectEnv);
+    const homeTree = fs.existsSync(options.homeDirectory) ? await treeOf(options.repo, options.homeDirectory, objectEnv, EXCLUDED_HOME_PATHS) : null;
+    const homeGitTree = fs.existsSync(homeGit) ? await treeOf(options.repo, homeGit, objectEnv, ["objects"]) : null;
 
     const combinedIndex = path.join(staging, ".combined-index");
     const env = { ...objectEnv, GIT_INDEX_FILE: combinedIndex };
