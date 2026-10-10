@@ -165,6 +165,7 @@ export function SourcingWorkspace({ bundleSlug, onClose, onAccepted, requestedPa
   // proposal cannot open its graph yet (identities, required entries, or an error) and they are needed to proceed.
   const settled = Boolean(review && (graph || review.unresolvedIdentities.length || review.missingRequiredEntries.length || error));
   useEffect(() => { onReadyChange?.(ready); }, [ready, onReadyChange]);
+  useEffect(() => () => onReadyChange?.(false), [onReadyChange]);
   /** The Page changes group collapses, then the bar slides away over the restored editor, then the workspace closes. */
   // Each step follows the previous animation's end rather than a timer, so it completes on the page's own timeline.
   const bar = useRef<HTMLElement>(null);

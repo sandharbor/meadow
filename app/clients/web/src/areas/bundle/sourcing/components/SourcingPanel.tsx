@@ -17,7 +17,8 @@ export function SourcingPanel({ bundleSlug, onAccepted, sourceChangeTrigger = 0,
   bundleSlug: string; hasDraftChanges: boolean; onAccepted: (result: { trackingOutcome?: SnapshotTrackingOutcome }) => void;
 }) {
   const [open, setOpen] = useState(false);
-  // Curation stays in place until the page changes graph is ready to replace it.
+  // Curation stays in place until the page changes graph is ready to replace it. Only the mounted
+  // workspace sets this, so a close and reopen in one update cannot leave a ready review unreported.
   const [ready, setReady] = useState(false);
   const [placeParameters, setPlaceParameters] = useState<Readonly<Record<string, string>>>({});
   const [requestedParameters, setRequestedParameters] = useState<Readonly<Record<string, string>>>({});
@@ -32,7 +33,7 @@ export function SourcingPanel({ bundleSlug, onAccepted, sourceChangeTrigger = 0,
     catch (err) { setError(String(err)); }
     finally { setBusy(false); }
   }, [bundleSlug, setBusy, setError]);
-  const close = useCallback(() => { setOpen(false); setReady(false); setRequestedParameters({}); setPlaceParameters({}); }, []);
+  const close = useCallback(() => { setOpen(false); setRequestedParameters({}); setPlaceParameters({}); }, []);
   useEditorMode(open ? 'sourcing' : 'curation', async mode => {
     if (mode === 'sourcing') await enter(); else close();
   });
