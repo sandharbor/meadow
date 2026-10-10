@@ -487,7 +487,9 @@ app.post("/api/app/open-browser", async (req, res) => {
 // ============ Start Server ============
 
 const server = app.listen(PORT, () => {
-  console.log(`Dev Tools Server running on http://localhost:${PORT}`);
+  // Report the bound port, which differs from PORT when PORT is 0.
+  const address = server.address();
+  console.log(`Dev Tools Server running on http://localhost:${typeof address === "object" && address ? address.port : PORT}`);
   session.resume().catch(error => console.error("Could not resume the open saved state:", error));
 });
 
