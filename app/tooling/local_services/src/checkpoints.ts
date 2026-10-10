@@ -39,10 +39,13 @@ const CHECKPOINT_REF_PREFIX = "refs/checkpoints/";
 const HOME_GIT_OBJECTS_FILE = "home.git-objects";
 /** Logs and disposable caches are not state worth restoring. */
 const EXCLUDED_HOME_PATHS = ["logs", "cache/source-index", "cache/editor-view"];
-// durableDocument publishes through PID/UUID siblings. They are in-progress
-// writes, not saved state, and can vanish while Git reads a running home.
-const DOCUMENT_SCRATCH_EXCLUDES = ['tmp', 'rollback', 'lock-owner'].map(purpose =>
-  `:(glob,exclude)**/.*.${purpose}.[0-9]*.????????-????-????-????-????????????`);
+// durableDocument publishes through PID/UUID siblings and holds a <document>.lock
+// while it writes. They are in-progress writes, not saved state, and can vanish
+// while Git reads a running home; a restored lock would also block later writes.
+const DOCUMENT_SCRATCH_EXCLUDES = [
+  ...['tmp', 'rollback', 'lock-owner'].map(purpose => `:(glob,exclude)**/.*.${purpose}.[0-9]*.????????-????-????-????-????????????`),
+  ...['json', 'yaml', 'yml'].map(extension => `:(glob,exclude)**/*.${extension}.lock`),
+];
 
 export interface CheckpointMetadata {
   version: 1 | 2;
