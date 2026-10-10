@@ -28,6 +28,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'cce81862-5cf
   await sourceCommand(() => list.goto());
   await sourceCommand(() => list.clickBundle('sourcing-review'));
   await sourceCommand(() => editor.waitForLoad('sourcing-review'));
+  await sourceCommand(() => editor.waitForSourceCheck());
   await sourceCommand(() => checkpoint('accepted identities are configured before any rename'));
 
   // --- Test start ---
