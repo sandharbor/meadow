@@ -68,6 +68,13 @@ const BundleEditor: React.FC = () => {
   const [sourceChangeTrigger, setSourceChangeTrigger] = useState(0);
   const [isManageSourcesOpen, setIsManageSourcesOpen] = useState(false);
   const [sourcingOpen, setSourcingOpen] = useState(false);
+  // Which editor instance switches modes, so a mode that never switches can be traced.
+  const editorInstance = useRef(Math.random().toString(36).slice(2, 7)).current;
+  useEffect(() => {
+    logger.debug(`[editor-mode] editor ${editorInstance} mounted`);
+    return () => logger.debug(`[editor-mode] editor ${editorInstance} unmounted`);
+  }, [editorInstance]);
+  useEffect(() => logger.debug(`[editor-mode] editor ${editorInstance} sourcing=${sourcingOpen}`), [editorInstance, sourcingOpen]);
   const [awaitingAcceptedGraph, setAwaitingAcceptedGraph] = useState(false);
   const [sourceReviewTrigger, setSourceReviewTrigger] = useState(0);
   const [blacklistUndo, setBlacklistUndo] = useState<BlacklistShortcutUndo | null>(null);

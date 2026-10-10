@@ -1,5 +1,6 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
+import { logger } from '../../../../shared/utils/logger';
 import type { SnapshotTrackingOutcome } from '../../../../../../../contracts/types/curationTracking.js';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SourcingComponentEditor, useSourcingStateFilters } from '../../shared-sourcing-curation/exported.js';
@@ -164,6 +165,9 @@ export function SourcingWorkspace({ bundleSlug, onClose, onAccepted, requestedPa
   // The bar's changes and refresh appear together once their contents are final: with the graph, or when the
   // proposal cannot open its graph yet (identities, required entries, or an error) and they are needed to proceed.
   const settled = Boolean(review && (graph || review.unresolvedIdentities.length || review.missingRequiredEntries.length || error));
+  const hasReview = Boolean(review);
+  const hasGraph = Boolean(graph);
+  useEffect(() => { logger.debug(`[editor-mode] workspace ready=${ready} review=${hasReview} graph=${hasGraph} leaving=${leaving}`); }, [ready, hasReview, hasGraph, leaving]);
   useEffect(() => { onReadyChange?.(ready); }, [ready, onReadyChange]);
   useEffect(() => () => onReadyChange?.(false), [onReadyChange]);
   /** The Page changes group collapses, then the bar slides away over the restored editor, then the workspace closes. */

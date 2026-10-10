@@ -1,5 +1,6 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
+import { logger } from '../../../../shared/utils/logger';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useEditorMode, useIsSurfaceRequested, useLinkedSurface } from '../../../../shared/places/placeContext.js';
@@ -22,7 +23,7 @@ export function SourcingPanel({ bundleSlug, onAccepted, sourceChangeTrigger = 0,
   const [ready, setReady] = useState(false);
   const [placeParameters, setPlaceParameters] = useState<Readonly<Record<string, string>>>({});
   const [requestedParameters, setRequestedParameters] = useState<Readonly<Record<string, string>>>({});
-  useEffect(() => { onModeChange?.(open && ready); }, [open, ready, onModeChange]);
+  useEffect(() => { logger.debug(`[editor-mode] panel open=${open} ready=${ready}`); onModeChange?.(open && ready); }, [open, ready, onModeChange]);
   const { review, busy, setBusy, background, noChanges, error, setError, scan } = useSourceStatus(bundleSlug, onPendingChanges);
   const requested = useIsSurfaceRequested();
   const openRef = useRef(open);
@@ -35,6 +36,7 @@ export function SourcingPanel({ bundleSlug, onAccepted, sourceChangeTrigger = 0,
   }, [bundleSlug, setBusy, setError]);
   const close = useCallback(() => { setOpen(false); setRequestedParameters({}); setPlaceParameters({}); }, []);
   useEditorMode(open ? 'sourcing' : 'curation', async mode => {
+    logger.debug(`[editor-mode] editor mode request ${mode} (open=${openRef.current})`);
     if (mode === 'sourcing') await enter(); else close();
   });
   useEffect(() => {
@@ -49,7 +51,7 @@ export function SourcingPanel({ bundleSlug, onAccepted, sourceChangeTrigger = 0,
   // The workspace owns detailed place parameters while mounted. This entry
   // handler also makes a source-review link work from a fresh editor.
   useLinkedSurface('source-review', { open, parameters: placeParameters }, {
-    open: async parameters => { await enter(parameters); return true as const; }, close,
+    open: async parameters => { logger.debug(`[editor-mode] surface open ${JSON.stringify(parameters)}`); await enter(parameters); return true as const; }, close: () => { logger.debug('[editor-mode] surface close'); close(); },
   });
   // A kept proposal may hold only staged settings or tracking; it still needs a way back in.
   const pending = Boolean(review?.candidate || review?.orphans.length || review?.pendingProposal);
