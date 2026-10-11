@@ -115,16 +115,17 @@ interface RunData {
   highlightedTestBasenames?: string[]
 }
 
-function FilterOptions<T extends { id: string }>({ preferenceId, options, availableIds, selectedIds, allOption, section, children }: {
+function FilterOptions<T extends { id: string }>({ preferenceId, options, availableIds, selectedIds, allOption, section, previewLimit, children }: {
   preferenceId: string
   options: readonly T[]
   availableIds: ReadonlySet<string>
   selectedIds: readonly string[]
   allOption: ReactNode
   section?: (option: T) => string | undefined
+  previewLimit?: number
   children: (option: T, available: boolean) => ReactNode
 }) {
-  const storageKey = `e2e-report-viewer.filter-expanded.${preferenceId}`
+  const storageKey = `e2e-report-viewer.filter-expanded.${preferenceId}${previewLimit === undefined ? '' : `.preview-${previewLimit}`}`
   const [expanded, setExpanded] = useState(() => {
     try { return window.localStorage.getItem(storageKey) === 'true' }
     catch { return false }
@@ -139,7 +140,11 @@ function FilterOptions<T extends { id: string }>({ preferenceId, options, availa
   // Keep selected options reachable even when another filter rules them out.
   const visible = options.filter(option => availableIds.has(option.id) || selectedIds.includes(option.id))
   const unavailable = options.filter(option => !availableIds.has(option.id) && !selectedIds.includes(option.id))
-  const hiddenLabel = `${visible.length > 0 ? 'and ' : ''}${unavailable.length} hidden`
+  const preview = visible.filter((option, index) => previewLimit === undefined || index < previewLimit || selectedIds.includes(option.id))
+  const previewIds = new Set(preview.map(option => option.id))
+  const hidden = [...visible.filter(option => !previewIds.has(option.id)), ...unavailable]
+  const limited = previewLimit !== undefined && options.length > previewLimit
+  const hiddenLabel = limited ? `Show ${hidden.length} more` : `${visible.length > 0 ? 'and ' : ''}${hidden.length} hidden`
   const renderOptions = (choices: readonly T[]) => choices.map((option, index) => {
     const heading = section?.(option)
     const startsSection = heading && (index === 0 || heading !== section?.(choices[index - 1]))
@@ -154,22 +159,23 @@ function FilterOptions<T extends { id: string }>({ preferenceId, options, availa
       {allOption}
     </div>
     <div className="filter-choices">
-      {renderOptions(visible)}
-      {unavailable.length > 0 && (
+      {renderOptions(preview)}
+      {hidden.length > 0 && (
         <button
           type="button"
-          className="inline-grid px-2 py-1 text-left text-xs font-medium text-neutral-500 hover:text-neutral-800 hover:underline cursor-pointer"
+          className="inline-grid grid-cols-[1fr_auto] items-center gap-1 px-2 py-1 text-left text-xs font-medium text-neutral-500 hover:text-neutral-800 hover:underline cursor-pointer"
           aria-expanded={expanded}
           aria-controls={optionsId}
           onClick={toggleExpanded}
         >
           {/* Reserve the collapsed label's width so the link stays in place when rows wrap. */}
           <span className="invisible col-start-1 row-start-1" aria-hidden="true">{hiddenLabel}</span>
-          <span className="col-start-1 row-start-1">{expanded ? 'hide' : hiddenLabel}</span>
+          <span className="col-start-1 row-start-1">{expanded ? limited ? 'Show less' : 'hide' : hiddenLabel}</span>
+          {previewLimit !== undefined && <span className="col-start-2 row-start-1" aria-hidden="true">{expanded ? '▾' : '▸'}</span>}
         </button>
       )}
       <span id={optionsId} className="contents">
-        {expanded && renderOptions(unavailable)}
+        {expanded && renderOptions(hidden)}
       </span>
     </div>
   </>
@@ -779,7 +785,7 @@ export default function RunDetail() {
             {/* Base row */}
             <div className="filter-section filter-tags mb-1 w-full rounded-md px-3 py-1.5 filter-row" role="group" aria-label="Concept filters">
               <span className="filter-label text-xs text-neutral-400 font-medium">Tags:</span>
-              <FilterOptions preferenceId="tags" options={baseDocs} availableIds={availableDocIds} selectedIds={selectedDocIds}
+              <FilterOptions preferenceId="tags" options={baseDocs} availableIds={availableDocIds} selectedIds={selectedDocIds} previewLimit={10}
                 allOption={
                   <button
                     className="filter-default text-neutral-600 px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
@@ -797,7 +803,7 @@ export default function RunDetail() {
             {extensionDocs.length > 0 && extensionDocIds.some((id) => presentDocIds.has(id)) && (
               <div className="filter-section filter-contributed-tags mb-1 w-full rounded-md px-3 py-1.5 filter-row" role="group" aria-label="Contributed concept filters">
                 <span className="filter-label text-xs text-neutral-400 font-medium">meadow-extension:</span>
-                <FilterOptions preferenceId="contributed-tags" options={extensionDocs} availableIds={availableDocIds} selectedIds={selectedDocIds}
+                <FilterOptions preferenceId="contributed-tags" options={extensionDocs} availableIds={availableDocIds} selectedIds={selectedDocIds} previewLimit={10}
                   allOption={
                     <button
                       className="filter-default text-neutral-600 px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"

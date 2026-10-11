@@ -34,11 +34,48 @@ const FIXTURE_RUN_ID = '__fixture'
 const FIXTURE_TEST_SLUG = 'canonical'
 
 const ScenarioName: React.FC<{ slug: string }> = ({ slug }) => {
+  const dialogRef = useRef<React.ComponentRef<'dialog'>>(null)
+  const buttonRef = useRef<React.ComponentRef<'button'>>(null)
+  const name = scenarioDisplayName(slug)
+
   return (
-    <span className="flex min-w-0 items-center gap-2">
-      <span className="min-w-0 text-neutral-600 font-medium">{scenarioDisplayName(slug)}</span>
+    <div className="col-span-2 row-start-2 flex min-w-0 items-center gap-2">
+      <button
+        ref={buttonRef}
+        type="button"
+        aria-label="Show full scenario name"
+        aria-haspopup="dialog"
+        className="min-w-0 flex-1 cursor-pointer truncate py-1 text-left font-medium text-neutral-600 hover:text-brand-700 lg:hidden"
+        onClick={() => dialogRef.current?.showModal()}
+      >
+        {name}
+      </button>
+      <span className="hidden min-w-0 text-neutral-600 font-medium lg:inline">{name}</span>
       <CopyReferenceButton text={`E2E scenario ${slug}`} label="Copy scenario reference" />
-    </span>
+      <dialog
+        ref={dialogRef}
+        aria-labelledby="scenario-name-title"
+        onClose={() => buttonRef.current?.focus()}
+        className="m-auto max-h-[80dvh] w-[calc(100%-2rem)] max-w-lg overflow-auto rounded-xl border border-neutral-200 bg-white p-0 text-neutral-800 shadow-xl backdrop:bg-black/50"
+        onClick={event => { if (event.target === event.currentTarget) dialogRef.current?.close() }}
+      >
+        <div className="p-5">
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <h2 id="scenario-name-title" className="text-sm font-semibold text-neutral-500">Scenario name</h2>
+            <button
+              type="button"
+              autoFocus
+              aria-label="Close scenario name"
+              className="cursor-pointer rounded border border-neutral-300 px-3 py-2 text-sm font-medium hover:bg-neutral-100"
+              onClick={() => dialogRef.current?.close()}
+            >
+              Close
+            </button>
+          </div>
+          <p className="break-words text-base font-medium leading-relaxed">{name}</p>
+        </div>
+      </dialog>
+    </div>
   )
 }
 
@@ -63,19 +100,21 @@ const Breadcrumbs: React.FC = () => {
   const { runId, testSlug } = useParams()
 
   return (
-    <nav className="flex min-w-0 items-center gap-1 text-sm">
-      <Link to="/" className="text-brand-500 hover:text-brand-700 font-medium">
-        Reports
-      </Link>
-      {runId && (
-        <>
-          <span className="text-neutral-400">/</span>
-          <RunIdentifier key={runId} runId={runId} />
-        </>
-      )}
+    <nav className={`${testSlug ? 'contents lg:flex' : 'flex'} min-w-0 items-center gap-1 text-sm`}>
+      <span className={`flex min-w-0 items-center gap-1 ${testSlug ? 'whitespace-nowrap lg:whitespace-normal' : ''}`}>
+        <Link to="/" className="text-brand-500 hover:text-brand-700 font-medium">
+          Reports
+        </Link>
+        {runId && (
+          <>
+            <span className="text-neutral-400">/</span>
+            <RunIdentifier key={runId} runId={runId} />
+          </>
+        )}
+      </span>
       {testSlug && (
         <>
-          <span className="text-neutral-400">/</span>
+          <span className="hidden text-neutral-400 lg:inline">/</span>
           <ScenarioName key={testSlug} slug={testSlug} />
         </>
       )}
@@ -220,9 +259,11 @@ const AppHeader: React.FC = () => {
   const reportsHome = useMatch('/')
   const runListing = useMatch('/:runId')
   const agentRunListing = useMatch('/agents/:runId')
+  const scenario = useMatch('/:runId/:testSlug')
+  const onScenario = Boolean(scenario && !['agents', 'concepts'].includes(scenario.params.runId ?? ''))
   const showOpenDev = Boolean(reportsHome || runListing || agentRunListing)
   return (
-    <header className="bg-white border-b border-neutral-200 px-4 py-2 flex items-center gap-4 flex-shrink-0">
+    <header className={`bg-white border-b border-neutral-200 px-4 py-2 items-center flex-shrink-0 ${onScenario ? 'grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-1 lg:flex lg:gap-4' : 'flex gap-4'}`}>
       <Routes>
         <Route path="/" element={<ReportsNavigation />} />
         <Route path="/agents" element={<ReportsNavigation />} />
@@ -232,7 +273,7 @@ const AppHeader: React.FC = () => {
         <Route path="/:runId" element={<Breadcrumbs />} />
         <Route path="/:runId/:testSlug" element={<Breadcrumbs />} />
       </Routes>
-      <div className="ml-auto flex shrink-0 items-center gap-4">
+      <div className={`ml-auto flex shrink-0 items-center gap-4 ${onScenario ? 'col-start-2 row-start-1' : ''}`}>
         {showOpenDev && <a href="/api/dev-tools/open" target="_blank" rel="noopener noreferrer" className="shrink-0 rounded border border-neutral-300 px-3 py-1 text-xs font-semibold text-neutral-700 hover:bg-neutral-50">
           Open dev <span aria-hidden="true">↗</span>
         </a>}

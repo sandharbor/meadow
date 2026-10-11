@@ -23,6 +23,7 @@ html, body {
   width: 100%;
 }
 
+/* Shared palette for run filters, scenario labels, and overflow indicators. */
 .filter-interface { --filter-accent: theme(colors.indigo.400); }
 .filter-areas { --filter-accent: theme(colors.sky.500); }
 .filter-bundles { --filter-accent: theme(colors.emerald.500); }
@@ -82,6 +83,11 @@ html, body {
   background-color: color-mix(in srgb, var(--filter-accent) 75%, white);
   color: theme(colors.neutral.800);
   outline: 2px solid theme(colors.orange.500);
+}
+
+.scenario-metadata-chip[data-highlighted="true"] {
+  background-color: color-mix(in srgb, var(--filter-accent) 75%, white);
+  color: theme(colors.neutral.800);
 }
 
 .scenario-metadata-chip[data-muted="true"] {

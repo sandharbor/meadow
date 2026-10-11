@@ -164,6 +164,45 @@ test('tag rows default to All and clear their own selections independently', asy
   await expect(page.getByRole('link', { name: 'big file sourcing' })).toBeVisible();
 });
 
+test('large tag rows preview ten choices and keep selections visible when collapsed', async ({ page }) => {
+  const concepts = [false, true].flatMap(isContribution => Array.from({ length: 14 }, (_, index) => ({
+    id: `${isContribution ? 'contributed' : 'base'}-preview-${index + 1}`,
+    name: `${isContribution ? 'Contributed' : 'Base'} preview ${String(index + 1).padStart(2, '0')}`,
+    description: '', searchFacet: true, isContribution,
+  })));
+  await page.route('**/api/concepts', route => route.fulfill({ json: concepts }));
+  await page.route('**/api/runs/filter-cascade', route => route.fulfill({ json: {
+    runId: 'filter-cascade', scenarios: [{
+      slug: 'many-tags', testName: 'Many tags', status: 'passed', duration: 1,
+      bundleMode: 'single-file', executionSurface: 'browser', conceptIds: concepts.map(concept => concept.id),
+      appAreaDocIds: [], bundleDocIds: [], keyFrames: [], hasIssues: false,
+    }],
+  } }));
+
+  for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport);
+    await page.goto('/filter-cascade?view=list');
+    for (const [group, prefix] of [['Concept filters', 'Base'], ['Contributed concept filters', 'Contributed']]) {
+      const row = page.getByRole('group', { name: group, exact: true });
+      const choices = row.locator('button[aria-pressed]:not(.filter-default)');
+      await expect(choices).toHaveCount(10);
+      await expect(row.getByRole('button', { name: `${prefix} preview 14`, exact: true })).toHaveCount(0);
+      await row.getByRole('button', { name: 'Show 4 more', exact: true }).click();
+      await expect(choices).toHaveCount(14);
+      const selected = row.getByRole('button', { name: `${prefix} preview 14`, exact: true });
+      await selected.click();
+      await row.getByRole('button', { name: 'Show less', exact: true }).click();
+      await expect(choices).toHaveCount(11);
+      await expect(selected).toBeVisible();
+      await expect(selected).toHaveAttribute('aria-pressed', 'true');
+      await expect(row.getByRole('button', { name: 'Show 3 more', exact: true })).toHaveAttribute('aria-expanded', 'false');
+      await selected.click();
+      await expect(choices).toHaveCount(10);
+      await expect(selected).toHaveCount(0);
+    }
+  }
+});
+
 test('both tag rows show co-occurring tags from the selected scenarios', async ({ page }) => {
   const concepts = page.getByRole('group', { name: 'Concept filters', exact: true });
   const contributions = page.getByRole('group', { name: 'Contributed concept filters', exact: true });

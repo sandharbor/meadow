@@ -27,6 +27,7 @@ import type { TestSourceChange } from '../../../../e2e/src/artifacts/testSourceC
 import { TestSourceChangeModal } from './TestSourceChangeModal.tsx'
 import { CopyReferenceButton } from './CopyReferenceButton.tsx'
 import { ScenarioText, scenarioPromptContext } from './ScenarioText.tsx'
+import { ScenarioMetadata } from './ScenarioMetadata.tsx'
 import { useScenarioConceptDetails } from './ScenarioConceptDetails.tsx'
 import type { ConceptText } from '../../../../../concepts/types.js'
 import {
@@ -49,6 +50,11 @@ import { CheckpointOpenControl } from './CheckpointOpenControl.tsx'
 import { bundleModeLabel, type BundleMode } from '../../bundleModes.ts'
 
 // --- Types ---
+
+interface FullscreenVideoElement extends HTMLVideoElement {
+  webkitEnterFullscreen?: () => void
+  webkitDisplayingFullscreen?: boolean
+}
 
 interface KeyFrame {
   codeRevision?: string
@@ -183,7 +189,7 @@ interface FileTimelineItem {
   meta?: string
 }
 
-type ActiveTab = 'files' | 'test-code' | 'state' | 's3' | 'otel'
+type ActiveTab = 'logs' | 'files' | 'test-code' | 'state' | 's3' | 'otel'
 type TelemetryTab = 'spans' | 'slowest' | 'groups'
 
 interface TelemetryEvent {
@@ -483,6 +489,17 @@ function TickSummaryLine({
 
 // --- Component ---
 
+function centerWithinPanel(panel: HTMLElement | null, selector: string) {
+  const entry = panel?.querySelector(selector)
+  if (!panel || !entry) return
+  const panelBounds = panel.getBoundingClientRect()
+  const entryBounds = entry.getBoundingClientRect()
+  panel.scrollTo({
+    top: panel.scrollTop + entryBounds.top - panelBounds.top - (panel.clientHeight - entryBounds.height) / 2,
+    behavior: 'smooth',
+  })
+}
+
 export default function ScenarioViewer() {
   const { runId, testSlug } = useParams<{ runId: string; testSlug: string }>()
   const [searchParams] = useSearchParams()
@@ -508,7 +525,16 @@ export default function ScenarioViewer() {
   const [currentMessageIndex, setCurrentMessageIndex] = useState(-1)
 
   // UI state
-  const [activeTab, setActiveTab] = useState<ActiveTab>('test-code')
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 1023px)').matches)
+  const [selectedTab, setActiveTab] = useState<ActiveTab>('test-code')
+  const activeTab = !isMobile && selectedTab === 'logs' ? 'test-code' : selectedTab
+
+  useEffect(() => {
+    const query = window.matchMedia('(max-width: 1023px)')
+    const update = () => setIsMobile(query.matches)
+    query.addEventListener('change', update)
+    return () => query.removeEventListener('change', update)
+  }, [])
   const [checkpointDropdownOpen, setCheckpointDropdownOpen] = useState(false)
   const [logFilter, setLogFilter] = useState<'all' | 'backend' | 'frontend'>('all')
   const [levelFilter, setLevelFilter] = useState<Set<string>>(() => new Set(['DEBUG', 'INFO', 'WARN', 'ERROR', 'LOG']))
@@ -518,6 +544,7 @@ export default function ScenarioViewer() {
   const [s3ListOpen, setS3ListOpen] = useState(false)
   const [stateListOpen, setStateListOpen] = useState(false)
   const [playing, setPlaying] = useState(false)
+  const [fullscreenError, setFullscreenError] = useState<string | null>(null)
   const [playSpeed, setPlaySpeed] = useState(initialSpeed)
   const [timeDisplay, setTimeDisplay] = useState('0:00 / 0:00')
   const [timelinePercent, setTimelinePercent] = useState(0)
@@ -584,6 +611,41 @@ export default function ScenarioViewer() {
       setMediaPlaybackSpeed(videoRef.current, playSpeed)
     }
   }, [playSpeed])
+
+  // Native controls remain available while the custom player is outside the fullscreen view.
+  useEffect(() => {
+    const video = videoRef.current as FullscreenVideoElement | null
+    if (!video) return
+    const updateControls = () => {
+      video.controls = document.fullscreenElement === video || Boolean(video.webkitDisplayingFullscreen)
+    }
+    const endNativeFullscreen = () => { video.controls = false }
+    document.addEventListener('fullscreenchange', updateControls)
+    video.addEventListener('webkitendfullscreen', endNativeFullscreen)
+    return () => {
+      document.removeEventListener('fullscreenchange', updateControls)
+      video.removeEventListener('webkitendfullscreen', endNativeFullscreen)
+    }
+  }, [manifest])
+
+  const enterVideoFullscreen = async () => {
+    const video = videoRef.current as FullscreenVideoElement | null
+    if (!video) return
+    setFullscreenError(null)
+    video.controls = true
+    try {
+      if (document.fullscreenEnabled && video.requestFullscreen) {
+        await video.requestFullscreen()
+      } else if (video.webkitEnterFullscreen) {
+        video.webkitEnterFullscreen()
+      } else {
+        throw new Error('Fullscreen unavailable')
+      }
+    } catch {
+      video.controls = false
+      setFullscreenError('Full screen is unavailable. You can still play the video here.')
+    }
+  }
 
   const startTime = manifest?.startTime ? new Date(manifest.startTime).getTime() : 0
 
@@ -1091,8 +1153,7 @@ export default function ScenarioViewer() {
 
   useEffect(() => {
     if (activeTab !== 'test-code' || highlightedSourceLine === null) return
-    testCodeRef.current?.querySelector(`[data-source-line="${highlightedSourceLine}"]`)
-      ?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    centerWithinPanel(testCodeRef.current, `[data-source-line="${highlightedSourceLine}"]`)
   }, [highlightedSourceLine, activeTab, testSource, showCaptureCode])
 
   const openTestSourceFixture = useCallback(async (name: string) => {
@@ -1148,18 +1209,12 @@ export default function ScenarioViewer() {
 
   useEffect(() => {
     if (!autoFollowRef.current || highlightedLogIndex < 0) return
-    const el = logEntriesRef.current?.querySelector(`[data-idx="${highlightedLogIndex}"]`)
-    if (el) {
-      el.scrollIntoView({ block: 'center', behavior: 'smooth' })
-    }
-  }, [highlightedLogIndex])
+    centerWithinPanel(logEntriesRef.current, `[data-idx="${highlightedLogIndex}"]`)
+  }, [highlightedLogIndex, activeTab, isMobile])
 
   useEffect(() => {
     if (activeTab !== 'otel' || activeTelemetryTab !== 'spans' || highlightedTelemetryIndex < 0) return
-    const el = telemetryEntriesRef.current?.querySelector(`[data-otel-idx="${highlightedTelemetryIndex}"]`)
-    if (el) {
-      el.scrollIntoView({ block: 'center', behavior: 'smooth' })
-    }
+    centerWithinPanel(telemetryEntriesRef.current, `[data-otel-idx="${highlightedTelemetryIndex}"]`)
   }, [activeTab, activeTelemetryTab, highlightedTelemetryIndex])
 
   // --- Tick helpers ---
@@ -1747,32 +1802,155 @@ export default function ScenarioViewer() {
   const hasScenarioMetadata = Boolean(manifest.bundleMode || matchingAppAreas.length || matchingDocs.length)
   const displayedProse = !showCaptureCode && manifest.nameText ? sourceLocations.scenarioProse : undefined
 
+  const logsPanel = (
+        <div role="region" aria-label="Scenario logs" className="flex-1 min-h-0 min-w-0 flex flex-col">
+          <div className="bg-neutral-100 px-3 py-1.5 text-xs font-bold border-b border-neutral-200 flex shrink-0 flex-wrap lg:flex-nowrap items-center gap-2">
+            <span>Logs</span>
+            {headerTimeRange && (
+              <span className="order-last w-full text-neutral-400 font-normal lg:order-none lg:ml-auto lg:w-auto">{headerTimeRange}</span>
+            )}
+            <div className="flex gap-1 ml-2">
+              {(['all', 'backend', 'frontend'] as const).map((f) => (
+                <button
+                  key={f}
+                  className={`border border-neutral-300 px-2 py-0.5 rounded text-[11px] cursor-pointer ${
+                    logFilter === f ? 'bg-neutral-300 text-neutral-800' : 'bg-transparent text-neutral-500'
+                  }`}
+                  onClick={() => setLogFilter(f)}
+                >
+                  {f.charAt(0).toUpperCase() + f.slice(1)}
+                </button>
+              ))}
+            </div>
+            <div ref={levelDropdownRef} className="relative ml-1">
+              <button
+                className="border border-neutral-300 px-2 py-0.5 rounded text-[11px] cursor-pointer bg-transparent text-neutral-500 flex items-center gap-1"
+                onClick={() => setLevelDropdownOpen(prev => !prev)}
+              >
+                Levels
+                {levelFilter.size < 5 && (
+                  <span className="text-brand-500 font-normal">({levelFilter.size})</span>
+                )}
+                <svg className={`w-2.5 h-2.5 transition-transform ${levelDropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {levelDropdownOpen && (
+                <div className="absolute top-full right-0 mt-1 bg-white border border-neutral-200 rounded shadow-lg z-20 py-1 min-w-[120px]">
+                  {([
+                    { value: 'ERROR', label: 'Error', color: 'text-red-600' },
+                    { value: 'WARN', label: 'Warning', color: 'text-yellow-600' },
+                    { value: 'INFO', label: 'Info', color: '' },
+                    { value: 'DEBUG', label: 'Debug', color: 'text-neutral-400' },
+                    { value: 'LOG', label: 'Log', color: 'text-blue-500' },
+                  ] as const).map(({ value, label, color }) => (
+                    <label
+                      key={value}
+                      className="flex items-center gap-2 px-3 py-1 hover:bg-neutral-50 cursor-pointer text-[11px]"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={levelFilter.has(value)}
+                        onChange={() => {
+                          setLevelFilter(prev => {
+                            const next = new Set(prev)
+                            if (next.has(value)) next.delete(value)
+                            else next.add(value)
+                            return next
+                          })
+                        }}
+                        className="accent-brand-500"
+                      />
+                      <span className={color}>{label}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          <div
+            ref={logEntriesRef}
+            className="flex-1 min-h-0 overflow-auto text-xs leading-relaxed"
+            onWheel={() => { autoFollowRef.current = false }}
+            onTouchMove={() => { autoFollowRef.current = false }}
+            onClick={() => { autoFollowRef.current = false }}
+          >
+            {filteredLogs.map((log, i) => {
+              const timeStr = log.timestamp
+                ? new Date(log.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                : ''
+              return (
+                <div
+                  key={i}
+                  data-idx={i}
+                  className={`flex gap-2 px-3 py-0.5 cursor-pointer whitespace-nowrap hover:bg-neutral-100 ${
+                    i === highlightedLogIndex ? 'bg-blue-100' : ''
+                  }`}
+                  onClick={() => {
+                    if (log.timestamp) {
+                      const logTime = new Date(log.timestamp).getTime()
+                      const video = videoRef.current
+                      if (video) video.currentTime = Math.max(0, toVideoTime(logTime))
+                    }
+                  }}
+                >
+                  <span className="text-neutral-400 min-w-[72px]">{timeStr}</span>
+                  <span className={`min-w-[60px] font-bold ${
+                    log.source === 'backend' ? 'text-green-700' : 'text-blue-600'
+                  }`}>
+                    {log.source}
+                  </span>
+                  <span className={`min-w-[36px] ${
+                    log.level === 'ERROR' ? 'text-red-600' :
+                    log.level === 'WARN' ? 'text-yellow-600' : ''
+                  }`}>
+                    {log.level}
+                  </span>
+                  <span className="text-neutral-600 overflow-hidden text-ellipsis">{log.message}</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+  )
+
   return (
-    <div className="h-full grid grid-cols-2" style={{ gridTemplateRows: hasScenarioMetadata ? 'auto minmax(0, 1fr)' : 'minmax(0, 1fr)' }}>
+    <div className="h-full min-h-0 flex flex-col overflow-y-auto lg:grid lg:grid-cols-2 lg:overflow-hidden" style={{ gridTemplateRows: hasScenarioMetadata ? 'auto minmax(0, 1fr)' : 'minmax(0, 1fr)' }}>
       {scenarioConceptDetails}
       {hasScenarioMetadata && (
-        <div role="region" aria-label="Scenario metadata" className="col-span-2 flex min-w-0 items-center gap-4 overflow-x-auto whitespace-nowrap border-b border-neutral-200 bg-neutral-50 px-4 py-1.5">
+        <ScenarioMetadata
+          key={`${runId}/${testSlug}`}
+          isMobile={isMobile}
+          indicators={[
+            ...(manifest.bundleMode ? [{ key: 'mode', label: `Starts: ${bundleModeLabel(manifest.bundleMode)}`, accent: 'filter-starts-with' }] : []),
+            ...matchingAppAreas.map(area => ({ key: `area-${area.id}`, label: `Area: ${area.name}`, accent: 'filter-areas' })),
+            ...matchingDocs.map(doc => ({ key: `concept-${doc.id}`, label: `Concept: ${doc.name}`, accent: doc.isContribution ? 'filter-contributed-tags' : 'filter-tags' })),
+          ]}
+        >
+          {expanded => <>
           {/* Bundle-origin mode, app area, and concept chips */}
           {manifest?.bundleMode && (
-            <div className="flex shrink-0 items-center gap-1.5">
-              <span className="text-[11px] text-neutral-400">Starts with:</span>
+            <div className={`scenario-metadata-group filter-starts-with flex items-center gap-1.5 ${expanded ? 'min-w-0 flex-wrap' : 'shrink-0'}`}>
+              <span className="text-[11px] text-neutral-400">{isMobile ? 'Starts:' : 'Starts with:'}</span>
               <Link
                 to={`/${runId}?mode=${encodeURIComponent(manifest.bundleMode)}`}
-                className="px-2 py-0.5 rounded-full text-[11px] font-medium transition-colors bg-violet-100 text-violet-700 hover:bg-violet-200"
+                data-selected="false"
+                className="scenario-metadata-chip max-w-full break-words px-2 py-0.5 rounded-full text-[11px] font-medium text-neutral-600 transition-colors"
               >
                 {bundleModeLabel(manifest.bundleMode)}
               </Link>
             </div>
           )}
           {matchingAppAreas.length > 0 && (
-            <div className="flex shrink-0 items-center gap-1.5">
+            <div className={`scenario-metadata-group filter-areas flex items-center gap-1.5 ${expanded ? 'min-w-0 flex-wrap' : 'shrink-0'}`}>
               <span className="text-[11px] text-neutral-400">Areas:</span>
               {matchingAppAreas.map((area) => (
                 <Link
                   key={area.id}
                   to={`/${runId}?area=${encodeURIComponent(area.id)}`}
                   title={area.description}
-                  className="px-2 py-0.5 rounded-full text-[11px] font-medium transition-colors bg-sky-100 text-sky-700 hover:bg-sky-200"
+                  data-selected="false"
+                  className="scenario-metadata-chip max-w-full break-words px-2 py-0.5 rounded-full text-[11px] font-medium text-neutral-600 transition-colors"
                 >
                   {area.name}
                 </Link>
@@ -1780,7 +1958,7 @@ export default function ScenarioViewer() {
             </div>
           )}
           {matchingDocs.length > 0 && (
-            <div className="flex shrink-0 items-center gap-1.5">
+            <div className={`flex items-center gap-1.5 ${expanded ? 'min-w-0 flex-wrap' : 'shrink-0'}`}>
               <span className="text-[11px] text-neutral-400">Concepts:</span>
               {matchingDocs.map((doc) => {
                 const hasKeyFrame = manifest?.keyFrames?.some(kf => kf.docId === doc.id)
@@ -1790,11 +1968,9 @@ export default function ScenarioViewer() {
                     type="button"
                     onClick={() => { setHoveredDocId(null); openConcept({ id: doc.id, name: doc.name }) }}
                     title={doc.isContribution ? 'Contributed Meadow concept' : undefined}
-                    className={`cursor-pointer px-2 py-0.5 rounded-full text-[11px] font-medium transition-colors ${
-                      hoveredDocId === doc.id
-                        ? 'bg-brand-500 text-white'
-                        : 'bg-brand-100 text-brand-700 hover:bg-brand-200'
-                    }`}
+                    data-selected="false"
+                    data-highlighted={hoveredDocId === doc.id}
+                    className={`scenario-metadata-group scenario-metadata-chip ${doc.isContribution ? 'filter-contributed-tags' : 'filter-tags'} max-w-full break-words cursor-pointer px-2 py-0.5 rounded-full text-[11px] font-medium text-neutral-600 transition-colors`}
                     onMouseEnter={() => hasKeyFrame ? setHoveredDocId(doc.id) : undefined}
                     onMouseLeave={() => setHoveredDocId(null)}
                   >
@@ -1805,16 +1981,18 @@ export default function ScenarioViewer() {
               })}
             </div>
           )}
-        </div>
+          </>}
+        </ScenarioMetadata>
       )}
-      {/* Left column */}
-      <div className="flex flex-col overflow-hidden border-r border-neutral-200">
+      {/* Playback and desktop logs; mobile inspection follows the video. */}
+      <div className="contents lg:flex lg:min-h-0 lg:min-w-0 lg:flex-col lg:overflow-hidden lg:border-r lg:border-neutral-200">
         {/* Video */}
         <div className="flex-shrink-0 p-2 bg-neutral-50 border-b border-neutral-200">
           <video
             ref={videoRef}
             preload="auto"
-            className="w-full max-h-[450px] bg-black rounded"
+            playsInline
+            className="w-full max-h-[35dvh] bg-black rounded lg:max-h-[450px] fullscreen:max-h-none fullscreen:h-full fullscreen:rounded-none"
             onTimeUpdate={handleTimeUpdate}
             onPlay={() => setPlaying(true)}
             onPause={() => setPlaying(false)}
@@ -1835,9 +2013,10 @@ export default function ScenarioViewer() {
           >
             <source src={`${API}/video.webm`} type="video/webm" />
           </video>
-          <div className="flex items-start gap-2 mt-1.5 text-xs">
+          <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs lg:flex-nowrap lg:items-start">
             <button
-              className="bg-neutral-100 border border-neutral-300 w-8 h-7 rounded cursor-pointer hover:bg-neutral-200 flex items-center justify-center"
+              aria-label={playing ? 'Pause video' : 'Play video'}
+              className="bg-neutral-100 border border-neutral-300 w-9 h-9 shrink-0 rounded cursor-pointer hover:bg-neutral-200 flex items-center justify-center lg:w-8 lg:h-7"
               onClick={() => {
                 const video = videoRef.current
                 if (video) {
@@ -1865,7 +2044,7 @@ export default function ScenarioViewer() {
               />
               <span className="text-neutral-500 min-w-[36px]">{playSpeed}%</span>
             </div>
-            <div className="flex-1">
+            <div className="order-last w-full min-w-0 lg:order-none lg:w-auto lg:flex-1">
               <div
                 className="bg-neutral-200 rounded relative cursor-pointer" style={{ height: '24px' }}
                 onClick={(e) => {
@@ -1959,8 +2138,20 @@ export default function ScenarioViewer() {
                 )
               })()}
             </div>
-            <span className="min-w-[80px] text-right text-neutral-500">{timeDisplay}</span>
+            <span className="ml-auto min-w-[80px] text-right text-neutral-500 lg:ml-0">{timeDisplay}</span>
+            <button
+              type="button"
+              aria-label="Full screen video"
+              title="Full screen video"
+              className="bg-neutral-100 border border-neutral-300 w-9 h-9 shrink-0 rounded cursor-pointer hover:bg-neutral-200 flex items-center justify-center lg:w-8 lg:h-7"
+              onClick={enterVideoFullscreen}
+            >
+              <svg className="w-4 h-4 text-neutral-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5" />
+              </svg>
+            </button>
           </div>
+          {fullscreenError && <p role="alert" className="mt-1 text-xs text-red-700">{fullscreenError}</p>}
           {/* Keyframe hover popup — sized to match video player */}
           {hoveredKeyFrame && (() => {
             const doc = concepts.find(d => d.id === hoveredKeyFrame.docId)
@@ -1994,7 +2185,7 @@ export default function ScenarioViewer() {
         </div>
 
         {/* Checkpoint indicator with dropdown */}
-        <div className="relative flex items-center gap-2 px-3 py-1.5 bg-neutral-50 border-b border-neutral-200 text-xs">
+        <div role="group" aria-label="Scenario checkpoint" className="relative flex shrink-0 min-w-0 items-center gap-2 px-3 py-1.5 bg-neutral-50 border-b border-neutral-200 text-xs">
           <button
             className="flex min-w-0 items-center gap-1.5 cursor-pointer hover:bg-neutral-100 rounded px-1.5 py-0.5 -mx-1.5 -my-0.5 transition-colors"
             onClick={() => setCheckpointDropdownOpen(prev => !prev)}
@@ -2176,132 +2367,26 @@ export default function ScenarioViewer() {
           )}
         </div>
 
-        {/* Logs */}
-        <div className="flex-1 min-h-0 flex flex-col">
-          <div className="bg-neutral-100 px-3 py-1.5 text-xs font-bold border-b border-neutral-200 flex items-center gap-2">
-            <span>Logs</span>
-            {headerTimeRange && (
-              <span className="text-neutral-400 font-normal ml-auto">{headerTimeRange}</span>
-            )}
-            <div className="flex gap-1 ml-2">
-              {(['all', 'backend', 'frontend'] as const).map((f) => (
-                <button
-                  key={f}
-                  className={`border border-neutral-300 px-2 py-0.5 rounded text-[11px] cursor-pointer ${
-                    logFilter === f ? 'bg-neutral-300 text-neutral-800' : 'bg-transparent text-neutral-500'
-                  }`}
-                  onClick={() => setLogFilter(f)}
-                >
-                  {f.charAt(0).toUpperCase() + f.slice(1)}
-                </button>
-              ))}
-            </div>
-            <div ref={levelDropdownRef} className="relative ml-1">
-              <button
-                className="border border-neutral-300 px-2 py-0.5 rounded text-[11px] cursor-pointer bg-transparent text-neutral-500 flex items-center gap-1"
-                onClick={() => setLevelDropdownOpen(prev => !prev)}
-              >
-                Levels
-                {levelFilter.size < 5 && (
-                  <span className="text-brand-500 font-normal">({levelFilter.size})</span>
-                )}
-                <svg className={`w-2.5 h-2.5 transition-transform ${levelDropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              {levelDropdownOpen && (
-                <div className="absolute top-full right-0 mt-1 bg-white border border-neutral-200 rounded shadow-lg z-20 py-1 min-w-[120px]">
-                  {([
-                    { value: 'ERROR', label: 'Error', color: 'text-red-600' },
-                    { value: 'WARN', label: 'Warning', color: 'text-yellow-600' },
-                    { value: 'INFO', label: 'Info', color: '' },
-                    { value: 'DEBUG', label: 'Debug', color: 'text-neutral-400' },
-                    { value: 'LOG', label: 'Log', color: 'text-blue-500' },
-                  ] as const).map(({ value, label, color }) => (
-                    <label
-                      key={value}
-                      className="flex items-center gap-2 px-3 py-1 hover:bg-neutral-50 cursor-pointer text-[11px]"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={levelFilter.has(value)}
-                        onChange={() => {
-                          setLevelFilter(prev => {
-                            const next = new Set(prev)
-                            if (next.has(value)) next.delete(value)
-                            else next.add(value)
-                            return next
-                          })
-                        }}
-                        className="accent-brand-500"
-                      />
-                      <span className={color}>{label}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-          <div
-            ref={logEntriesRef}
-            className="flex-1 overflow-y-auto text-xs leading-relaxed"
-            onWheel={() => { autoFollowRef.current = false }}
-            onClick={() => { autoFollowRef.current = false }}
-          >
-            {filteredLogs.map((log, i) => {
-              const timeStr = log.timestamp
-                ? new Date(log.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
-                : ''
-              return (
-                <div
-                  key={i}
-                  data-idx={i}
-                  className={`flex gap-2 px-3 py-0.5 cursor-pointer whitespace-nowrap hover:bg-neutral-100 ${
-                    i === highlightedLogIndex ? 'bg-blue-100' : ''
-                  }`}
-                  onClick={() => {
-                    if (log.timestamp) {
-                      const logTime = new Date(log.timestamp).getTime()
-                      const video = videoRef.current
-                      if (video) video.currentTime = Math.max(0, toVideoTime(logTime))
-                    }
-                  }}
-                >
-                  <span className="text-neutral-400 min-w-[72px]">{timeStr}</span>
-                  <span className={`min-w-[60px] font-bold ${
-                    log.source === 'backend' ? 'text-green-700' : 'text-blue-600'
-                  }`}>
-                    {log.source}
-                  </span>
-                  <span className={`min-w-[36px] ${
-                    log.level === 'ERROR' ? 'text-red-600' :
-                    log.level === 'WARN' ? 'text-yellow-600' : ''
-                  }`}>
-                    {log.level}
-                  </span>
-                  <span className="text-neutral-600 overflow-hidden text-ellipsis">{log.message}</span>
-                </div>
-              )
-            })}
-          </div>
-        </div>
+        {!isMobile && logsPanel}
       </div>
 
-      {/* Right column */}
-      <div className="flex flex-col overflow-hidden">
+      {/* Scenario inspection tabs */}
+      <div className="flex flex-1 min-h-[48rem] min-w-0 flex-col overflow-hidden lg:min-h-0">
         {/* Tab bar */}
-        <div className="flex bg-neutral-100 border-b border-neutral-200">
-          {(['test-code', 'files', 'state', 's3', 'otel'] as const).map((tab) => (
+        <div role="group" aria-label="Scenario views" className="flex shrink-0 overflow-x-auto bg-neutral-100 border-b border-neutral-200">
+          {((isMobile ? ['test-code', 'files', 'state', 's3', 'otel', 'logs'] : ['test-code', 'files', 'state', 's3', 'otel']) as ActiveTab[]).map((tab) => (
             <button
               key={tab}
-              className={`px-4 py-1.5 text-xs font-bold cursor-pointer border-b-2 inline-flex items-center gap-1.5 ${
+              aria-pressed={activeTab === tab}
+              className={`shrink-0 whitespace-nowrap px-3 py-3 lg:px-4 lg:py-1.5 text-xs font-bold cursor-pointer border-b-2 inline-flex items-center gap-1.5 ${
                 activeTab === tab
                   ? 'text-brand-500 border-brand-500'
                   : 'text-neutral-500 border-transparent hover:text-neutral-700'
               }`}
               onClick={() => setActiveTab(tab)}
             >
-              {tab === 'files' ? 'Files' :
+              {tab === 'logs' ? 'Logs' :
+               tab === 'files' ? 'Files' :
                tab === 'test-code' ? 'Test Code' :
                tab === 'otel' ? 'OTEL' :
                tab === 'state' ? stateDisplayName : 'S3 Objects'}
@@ -2310,7 +2395,8 @@ export default function ScenarioViewer() {
         </div>
 
         {/* Tab content */}
-        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+        <div className="flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden">
+          {isMobile && activeTab === 'logs' && logsPanel}
           {/* Files tab */}
           {activeTab === 'files' && (
             <>
@@ -3241,7 +3327,7 @@ export default function ScenarioViewer() {
       </div>
 
       {/* Keyboard help */}
-      <div className="fixed bottom-2 right-2 text-[11px] text-neutral-400">
+      <div className="hidden lg:block fixed bottom-2 right-2 text-[11px] text-neutral-400">
         <kbd className="bg-neutral-100 px-1 py-0.5 rounded border border-neutral-300 text-[10px]">Space</kbd> play/pause{' '}
         <kbd className="bg-neutral-100 px-1 py-0.5 rounded border border-neutral-300 text-[10px]">&larr;</kbd>
         <kbd className="bg-neutral-100 px-1 py-0.5 rounded border border-neutral-300 text-[10px]">&rarr;</kbd> prev/next {hasTicks ? 'tick' : 'home commit'}{' '}
