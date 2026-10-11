@@ -133,19 +133,19 @@ export default function RunsList() {
             (s) => s.status === 'skipped',
           )
           return (
-            <div key={run.runId} className="flex items-center gap-2">
+            <div key={run.runId} className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
               <Link
                 to={`/${run.runId}`}
-                className="flex-1 block bg-white border border-neutral-200 rounded-lg px-4 py-3 hover:border-brand-300 hover:bg-brand-50 transition-colors"
+                className="min-w-0 flex-1 basis-full sm:basis-auto block bg-white border border-neutral-200 rounded-lg px-4 py-3 hover:border-brand-300 hover:bg-brand-50 transition-colors"
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                  <div className="flex min-w-0 items-center gap-3">
                     <StatusBadge status={run.status} hasIssues={run.scenarios.some((s) => s.hasIssues)} />
-                    <span className="font-mono text-sm font-medium text-neutral-800">
+                    <span className="min-w-0 font-mono text-sm font-medium text-neutral-800 [overflow-wrap:anywhere]">
                       {run.runId}
                     </span>
                   </div>
-                  <div className="flex items-center gap-3 text-xs text-neutral-500">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-500">
                     {run.createdAt && <span>{timeAgo(run.createdAt)}</span>}
                     <span className="flex items-center gap-2">
                       {sections.map(({ key, color, items }) => (
@@ -160,7 +160,7 @@ export default function RunsList() {
                   </div>
                 </div>
                 {run.notes && (
-                  <p className="mt-1 text-xs text-neutral-500 truncate">{run.notes}</p>
+                  <p className="mt-1 whitespace-pre-line text-xs text-neutral-500 [overflow-wrap:anywhere]">{run.notes}</p>
                 )}
               </Link>
               {archiveMode && (

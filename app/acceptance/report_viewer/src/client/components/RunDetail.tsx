@@ -1117,7 +1117,7 @@ export default function RunDetail() {
                       <article
                         key={scenario.slug}
                         aria-label={name}
-                        className={`scenario-details-row grid gap-4 rounded-lg border border-neutral-200 bg-white p-4 ${executionSurfacesFor(scenario).some(surface => surface !== 'cli') ? 'has-video' : ''}`}
+                        className={`scenario-details-row grid grid-cols-[minmax(0,1fr)] gap-4 rounded-lg border border-neutral-200 bg-white p-4 ${executionSurfacesFor(scenario).some(surface => surface !== 'cli') ? 'has-video' : ''}`}
                       >
                         {executionSurfacesFor(scenario).some(surface => surface !== 'cli') && (
                           <div className="scenario-details-preview">
@@ -1132,10 +1132,10 @@ export default function RunDetail() {
                         )}
                         <div className="min-w-0 text-sm">
                           <div className="mb-3 flex items-start justify-between gap-3">
-                            <div className="flex items-start gap-2">
+                            <div className="flex min-w-0 flex-1 items-start gap-2">
                               <StatusBadge status={scenario.status} hasIssues={scenario.hasIssues} />
                               {executionSurfacesFor(scenario).every(surface => surface === 'cli') && <span className="text-xs text-neutral-500">CLI</span>}
-                              <span className="font-medium text-neutral-800"><ScenarioText text={name} linkedText={scenario.nameText}
+                              <span className="min-w-0 font-medium text-neutral-800 [overflow-wrap:anywhere]"><ScenarioText text={name} linkedText={scenario.nameText}
                                 runId={runId!} scenarioHref={`/${runId}/${scenario.slug}`} /></span>
                               <CopyReferenceButton text={`E2E scenario ${scenario.slug}`} label="Copy scenario reference" />
                             </div>
@@ -1147,7 +1147,7 @@ export default function RunDetail() {
                           {findReview(reviews.data, scenario)?.note && <p className="mb-2 whitespace-pre-wrap break-words text-xs text-violet-800">Review note: {findReview(reviews.data, scenario)?.note}</p>}
                           {scenario.failureReason && <p className="mb-2 break-words text-xs text-red-600">{scenario.failureReason}</p>}
                           {scenario.description ? (
-                            <p className="whitespace-pre-line break-words leading-relaxed text-neutral-700"><ScenarioText text={scenario.description} linkedText={scenario.descriptionText} runId={runId!} /></p>
+                            <p className="whitespace-pre-line leading-relaxed text-neutral-700 [overflow-wrap:anywhere]"><ScenarioText text={scenario.description} linkedText={scenario.descriptionText} runId={runId!} /></p>
                           ) : (
                             <p className="italic text-neutral-400">No description captured in this run.</p>
                           )}
