@@ -51,7 +51,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '9fbb91cb-48e
   await sourceCommand(() => sourcing.open());
   await sourceCommand(() => expect(sourcing.identities).toBeVisible());
   await sourceCommand(() => expect(sourcing.identitySection('Already decided').getByTestId('source-move-100000000002')).toBeVisible());
-  await sourceCommand(() => sourcing.expectIdentityDecision('100000000002', 'Same page'));
+  await sourceCommand(() => sourcing.expectIdentityDecision('100000000002', 'Same file'));
   expect(Object.keys(proposal.current.identities)).toEqual(['100000000002']);
   await sourceCommand(() => expect(sourcing.identityButton('Confirm')).toBeDisabled());
   await sourceCommand(() => checkpoint('reopening restores the partial identity review and still gates the graph'));
@@ -76,7 +76,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '9fbb91cb-48e
   const nodes = YAML.parse(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).nodes;
   expect(nodes.find((node: { bundleNodeId: string }) => node.bundleNodeId === '100000000002').bundleNodeName).toBe('Gateway');
   expect(nodes.some((node: { bundleNodeId: string }) => node.bundleNodeId === '100000000007')).toBe(false);
-  // Petal starts fresh as a new page, tracked as an addition rather than taking Leaf's identity.
+  // Petal starts fresh as a new file, tracked as an addition rather than taking Leaf's identity.
   expect(nodes.find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Petal')?.bundleNodeId).not.toBe('100000000007');
   await sourceCommand(() => checkpoint('acceptance preserves confirmed identities and removes the rejected old configuration'));
   await sourceCommand(() => assertMeadowHomeState({ allowedUntracked: ['source_graphs/.source-changes.jsonl', 'source_graphs/sourcing-review-data/Petal.md', 'source_graphs/sourcing-review-data/Retained One.md', 'source_graphs/sourcing-review-data/Retained Twin.md', 'source_graphs/sourcing-review-data/Routes/Branch/Gateway.md', 'source_graphs/sourcing-review-data/Routes/Independent.md'], allowedModified: ['source_graphs/sourcing-review-data/Start.md', 'source_graphs/sourcing-review-data/Leaf.md', 'source_graphs/sourcing-review-data/Retained.md', 'source_graphs/sourcing-review-data/Routes/Branch/Bridge.md', 'source_graphs/sourcing-review-data/Routes/Reference.md'] }));

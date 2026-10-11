@@ -29,21 +29,13 @@ import {
   requireValidDocument,
   writeDurableDocument,
 } from '../../../../../../shared_code/utils/durableDocument.js';
-import {
-  createNewGeneratedBundleVersion,
-  generateCurrentBundleVersion,
-} from '../../../shared/generated-bundle-versioning/generatedBundleVersionLifecycle.js';
+import { discardUnsavedCurrentGeneratedBundleVersion } from '../../../shared/generated-bundle-versioning/generatedBundleVersionLifecycle.js';
 import { requireBundleRenameGenerationOperations } from '../../../shared/bundle-management/bundleRenameWorkflowHost.js';
-import {
-  generatedBundleVersionDirectory,
-  loadGeneratedBundleVersionManifest,
-  saveGeneratedBundleVersionManifest,
-} from '../../../shared/generated-bundle-versioning/generatedBundleVersionManifestService.js';
+import { loadGeneratedBundleVersionManifest } from '../../../shared/generated-bundle-versioning/generatedBundleVersionManifestService.js';
 import { inspectGeneratedVersionGitState } from '../../../shared/generated-bundle-versioning/generatedBundleVersionGitService.js';
 import { getAllBackendProviders } from '../../../shared/publishing-provider-host/providerRegistry.js';
 import type { BundleRenamePublicationPlan } from '../../../shared/publishing-provider-host/IPublishingProviderBackend.js';
 import { getBundleDirectory, getConfigDirectory } from '../../../shared/bundle-config/bundleConfigPaths.js';
-import { loadBundleConfig } from '../../../shared/utils/bundleConfigUtils.js';
 import { clearBundleGuidCache, logBundleInfo } from '../../../shared/utils/logging/bundleLogger.js';
 
 const SLUG_PATTERN = /^[a-z0-9-]+$/;
@@ -160,24 +152,16 @@ export async function renameBundle(
   clearBundleGuidCache(newSlug);
   try {
     await commitBundleMove(`rename bundle ${bundleSlug} to ${newSlug}`);
-    const config = loadBundleConfig(newDirectory);
     const generation = requireBundleRenameGenerationOperations();
-    if (config.sourceDirectory) await generation.refreshTrackedContent(newDirectory, config.sourceDirectory);
     let versionId: string | null = current?.versionId ?? null;
     let createdVersion = false;
     if (current) {
       const generated = plan.providers.length > 0
-        ? await createNewGeneratedBundleVersion(newDirectory, {
-          notes: `Bundle renamed from ${bundleSlug} to ${newSlug}`,
-          confirmedNoGeneratedChanges: true,
-          generate: stagingDirectory => generation.generateHtml(newDirectory, stagingDirectory),
-        })
-        : await generateCurrentBundleVersion(newDirectory, {
-          generate: stagingDirectory => generation.generateHtml(newDirectory, stagingDirectory),
-        });
+        ? await generation.createSuccessorVersion(newDirectory, `Bundle renamed from ${bundleSlug} to ${newSlug}`)
+        : await generation.regenerateCurrentVersion(newSlug, newDirectory);
       versionId = generated.versionId;
       createdVersion = generated.created && plan.providers.length > 0;
-      if (createdVersion) createdVersionId = generated.versionId;
+      if (createdVersion) createdVersionId = generated.versionId as GeneratedBundleVersionId;
     }
 
     if (createdVersion && versionId) {
@@ -225,8 +209,7 @@ export async function renameBundle(
         }
       }
       if (createdVersionId) {
-        fs.rmSync(generatedBundleVersionDirectory(newDirectory, createdVersionId), { recursive: true, force: true });
-        saveGeneratedBundleVersionManifest(newDirectory, manifest);
+        await discardUnsavedCurrentGeneratedBundleVersion(newDirectory, createdVersionId, manifest);
         fs.rmSync(markerPath(newDirectory), { force: true });
       }
     }
@@ -261,8 +244,11 @@ export async function undoPendingBundleRename(bundleSlug: string): Promise<{ slu
     }
     await provider?.cancelPendingBundleRenamePublication?.(bundleSlug, providerSlug.previousPublishSlug);
   }
-  fs.rmSync(generatedBundleVersionDirectory(bundleDirectory, marker.createdVersionId), { recursive: true, force: true });
-  saveGeneratedBundleVersionManifest(bundleDirectory, { ...manifest, versions: manifest.versions.slice(0, -1) });
+  await discardUnsavedCurrentGeneratedBundleVersion(
+    bundleDirectory,
+    marker.createdVersionId,
+    { ...manifest, versions: manifest.versions.slice(0, -1) },
+  );
   fs.rmSync(markerPath(bundleDirectory), { force: true });
   fs.renameSync(bundleDirectory, previousDirectory);
   clearBundleGuidCache(bundleSlug);

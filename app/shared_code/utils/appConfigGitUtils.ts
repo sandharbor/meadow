@@ -70,6 +70,10 @@ const MANAGED_GITIGNORE_PATTERNS = [
   'app/publishing_providers/*/pp_secrets.yaml',
   'app/publishing_providers/*/pp_resources.local.yaml',
   'bundles/*/config/publishing_providers/*/pp_secrets.yaml',
+  'bundles/*/html/.generated_bundle_version_operations/',
+  'bundles/*/html/generated_bundle_versions/.version-operation.*',
+  'bundles/*/html/generated_bundle_versions/.staging-*/',
+  'bundles/*/html/generated_bundle_versions/.backup-*/',
 ] as const;
 const GITIGNORE_CONTENT = `${MANAGED_GITIGNORE_START}
 .DS_Store
@@ -82,6 +86,10 @@ app/resources.local.yaml
 app/publishing_providers/*/pp_secrets.yaml
 app/publishing_providers/*/pp_resources.local.yaml
 bundles/*/config/publishing_providers/*/pp_secrets.yaml
+bundles/*/html/.generated_bundle_version_operations/
+bundles/*/html/generated_bundle_versions/.version-operation.*
+bundles/*/html/generated_bundle_versions/.staging-*/
+bundles/*/html/generated_bundle_versions/.backup-*/
 ${MANAGED_GITIGNORE_END}
 `;
 

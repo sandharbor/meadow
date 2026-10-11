@@ -53,9 +53,9 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '3f58ea0a-6f0
   // Earlier decisions are listed as already decided, with their choices intact.
   const decided = sourcing.identitySection('Already decided');
   await sourceCommand(() => expect(decided.getByTestId(/^source-move-/)).toHaveCount(4));
-  await sourceCommand(() => sourcing.expectIdentityDecision('100000000002', 'Same page'));
-  await sourceCommand(() => sourcing.expectIdentityDecision('100000000003', 'New page'));
-  await sourceCommand(() => sourcing.expectIdentityDecision('100000000007', 'Same page'));
+  await sourceCommand(() => sourcing.expectIdentityDecision('100000000002', 'Same file'));
+  await sourceCommand(() => sourcing.expectIdentityDecision('100000000003', 'New file'));
+  await sourceCommand(() => sourcing.expectIdentityDecision('100000000007', 'Same file'));
   await sourceCommand(() => sourcing.expectIdentityMatch('100000000006', 'Retained One.md'));
   expect(proposal.current.identities).toEqual(earlier);
   await sourceCommand(() => addKeyFrame(sourceChangesDuringReview));

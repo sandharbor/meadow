@@ -15,7 +15,9 @@ export { default as appShellRouterCustomAssetsRoutes } from './routes/customAsse
 export { buildFilteredSourcesExportForBundle as appShellCommandBuildFilteredSourcesExportForBundle } from './sources-export/filteredSourcesExport.js';
 export { buildFilteredOpenKnowledgeFormatForBundle as appShellCommandBuildFilteredOpenKnowledgeFormatForBundle } from './open-knowledge-format/filteredOpenKnowledgeFormat.js';
 export { default as appShellRouterBundleGenerationRoutes } from './routes/bundleGenerationRoutes.js';
-export { generateHtmlForBundle as appShellCommandGenerateHtmlForBundle } from './html/htmlService.js';
-export { ensureTrackedPageContent as appShellCommandEnsureTrackedPageContent } from './source-material/trackedPageContent.js';
+export {
+  createSuccessorGeneratedVersion as appShellCommandCreateSuccessorGeneratedVersion,
+  generateCurrentGeneratedVersion as appShellCommandGenerateCurrentGeneratedVersion,
+} from './services/generationOperation.js';
 export { default as appShellRouterStylePresetsRoutes } from './routes/stylePresetsRoutes.js';
 export { getHtmlPathForPage as reviewQueryHtmlPathForPage } from './html/htmlPathLookup.js';

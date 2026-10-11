@@ -29,7 +29,7 @@ export const bundleNodeId = defineMeadowConcept({
   appAreaIds: [coreConceptIds.bundleSourcing, coreConceptIds.bundleCuration, coreConceptIds.bundleGeneration],
   definition: conceptText`The persistent bundle-local identity assigned when a node is configured.`,
   mechanics: [conceptText`The twelve lowercase letters or digits survive accepted moves. Unconfigured discovered nodes have graph keys but no configured identity. Bundle roles and collection membership reference this identity.`],
-  interplay: conceptText`A ${conceptLink(coreConceptIds.bundleNodeKey, 'Bundle Node Key')} locates the node in its current graph; its configured identity records continuity across source locations.`,
+  interplay: conceptText`A ${conceptLink(coreConceptIds.bundleNodeKey, 'Bundle Node Key')} locates the node in its current graph; its configured identity records continuity across source locations. ${conceptLink(coreConceptIds.generationRecord, 'Generation Records')} carry it into generated output so moved outputs pair across versions.`,
 });
 
 export const bundleIdentityConcepts = [bundleNodeKey, bundleNodeId] as const;

@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, type ReactNode } from 'react';
 import type { BundleSource } from '../../../../../contracts/types/bundleConfig.js';
 import { sourceGraphPath, sourceLocationLabel } from '../../../../../shared_code/utils/bundleSourceUtils.js';
+import { splitPathLabel } from './PathChange.js';
 
 type SourceName = Pick<BundleSource, 'id' | 'name'>;
 const SourceNames = createContext<readonly SourceName[]>([]);
@@ -25,15 +26,7 @@ export function useSourcePath(path: string): string {
 }
 
 /** Keep the source delimiter intact when the file is directly in its source root. */
-export function splitSourcePathLabel(value: string) {
-  const separator = value.lastIndexOf('/');
-  const sourceRoot = separator >= 2 && value.slice(separator - 2, separator + 1) === '://';
-  return {
-    directory: value.slice(0, sourceRoot ? separator + 1 : Math.max(0, separator)),
-    filename: value.slice(separator + 1),
-    separator: separator < 0 || sourceRoot ? '' : '/',
-  };
-}
+export const splitSourcePathLabel = splitPathLabel;
 
 export function SourceDirectoryLabel({ sourceId, directory }: { sourceId?: string; directory: string }) {
   return <>{useSourcePath(sourceGraphPath(sourceId, directory))}</>;

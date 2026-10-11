@@ -67,7 +67,7 @@ describe('VersionsTab', () => {
     vi.stubGlobal('fetch', vi.fn(async (input: unknown) => {
       const url = String(input);
       if (url.includes('version-comparison')) {
-        return { ok: true, json: async () => ({ changes: [{ status: 'added', relativePath: 'index.html' }] }) };
+        return { ok: true, json: async () => ({ changes: [{ entryId: 'added:index.html', kind: 'added', moved: false, modified: false, before: null, after: { path: 'index.html', objectId: 'a'.repeat(40) } }] }) };
       }
       return { ok: true, json: async () => ({ versions: savedVersions }) };
     }));

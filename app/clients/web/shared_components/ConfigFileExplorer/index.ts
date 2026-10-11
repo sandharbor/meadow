@@ -15,6 +15,7 @@ limitations under the License.
 */
 
 export { default as ConfigFileExplorer } from './ConfigFileExplorer';
-export type { ConfigFileExplorerApi, ConfigFileExplorerProps, FileNode, FileTreeResponse, FileContentResponse, OriginalContentResponse, FetchTreeOptions } from './ConfigFileExplorer';
+export { fileNodeKey } from './ConfigFileExplorer';
+export type { ComparedFileReference, ConfigFileExplorerApi, ConfigFileExplorerProps, FileNode, FileNodeComparison, FileTreeResponse, FileContentResponse, OriginalContentResponse, FetchTreeOptions } from './ConfigFileExplorer';
 export { StyledHtmlDiffer, styledHtmlDiffer } from './StyledHtmlDiffer';
 export type { StyledHtmlDiffResult, StyledHtmlDifferConfig } from './StyledHtmlDiffer';

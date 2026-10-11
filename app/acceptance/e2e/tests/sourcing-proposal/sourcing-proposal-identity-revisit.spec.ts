@@ -71,7 +71,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'cce81862-5cf
   await sourceCommand(() => sourcing.updateIdentities());
   expect(proposal.current.identities['100000000003']).toBeNull();
   await sourceCommand(() => sourcing.openIdentities());
-  await sourceCommand(() => sourcing.expectIdentityDecision('100000000003', 'New page'));
+  await sourceCommand(() => sourcing.expectIdentityDecision('100000000003', 'New file'));
   await sourceCommand(() => sourcing.identityButton('Cancel').click());
   await sourceCommand(() => addKeyFrame(sourceReviewIdentity));
   await sourceCommand(() => checkpoint('a revisit changes an earlier decision only when Update is chosen'));

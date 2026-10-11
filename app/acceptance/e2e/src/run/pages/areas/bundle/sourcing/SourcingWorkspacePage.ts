@@ -265,19 +265,19 @@ export class SourcingWorkspacePage {
     await this.expect(group.getByTestId(/^source-move-/)).toHaveCount(count);
     await group.scrollIntoViewIfNeeded();
   }
-  /** Change the file's row, or its group's row, to Same page or New page. */
+  /** Change the file's row, or its group's row, to Same file or New file. */
   async chooseCompactIdentity(id: string, option: string, _currentChoice?: 'Same' | 'Different' | 'Choose') {
     const holder = this.identityHolder(id);
     await holder.scrollIntoViewIfNeeded();
-    await this.saving(() => holder.getByTestId('source-identity-switch').first().getByRole('button', { name: /^(Same|Pick)/.test(option) ? 'Same page' : 'New page', exact: true }).click());
+    await this.saving(() => holder.getByTestId('source-identity-switch').first().getByRole('button', { name: /^(Same|Pick)/.test(option) ? 'Same file' : 'New file', exact: true }).click());
   }
   async expectCompactIdentity(id: string, choice: 'Same' | 'Different' | 'Choose', count?: number) {
     const holder = this.identityHolder(id);
     await this.expect(holder.getByTestId('source-identity-switch').first()).toHaveAttribute('data-current-choice', choice === 'Same' ? 'same' : choice === 'Different' ? 'different' : 'input');
     if (count !== undefined && count > 1) await this.expect(holder).toContainText(`+ ${count - 1} more`);
   }
-  /** Press a file's Same page or New page without waiting for the choice to save, as while a save is held. */
-  async pressIdentity(id: string, choice: 'Same page' | 'New page') {
+  /** Press a file's Same file or New file without waiting for the choice to save, as while a save is held. */
+  async pressIdentity(id: string, choice: 'Same file' | 'New file') {
     await this.showIdentity(id);
     await this.identityRow(id).getByRole('button', { name: choice, exact: true }).click();
   }
@@ -295,31 +295,31 @@ export class SourcingWorkspacePage {
     await this.expect(row.getByRole('radio', { checked: true })).toHaveCount(0);
     await row.scrollIntoViewIfNeeded();
   }
-  /** The file change and its Same page / New page switch share one row. */
+  /** The file change and its Same file / New file switch share one row. */
   async expectChoicesAlignedWithSummary(id: string) {
     const row = this.identityRow(id);
     const choices = (await row.getByTestId('source-identity-switch').boundingBox())!;
     const summary = (await row.getByRole('group', { name: /→/ }).first().boundingBox())!;
     this.expect(Math.abs(choices.y + choices.height / 2 - summary.y - summary.height / 2)).toBeLessThanOrEqual(4);
-    await this.expect(row.getByRole('button', { name: 'Same page', exact: true })).toBeInViewport();
-    await this.expect(row.getByRole('button', { name: 'New page', exact: true })).toBeInViewport();
+    await this.expect(row.getByRole('button', { name: 'Same file', exact: true })).toBeInViewport();
+    await this.expect(row.getByRole('button', { name: 'New file', exact: true })).toBeInViewport();
   }
   async expectInputIdentity(id: string, destination: string | null) {
     const row = this.identityRow(id);
     if (await row.locator('li[data-identity-destination]').count()) {
-      const choice = destination === null ? row.getByRole('radio', { name: 'None of these — it’s a new page', exact: true })
+      const choice = destination === null ? row.getByRole('radio', { name: 'None of these — it’s a new file', exact: true })
         : row.locator(`li[data-identity-destination=${JSON.stringify(destination)}]`).getByRole('radio');
       await this.expect(choice).toBeChecked();
       return;
     }
-    await this.expectIdentityDecision(id, destination === null ? 'New page' : 'Same page');
+    await this.expectIdentityDecision(id, destination === null ? 'New file' : 'Same file');
   }
   /** Save the suggested choice for every likely rename not yet decided, as Confirm does. */
   async acceptAllIdentitySuggestions() {
     const switches = this.identitySection('Likely renamed').getByTestId('source-identity-switch');
     for (const control of await switches.all()) {
       if (await control.getAttribute('data-current-choice') !== 'same') continue;
-      await this.saving(() => control.getByRole('button', { name: 'Same page', exact: true }).click());
+      await this.saving(() => control.getByRole('button', { name: 'Same file', exact: true }).click());
     }
   }
   /** The panel heading and its Confirm stay in place while the identity list scrolls. */
@@ -355,7 +355,7 @@ export class SourcingWorkspacePage {
   identitySection(name: 'Choose a match' | 'Likely renamed' | 'Already decided') { return this.identities.getByRole('region', { name: new RegExp(`^${name}\\b`) }); }
   identityButton(name: 'Cancel' | 'Confirm' | 'Update') { return this.identities.getByRole('button', { name, exact: true }); }
   /**
-   * Decide a file in identity review: a destination keeps it as the same page, null makes it a new page. While
+   * Decide a file in identity review: a destination keeps it as the same file, null makes it a new file. While
    * review is required each choice saves immediately; on a revisit it stays a draft until Update.
    */
   async decideIdentity(id: string, destination: string | null) {
@@ -363,8 +363,8 @@ export class SourcingWorkspacePage {
     const candidates = row.locator('li[data-identity-destination]');
     const control = await candidates.count()
       ? destination ? row.locator(`li[data-identity-destination=${JSON.stringify(destination)}]`).getByRole('radio')
-        : row.getByRole('radio', { name: 'None of these — it’s a new page', exact: true })
-      : row.getByRole('button', { name: destination ? 'Same page' : 'New page', exact: true });
+        : row.getByRole('radio', { name: 'None of these — it’s a new file', exact: true })
+      : row.getByRole('button', { name: destination ? 'Same file' : 'New file', exact: true });
     const saves = await this.identityBackdrop.isVisible();
     await Promise.all([
       ...saves ? [this.page.waitForResponse(response => response.url().endsWith('/sourcing/proposal/identities') && response.ok(), { timeout: 10000 })] : [],
@@ -373,8 +373,8 @@ export class SourcingWorkspacePage {
     if (await candidates.count()) await this.expect(control).toBeChecked();
     else await this.expect(control).toHaveAttribute('aria-pressed', 'true');
   }
-  async expectIdentityDecision(id: string, choice: 'Same page' | 'New page' | 'Undecided') {
-    await this.expect(this.identityRow(id).getByTestId('source-identity-switch')).toHaveAttribute('data-current-choice', choice === 'Same page' ? 'same' : choice === 'New page' ? 'different' : 'input');
+  async expectIdentityDecision(id: string, choice: 'Same file' | 'New file' | 'Undecided') {
+    await this.expect(this.identityRow(id).getByTestId('source-identity-switch')).toHaveAttribute('data-current-choice', choice === 'Same file' ? 'same' : choice === 'New file' ? 'different' : 'input');
   }
   /** For a file with several possible matches, the chosen destination's option is selected. */
   async expectIdentityMatch(id: string, destination: string) {

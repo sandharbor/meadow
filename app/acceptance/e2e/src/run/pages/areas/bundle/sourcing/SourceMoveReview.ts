@@ -6,7 +6,7 @@ import type { Locator, Expect, Page } from '@playwright/test';
 export class SourceMoveReview {
   constructor(private row: Locator, private expect: Expect, private page: Page) {}
 
-  /** A file with one likely match has a Same page / New page switch; a file with several lists them as options. */
+  /** A file with one likely match has a Same file / New file switch; a file with several lists them as options. */
   private get switch() { return this.row.getByTestId('source-identity-switch'); }
   private get options() { return this.row.locator('li[data-identity-destination]'); }
   /** Evidence such as similarity, traversal, and content comparison sits under Details. */
@@ -17,7 +17,7 @@ export class SourceMoveReview {
 
   async expectSamePageSelected() {
     if (await this.options.count()) await this.expect(this.options.getByRole('radio', { checked: true })).toHaveCount(1);
-    else await this.expect(this.switch.getByRole('button', { name: 'Same page', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    else await this.expect(this.switch.getByRole('button', { name: 'Same file', exact: true })).toHaveAttribute('aria-pressed', 'true');
   }
 
   async expectUnresolved(destinations: string[]) {
@@ -27,8 +27,8 @@ export class SourceMoveReview {
   }
 
   async keepSeparate() {
-    const control = await this.options.count() ? this.row.getByRole('radio', { name: 'None of these — it’s a new page', exact: true })
-      : this.switch.getByRole('button', { name: 'New page', exact: true });
+    const control = await this.options.count() ? this.row.getByRole('radio', { name: 'None of these — it’s a new file', exact: true })
+      : this.switch.getByRole('button', { name: 'New file', exact: true });
     const saves = await this.page.getByTestId('chip-panel-backdrop').isVisible();
     await Promise.all([
       ...saves ? [this.page.waitForResponse(response => response.url().endsWith('/sourcing/proposal/identities') && response.ok())] : [],
@@ -38,13 +38,13 @@ export class SourceMoveReview {
   }
 
   async expectSeparateSelected() {
-    if (await this.options.count()) await this.expect(this.row.getByRole('radio', { name: 'None of these — it’s a new page', exact: true })).toBeChecked();
-    else await this.expect(this.switch.getByRole('button', { name: 'New page', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    if (await this.options.count()) await this.expect(this.row.getByRole('radio', { name: 'None of these — it’s a new file', exact: true })).toBeChecked();
+    else await this.expect(this.switch.getByRole('button', { name: 'New file', exact: true })).toHaveAttribute('aria-pressed', 'true');
   }
 
-  /** Identity review explains what New page means beside the choices. */
+  /** Identity review explains what New file means beside the choices. */
   async showDifferentHelp() {
-    await this.expect(this.page.getByRole('dialog', { name: 'Source identities', exact: true }).getByText('removes the old page and starts the new file fresh.', { exact: false })).toBeVisible();
+    await this.expect(this.page.getByRole('dialog', { name: 'Source identities', exact: true }).getByText('removes the old file’s configuration and starts the new file fresh.', { exact: false })).toBeVisible();
   }
 
   async expectPreviousRoute(path: string) {

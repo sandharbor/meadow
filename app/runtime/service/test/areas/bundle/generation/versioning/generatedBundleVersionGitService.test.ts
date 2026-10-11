@@ -21,14 +21,14 @@ import { execFileSync } from 'child_process';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { GeneratedBundleVersionId } from '../../../../../../../contracts/types/generatedBundleVersioning.js';
 import {
-  compareGeneratedBundleVersionTrees,
   deriveSavedGenerationId,
+  generatedTreeFiles,
   inspectGeneratedVersionGitState,
+  readGitBlobs,
   restoreGeneratedVersionFromGit,
 } from '../../../../../src/shared/generated-bundle-versioning/generatedBundleVersionGitService.js';
 
 const VERSION_ID = 'vAb1234' as GeneratedBundleVersionId;
-const SECOND_VERSION_ID = 'vCd5678' as GeneratedBundleVersionId;
 
 describe('generated bundle version Git identity and integrity', () => {
   let homeDirectory: string;
@@ -72,7 +72,30 @@ describe('generated bundle version Git identity and integrity', () => {
       savedGenerationId: expected,
       isSaved: true,
       changes: [],
+      recordChanges: [],
     });
+  });
+
+  it('reads many saved blobs exactly through one batch and omits unknown objects', async () => {
+    const files = generatedTreeFiles(bundleDirectory, deriveSavedGenerationId(bundleDirectory, VERSION_ID)!);
+    const index = files.get('index.html')!;
+    const unicode = files.get('nested/naïve page.html')!;
+    const blobs = await readGitBlobs(bundleDirectory, [index, unicode, index, '0'.repeat(40)]);
+    expect([...blobs.keys()].sort()).toEqual([index, unicode].sort());
+    expect(blobs.get(index)!.toString()).toBe('<h1>Initial</h1>\n');
+    expect(blobs.get(unicode)!.toString()).toBe('<p>Unicode</p>\n');
+  });
+
+  it('treats unsaved generation records as unsaved state and restores their saved absence', () => {
+    const recordPath = path.join(bundleDirectory, 'raw', 'generation_inputs', `${VERSION_ID}.output.json`);
+    fs.mkdirSync(path.dirname(recordPath), { recursive: true });
+    fs.writeFileSync(recordPath, '{}\n');
+    const state = inspectGeneratedVersionGitState(bundleDirectory, VERSION_ID);
+    expect(state.changes).toEqual([]);
+    expect(state.recordChanges.map(change => change.status)).toEqual(['??']);
+    expect(state.isSaved).toBe(false);
+    expect(restoreGeneratedVersionFromGit(bundleDirectory, VERSION_ID).isSaved).toBe(true);
+    expect(fs.existsSync(recordPath)).toBe(false);
   });
 
   it('G01 follows Git semantics by ignoring empty directories', () => {
@@ -136,54 +159,5 @@ describe('generated bundle version Git identity and integrity', () => {
     expect(fs.statSync(path.join(versionDirectory, 'worker.sh')).mode & 0o111).not.toBe(0);
     expect(fs.existsSync(path.join(versionDirectory, 'extra.txt'))).toBe(false);
     expect(fs.existsSync(path.join(versionDirectory, 'secret.ignored'))).toBe(false);
-  });
-
-  it('compares saved version trees and the current working generation by relative path', async () => {
-    const secondDirectory = path.join(bundleDirectory, 'html', 'generated_bundle_versions', SECOND_VERSION_ID);
-    fs.mkdirSync(secondDirectory, { recursive: true });
-    fs.writeFileSync(path.join(secondDirectory, 'index.html'), '<h1>Second</h1>\n');
-    fs.writeFileSync(path.join(secondDirectory, 'added.html'), '<p>Added</p>\n');
-    commitAll('save second generated version');
-
-    expect(await compareGeneratedBundleVersionTrees(bundleDirectory, VERSION_ID, { versionId: SECOND_VERSION_ID }))
-      .toEqual([
-        { status: 'added', relativePath: 'added.html' },
-        { status: 'modified', relativePath: 'index.html' },
-        { status: 'deleted', relativePath: 'nested/naïve page.html' },
-        { status: 'deleted', relativePath: 'worker.sh' },
-      ]);
-    fs.writeFileSync(path.join(secondDirectory, 'index.html'), '<h1>Working</h1>\n');
-    fs.rmSync(path.join(secondDirectory, 'added.html'));
-    expect(await compareGeneratedBundleVersionTrees(bundleDirectory, VERSION_ID, { workingCurrentVersionId: SECOND_VERSION_ID }))
-      .toEqual([
-        { status: 'modified', relativePath: 'index.html' },
-        { status: 'deleted', relativePath: 'nested/naïve page.html' },
-        { status: 'deleted', relativePath: 'worker.sh' },
-      ]);
-  });
-
-  describe('large generated trees', () => {
-    const unusualPath = 'nested/quoted "page" with\nnewline and naïve.html';
-
-    // Creating and committing the fixture is disk-intensive under parallel
-    // quickcheck load. Keep setup outside the comparison's test deadline.
-    beforeEach(() => {
-      for (let index = 0; index < 1000; index++) {
-        fs.writeFileSync(path.join(versionDirectory, `page-${index}.html`), `<h1>${index}</h1>`);
-      }
-      fs.writeFileSync(path.join(versionDirectory, unusualPath), 'before');
-      commitAll('save large generation');
-      fs.writeFileSync(path.join(versionDirectory, unusualPath), 'after');
-    }, 30000);
-
-    it('compares a thousand files without blocking the event loop and preserves unusual filenames', async () => {
-      let eventLoopServiced = false;
-      setTimeout(() => { eventLoopServiced = true; }, 0);
-      const changes = await compareGeneratedBundleVersionTrees(bundleDirectory, VERSION_ID, {
-        workingCurrentVersionId: VERSION_ID,
-      });
-      expect(eventLoopServiced).toBe(true);
-      expect(changes).toEqual([{ status: 'modified', relativePath: unusualPath }]);
-    });
   });
 });

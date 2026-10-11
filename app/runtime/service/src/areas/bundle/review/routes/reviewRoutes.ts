@@ -20,14 +20,12 @@ import fs from 'fs';
 import path from 'path';
 import { loadAppConfig as loadAppConfigFromDisk } from '../../../../../../../shared_code/utils/appConfigUtils.js';
 import { getConfigDirectory, getBundleDirectory } from '../../../../shared/bundle-config/bundleConfigPaths.js';
-import { commitBundleChanges, getGeneratedHtmlChanges } from '../../../../shared/utils/configDirectory/gitUtils/generatedHtmlGitService.js';
-import { getConfigFileTree, getGeneratedHtmlFileTree, getOriginalContent, readFileContent, findGitRoot, detectFileType, getMimeType } from '../../../../shared/utils/configFileExplorerUtils.js';
+import { fileContentFromBuffer, getConfigFileTree, getOriginalContent, readFileContent, findGitRoot, detectFileType, getMimeType } from '../../../../shared/utils/configFileExplorerUtils.js';
 import { livePreviewFilePath } from '../../../../shared/generated-bundle-versioning/livePreview.js';
 import { commitChangesNative, runGitDirLogNative, runGitCommitFilesNative, runGitCatFileNative, runGitFileLogNative, runGitHtmlSectionDiffNative } from '../../../../shared/utils/configDirectory/gitUtils/gitStatusUtils.js';
 import { logBundleError, logBundleInfo } from '../../../../shared/utils/logging/bundleLogger.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
 import {
-  currentGeneratedBundleVersionDirectory,
   generatedBundleVersionManifestPath,
   generatedBundleVersionsRoot,
   loadGeneratedBundleVersionManifest,
@@ -46,9 +44,28 @@ import {
   updateGeneratedBundleVersionNotes,
 } from '../../../../shared/generated-bundle-versioning/generatedBundleVersionLifecycle.js';
 import {
-  compareGeneratedBundleVersionTrees,
+  hasGitRepository,
   inspectGeneratedVersionGitState,
+  readGitBlobs,
 } from '../../../../shared/generated-bundle-versioning/generatedBundleVersionGitService.js';
+import {
+  compareCurrentGeneratedOutput,
+  compareSelectedGeneratedVersions,
+  GeneratedComparisonUnavailableError,
+  readComparedGeneratedFile,
+  StaleGeneratedComparisonError,
+  type ResolvedGeneratedComparison,
+} from '../../../../shared/generated-bundle-versioning/generatedOutputComparison.js';
+import type { GeneratedBundleVersionId } from '../../../../../../../contracts/types/generatedBundleVersioning.js';
+import type { GeneratedChangeEntry } from '../../../../../../../contracts/types/generatedOutputIdentity.js';
+import {
+  changedEntriesTree,
+  changeNodeDetails,
+  displayedRelativePath,
+  workingFilesTree,
+  type GeneratedChangeNodeDetails,
+} from '../services/generatedChangesTree.js';
+import { htmlSectionChanges } from '../services/htmlSectionChanges.js';
 import {
   saveGeneratedBundleVersion,
   SaveGeneratedBundleVersionError,
@@ -116,64 +133,25 @@ router.post('/bundles/:bundleSlug/review/versions/:versionId/save-generation', (
   })().catch(next);
 });
 
-// Get preview changes (diff between preview and last published)
-router.get('/bundles/:bundleSlug/review/preview-changes', (req, res, next) => {
-  try {
-    const { bundleSlug } = req.params;
-    
-    if (!bundleSlug) {
-      return res.status(400).json({ error: 'bundleSlug is required' });
-    }
-
-    const bundleDirectory = getBundleDirectory(bundleSlug);
-    
-    if (!fs.existsSync(bundleDirectory)) {
-      return res.status(404).json({ error: `Bundle '${bundleSlug}' not found` });
-    }
-
-    const generatedHtmlDirectory = currentGeneratedBundleVersionDirectory(bundleDirectory);
-    const changes = generatedHtmlDirectory
-      ? getGeneratedHtmlChanges(generatedHtmlDirectory)
-      : { changedFiles: [], fileDiffs: {} };
-    
-    res.json({
-      success: true,
-      changedFiles: changes.changedFiles,
-      fileDiffs: changes.fileDiffs
-    });
-    
-  } catch (error) {
-    logger.error('Error getting preview changes:', error);
-    next(error);
-  }
-});
-
-// Save preview changes to git (without publishing)
+// Save the current generated version locally (commit to Git without publishing).
 router.get('/bundles/:bundleSlug/review/save-changes', (req, res, next) => {
   void (async () => {
     const operationId = randomUUID();
     const operation = `[operation ${operationId}] [version-save]`;
     try {
       const { bundleSlug } = req.params;
-
-      if (!bundleSlug) {
-        return res.status(400).json({ error: 'bundleSlug is required' });
-      }
-
+      if (!bundleSlug) return res.status(400).json({ error: 'bundleSlug is required' });
       const bundleDirectory = getBundleDirectory(bundleSlug);
-
       if (!fs.existsSync(bundleDirectory)) {
         return res.status(404).json({ error: `Bundle '${bundleSlug}' not found` });
       }
 
       const currentVersion = currentVersionEntry(bundleDirectory);
       if (!currentVersion) return res.status(400).json({ error: 'Generate a version before saving changes' });
-      assertFrozenGeneratedVersionsIntegrity(bundleDirectory);
       logBundleInfo(bundleSlug, `${operation} Started saving version ${currentVersion.versionId}`);
 
-      // Check if git auto-management is enabled
-      const appConfigForGit = loadAppConfig();
-      if (appConfigForGit.manageGitAutomatically === false) {
+      if (loadAppConfig().manageGitAutomatically === false) {
+        assertFrozenGeneratedVersionsIntegrity(bundleDirectory);
         const currentState = inspectGeneratedVersionGitState(bundleDirectory, currentVersion.versionId);
         logBundleInfo(
           bundleSlug,
@@ -189,41 +167,37 @@ router.get('/bundles/:bundleSlug/review/save-changes', (req, res, next) => {
         });
       }
 
-      const commitSha = await commitBundleChanges(
+      const saved = await saveGeneratedBundleVersion({
         bundleDirectory,
-        `user saved generated bundle version ${currentVersion.versionId}`,
-        { includeConfigDir: true },
-      );
-      const savedState = inspectGeneratedVersionGitState(bundleDirectory, currentVersion.versionId);
-
-      if (commitSha) {
+        configDirectory: getConfigDirectory(),
+        versionId: currentVersion.versionId,
+      });
+      if (saved.commitSha) {
         logBundleInfo(
           bundleSlug,
-          `${operation} Saved version ${currentVersion.versionId} as generation ${savedState.savedGenerationId}; unrelated repository state was unchanged`,
+          `${operation} Saved version ${saved.versionId} as generation ${saved.savedGenerationId} with its generation records; unrelated repository state was unchanged`,
         );
-        res.json({
+        return res.json({
           success: true,
-          commitSha,
-          versionId: currentVersion.versionId,
-          savedGenerationId: savedState.savedGenerationId,
-          operationId,
-        });
-      } else {
-        logBundleInfo(
-          bundleSlug,
-          `${operation} Version ${currentVersion.versionId} was already saved as generation ${savedState.savedGenerationId}; no commit was needed`,
-        );
-        res.json({
-          success: true,
-          noChanges: true,
-          message: 'No changes to commit',
-          versionId: currentVersion.versionId,
-          savedGenerationId: savedState.savedGenerationId,
+          commitSha: saved.commitSha,
+          versionId: saved.versionId,
+          savedGenerationId: saved.savedGenerationId,
           operationId,
         });
       }
+      logBundleInfo(
+        bundleSlug,
+        `${operation} Version ${saved.versionId} was already saved as generation ${saved.savedGenerationId}; no commit was needed`,
+      );
+      res.json({
+        success: true,
+        noChanges: true,
+        message: 'No changes to commit',
+        versionId: saved.versionId,
+        savedGenerationId: saved.savedGenerationId,
+        operationId,
+      });
     } catch (error) {
-      logger.error('Error saving changes:', error);
       const bundleSlug = req.params.bundleSlug;
       if (bundleSlug) {
         logBundleError(
@@ -231,6 +205,10 @@ router.get('/bundles/:bundleSlug/review/save-changes', (req, res, next) => {
           `${operation} Save failed; generated files remain local and retry is safe: ${error instanceof Error ? error.message : String(error)}`,
         );
       }
+      if (error instanceof SaveGeneratedBundleVersionError) {
+        return res.status(error.statusCode).json({ error: error.message });
+      }
+      logger.error('Error saving changes:', error);
       next(error);
     }
   })();
@@ -263,58 +241,146 @@ router.get('/bundles/:bundleSlug/review/config-files/tree', (req, res, next) => 
   })().catch(next);
 });
 
-// Get the file tree for the bundle's current generated HTML.
+function comparisonFailure(res: express.Response, error: unknown): boolean {
+  if (error instanceof GeneratedComparisonUnavailableError || error instanceof StaleGeneratedComparisonError) {
+    res.status(409).json({ error: error.message });
+    return true;
+  }
+  return false;
+}
+
+function comparisonSummary(comparison: ResolvedGeneratedComparison) {
+  const count = (predicate: (entry: GeneratedChangeEntry) => boolean) => comparison.entries.filter(predicate).length;
+  return {
+    baseline: comparison.baseline,
+    left: comparison.left,
+    right: comparison.right,
+    identityPairing: comparison.identityPairing,
+    counts: {
+      total: comparison.entries.length,
+      added: count(entry => entry.kind === 'added'),
+      deleted: count(entry => entry.kind === 'deleted'),
+      modified: count(entry => entry.modified),
+      moved: count(entry => entry.moved),
+    },
+  };
+}
+
+// The current version's generated-file changes against its comparison
+// baseline, with identity-paired moves listed once under their destination.
 router.get('/bundles/:bundleSlug/review/preview-files/tree', (req, res, next) => {
   (async () => {
     try {
       const { bundleSlug } = req.params;
       const changedOnly = req.query.changedOnly === 'true';
-      
-      if (!bundleSlug) {
-        return res.status(400).json({ error: 'bundleSlug is required' });
-      }
-
+      if (!bundleSlug) return res.status(400).json({ error: 'bundleSlug is required' });
       const bundleDirectory = getBundleDirectory(bundleSlug);
-      
       if (!fs.existsSync(bundleDirectory)) {
         return res.status(404).json({ error: `Bundle '${bundleSlug}' not found` });
       }
-
-      const generatedHtmlDirectory = currentGeneratedBundleVersionDirectory(bundleDirectory);
-      if (!generatedHtmlDirectory) return res.json({ root: '', tree: [] });
-      const treeData = await getGeneratedHtmlFileTree(generatedHtmlDirectory, changedOnly);
-      res.json(treeData);
-      
+      const manifest = loadGeneratedBundleVersionManifest(bundleDirectory);
+      const comparison = await compareCurrentGeneratedOutput(bundleDirectory, manifest);
+      if (!comparison?.workingDirectory) return res.json({ root: '', tree: [], comparison: null, saveState: null });
+      const current = manifest.versions.at(-1)!;
+      const gitState = hasGitRepository(bundleDirectory)
+        ? inspectGeneratedVersionGitState(bundleDirectory, current.versionId)
+        : null;
+      res.json({
+        root: comparison.workingDirectory,
+        tree: changedOnly
+          ? changedEntriesTree(comparison, comparison.workingDirectory)
+          : workingFilesTree(comparison, comparison.workingDirectory),
+        comparison: comparisonSummary(comparison),
+        saveState: {
+          versionId: current.versionId,
+          saved: gitState?.isSaved === true,
+          hasSavedGeneration: Boolean(gitState?.savedGenerationId),
+        },
+      });
     } catch (error) {
+      if (comparisonFailure(res, error)) return;
       logger.error('Error getting preview file tree:', error);
       next(error);
     }
   })().catch(next);
 });
 
-// Get HTML section changes for the current generated HTML (working tree vs index).
+// HTML section changes for each changed generated page, keyed by comparison entry.
 router.get('/bundles/:bundleSlug/review/preview-files/html-section-changes', (req, res, next) => {
   (async () => {
     try {
       const { bundleSlug } = req.params;
       if (!bundleSlug) return res.status(400).json({ error: 'bundleSlug is required' });
-
       const bundleDirectory = getBundleDirectory(bundleSlug);
       if (!fs.existsSync(bundleDirectory)) return res.status(404).json({ error: `Bundle '${bundleSlug}' not found` });
-
-      const generatedHtmlDir = currentGeneratedBundleVersionDirectory(bundleDirectory);
-      if (!generatedHtmlDir) return res.json({ files: [] });
-      if (!fs.existsSync(generatedHtmlDir)) {
-        return res.json({ files: [] });
-      }
-
-      const result = await runGitHtmlSectionDiffNative(generatedHtmlDir);
-      res.json(result);
+      const comparison = await compareCurrentGeneratedOutput(bundleDirectory);
+      if (!comparison) return res.json({ files: [] });
+      const htmlEntries = comparison.entries
+        .filter(entry => displayedRelativePath(entry).toLowerCase().endsWith('.html') && (entry.kind !== 'changed' || entry.modified));
+      // Additions and deletions count as every section; only content changes need both sides read.
+      const savedBlobs = await readGitBlobs(bundleDirectory, htmlEntries.flatMap(entry => {
+        const details = changeNodeDetails(comparison, entry);
+        return entry.kind === 'changed'
+          ? [details.before, details.after].filter(side => side?.endpoint === 'saved').map(side => side!.objectId)
+          : [];
+      }));
+      const read = (details: NonNullable<GeneratedChangeNodeDetails['before']>): string => {
+        const saved = details.endpoint === 'saved' ? savedBlobs.get(details.objectId) : undefined;
+        return (saved ?? readComparedGeneratedFile(bundleDirectory, {
+          endpointKind: details.endpoint === 'working' ? 'working' : 'saved',
+          versionId: details.versionId as GeneratedBundleVersionId | null,
+          path: details.path,
+          objectId: details.objectId,
+        })).toString('utf8');
+      };
+      const files = htmlEntries.map(entry => {
+        const details = changeNodeDetails(comparison, entry);
+        return {
+          entryId: entry.entryId,
+          path: path.join(comparison.workingDirectory!, ...displayedRelativePath(entry).split('/')),
+          sections: entry.kind === 'changed'
+            ? htmlSectionChanges(read(details.before!), read(details.after!))
+            : htmlSectionChanges(null, null),
+        };
+      });
+      res.json({ files });
     } catch (error) {
+      if (comparisonFailure(res, error)) return;
       logger.error('Error getting preview HTML section changes:', error);
       next(error);
     }
   })().catch(next);
+});
+
+// Exact bytes of one side of a generated-file comparison entry.
+router.get('/bundles/:bundleSlug/review/generated-changes/file', (req, res, next) => {
+  try {
+    const { bundleSlug } = req.params;
+    const endpoint = req.query.endpoint;
+    const relativePath = req.query.path;
+    const objectId = req.query.objectId;
+    const versionId = typeof req.query.versionId === 'string' && req.query.versionId ? req.query.versionId : null;
+    if (!bundleSlug) return res.status(400).json({ error: 'bundleSlug is required' });
+    if ((endpoint !== 'saved' && endpoint !== 'working') || typeof relativePath !== 'string' || typeof objectId !== 'string') {
+      return res.status(400).json({ error: 'endpoint, path, and objectId are required' });
+    }
+    const bundleDirectory = getBundleDirectory(bundleSlug);
+    if (!fs.existsSync(bundleDirectory)) return res.status(404).json({ error: `Bundle '${bundleSlug}' not found` });
+    const content = readComparedGeneratedFile(bundleDirectory, {
+      endpointKind: endpoint,
+      versionId: versionId ? requireGeneratedBundleVersionId(versionId) : null,
+      path: relativePath,
+      objectId,
+    });
+    res.json({ ...fileContentFromBuffer(relativePath, content), path: relativePath });
+  } catch (error) {
+    // A newer generation or version operation replaced the file after the
+    // comparison was listed: an expected transient state, refreshed by the client.
+    if (error instanceof StaleGeneratedComparisonError) return res.json({ stale: true, path: req.query.path });
+    if (comparisonFailure(res, error)) return;
+    logger.error('Error reading compared generated file:', error);
+    next(error);
+  }
 });
 
 // Get file content (works for both conf and preview directories)
@@ -753,15 +819,19 @@ router.delete('/bundles/:bundleSlug/review/versions/:versionId', (req, res, next
       if (!bundleSlug || !versionId) return res.status(400).json({ error: 'bundleSlug and versionId are required' });
       const bundleDirectory = getBundleDirectory(bundleSlug);
       const canonicalVersionId = requireGeneratedBundleVersionId(versionId);
-      await deleteLocalGeneratedBundleVersionFiles(bundleDirectory, canonicalVersionId);
-      const commitSha = await commitChangesNative(
-        [
-          path.dirname(generatedBundleVersionManifestPath(bundleDirectory)),
-          generatedBundleVersionsRoot(bundleDirectory),
-        ],
-        `delete local files for generated bundle version ${canonicalVersionId}`,
-        { configDir: getConfigDirectory() },
-      );
+      let commitSha: string | null = null;
+      await deleteLocalGeneratedBundleVersionFiles(bundleDirectory, canonicalVersionId, {
+        commit: async () => {
+          commitSha = await commitChangesNative(
+            [
+              path.dirname(generatedBundleVersionManifestPath(bundleDirectory)),
+              generatedBundleVersionsRoot(bundleDirectory),
+            ],
+            `delete local files for generated bundle version ${canonicalVersionId}`,
+            { configDir: getConfigDirectory() },
+          );
+        },
+      });
       logBundleInfo(bundleSlug, `[operation ${operationId}] [version-delete-local] Created a local tombstone for version ${canonicalVersionId}; remote copies and publication history were unchanged`);
       res.json({ success: true, commitSha, operationId });
     } catch (error) {
@@ -782,25 +852,26 @@ router.get('/bundles/:bundleSlug/review/version-comparison', (req, res, next) =>
     const rightValue = typeof req.query.right === 'string' ? req.query.right : 'working';
     if (!leftValue || !current) return res.json({ left: null, right: null, changes: [] });
     const left = requireGeneratedBundleVersionId(leftValue);
-    const leftEntry = manifest.versions.find(entry => entry.versionId === left);
-    if (!leftEntry || leftEntry.localFilesState === 'deleted') {
-      return res.status(400).json({ error: 'left version must be locally present' });
+    if (!manifest.versions.some(entry => entry.versionId === left)) {
+      return res.status(400).json({ error: 'left version is unknown' });
     }
-    let changes;
-    if (rightValue === 'working') {
-      if (current.localFilesState === 'deleted') return res.status(400).json({ error: 'current version is not locally present' });
-      changes = await compareGeneratedBundleVersionTrees(bundleDirectory, left, {
-        workingCurrentVersionId: current.versionId,
-      });
-    } else {
-      const right = requireGeneratedBundleVersionId(rightValue);
-      const rightEntry = manifest.versions.find(entry => entry.versionId === right);
-      if (!rightEntry || rightEntry.localFilesState === 'deleted') {
-        return res.status(400).json({ error: 'right version must be locally present' });
+    try {
+      let comparison: ResolvedGeneratedComparison;
+      if (rightValue === 'working') {
+        if (current.localFilesState === 'deleted') return res.status(400).json({ error: 'current version is not locally present' });
+        comparison = await compareSelectedGeneratedVersions(bundleDirectory, left, { workingCurrentVersionId: current.versionId }, manifest);
+      } else {
+        const right = requireGeneratedBundleVersionId(rightValue);
+        if (!manifest.versions.some(entry => entry.versionId === right)) {
+          return res.status(400).json({ error: 'right version is unknown' });
+        }
+        comparison = await compareSelectedGeneratedVersions(bundleDirectory, left, { versionId: right }, manifest);
       }
-      changes = await compareGeneratedBundleVersionTrees(bundleDirectory, left, { versionId: right });
+      res.json({ ...comparisonSummary(comparison), leftVersionId: left, rightSelection: rightValue, changes: comparison.entries });
+    } catch (error) {
+      if (comparisonFailure(res, error)) return;
+      throw error;
     }
-    res.json({ left, right: rightValue, changes });
   })().catch(next);
 });
 
@@ -810,9 +881,12 @@ router.post('/bundles/:bundleSlug/review/versions/:versionId/restore-frozen', (r
     const { bundleSlug, versionId } = req.params;
     if (!bundleSlug || !versionId) return res.status(400).json({ error: 'bundleSlug and versionId are required' });
     const canonicalVersionId = requireGeneratedBundleVersionId(versionId);
-    restoreFrozenGeneratedBundleVersion(getBundleDirectory(bundleSlug), canonicalVersionId);
-    logBundleInfo(bundleSlug, `[operation ${operationId}] [version-restore] Restored frozen version ${canonicalVersionId} exactly from Git; publishing and version creation may resume`);
-    res.json({ success: true, operationId });
+    void restoreFrozenGeneratedBundleVersion(getBundleDirectory(bundleSlug), canonicalVersionId)
+      .then(() => {
+        logBundleInfo(bundleSlug, `[operation ${operationId}] [version-restore] Restored frozen version ${canonicalVersionId} and its generation records exactly from Git; publishing and version creation may resume`);
+        res.json({ success: true, operationId });
+      })
+      .catch(next);
   } catch (error) {
     next(error);
   }
@@ -830,10 +904,13 @@ router.post('/bundles/:bundleSlug/review/versions/current/cancel', (req, res, ne
         .catch(next);
       return;
     }
-    const manifest = cancelCurrentGeneratedBundleVersion(getBundleDirectory(bundleSlug));
-    const currentVersionId = manifest.versions.at(-1)?.versionId ?? null;
-    logBundleInfo(bundleSlug, `[operation ${operationId}] [version-cancel] Canceled the never-saved current version; restored current version ${currentVersionId ?? 'none'}`);
-    res.json({ success: true, currentVersionId, operationId });
+    void cancelCurrentGeneratedBundleVersion(getBundleDirectory(bundleSlug))
+      .then(manifest => {
+        const currentVersionId = manifest.versions.at(-1)?.versionId ?? null;
+        logBundleInfo(bundleSlug, `[operation ${operationId}] [version-cancel] Canceled the never-saved current version and removed its generation records; restored current version ${currentVersionId ?? 'none'}`);
+        res.json({ success: true, currentVersionId, operationId });
+      })
+      .catch(next);
   } catch (error) {
     next(error);
   }

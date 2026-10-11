@@ -367,7 +367,7 @@ export async function generateHtmlForBundle(
       percent?: number;
     }) => void;
   }
-): Promise<void> {
+): Promise<GenerationEmission> {
   logger.info(`Processing bundle: ${bundleDirectory}`);
 
   const emitProgress = (info: {
@@ -491,6 +491,8 @@ export async function generateHtmlForBundle(
   // Everything downstream of this point reads from scrubbed_source_content,
   // which contains only publishable traversable files with unsafe links removed.
   let scrubbedTraversablePageKeys: Set<string> = new Set();
+  // Configured source files admitted across the publish boundary.
+  let scrubbedAdmittedBundleNodeIds: BundleNodeId[] = [];
   let scrubbedAllLinkResolutionMaps: Map<EncodedBundleNodeKey, Record<string, LinkResolvedInfo>> = new Map();
   let sourceStructuralProjection: VisibleStructuralProjection | null = null;
   let sourceGraphNodes: IBundleNode[] = [];
@@ -522,6 +524,9 @@ export async function generateHtmlForBundle(
       const key = bundleNodeConfigToKey(conf);
       return conf.bundleNodeKind === 'file' && scrubbedTraversablePageKeys.has(key);
     });
+    scrubbedAdmittedBundleNodeIds = bundleNodeConfigsArrayForScrubbing
+      .filter(conf => conf.listType === 'whitelist' && conf.sourceGraphSubdirectory !== BundleConfigPaths.TAGPAGE_SOURCE_STAGING_DIR)
+      .map(conf => conf.bundleNodeId);
 
     timeSync('bundle.generation.stage', { ...timingLabels, stage: 'prepare_scrubbed_source' }, () => {
       prepareScrubbedSourceDirectory(
@@ -563,6 +568,7 @@ export async function generateHtmlForBundle(
   const assetsDirectory = path.join(generatedHtmlDirectory, '_mw_assets');
   fs.mkdirSync(assetsDirectory, { recursive: true });
   recordStageTiming('prepare_output_directories', prepareOutputStart);
+  const emittedOutputs = new EmittedOutputRecorder(generatedHtmlDirectory);
 
   // Get the effective style preset for this bundle
   const effectivePresetId = getEffectivePresetIdForBundleDirectory(bundleDirectory);
@@ -1296,6 +1302,7 @@ export async function generateHtmlForBundle(
     const outputPath = path.join(generatedHtmlDirectory, ...outputRelativePath.split('/'));
     fs.mkdirSync(path.dirname(outputPath), { recursive: true });
     if (!fs.existsSync(outputPath)) fs.copyFileSync(sourcePath, outputPath);
+    emittedOutputs.claim(outputRelativePath, config.bundleNodeId, 'structural-preview');
     return outputRelativePath;
   };
 
@@ -1386,6 +1393,7 @@ export async function generateHtmlForBundle(
       hoverPreviewEnabled: generationOptions.hoverPreviewEnabled,
       folderNavigation: generationOptions.folderNavigationEnabled ? { storageKey: folderNavigationStorageKey, defaultOpen: generationOptions.folderNavigationDefaultOpen } : undefined,
     });
+    emittedOutputs.claim(outputRoute, config.bundleNodeId, 'page');
     if (!startPageRenderedEmitted) {
       const isStart = startPageKey ? pageKey === startPageKey : renderedOrSkipped === 0;
       if (isStart && await waitForFileExists(htmlPath)) {
@@ -1431,6 +1439,7 @@ export async function generateHtmlForBundle(
       } else {
         fs.copyFileSync(sourcePath, outputPath);
       }
+      emittedOutputs.claim(relativePath, config.bundleNodeId, 'asset');
     } else {
       logger.warn(`Native bundle asset not found: ${sourcePath}`);
     }
@@ -1468,6 +1477,7 @@ export async function generateHtmlForBundle(
     });
     fs.mkdirSync(path.dirname(outputPath), { recursive: true });
     fs.writeFileSync(outputPath, rewritten, 'utf8');
+    emittedOutputs.claim(outputRoute, conf.bundleNodeId, 'page');
 
     if (!startPageRenderedEmitted && startPageKey === pageKey && await waitForFileExists(outputPath)) {
       startPageRenderedEmitted = true;
@@ -1571,6 +1581,9 @@ export async function generateHtmlForBundle(
     if (fs.existsSync(sourceMdPath) && !fs.existsSync(sourceMdDest)) {
       fs.copyFileSync(sourceMdPath, sourceMdDest);
     }
+    if (fs.existsSync(sourceMdPath) && fs.existsSync(sourceMdDest)) {
+      emittedOutputs.claim(path.posix.join(outputDirectory, `${conf.bundleNodeName}.excalidraw.md`), conf.bundleNodeId, 'drawing-data');
+    }
     const drawingMdHref = encodePathForUrl(`${conf.bundleNodeName}.excalidraw.md`);
 
     // Pre-resolve the wikilinks living inside this Excalidraw drawing using
@@ -1624,6 +1637,7 @@ export async function generateHtmlForBundle(
         defaultOpen: generationOptions.folderNavigationDefaultOpen,
       } : undefined,
     });
+    if (htmlPath) emittedOutputs.claim(outputRoute, conf.bundleNodeId, 'page');
 
     if (!startPageRenderedEmitted) {
       const isStart = startPageKey ? pageKey === startPageKey : renderedOrSkipped === 0;
@@ -1759,6 +1773,7 @@ export async function generateHtmlForBundle(
     );
 
     if (htmlPath) {
+      emittedOutputs.claim(outputRoute, conf.bundleNodeId, 'page');
       logger.debug(`Generated HTML for: ${conf.bundleNodeName} in ${subdir || 'root'}`);
     }
 
@@ -1860,14 +1875,30 @@ export async function generateHtmlForBundle(
     { ...timingLabels, stage: 'write_version_awareness_assets' },
     () => emitVersionAwarenessAssets({
       outputDirectory: generatedHtmlDirectory,
-      routeTable: routePlan.routes,
-      entryBundleNodeId: entryNode.bundleNodeId,
+      pageOwners: emittedOutputs.pageOwners(),
+      entryRoute: routeForBundleNode(entryNode, routePlan.routes),
     })
   );
   logger.info(`Generated reader awareness route index at ${versionAwareness.routeIndexPath}`);
 
   emitProgress({ stage: 'complete', message: 'HTML render complete', current: renderedOrSkipped, total: totalToRender, percent: 100 });
-  
+
+  // Archives carry every admitted source file; otherwise only rendered nodes are included.
+  const renderedBundleNodeIds = new Set(bundleNodeConfigsArrayForLinks.map(conf => conf.bundleNodeId));
+  const includedBundleNodeIds = sourcesExportEnabled || openKnowledgeFormatEnabled
+    ? scrubbedAdmittedBundleNodeIds
+    : scrubbedAdmittedBundleNodeIds.filter(bundleNodeId => renderedBundleNodeIds.has(bundleNodeId));
+  return {
+    owners: emittedOutputs.owners(),
+    includedBundleNodeIds: [...new Set(includedBundleNodeIds)].sort(),
+  };
+}
+
+/** What one generation emitted, recorded where its files were written. */
+export interface GenerationEmission {
+  owners: GeneratedOutputOwnership[];
+  /** Configured source files admitted to the generated artifact. */
+  includedBundleNodeIds: BundleNodeId[];
 } 
 
 import { encodedBundleNodeKey } from '../../../../../../../shared_code/utils/bundleNodeKey.js';
@@ -1875,3 +1906,7 @@ import { encodedBundleNodeKey } from '../../../../../../../shared_code/utils/bun
 import { serializeBundleNodeKey, fileNodeKeyFromSourceGraphPath } from '../../../../../../../shared_code/utils/bundleNodeKey.js';
 
 import { makeBundleNodeKey } from '../../../../shared/bundle-node/nodeKeys.js';
+
+import { EmittedOutputRecorder } from './emittedOutputRecorder.js';
+
+import type { GeneratedOutputOwnership } from '../../../../../../../contracts/types/generatedOutputIdentity.js';

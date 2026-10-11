@@ -5,7 +5,7 @@ import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/
 import type { Graph } from '../../../../../../../contracts/types/graph.js';
 import { sourceReviewAppearance, sourceRemovalReasons, sourceModificationKinds } from '../../../../shared/utils/sourceReviewAppearance.js';
 import { SourceLineCounts, useSourceLineCounts } from './SourceLineCounts.js';
-import { PathChange } from '../../../../shared/components/PathChange.js';
+import { SourcePathChange } from '../../../../shared/components/SourcePathChange.js';
 import { SourceOrphanSentence } from './SourceOrphanDiagnosis.js';
 import { useEditorOperations } from '../types/editorOperations.js';
 import { SourceChangePagePill } from './SourceChangePagePill.js';
@@ -82,7 +82,7 @@ export function SourceComparisonEvidence({ evidence, graph, onCompare, onSelectP
     </> : <>
     {evidence.kind === 'frontier' && <p>{evidence.explanation}</p>}
     {evidence.sensitivityReasons?.map(reason => <p key={reason}>{reason}</p>)}
-    {renamed && evidence.previousPath && evidence.proposedPath && <PathChange compact before={evidence.previousPath} after={evidence.proposedPath} />}
+    {renamed && evidence.previousPath && evidence.proposedPath && <SourcePathChange compact before={evidence.previousPath} after={evidence.proposedPath} />}
     {showLocations && <dl className="space-y-1 break-words"><dt className="font-medium">Accepted location and route</dt><dd>{evidence.previousPath ?? 'Not included'}<br />{route(evidence.previousRoute)}</dd>
       <dt className="font-medium">{evidence.kind === 'frontier' ? 'Frontier location and route' : 'Proposed location and route'}</dt><dd>{evidence.proposedPath ?? 'Not included'}<br />{route(evidence.proposedRoute)}</dd></dl>}
     </>}

@@ -157,6 +157,26 @@ export function readFileContent(filePath: string): {
   };
 }
 
+/** Describe exact bytes the way readFileContent describes a file on disk. */
+export function fileContentFromBuffer(filePath: string, buffer: Buffer): {
+  content: string;
+  fileType: 'text' | 'image' | 'binary';
+  mimeType?: string;
+} {
+  const ext = path.extname(filePath).toLowerCase();
+  const sample = buffer.subarray(0, 8192);
+  const fileType = IMAGE_EXTENSIONS.has(ext) ? 'image'
+    : BINARY_EXTENSIONS.has(ext) ? 'binary'
+      : sample.includes(0) ? (isImageByMagicBytes(buffer) ? 'image' : 'binary')
+        : 'text';
+  if (fileType === 'binary') return { content: '', fileType };
+  if (fileType === 'image') {
+    const mimeType = getMimeType(filePath);
+    return { content: `data:${mimeType};base64,${buffer.toString('base64')}`, fileType, mimeType };
+  }
+  return { content: buffer.toString('utf-8'), fileType };
+}
+
 export interface FileNode {
   name: string;
   path: string;
@@ -409,24 +429,6 @@ export async function getConfigFileTree(bundleDirectory: string, changedOnly = f
   
   return {
     root: configDir,
-    tree,
-  };
-}
-
-/**
- * Get the file tree for a bundle's current generated HTML directory.
- * @param changedOnly - If true, only return files with git changes (much faster for large directories)
- */
-export async function getGeneratedHtmlFileTree(generatedHtmlDir: string, changedOnly = false): Promise<FileTreeResponse> {
-  const gitStatusMap = await getGitStatusMap(generatedHtmlDir);
-
-  // Use optimized path when only showing changed files
-  const tree = changedOnly
-    ? buildChangedFilesTree(generatedHtmlDir, gitStatusMap)
-    : buildFileTree(generatedHtmlDir, gitStatusMap);
-
-  return {
-    root: generatedHtmlDir,
     tree,
   };
 }

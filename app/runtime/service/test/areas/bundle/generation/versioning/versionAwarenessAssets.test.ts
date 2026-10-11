@@ -48,22 +48,22 @@ describe('version awareness assets', () => {
   };
 
   it('R06/R09 emits deterministic content-addressed reader-safe assets and page metadata', () => {
-    const routes = new Map<BundleNodeId, string>([
-      [nodeId('entry-node'), 'index.html'],
-      [nodeId('stable-node'), 'nested/Café.html'],
+    const routes = new Map<string, BundleNodeId>([
+      ['index.html', nodeId('entry-node')],
+      ['nested/Café.html', nodeId('stable-node')],
     ]);
     const firstOutput = makeOutput('first');
     const secondOutput = makeOutput('second');
 
     const first = emitVersionAwarenessAssets({
       outputDirectory: firstOutput,
-      routeTable: routes,
-      entryBundleNodeId: nodeId('entry-node'),
+      pageOwners: routes,
+      entryRoute: 'index.html',
     });
     const second = emitVersionAwarenessAssets({
       outputDirectory: secondOutput,
-      routeTable: routes,
-      entryBundleNodeId: nodeId('entry-node'),
+      pageOwners: routes,
+      entryRoute: 'index.html',
     });
 
     expect(second).toEqual(first);
@@ -221,6 +221,37 @@ describe('version awareness assets', () => {
     });
     expect(result.callout?.className).toContain('meadow-version-awareness--missing');
     expect(result.callout?.children[0].textContent).toContain('this page is not included');
+    expect(result.callout?.children[1].href).toBe('https://example.test/package-vCd5678/index.html');
+  });
+
+  it('follows the original identity when a different file reuses its old path', async () => {
+    const result = await runAwareness({
+      nodeId: 'original-node',
+      pagePath: 'A.html',
+      manifest: successorManifest,
+      routeIndex: {
+        schemaVersion: 1,
+        entryPath: 'index.html',
+        routesByBundleNodeId: { 'original-node': 'B.html', 'replacement-node': 'A.html' },
+        generatedPagePaths: [],
+      },
+    });
+    expect(result.callout?.children[1].href).toBe('https://example.test/package-vCd5678/B.html');
+  });
+
+  it('never falls back to an unrelated file at the same path for a page whose identity is absent', async () => {
+    const result = await runAwareness({
+      nodeId: 'removed-node',
+      pagePath: 'A.html',
+      manifest: successorManifest,
+      routeIndex: {
+        schemaVersion: 1,
+        entryPath: 'index.html',
+        routesByBundleNodeId: { 'replacement-node': 'A.html' },
+        generatedPagePaths: ['A.html'],
+      },
+    });
+    expect(result.callout?.className).toContain('meadow-version-awareness--missing');
     expect(result.callout?.children[1].href).toBe('https://example.test/package-vCd5678/index.html');
   });
 

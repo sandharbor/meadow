@@ -37,6 +37,8 @@ import {
   saveGeneratedBundleVersionManifest,
 } from '../../../../../src/shared/generated-bundle-versioning/generatedBundleVersionManifestService.js';
 import { inspectGeneratedVersionGitState } from '../../../../../src/shared/generated-bundle-versioning/generatedBundleVersionGitService.js';
+import { generatedBundleVersionOperationsDirectory } from '../../../../../src/shared/generated-bundle-versioning/generatedBundleVersionOperationLock.js';
+import { ownedOutput, testGenerationMetadata } from '../../../../shared/support/generationRecordTestUtils.js';
 
 const CREATED_1 = new Date('2026-08-16T12:00:00.000Z');
 const CREATED_2 = new Date('2026-08-18T09:30:00.000Z');
@@ -57,10 +59,11 @@ describe('generated bundle version lifecycle', () => {
     git('commit', '-m', message);
   };
 
-  const generate = (content: string) => async (directory: string): Promise<void> => {
+  const generate = (content: string) => async (directory: string) => {
     fs.mkdirSync(path.join(directory, 'nested'), { recursive: true });
     fs.writeFileSync(path.join(directory, 'index.html'), `${content}\n`);
     fs.writeFileSync(path.join(directory, 'nested', 'page.html'), `<p>${content}</p>\n`);
+    return testGenerationMetadata([ownedOutput('nested/page.html', 'page00000001')]);
   };
 
   const firstGeneration = async () => generateCurrentBundleVersion(bundleDirectory, {
@@ -184,7 +187,7 @@ describe('generated bundle version lifecycle', () => {
       confirmedNoGeneratedChanges: true,
       randomBytes: () => SECOND_RANDOM_BYTES,
     });
-    const canceled = cancelCurrentGeneratedBundleVersion(bundleDirectory);
+    const canceled = await cancelCurrentGeneratedBundleVersion(bundleDirectory);
     expect(canceled.versions.map((entry) => entry.versionId)).toEqual([first.versionId]);
     expect(fs.existsSync(second.directory)).toBe(false);
     expect(fs.readFileSync(path.join(first.directory, 'index.html'), 'utf8')).toBe('<h1>First</h1>\n');
@@ -207,7 +210,7 @@ describe('generated bundle version lifecycle', () => {
       randomBytes: () => SECOND_RANDOM_BYTES,
     });
     fs.writeFileSync(path.join(first.directory, 'index.html'), '<h1>Illegitimate frozen edit</h1>\n');
-    restoreFrozenGeneratedBundleVersion(bundleDirectory, first.versionId);
+    await restoreFrozenGeneratedBundleVersion(bundleDirectory, first.versionId);
     expect(fs.readFileSync(path.join(first.directory, 'index.html'), 'utf8')).toBe('<h1>First</h1>\n');
 
     const deleted = await deleteLocalGeneratedBundleVersionFiles(bundleDirectory, first.versionId, {
@@ -284,7 +287,7 @@ describe('generated bundle version lifecycle', () => {
     expect(recovery.recoveredOperation).toBe(true);
     expect(recovery.problems).toEqual([]);
     expect(loadGeneratedBundleVersionManifest(bundleDirectory).versions.at(-1)?.versionId).toBe(secondId);
-    expect(fs.existsSync(path.join(generatedBundleVersionsRoot(bundleDirectory), '.version-operation.json'))).toBe(false);
+    expect(fs.existsSync(path.join(generatedBundleVersionOperationsDirectory(bundleDirectory), 'operation.json'))).toBe(false);
   });
 
   it('quarantines an ambiguous real directory that has no manifest entry', () => {
@@ -322,6 +325,7 @@ describe('generated bundle version lifecycle', () => {
         fs.writeFileSync(path.join(directory, 'index.html'), 'active\n');
         generationStarted();
         await waitForRelease;
+        return testGenerationMetadata();
       },
       operationId: () => 'active-operation',
       randomBytes: () => FIRST_RANDOM_BYTES,

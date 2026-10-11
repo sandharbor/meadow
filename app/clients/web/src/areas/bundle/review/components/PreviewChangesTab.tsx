@@ -15,8 +15,9 @@ limitations under the License.
 */
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { ConfigFileExplorer, ConfigFileExplorerApi } from '../../../../../shared_components/ConfigFileExplorer';
+import { ConfigFileExplorer, ConfigFileExplorerApi, fileNodeKey } from '../../../../../shared_components/ConfigFileExplorer';
 import type { FileNode, FileTreeResponse } from '../../../../../shared_components/ConfigFileExplorer';
+import { PathChange } from '../../../../shared/components/PathChange';
 import { ToolbarIconButton } from '../../../../../shared_components/ToolbarIconButton';
 import { apiRequest } from '../../../../shared/utils/apiClient';
 import { logger } from '../../../../shared/utils/logger';
@@ -25,7 +26,68 @@ type HtmlSectionKey = 'head' | 'aside' | 'header' | 'main' | 'footer';
 type HtmlSectionFilterKey = HtmlSectionKey | 'other';
 type HtmlSectionChanges = Record<HtmlSectionFilterKey, boolean>;
 type HtmlSectionFilters = Record<HtmlSectionFilterKey, boolean>;
-type ChangeTypeKey = 'added' | 'modified' | 'deleted';
+type ChangeTypeKey = 'added' | 'modified' | 'moved' | 'deleted';
+type ChangeTypeFilters = Record<ChangeTypeKey, boolean>;
+
+type RecordState =
+  | { kind: 'valid' | 'legacy' }
+  | { kind: 'unsupported' | 'corrupt'; diagnostic: string };
+
+/** The comparison Review shows, as summarized by the Runtime with the changed-files tree. */
+export interface GeneratedComparisonSummary {
+  baseline: 'empty' | 'saved-current' | 'saved-predecessor' | 'selected';
+  left: { kind: 'empty' | 'saved' | 'working'; versionId: string | null; record: RecordState };
+  right: { kind: 'empty' | 'saved' | 'working'; versionId: string | null; record: RecordState };
+  identityPairing: boolean;
+  counts: { total: number; added: number; deleted: number; modified: number; moved: number };
+}
+
+/**
+ * Whether a changed node passes the change-type filters. A moved and modified
+ * file matches either filter; HTML section filters apply only to its content
+ * changes, so a pure move is never hidden by them.
+ */
+export const passesChangeFilters = (
+  node: FileNode,
+  changeTypes: ChangeTypeFilters,
+  sectionsPass: boolean,
+): boolean => {
+  const comparison = node.comparison;
+  if (comparison) {
+    if (comparison.kind === 'added') return changeTypes.added && sectionsPass;
+    if (comparison.kind === 'deleted') return changeTypes.deleted && sectionsPass;
+    return (comparison.moved && changeTypes.moved) || (comparison.modified && changeTypes.modified && sectionsPass);
+  }
+  if (!node.gitStatus || node.gitStatus === 'has-changes') return true;
+  if (node.gitStatus === 'new' || node.gitStatus === 'staged-new') return changeTypes.added && sectionsPass;
+  if (node.gitStatus === 'modified' || node.gitStatus === 'staged-modified') return changeTypes.modified && sectionsPass;
+  if (node.gitStatus === 'deleted') return changeTypes.deleted && sectionsPass;
+  return sectionsPass;
+};
+
+function baselineDescription(summary: GeneratedComparisonSummary): string {
+  if (summary.baseline === 'empty') return 'Compared with an empty site: this is the first generation.';
+  if (summary.baseline === 'saved-predecessor') {
+    return `Compared with the saved generation of the previous version${summary.left.versionId ? ` (${summary.left.versionId})` : ''}. This new version is unsaved until you save it.`;
+  }
+  return 'Compared with the last saved generation of this version.';
+}
+
+function identityNotice(summary: GeneratedComparisonSummary): string | null {
+  const { left, right } = summary;
+  if (right.record.kind === 'corrupt') {
+    return `This generation's identity records are damaged (${right.record.diagnostic}). Files are compared by path only, so moves are not shown. Generate again before saving.`;
+  }
+  if (right.record.kind === 'unsupported') return `${right.record.diagnostic} Files are compared by path only.`;
+  if (left.record.kind === 'corrupt') {
+    return `The comparison baseline's identity records are damaged (${left.record.diagnostic}). Files are compared by path only, so moves are not shown.`;
+  }
+  if (left.record.kind === 'unsupported') return `${left.record.diagnostic} Files are compared by path only.`;
+  if (left.record.kind === 'legacy' || right.record.kind === 'legacy') {
+    return 'The baseline was generated before Meadow recorded file identity, so moved files appear as additions and deletions.';
+  }
+  return null;
+}
 
 export const shouldShowHtmlForSectionFilters = (
   changes: HtmlSectionChanges,
@@ -129,16 +191,19 @@ const PreviewChangesTab: React.FC<PreviewChangesTabProps> = ({
   const filterDropdownRef = useRef<HTMLDivElement>(null);
 
   // Change type filtering state
-  const [changeTypeFilters, setChangeTypeFilters] = useState<Record<ChangeTypeKey, boolean>>({
+  const [changeTypeFilters, setChangeTypeFilters] = useState<ChangeTypeFilters>({
     added: true,
     modified: true,
+    moved: true,
     deleted: true,
   });
   const [changeTypeCounts, setChangeTypeCounts] = useState<Record<ChangeTypeKey, number>>({
     added: 0,
     modified: 0,
+    moved: 0,
     deleted: 0,
   });
+  const [comparisonSummary, setComparisonSummary] = useState<GeneratedComparisonSummary | null>(null);
 
   // Visible HTML section counts (reflects only files passing change type filter)
   const [visibleHtmlSectionCounts, setVisibleHtmlSectionCounts] = useState<Record<HtmlSectionFilterKey, number>>({
@@ -165,13 +230,14 @@ const PreviewChangesTab: React.FC<PreviewChangesTabProps> = ({
     apiRequest(`bundles/${slug}/review/preview-files/html-section-changes`)
       .then(async (res) => {
         if (!res.ok) throw new Error(`Failed to fetch HTML section changes (${res.status})`);
-        return res.json() as Promise<{ files: Array<{ path: string; sections: HtmlSectionChanges }> }>;
+        return res.json() as Promise<{ files: Array<{ entryId?: string; path: string; sections: HtmlSectionChanges }> }>;
       })
       .then((data) => {
         const map: Record<string, HtmlSectionChanges> = {};
         for (const f of data.files || []) {
-          if (f?.path && f.sections) {
-            map[f.path] = f.sections;
+          const key = f?.entryId ?? f?.path;
+          if (key && f.sections) {
+            map[key] = f.sections;
           }
         }
         setHtmlSectionChangesMap(map);
@@ -210,6 +276,7 @@ const PreviewChangesTab: React.FC<PreviewChangesTabProps> = ({
     return [
       changeTypeFilters.added ? '1' : '0',
       changeTypeFilters.modified ? '1' : '0',
+      changeTypeFilters.moved ? '1' : '0',
       changeTypeFilters.deleted ? '1' : '0',
     ].join('');
   }, [changeTypeFilters]);
@@ -242,48 +309,39 @@ const PreviewChangesTab: React.FC<PreviewChangesTabProps> = ({
     return out;
   }, []);
 
+  const changedFileNodes = useCallback((nodes: FileNode[]): FileNode[] => nodes.flatMap(node => [
+    ...(node.type === 'file' && node.gitStatus && node.gitStatus !== 'has-changes' ? [node] : []),
+    ...(node.children ? changedFileNodes(node.children) : []),
+  ]), []);
+
   const countFilesByChangeType = useCallback((nodes: FileNode[]): Record<ChangeTypeKey, number> => {
-    const counts: Record<ChangeTypeKey, number> = { added: 0, modified: 0, deleted: 0 };
-    for (const node of nodes) {
-      if (node.type === 'file' && node.gitStatus && node.gitStatus !== 'has-changes') {
-        if (node.gitStatus === 'new' || node.gitStatus === 'staged-new') counts.added++;
-        else if (node.gitStatus === 'modified' || node.gitStatus === 'staged-modified') counts.modified++;
-        else if (node.gitStatus === 'deleted') counts.deleted++;
-      }
-      if (node.children) {
-        const childCounts = countFilesByChangeType(node.children);
-        counts.added += childCounts.added;
-        counts.modified += childCounts.modified;
-        counts.deleted += childCounts.deleted;
-      }
+    const counts: Record<ChangeTypeKey, number> = { added: 0, modified: 0, moved: 0, deleted: 0 };
+    for (const node of changedFileNodes(nodes)) {
+      const comparison = node.comparison;
+      if (comparison) {
+        if (comparison.kind === 'added') counts.added++;
+        else if (comparison.kind === 'deleted') counts.deleted++;
+        if (comparison.moved) counts.moved++;
+        if (comparison.modified) counts.modified++;
+      } else if (node.gitStatus === 'new' || node.gitStatus === 'staged-new') counts.added++;
+      else if (node.gitStatus === 'modified' || node.gitStatus === 'staged-modified') counts.modified++;
+      else if (node.gitStatus === 'deleted') counts.deleted++;
     }
     return counts;
-  }, []);
+  }, [changedFileNodes]);
 
-  const countAllChangedFiles = useCallback((nodes: FileNode[]): number => {
-    let count = 0;
-    for (const node of nodes) {
-      if (node.type === 'file' && node.gitStatus && node.gitStatus !== 'has-changes') {
-        count++;
-      }
-      if (node.children) count += countAllChangedFiles(node.children);
-    }
-    return count;
-  }, []);
-
-  const passesChangeTypeFilter = useCallback((node: FileNode): boolean => {
-    if (!node.gitStatus || node.gitStatus === 'has-changes') return true;
-    if (node.gitStatus === 'new' || node.gitStatus === 'staged-new') return changeTypeFilters.added;
-    if (node.gitStatus === 'modified' || node.gitStatus === 'staged-modified') return changeTypeFilters.modified;
-    if (node.gitStatus === 'deleted') return changeTypeFilters.deleted;
-    return true;
-  }, [changeTypeFilters]);
+  const sectionsPassFor = useCallback((node: FileNode): boolean => {
+    if (!node.name.toLowerCase().endsWith('.html')) return true;
+    const changes = htmlSectionChangesMap[fileNodeKey(node)];
+    return !changes || shouldShowHtmlForSectionFilters(changes, htmlSectionFilters);
+  }, [htmlSectionChangesMap, htmlSectionFilters]);
 
   // Filtered API adapter
   const filteredApi: ConfigFileExplorerApi = useMemo(() => ({
     ...baseApi,
     fetchTree: async (options) => {
-      const data = (await baseApi.fetchTree(options)) as FileTreeResponse;
+      const data = (await baseApi.fetchTree(options)) as FileTreeResponse & { comparison?: GeneratedComparisonSummary | null };
+      setComparisonSummary(data.comparison ?? null);
 
       if (!options?.changedOnly) {
         setHiddenCount(0);
@@ -292,13 +350,11 @@ const PreviewChangesTab: React.FC<PreviewChangesTabProps> = ({
 
       const rawTree = data.tree || [];
 
-      // 1. Compute change type counts from raw tree
+      // 1. Category counts overlap: a moved and modified file counts in both.
       setChangeTypeCounts(countFilesByChangeType(rawTree));
 
-      // 2. Apply change type filter
-      const afterChangeTypeFilter = filterTree(rawTree, passesChangeTypeFilter);
-
-      // 3. Compute visible HTML section counts (from files passing change type filter)
+      // 2. Visible HTML section counts reflect files passing the change-type filter.
+      const afterChangeTypeFilter = filterTree(rawTree, node => passesChangeFilters(node, changeTypeFilters, true));
       const visCounts: Record<HtmlSectionFilterKey, number> = {
         head: 0,
         aside: 0,
@@ -307,50 +363,62 @@ const PreviewChangesTab: React.FC<PreviewChangesTabProps> = ({
         footer: 0,
         other: 0,
       };
-      if (htmlSectionChangesMap && Object.keys(htmlSectionChangesMap).length > 0) {
-        const countSections = (nodes: FileNode[]) => {
-          for (const node of nodes) {
-            if (node.type === 'file') {
-              const changes = htmlSectionChangesMap[node.path];
-              if (changes) {
-                if (changes.head) visCounts.head++;
-                if (changes.aside) visCounts.aside++;
-                if (changes.header) visCounts.header++;
-                if (changes.main) visCounts.main++;
-                if (changes.footer) visCounts.footer++;
-                if (changes.other) visCounts.other++;
-              }
-            }
-            if (node.children) countSections(node.children);
-          }
-        };
-        countSections(afterChangeTypeFilter);
+      for (const node of changedFileNodes(afterChangeTypeFilter)) {
+        const changes = htmlSectionChangesMap[fileNodeKey(node)];
+        if (!changes) continue;
+        if (changes.head) visCounts.head++;
+        if (changes.aside) visCounts.aside++;
+        if (changes.header) visCounts.header++;
+        if (changes.main) visCounts.main++;
+        if (changes.footer) visCounts.footer++;
+        if (changes.other) visCounts.other++;
       }
       setVisibleHtmlSectionCounts(visCounts);
 
-      // 4. Apply HTML section filter (only to HTML files)
-      let finalTree = afterChangeTypeFilter;
-      if (htmlSectionChangesMap && Object.keys(htmlSectionChangesMap).length > 0) {
-        finalTree = filterTree(afterChangeTypeFilter, (node) => {
-          if (!node.name.toLowerCase().endsWith('.html')) return true;
-          const changes = htmlSectionChangesMap[node.path];
-          if (!changes) return true;
-          return shouldShowHtmlForSectionFilters(changes, htmlSectionFilters);
-        });
-      }
+      // 3. Apply both filters. Section filters constrain content changes only.
+      const finalTree = filterTree(rawTree, node => passesChangeFilters(node, changeTypeFilters, sectionsPassFor(node)));
 
-      // 5. Compute hidden count
-      const totalChanged = countAllChangedFiles(rawTree);
-      const visibleChanged = countAllChangedFiles(finalTree);
+      // 4. Each logical change counts once toward the total.
+      const totalChanged = changedFileNodes(rawTree).length;
+      const visibleChanged = changedFileNodes(finalTree).length;
       setHiddenCount(Math.max(0, totalChanged - visibleChanged));
 
       return { ...data, tree: finalTree };
     },
-  }), [baseApi, htmlSectionChangesMap, htmlSectionFilters, filterTree, countFilesByChangeType, countAllChangedFiles, passesChangeTypeFilter]);
+  }), [baseApi, htmlSectionChangesMap, changeTypeFilters, filterTree, countFilesByChangeType, changedFileNodes, sectionsPassFor]);
+
+  const renderSelectedFileDetails = useCallback((node: FileNode) => {
+    const comparison = node.comparison;
+    if (!comparison?.moved || !comparison.before || !comparison.after) return null;
+    return (
+      <div className="text-xs text-neutral-600" data-testid="generated-file-move">
+        <PathChange
+          before={comparison.before.path}
+          after={comparison.after.path}
+          rootLabel="Site root"
+          testIdPrefix="generated-path"
+        />
+      </div>
+    );
+  }, []);
+
+  const notice = comparisonSummary ? identityNotice(comparisonSummary) : null;
 
   return (
     <ChangesTabErrorBoundary>
-      <div className="h-full">
+      <div className="flex h-full flex-col">
+        {comparisonSummary && (
+          <div className="border-b border-neutral-200 px-2 py-1.5 text-xs text-neutral-600" data-testid="changes-comparison-baseline">
+            <span>{baselineDescription(comparisonSummary)}</span>
+            {comparisonSummary.counts.total === 0 && <span> No generated-file differences.</span>}
+            {notice && (
+              <div role="status" className="mt-1 rounded border border-warning-200 bg-warning-50 px-2 py-1 text-warning-800" data-testid="changes-identity-notice">
+                {notice}
+              </div>
+            )}
+          </div>
+        )}
+        <div className="min-h-0 flex-1">
         <ConfigFileExplorer
           key={`${initialFile || 'default'}-${sectionFilterKey}-${changeTypeFilterKey}-${htmlSectionChangesEpoch}-${refreshKey}`}
           api={filteredApi}
@@ -379,6 +447,7 @@ const PreviewChangesTab: React.FC<PreviewChangesTabProps> = ({
                       {([
                         { key: 'added' as ChangeTypeKey, label: 'Added', badge: 'A', badgeClass: 'text-success-500' },
                         { key: 'modified' as ChangeTypeKey, label: 'Modified', badge: 'M', badgeClass: 'text-warning-500' },
+                        { key: 'moved' as ChangeTypeKey, label: 'Moved', badge: '→', badgeClass: 'text-info-500' },
                         { key: 'deleted' as ChangeTypeKey, label: 'Deleted', badge: 'D', badgeClass: 'text-danger-500' },
                       ]).map(({ key, label, badge, badgeClass }) => (
                         <label
@@ -425,6 +494,11 @@ const PreviewChangesTab: React.FC<PreviewChangesTabProps> = ({
                   </div>
                 )}
               </div>
+              {comparisonSummary && comparisonSummary.counts.total > 0 && (
+                <span className="text-sm text-neutral-500" data-testid="changes-total">
+                  {comparisonSummary.counts.total} changed file{comparisonSummary.counts.total === 1 ? '' : 's'}
+                </span>
+              )}
               {hiddenCount > 0 && (
                 <span className="text-sm text-neutral-500">
                   {hiddenCount} hidden by filter
@@ -450,7 +524,9 @@ const PreviewChangesTab: React.FC<PreviewChangesTabProps> = ({
           contentRefreshKey={contentRefreshKey}
           onFileSelect={onSelectedFileChange}
           onPreviewFile={onPreviewFile}
+          renderSelectedFileDetails={renderSelectedFileDetails}
         />
+        </div>
       </div>
     </ChangesTabErrorBoundary>
   );

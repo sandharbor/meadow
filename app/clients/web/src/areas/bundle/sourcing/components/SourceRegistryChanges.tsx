@@ -1,7 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import type { SourcingReview } from '../../../../../../../contracts/types/sourcing.js';
-import { PathChange } from '../../../../shared/components/PathChange.js';
+import { SourcePathChange } from '../../../../shared/components/SourcePathChange.js';
 
 export function SourceOutputPathsNotice() {
   return <p className="rounded bg-amber-50 p-3 text-sm text-amber-900">Generated page paths will change. For a published bundle, we recommend creating a new generated version, publishing a connected revision, and retaining the prior publication. Readers can use Open the newer version to reach the same pages at their new paths. You can keep working without publishing.</p>;
@@ -23,8 +23,8 @@ export function SourceRegistryChanges({ changes }: { changes: NonNullable<Sourci
         : !after ? <p><span className="rounded bg-red-50 px-1.5 text-red-800">Removed source</span> <strong>{before.name}</strong></p>
           : <>
             <p className="font-medium">{after.name}</p>
-            {before.name !== after.name && <div><span className="text-xs text-neutral-500">Name changed</span><PathChange before={before.name} after={after.name} /></div>}
-            {before.directory !== after.directory && <div><span className="text-xs text-neutral-500">Location changed</span><PathChange before={before.directory} after={after.directory} /></div>}
+            {before.name !== after.name && <div><span className="text-xs text-neutral-500">Name changed</span><SourcePathChange before={before.name} after={after.name} /></div>}
+            {before.directory !== after.directory && <div><span className="text-xs text-neutral-500">Location changed</span><SourcePathChange before={before.directory} after={after.directory} /></div>}
             {JSON.stringify(before.aliases ?? []) !== JSON.stringify(after.aliases ?? []) && <p className="text-xs text-neutral-500">Aliases: {before.aliases?.join(', ') || 'none'} → {after.aliases?.join(', ') || 'none'}</p>}
           </>}
     </div>)}

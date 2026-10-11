@@ -99,6 +99,7 @@ export const coreConceptIds = {
   svg: "svg",
   tracking: "tracking",
   versioning: "versioning",
+  generationRecord: "generation-record",
 
   meadowHome: "meadow-home",
   runtimeInstance: "runtime-instance",

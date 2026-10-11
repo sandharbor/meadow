@@ -42,32 +42,48 @@ import {
 } from './generatedBundleVersionManifestService.js';
 import {
   deriveSavedGenerationId,
+  hasGitRepository,
   inspectGeneratedVersionGitState,
   restoreGeneratedVersionFromGit,
+  restoreGenerationRecordsFromHead,
   type GeneratedVersionGitChange,
 } from './generatedBundleVersionGitService.js';
 import {
-  isPlainObject,
-  jsonDocumentCodec,
-  readDurableDocument,
-  requireValidDocument,
+  generatedBundleVersionOperationsDirectory,
+  releaseGeneratedBundleVersionOperationLock,
+  withGeneratedBundleVersionOperation,
+} from './generatedBundleVersionOperationLock.js';
+import {
+  journalArtifactRoot,
+  readJournal,
+  removeJournal,
+  writeJournal,
+  type AnyVersionOperationJournal,
+  type VersionOperationJournal,
+  type VersionOperationPhase,
+  type VersionOperationType,
+} from './generatedBundleVersionJournal.js';
+import {
+  backupGenerationRecords,
+  installStagedGenerationRecords,
+  priorGenerationRecords,
+  removeGenerationRecords,
+  restoreGenerationRecordsFromBackup,
+  stageGenerationRecords,
+} from './generationRecordInstallation.js';
+import {
+  buildGenerationRecordPair,
+  hashGeneratedDirectory,
+  type CapturedGenerationInputs,
+  type EmittedGenerationOutput,
+} from './generationRecords.js';
+import {
   textDocumentCodec,
   writeDurableDocument,
 } from '../../../../../shared_code/utils/durableDocument.js';
+import { logger } from '../utils/logging/backendLoggingUtils.js';
 
-type VersionOperationType = 'generate-current' | 'create-version';
-type VersionOperationPhase = 'staging' | 'predecessor-backed-up' | 'version-installed' | 'manifest-committed';
-
-interface VersionOperationJournal {
-  schemaVersion: 1;
-  operationId: string;
-  operationType: VersionOperationType;
-  phase: VersionOperationPhase;
-  versionId: GeneratedBundleVersionId;
-  predecessorVersionId: GeneratedBundleVersionId | null;
-  stagingDirectoryName: string;
-  backupDirectoryName: string | null;
-}
+export { GeneratedBundleVersionOperationConflictError, withGeneratedBundleVersionOperation } from './generatedBundleVersionOperationLock.js';
 
 export interface FrozenVersionIntegrityProblem {
   versionId: GeneratedBundleVersionId;
@@ -92,6 +108,14 @@ export interface VersionLifecycleResult {
   directory: string;
   created: boolean;
   manifest: GeneratedBundleVersionManifest;
+  /** Identity of the installed output/record pair. */
+  generationId: string;
+}
+
+/** What a generation reports so its output can be installed with matching records. */
+export interface GeneratedResultMetadata {
+  captured: CapturedGenerationInputs;
+  emitted: EmittedGenerationOutput;
 }
 
 export class FrozenVersionIntegrityError extends Error {
@@ -120,7 +144,7 @@ interface LifecycleDependencies {
 }
 
 interface GenerateOptions extends LifecycleDependencies {
-  generate: (stagingDirectory: string) => Promise<void>;
+  generate: (stagingDirectory: string) => Promise<GeneratedResultMetadata>;
   validate?: (stagingDirectory: string) => void | Promise<void>;
 }
 
@@ -136,63 +160,11 @@ interface ManifestSnapshot {
   content: string | null;
 }
 
-const JOURNAL_FILENAME = '.version-operation.json';
-const LOCK_FILENAME = '.version-operation.lock';
-const STAGING_PREFIX = '.staging-';
-const BACKUP_PREFIX = '.backup-';
-const QUARANTINE_PREFIX = '.quarantine-';
-const journalCodec = jsonDocumentCodec<VersionOperationJournal>(value => {
-  if (!isPlainObject(value)) return { valid: false, diagnostic: '$ must be an object' };
-  const fields = new Set([
-    'schemaVersion',
-    'operationId',
-    'operationType',
-    'phase',
-    'versionId',
-    'predecessorVersionId',
-    'stagingDirectoryName',
-    'backupDirectoryName',
-  ]);
-  const unknown = Object.keys(value).find(field => !fields.has(field));
-  if (unknown) return { valid: false, diagnostic: `$.${unknown} is not supported` };
-  if (value.schemaVersion !== 1) return { valid: false, diagnostic: '$.schemaVersion must be 1' };
-  if (!['generate-current', 'create-version'].includes(String(value.operationType))) {
-    return { valid: false, diagnostic: '$.operationType is invalid' };
-  }
-  if (!['staging', 'predecessor-backed-up', 'version-installed', 'manifest-committed'].includes(String(value.phase))) {
-    return { valid: false, diagnostic: '$.phase is invalid' };
-  }
-  for (const field of ['operationId', 'versionId', 'stagingDirectoryName']) {
-    if (typeof value[field] !== 'string') return { valid: false, diagnostic: `$.${field} must be a string` };
-  }
-  for (const field of ['predecessorVersionId', 'backupDirectoryName']) {
-    if (value[field] !== null && typeof value[field] !== 'string') {
-      return { valid: false, diagnostic: `$.${field} must be a string or null` };
-    }
-  }
-  return { valid: true, value: value as unknown as VersionOperationJournal };
-});
-
-function journalPath(bundleDirectory: string): string {
-  return path.join(generatedBundleVersionsRoot(bundleDirectory), JOURNAL_FILENAME);
-}
-
-function lockPath(bundleDirectory: string): string {
-  return path.join(generatedBundleVersionsRoot(bundleDirectory), LOCK_FILENAME);
-}
-
-function writeJournal(bundleDirectory: string, journal: VersionOperationJournal): void {
-  writeDurableDocument({ path: journalPath(bundleDirectory), value: journal, codec: journalCodec });
-}
-
-function readJournal(bundleDirectory: string): VersionOperationJournal | null {
-  const filePath = journalPath(bundleDirectory);
-  const result = readDurableDocument(filePath, journalCodec);
-  if (result.status === 'missing') return null;
-  return requireValidDocument(result, () => {
-    throw new Error('Generated bundle version journal disappeared');
-  });
-}
+const STAGING_PREFIX = 'staging-';
+const BACKUP_PREFIX = 'backup-';
+const QUARANTINE_PREFIX = 'quarantine-';
+const LEGACY_STAGING_PREFIX = '.staging-';
+const LEGACY_LOCK_FILENAME = '.version-operation.lock';
 
 function updateJournalPhase(
   bundleDirectory: string,
@@ -203,29 +175,6 @@ function updateJournalPhase(
   journal.phase = phase;
   writeJournal(bundleDirectory, journal);
   onPhase?.(phase);
-}
-
-function withOperationLock<T>(bundleDirectory: string, operation: () => T | Promise<T>): Promise<T> {
-  const root = generatedBundleVersionsRoot(bundleDirectory);
-  fs.mkdirSync(root, { recursive: true });
-  let descriptor: number;
-  try {
-    descriptor = fs.openSync(lockPath(bundleDirectory), 'wx');
-  } catch (error) {
-    const code = (error as NodeJS.ErrnoException).code;
-    if (code === 'EEXIST') throw new Error('A conflicting bundle versioning operation is already running');
-    throw error;
-  }
-  const release = () => {
-    fs.closeSync(descriptor);
-    fs.rmSync(lockPath(bundleDirectory), { force: true });
-  };
-  try {
-    return Promise.resolve(operation()).finally(release);
-  } catch (error) {
-    release();
-    throw error;
-  }
 }
 
 function containsGeneratedHtml(directory: string): boolean {
@@ -257,7 +206,9 @@ function frozenIntegrityProblems(
   for (const entry of manifest.versions.slice(0, -1)) {
     if (entry.localFilesState === 'deleted') continue;
     const state = inspectGeneratedVersionGitState(bundleDirectory, entry.versionId);
-    if (!state.isSaved) problems.push({ versionId: entry.versionId, changes: state.changes });
+    if (state.savedGenerationId === null || state.changes.length > 0 || !fs.existsSync(generatedBundleVersionDirectory(bundleDirectory, entry.versionId))) {
+      problems.push({ versionId: entry.versionId, changes: state.changes });
+    }
   }
   return problems;
 }
@@ -277,6 +228,26 @@ export function inspectFrozenGeneratedVersionsIntegrity(
   return frozenIntegrityProblems(bundleDirectory, manifest);
 }
 
+/**
+ * A frozen version's records must equal its saved records. Earlier releases
+ * could leave a newer working record beside a restored predecessor; return
+ * such metadata to the saved pair instead of describing frozen output with
+ * another generation's provenance.
+ */
+export function restoreFrozenGenerationRecords(
+  bundleDirectory: string,
+  manifest = loadGeneratedBundleVersionManifest(bundleDirectory),
+): void {
+  if (manifest.versions.length < 2 || !hasGitRepository(bundleDirectory)) return;
+  for (const entry of manifest.versions.slice(0, -1)) {
+    const state = inspectGeneratedVersionGitState(bundleDirectory, entry.versionId);
+    if (state.recordChanges.length === 0) continue;
+    if (entry.localFilesState === 'present' && state.savedGenerationId === null) continue;
+    restoreGenerationRecordsFromHead(bundleDirectory, entry.versionId);
+    logger.info(`[generated-versions] Restored saved generation records for frozen version ${entry.versionId}`);
+  }
+}
+
 function withoutLegacyAwarenessMarker(
   manifest: GeneratedBundleVersionManifest,
 ): GeneratedBundleVersionManifest {
@@ -290,13 +261,17 @@ function withoutLegacyAwarenessMarker(
   return parseGeneratedBundleVersionManifest({ ...manifest, versions });
 }
 
-function cleanupOperationArtifacts(bundleDirectory: string, journal: VersionOperationJournal): void {
-  const root = generatedBundleVersionsRoot(bundleDirectory);
+function cleanupOperationArtifacts(bundleDirectory: string, journal: AnyVersionOperationJournal): void {
+  const root = journalArtifactRoot(bundleDirectory, journal);
   fs.rmSync(path.join(root, journal.stagingDirectoryName), { recursive: true, force: true });
   if (journal.backupDirectoryName) {
     fs.rmSync(path.join(root, journal.backupDirectoryName), { recursive: true, force: true });
   }
-  fs.rmSync(journalPath(bundleDirectory), { force: true });
+  if (journal.schemaVersion === 2) {
+    fs.rmSync(path.join(root, journal.recordStagingDirectoryName), { recursive: true, force: true });
+    fs.rmSync(path.join(root, journal.recordBackupDirectoryName), { recursive: true, force: true });
+  }
+  removeJournal(bundleDirectory, journal);
 }
 
 function captureManifestSnapshot(bundleDirectory: string): ManifestSnapshot {
@@ -322,42 +297,50 @@ function restoreManifestSnapshot(bundleDirectory: string, snapshot: ManifestSnap
   });
 }
 
+/** Undo an operation that did not commit its manifest, restoring files and records. */
+function rollBackUncommittedOperation(bundleDirectory: string, journal: AnyVersionOperationJournal): void {
+  const root = journalArtifactRoot(bundleDirectory, journal);
+  const installedDirectory = generatedBundleVersionDirectory(bundleDirectory, journal.versionId);
+  const backupDirectory = journal.backupDirectoryName ? path.join(root, journal.backupDirectoryName) : null;
+  const restoreVersionId = journal.operationType === 'create-version' ? journal.predecessorVersionId : journal.versionId;
+  const installedWasReplaced = journal.operationType === 'create-version' || journal.phase !== 'staging' || !backupDirectory;
+
+  if (installedWasReplaced) fs.rmSync(installedDirectory, { recursive: true, force: true });
+  if (backupDirectory && restoreVersionId && fs.existsSync(backupDirectory)) {
+    const restoreDirectory = generatedBundleVersionDirectory(bundleDirectory, restoreVersionId);
+    fs.rmSync(restoreDirectory, { recursive: true, force: true });
+    fs.renameSync(backupDirectory, restoreDirectory);
+  }
+  if (journal.schemaVersion === 2) {
+    restoreGenerationRecordsFromBackup(
+      bundleDirectory,
+      journal.priorRecords,
+      path.join(root, journal.recordBackupDirectoryName),
+    );
+  }
+}
+
 function rollbackSynchronousFailure(
   bundleDirectory: string,
   journal: VersionOperationJournal,
   manifestBefore: ManifestSnapshot,
 ): void {
-  const root = generatedBundleVersionsRoot(bundleDirectory);
-  const installedDirectory = generatedBundleVersionDirectory(bundleDirectory, journal.versionId);
-  const backupDirectory = journal.backupDirectoryName ? path.join(root, journal.backupDirectoryName) : null;
-
-  if (journal.operationType === 'create-version') {
-    fs.rmSync(installedDirectory, { recursive: true, force: true });
-    if (backupDirectory && journal.predecessorVersionId && fs.existsSync(backupDirectory)) {
-      const predecessorDirectory = generatedBundleVersionDirectory(bundleDirectory, journal.predecessorVersionId);
-      fs.rmSync(predecessorDirectory, { recursive: true, force: true });
-      fs.renameSync(backupDirectory, predecessorDirectory);
-    }
-  } else if (backupDirectory && fs.existsSync(backupDirectory)) {
-    fs.rmSync(installedDirectory, { recursive: true, force: true });
-    fs.renameSync(backupDirectory, installedDirectory);
-  } else if (!backupDirectory) {
-    fs.rmSync(installedDirectory, { recursive: true, force: true });
-  }
-
+  rollBackUncommittedOperation(bundleDirectory, journal);
   restoreManifestSnapshot(bundleDirectory, manifestBefore);
   cleanupOperationArtifacts(bundleDirectory, journal);
 }
 
 function buildJournal(
+  bundleDirectory: string,
   operationType: VersionOperationType,
   operationId: string,
   versionId: GeneratedBundleVersionId,
   predecessorVersionId: GeneratedBundleVersionId | null,
   hasBackup: boolean,
 ): VersionOperationJournal {
+  const touchedVersionIds = [versionId, ...(predecessorVersionId ? [predecessorVersionId] : [])];
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     operationId,
     operationType,
     phase: 'staging',
@@ -365,17 +348,55 @@ function buildJournal(
     predecessorVersionId,
     stagingDirectoryName: `${STAGING_PREFIX}${operationId}-${versionId}`,
     backupDirectoryName: hasBackup ? `${BACKUP_PREFIX}${operationId}-${predecessorVersionId ?? versionId}` : null,
+    recordStagingDirectoryName: `${STAGING_PREFIX}${operationId}-records`,
+    recordBackupDirectoryName: `${BACKUP_PREFIX}${operationId}-records`,
+    priorRecords: touchedVersionIds.map(id => priorGenerationRecords(bundleDirectory, id)),
   };
+}
+
+/**
+ * Generate into staging, validate the generated files with records bound to
+ * them, and stage both before anything installed is replaced.
+ */
+async function stageGeneratedResult(
+  bundleDirectory: string,
+  journal: VersionOperationJournal,
+  options: GenerateOptions,
+): Promise<{ stagingDirectory: string; generationId: string }> {
+  const root = generatedBundleVersionOperationsDirectory(bundleDirectory);
+  const stagingDirectory = path.join(root, journal.stagingDirectoryName);
+  backupGenerationRecords(bundleDirectory, journal.priorRecords, path.join(root, journal.recordBackupDirectoryName));
+  options.onPhase?.('staging');
+  const metadata = await options.generate(stagingDirectory);
+  await validateStagedGeneration(stagingDirectory, options.validate);
+  const pair = buildGenerationRecordPair(metadata.captured, metadata.emitted, await hashGeneratedDirectory(stagingDirectory));
+  stageGenerationRecords(pair, journal.versionId, path.join(root, journal.recordStagingDirectoryName));
+  return { stagingDirectory, generationId: pair.inputs.generationId };
+}
+
+function installStagedResult(bundleDirectory: string, journal: VersionOperationJournal, stagingDirectory: string): void {
+  fs.renameSync(stagingDirectory, generatedBundleVersionDirectory(bundleDirectory, journal.versionId));
+  installStagedGenerationRecords(
+    bundleDirectory,
+    journal.versionId,
+    path.join(generatedBundleVersionOperationsDirectory(bundleDirectory), journal.recordStagingDirectoryName),
+  );
+}
+
+function prepareOperation(bundleDirectory: string): ManifestSnapshot {
+  const recovery = recoverOperationsInsideLock(bundleDirectory);
+  if (recovery.problems.length > 0) throw new VersionCreationNeedsRecoveryError(recovery.problems);
+  const snapshot = captureManifestSnapshot(bundleDirectory);
+  restoreFrozenGenerationRecords(bundleDirectory, snapshot.manifest);
+  return snapshot;
 }
 
 export async function generateCurrentBundleVersion(
   bundleDirectory: string,
   options: GenerateOptions,
 ): Promise<VersionLifecycleResult> {
-  return withOperationLock(bundleDirectory, async () => {
-    const recovery = recoverGeneratedBundleVersionOperations(bundleDirectory, { preserveOperationLock: true });
-    if (recovery.problems.length > 0) throw new VersionCreationNeedsRecoveryError(recovery.problems);
-    const manifestSnapshot = captureManifestSnapshot(bundleDirectory);
+  return withGeneratedBundleVersionOperation(bundleDirectory, async () => {
+    const manifestSnapshot = prepareOperation(bundleDirectory);
     const manifestBefore = manifestSnapshot.manifest;
     assertFrozenGeneratedVersionsIntegrity(bundleDirectory, manifestBefore);
     const existingCurrent = currentGeneratedBundleVersion(manifestBefore);
@@ -384,22 +405,19 @@ export async function generateCurrentBundleVersion(
       { randomBytes: options.randomBytes },
     );
     const operationId = options.operationId?.() ?? randomUUID();
-    const journal = buildJournal('generate-current', operationId, versionId, null, existingCurrent !== null);
-    const root = generatedBundleVersionsRoot(bundleDirectory);
-    const stagingDirectory = path.join(root, journal.stagingDirectoryName);
+    const journal = buildJournal(bundleDirectory, 'generate-current', operationId, versionId, null, existingCurrent !== null);
+    const root = generatedBundleVersionOperationsDirectory(bundleDirectory);
     const installedDirectory = generatedBundleVersionDirectory(bundleDirectory, versionId);
     const backupDirectory = journal.backupDirectoryName ? path.join(root, journal.backupDirectoryName) : null;
     writeJournal(bundleDirectory, journal);
 
     try {
-      options.onPhase?.('staging');
-      await options.generate(stagingDirectory);
-      await validateStagedGeneration(stagingDirectory, options.validate);
+      const staged = await stageGeneratedResult(bundleDirectory, journal, options);
       if (existingCurrent && backupDirectory) {
         fs.renameSync(installedDirectory, backupDirectory);
         updateJournalPhase(bundleDirectory, journal, 'predecessor-backed-up', options.onPhase);
       }
-      fs.renameSync(stagingDirectory, installedDirectory);
+      installStagedResult(bundleDirectory, journal, staged.stagingDirectory);
       updateJournalPhase(bundleDirectory, journal, 'version-installed', options.onPhase);
 
       let manifestAfter = existingCurrent
@@ -412,7 +430,14 @@ export async function generateCurrentBundleVersion(
       updateJournalPhase(bundleDirectory, journal, 'manifest-committed', options.onPhase);
       manifestAfter = loadGeneratedBundleVersionManifest(bundleDirectory);
       cleanupOperationArtifacts(bundleDirectory, journal);
-      return { operationId, versionId, directory: installedDirectory, created: existingCurrent === null, manifest: manifestAfter };
+      return {
+        operationId,
+        versionId,
+        directory: installedDirectory,
+        created: existingCurrent === null,
+        manifest: manifestAfter,
+        generationId: staged.generationId,
+      };
     } catch (error) {
       if ((error as { leaveOperationForRecovery?: boolean }).leaveOperationForRecovery !== true) {
         rollbackSynchronousFailure(bundleDirectory, journal, manifestSnapshot);
@@ -426,10 +451,8 @@ export async function createNewGeneratedBundleVersion(
   bundleDirectory: string,
   options: CreateVersionOptions,
 ): Promise<VersionLifecycleResult> {
-  return withOperationLock(bundleDirectory, async () => {
-    const recovery = recoverGeneratedBundleVersionOperations(bundleDirectory, { preserveOperationLock: true });
-    if (recovery.problems.length > 0) throw new VersionCreationNeedsRecoveryError(recovery.problems);
-    const manifestSnapshot = captureManifestSnapshot(bundleDirectory);
+  return withGeneratedBundleVersionOperation(bundleDirectory, async () => {
+    const manifestSnapshot = prepareOperation(bundleDirectory);
     const manifestBefore = manifestSnapshot.manifest;
     const current = currentGeneratedBundleVersion(manifestBefore);
     if (!current) throw new Error('Generate and save the first version before creating another version');
@@ -452,22 +475,21 @@ export async function createNewGeneratedBundleVersion(
       { randomBytes: options.randomBytes },
     );
     const operationId = options.operationId?.() ?? randomUUID();
-    const journal = buildJournal('create-version', operationId, versionId, current.versionId, true);
-    const root = generatedBundleVersionsRoot(bundleDirectory);
-    const stagingDirectory = path.join(root, journal.stagingDirectoryName);
+    const journal = buildJournal(bundleDirectory, 'create-version', operationId, versionId, current.versionId, true);
+    const root = generatedBundleVersionOperationsDirectory(bundleDirectory);
     const backupDirectory = path.join(root, journal.backupDirectoryName!);
     const predecessorDirectory = generatedBundleVersionDirectory(bundleDirectory, current.versionId);
     const installedDirectory = generatedBundleVersionDirectory(bundleDirectory, versionId);
     writeJournal(bundleDirectory, journal);
 
     try {
-      options.onPhase?.('staging');
-      await options.generate(stagingDirectory);
-      await validateStagedGeneration(stagingDirectory, options.validate);
+      const staged = await stageGeneratedResult(bundleDirectory, journal, options);
       fs.cpSync(predecessorDirectory, backupDirectory, { recursive: true, force: false });
       updateJournalPhase(bundleDirectory, journal, 'predecessor-backed-up', options.onPhase);
+      // Freezing restores the predecessor's saved files and its saved records,
+      // including legitimate absence of records for a legacy result.
       restoreGeneratedVersionFromGit(bundleDirectory, current.versionId);
-      fs.renameSync(stagingDirectory, installedDirectory);
+      installStagedResult(bundleDirectory, journal, staged.stagingDirectory);
       updateJournalPhase(bundleDirectory, journal, 'version-installed', options.onPhase);
 
       const manifestAfter = appendGeneratedBundleVersion(manifestBefore, {
@@ -479,7 +501,14 @@ export async function createNewGeneratedBundleVersion(
       saveGeneratedBundleVersionManifest(bundleDirectory, manifestAfter);
       updateJournalPhase(bundleDirectory, journal, 'manifest-committed', options.onPhase);
       cleanupOperationArtifacts(bundleDirectory, journal);
-      return { operationId, versionId, directory: installedDirectory, created: true, manifest: manifestAfter };
+      return {
+        operationId,
+        versionId,
+        directory: installedDirectory,
+        created: true,
+        manifest: manifestAfter,
+        generationId: staged.generationId,
+      };
     } catch (error) {
       if ((error as { leaveOperationForRecovery?: boolean }).leaveOperationForRecovery !== true) {
         rollbackSynchronousFailure(bundleDirectory, journal, manifestSnapshot);
@@ -489,16 +518,35 @@ export async function createNewGeneratedBundleVersion(
   });
 }
 
-export function cancelCurrentGeneratedBundleVersion(bundleDirectory: string): GeneratedBundleVersionManifest {
-  const manifest = loadGeneratedBundleVersionManifest(bundleDirectory);
-  const current = currentGeneratedBundleVersion(manifest);
-  if (!current) throw new Error('There is no current version to cancel');
-  assertFrozenGeneratedVersionsIntegrity(bundleDirectory, manifest);
-  const savedGenerationId = deriveSavedGenerationId(bundleDirectory, current.versionId);
-  const manifestAfter = cancelUnsavedCurrentVersion(manifest, savedGenerationId !== null);
-  fs.rmSync(generatedBundleVersionDirectory(bundleDirectory, current.versionId), { recursive: true, force: true });
-  saveGeneratedBundleVersionManifest(bundleDirectory, manifestAfter);
-  return manifestAfter;
+export async function cancelCurrentGeneratedBundleVersion(bundleDirectory: string): Promise<GeneratedBundleVersionManifest> {
+  return withGeneratedBundleVersionOperation(bundleDirectory, () => {
+    const manifest = prepareOperation(bundleDirectory).manifest;
+    const current = currentGeneratedBundleVersion(manifest);
+    if (!current) throw new Error('There is no current version to cancel');
+    assertFrozenGeneratedVersionsIntegrity(bundleDirectory, manifest);
+    const savedGenerationId = deriveSavedGenerationId(bundleDirectory, current.versionId);
+    const manifestAfter = cancelUnsavedCurrentVersion(manifest, savedGenerationId !== null);
+    fs.rmSync(generatedBundleVersionDirectory(bundleDirectory, current.versionId), { recursive: true, force: true });
+    removeGenerationRecords(bundleDirectory, current.versionId);
+    saveGeneratedBundleVersionManifest(bundleDirectory, manifestAfter);
+    return manifestAfter;
+  });
+}
+
+/**
+ * Remove a never-saved current version created by another workflow (such as
+ * an undone bundle rename) together with its records.
+ */
+export async function discardUnsavedCurrentGeneratedBundleVersion(
+  bundleDirectory: string,
+  versionId: GeneratedBundleVersionId,
+  manifestAfter: GeneratedBundleVersionManifest,
+): Promise<void> {
+  await withGeneratedBundleVersionOperation(bundleDirectory, () => {
+    fs.rmSync(generatedBundleVersionDirectory(bundleDirectory, versionId), { recursive: true, force: true });
+    removeGenerationRecords(bundleDirectory, versionId);
+    saveGeneratedBundleVersionManifest(bundleDirectory, manifestAfter);
+  });
 }
 
 export function updateGeneratedBundleVersionNotes(
@@ -515,12 +563,13 @@ export function updateGeneratedBundleVersionNotes(
 export async function deleteLocalGeneratedBundleVersionFiles(
   bundleDirectory: string,
   versionId: GeneratedBundleVersionId,
-  dependencies: Pick<LifecycleDependencies, 'now' | 'operationId'> = {},
+  dependencies: Pick<LifecycleDependencies, 'now' | 'operationId'> & {
+    /** Commit the tombstone while the operation still excludes generation. */
+    commit?: () => Promise<unknown>;
+  } = {},
 ): Promise<GeneratedBundleVersionManifest> {
-  return withOperationLock(bundleDirectory, () => {
-    const recovery = recoverGeneratedBundleVersionOperations(bundleDirectory, { preserveOperationLock: true });
-    if (recovery.problems.length > 0) throw new VersionCreationNeedsRecoveryError(recovery.problems);
-    const manifestSnapshot = captureManifestSnapshot(bundleDirectory);
+  return withGeneratedBundleVersionOperation(bundleDirectory, async () => {
+    const manifestSnapshot = prepareOperation(bundleDirectory);
     const manifestBefore = manifestSnapshot.manifest;
     assertFrozenGeneratedVersionsIntegrity(bundleDirectory, manifestBefore);
     const entry = manifestBefore.versions.find(candidate => candidate.versionId === versionId);
@@ -534,38 +583,44 @@ export async function deleteLocalGeneratedBundleVersionFiles(
 
     const versionDirectory = generatedBundleVersionDirectory(bundleDirectory, versionId);
     const backupDirectory = path.join(
-      generatedBundleVersionsRoot(bundleDirectory),
+      generatedBundleVersionOperationsDirectory(bundleDirectory),
       `${BACKUP_PREFIX}delete-${dependencies.operationId?.() ?? randomUUID()}-${versionId}`,
     );
+    fs.mkdirSync(path.dirname(backupDirectory), { recursive: true });
     fs.renameSync(versionDirectory, backupDirectory);
+    let manifestAfter: GeneratedBundleVersionManifest;
     try {
-      const manifestAfter = tombstoneGeneratedBundleVersion(manifestBefore, versionId, {
+      // The saved records stay: they describe the retained saved tree.
+      manifestAfter = tombstoneGeneratedBundleVersion(manifestBefore, versionId, {
         localFilesDeletedAt: (dependencies.now?.() ?? new Date()).toISOString(),
         lastSavedGenerationId: savedGenerationId,
       });
       saveGeneratedBundleVersionManifest(bundleDirectory, manifestAfter);
       fs.rmSync(backupDirectory, { recursive: true, force: true });
-      return manifestAfter;
     } catch (error) {
       restoreManifestSnapshot(bundleDirectory, manifestSnapshot);
       if (fs.existsSync(backupDirectory)) fs.renameSync(backupDirectory, versionDirectory);
       throw error;
     }
+    await dependencies.commit?.();
+    return manifestAfter;
   });
 }
 
-export function restoreFrozenGeneratedBundleVersion(
+export async function restoreFrozenGeneratedBundleVersion(
   bundleDirectory: string,
   versionId: GeneratedBundleVersionId,
-): void {
-  const manifest = loadGeneratedBundleVersionManifest(bundleDirectory);
-  const entryIndex = manifest.versions.findIndex(entry => entry.versionId === versionId);
-  if (entryIndex < 0) throw new Error(`Unknown generated bundle version ${versionId}`);
-  if (entryIndex === manifest.versions.length - 1) throw new Error('The current version is not frozen');
-  if (manifest.versions[entryIndex].localFilesState === 'deleted') {
-    throw new Error('A locally deleted version has no files to restore');
-  }
-  restoreGeneratedVersionFromGit(bundleDirectory, versionId);
+): Promise<void> {
+  await withGeneratedBundleVersionOperation(bundleDirectory, () => {
+    const manifest = loadGeneratedBundleVersionManifest(bundleDirectory);
+    const entryIndex = manifest.versions.findIndex(entry => entry.versionId === versionId);
+    if (entryIndex < 0) throw new Error(`Unknown generated bundle version ${versionId}`);
+    if (entryIndex === manifest.versions.length - 1) throw new Error('The current version is not frozen');
+    if (manifest.versions[entryIndex].localFilesState === 'deleted') {
+      throw new Error('A locally deleted version has no files to restore');
+    }
+    restoreGeneratedVersionFromGit(bundleDirectory, versionId);
+  });
 }
 
 function validVersionDirectories(root: string): string[] {
@@ -575,59 +630,55 @@ function validVersionDirectories(root: string): string[] {
     .map((entry) => entry.name);
 }
 
-export function recoverGeneratedBundleVersionOperations(
-  bundleDirectory: string,
-  options: { preserveOperationLock?: boolean } = {},
-): VersionRecoveryResult {
+function journalCompleted(manifest: GeneratedBundleVersionManifest, journal: AnyVersionOperationJournal): boolean {
+  const namedInManifest = manifest.versions.some((entry) => entry.versionId === journal.versionId);
+  return journal.phase === 'manifest-committed'
+    || (namedInManifest && journal.operationType === 'create-version')
+    || (namedInManifest && journal.operationType === 'generate-current' && journal.predecessorVersionId === null
+      && !journal.backupDirectoryName);
+}
+
+function removeStagingDirectories(directory: string, prefix: string): string[] {
+  if (!fs.existsSync(directory)) return [];
+  const removed: string[] = [];
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    if (entry.isDirectory() && entry.name.startsWith(prefix)) {
+      const fullPath = path.join(directory, entry.name);
+      fs.rmSync(fullPath, { recursive: true, force: true });
+      removed.push(fullPath);
+    }
+  }
+  return removed;
+}
+
+function recoverOperationsInsideLock(bundleDirectory: string): VersionRecoveryResult {
   const root = generatedBundleVersionsRoot(bundleDirectory);
+  const operationsDirectory = generatedBundleVersionOperationsDirectory(bundleDirectory);
   fs.mkdirSync(root, { recursive: true });
-  if (!options.preserveOperationLock) fs.rmSync(lockPath(bundleDirectory), { force: true });
+  // A lock from an earlier release cannot be held: this process owns the operation.
+  fs.rmSync(path.join(root, LEGACY_LOCK_FILENAME), { force: true });
   const manifest = loadGeneratedBundleVersionManifest(bundleDirectory);
   const journal = readJournal(bundleDirectory);
   let recoveredOperation = false;
 
   if (journal) {
-    const namedInManifest = manifest.versions.some((entry) => entry.versionId === journal.versionId);
-    const completed = journal.phase === 'manifest-committed'
-      || (namedInManifest && journal.operationType === 'create-version')
-      || (namedInManifest && journal.operationType === 'generate-current' && journal.predecessorVersionId === null
-        && !journal.backupDirectoryName);
-    if (completed) {
-      cleanupOperationArtifacts(bundleDirectory, journal);
-    } else {
-      const installedDirectory = generatedBundleVersionDirectory(bundleDirectory, journal.versionId);
-      fs.rmSync(installedDirectory, { recursive: true, force: true });
-      if (journal.backupDirectoryName) {
-        const backupDirectory = path.join(root, journal.backupDirectoryName);
-        const restoreVersionId = journal.operationType === 'create-version'
-          ? journal.predecessorVersionId
-          : journal.versionId;
-        if (restoreVersionId && fs.existsSync(backupDirectory)) {
-          const restoreDirectory = generatedBundleVersionDirectory(bundleDirectory, restoreVersionId);
-          fs.rmSync(restoreDirectory, { recursive: true, force: true });
-          fs.renameSync(backupDirectory, restoreDirectory);
-        }
-      }
-      cleanupOperationArtifacts(bundleDirectory, journal);
-    }
+    if (!journalCompleted(manifest, journal)) rollBackUncommittedOperation(bundleDirectory, journal);
+    cleanupOperationArtifacts(bundleDirectory, journal);
     recoveredOperation = true;
   }
 
-  const removedStagingDirectories: string[] = [];
-  for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
-    if (entry.isDirectory() && entry.name.startsWith(STAGING_PREFIX)) {
-      const fullPath = path.join(root, entry.name);
-      fs.rmSync(fullPath, { recursive: true, force: true });
-      removedStagingDirectories.push(fullPath);
-    }
-  }
+  const removedStagingDirectories = [
+    ...removeStagingDirectories(operationsDirectory, STAGING_PREFIX),
+    ...removeStagingDirectories(root, LEGACY_STAGING_PREFIX),
+  ];
 
   const problems: VersionRecoveryProblem[] = [];
   const manifestIds = new Set(manifest.versions.map((entry) => entry.versionId));
   for (const versionDirectoryName of validVersionDirectories(root)) {
     if (manifestIds.has(versionDirectoryName as GeneratedBundleVersionId)) continue;
     const sourcePath = path.join(root, versionDirectoryName);
-    const quarantinePath = path.join(root, `${QUARANTINE_PREFIX}${versionDirectoryName}-${randomUUID()}`);
+    fs.mkdirSync(operationsDirectory, { recursive: true });
+    const quarantinePath = path.join(operationsDirectory, `${QUARANTINE_PREFIX}${versionDirectoryName}-${randomUUID()}`);
     fs.renameSync(sourcePath, quarantinePath);
     problems.push({
       kind: 'quarantined-unreferenced-version',
@@ -643,6 +694,15 @@ export function recoverGeneratedBundleVersionOperations(
     }
   }
   return { recoveredOperation, removedStagingDirectories, problems };
+}
+
+/**
+ * Recover an interrupted operation outside any running operation, as after a
+ * restart. Removes a lock that no running operation can own.
+ */
+export function recoverGeneratedBundleVersionOperations(bundleDirectory: string): VersionRecoveryResult {
+  releaseGeneratedBundleVersionOperationLock(bundleDirectory);
+  return recoverOperationsInsideLock(bundleDirectory);
 }
 
 export function currentVersionEntry(

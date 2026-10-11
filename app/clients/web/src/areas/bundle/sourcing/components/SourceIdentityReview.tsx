@@ -3,7 +3,7 @@
 import { useId, useState, type ReactNode } from 'react';
 import type { SourceMoveCandidate } from '../../../../../../../contracts/types/sourcing.js';
 import { sourceIdentityRecommendations, type SourceIdentityRecommendation } from '../../../../../../../shared_code/utils/sourceMoveResolutions.js';
-import { PathChange } from '../../../../shared/components/PathChange.js';
+import { SourcePathChange } from '../../../../shared/components/SourcePathChange.js';
 import { useSourcePathFormatter } from '../../../../shared/components/SourceNames.js';
 import { MoveSimilarity } from './MoveSimilarity.js';
 import { MoveTraversal } from './MoveTraversal.js';
@@ -26,12 +26,12 @@ export function identityConfirmation(moves: SourceMoveCandidate[], choices: Choi
 }
 
 /** The two answers for a renamed or moved file. Neither is pressed while undecided or mixed. */
-function SamePageSwitch({ state, busy, label, onSame, onNew }: { state: IdentityChoice | 'mixed'; busy: boolean; label: string; onSame: () => void; onNew: () => void }) {
+function SameFileSwitch({ state, busy, label, onSame, onNew }: { state: IdentityChoice | 'mixed'; busy: boolean; label: string; onSame: () => void; onNew: () => void }) {
   const option = (pressed: boolean, text: string, onClick: () => void) => <button type="button" aria-pressed={pressed} disabled={busy} onClick={onClick}
     className={`px-2.5 py-1 text-xs font-medium focus-visible:relative focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-700 disabled:opacity-40 ${pressed ? 'bg-blue-700 text-white' : 'bg-white text-neutral-700 enabled:hover:bg-blue-50'}`}>{text}</button>;
   return <span role="group" aria-label={label} data-testid="source-identity-switch" data-current-choice={state}
     className="inline-flex shrink-0 overflow-hidden rounded border border-neutral-300 [&>button+button]:border-l [&>button+button]:border-neutral-300">
-    {option(state === 'same', 'Same page', onSame)}{option(state === 'different', 'New page', onNew)}
+    {option(state === 'same', 'Same file', onSame)}{option(state === 'different', 'New file', onNew)}
   </span>;
 }
 
@@ -59,9 +59,9 @@ function IdentityRow({ record, choices, busy, choose, compare }: { record: Sourc
   const move = record.moves[0];
   return <li data-testid={`source-move-${record.id}`} className="rounded border border-neutral-200">
     <div className="flex items-center gap-3 p-3">
-      <span className="min-w-0 flex-1"><PathChange before={move.oldPath} after={move.newPath} /></span>
+      <span className="min-w-0 flex-1"><SourcePathChange before={move.oldPath} after={move.newPath} /></span>
       <DetailsButton open={open} onToggle={() => setOpen(value => !value)} />
-      <SamePageSwitch state={identityChoice(record, choices)} busy={busy} label={`Is ${move.newPath} the same page as ${move.oldPath}?`}
+      <SameFileSwitch state={identityChoice(record, choices)} busy={busy} label={`Is ${move.newPath} the same file as ${move.oldPath}?`}
         onSame={() => choose({ [record.id]: move.newPath })} onNew={() => choose({ [record.id]: null })} />
     </div>
     {open && <div className="border-t border-neutral-100 p-3"><MatchEvidence move={move} compare={compare} /></div>}
@@ -83,12 +83,12 @@ function MatchChoiceRow({ record, choices, busy, choose, compare }: { record: So
     <ul className="divide-y divide-neutral-100">
       {record.moves.map(move => <li key={move.newPath} role="group" aria-label={`Match with ${format(move.newPath)}`} data-identity-destination={move.newPath}>
         <div className="flex items-center gap-3 px-3 py-2">
-          {radio(selected === move.newPath, () => choose({ [record.id]: move.newPath }), <span className="min-w-0"><PathChange compact before={move.oldPath} after={move.newPath} /></span>)}
+          {radio(selected === move.newPath, () => choose({ [record.id]: move.newPath }), <span className="min-w-0"><SourcePathChange compact before={move.oldPath} after={move.newPath} /></span>)}
           <DetailsButton open={open === move.newPath} onToggle={() => setOpen(value => value === move.newPath ? null : move.newPath)} />
         </div>
         {open === move.newPath && <div className="px-3 pb-3 pl-9"><MatchEvidence move={move} compare={compare} /></div>}
       </li>)}
-      <li className="px-3 py-2">{radio(selected === null, () => choose({ [record.id]: null }), <span>None of these — it’s a new page</span>)}</li>
+      <li className="px-3 py-2">{radio(selected === null, () => choose({ [record.id]: null }), <span>None of these — it’s a new file</span>)}</li>
     </ul>
   </li>;
 }
@@ -104,11 +104,11 @@ function IdentityGroupRow({ group, choices, busy, choose, compare }: { group: So
   return <li data-testid="source-identity-group" data-identity-ids={JSON.stringify(group.records.map(record => record.id))} className="rounded border border-neutral-200">
     <div className="flex items-center gap-3 p-3">
       <span className="min-w-0 flex-1 space-y-0.5">
-        <PathChange before={example.oldPath} after={example.newPath} />
+        <SourcePathChange before={example.oldPath} after={example.newPath} />
         <span className="block text-xs text-neutral-500">+ {others} more {others === 1 ? 'file' : 'files'} renamed the same way{state === 'mixed' ? ' · mixed choices' : ''}</span>
       </span>
       <DetailsButton open={open} onToggle={() => setOpen(value => !value)} />
-      <SamePageSwitch state={state} busy={busy} label={`Are these ${group.records.length} files the same pages as before?`}
+      <SameFileSwitch state={state} busy={busy} label={`Are these ${group.records.length} files the same files as before?`}
         onSame={() => choose(Object.fromEntries(group.records.map(record => [record.id, identitySummaryMove(record, choices).newPath])))}
         onNew={() => choose(Object.fromEntries(group.records.map(record => [record.id, null])))} />
     </div>

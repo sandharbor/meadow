@@ -48,7 +48,7 @@ export function SourceSnapshotsModal({ isOpen, bundleSlug, onClose, onRecheck, c
                   <summary className="cursor-pointer">Accepted identity decisions</summary>
                   <p className="mt-1 text-xs text-neutral-500">These completed decisions are historical evidence.</p>
                   <ul className="mt-2 space-y-2">{acceptance.identities.map(identity => <li key={identity.bundleNodeId}>
-                    <span>{identity.previousPath}</span><span> → {identity.proposedPath ?? 'Different pages; old configuration removed'}</span>
+                    <span>{identity.previousPath}</span><span> → {identity.proposedPath ?? 'Different files; old configuration removed'}</span>
                   </li>)}</ul>
                 </details>)}
               </div>

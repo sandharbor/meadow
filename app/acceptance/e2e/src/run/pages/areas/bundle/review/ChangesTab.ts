@@ -77,6 +77,12 @@ class FileDetailsViewer {
     await this.expect(this.statsHeader).not.toContainText("New file");
   }
 
+  /** Assert the rendered HTML diff marks the given words as inserted. */
+  async expectRenderedInsertion(text: string) {
+    const diff = this.page.frameLocator('iframe[title="Visual HTML Diff"]');
+    await this.expect(diff.getByRole('insertion').filter({ hasText: text }).first()).toBeVisible({ timeout: 15_000 });
+  }
+
   /** Assert the diff panel contains the given text. */
   async expectDiffContainsText(text: string) {
     await this.expect(this.page.getByText(text).first()).toBeVisible({ timeout: 15_000 });
@@ -136,6 +142,31 @@ export class ChangesTab {
 
   private get deletedFileIndicators() {
     return this.page.locator('span[title="Deleted"]');
+  }
+
+  private get movedFileIndicators() {
+    return this.page.locator('span[title="Moved"]');
+  }
+
+  private get comparisonBaseline() {
+    return this.page.getByTestId('changes-comparison-baseline');
+  }
+
+  private get identityNotice() {
+    return this.page.getByTestId('changes-identity-notice');
+  }
+
+  private get selectedFileMove() {
+    return this.page.getByTestId('generated-file-move');
+  }
+
+  private get fileTree() {
+    return this.page.getByTestId('file-tree');
+  }
+
+  /** The tree row for a changed file name. */
+  private changedFileRow(filename: string) {
+    return this.fileTree.getByText(filename, { exact: true }).first().locator('..');
   }
 
   /** Get the count element for a given HTML section label in the filter dropdown. */
@@ -209,6 +240,60 @@ export class ChangesTab {
     await this.expect(this.newFileIndicators.first()).toBeVisible({ timeout: 15_000 });
     await this.expect(this.modifiedFileIndicators).toHaveCount(0);
     await this.expect(this.deletedFileIndicators).toHaveCount(0);
+  }
+
+  /** Assert the Changes tab explains which generated result it compares against. */
+  async expectComparisonBaseline(text: string) {
+    await this.expect(this.comparisonBaseline).toContainText(text, { timeout: 15_000 });
+  }
+
+  /** Assert the comparison found no generated-file differences. */
+  async expectNoSiteDifferences() {
+    await this.expect(this.comparisonBaseline).toContainText('No generated-file differences', { timeout: 15_000 });
+  }
+
+  /** Assert no identity-metadata notice is shown. */
+  async expectNoIdentityNotice() {
+    await this.expect(this.identityNotice).toHaveCount(0);
+  }
+
+  /** Assert an identity-metadata notice containing the given text. */
+  async expectIdentityNotice(text: string) {
+    await this.expect(this.identityNotice).toContainText(text, { timeout: 15_000 });
+  }
+
+  /** Assert a changed file is listed once, under its destination, as moved. */
+  async expectMovedFile(filename: string, options: { modified: boolean }) {
+    const row = this.changedFileRow(filename);
+    await this.expect(row.locator('span[title="Moved"]')).toBeVisible({ timeout: 15_000 });
+    await this.expect(row.locator('span[title="Modified"]')).toHaveCount(options.modified ? 1 : 0);
+    await this.expect(this.fileTree.getByText(filename, { exact: true })).toHaveCount(1);
+  }
+
+  /** Assert how many moved files the tree shows. */
+  async expectMovedFileCount(count: number) {
+    await this.expect(this.movedFileIndicators).toHaveCount(count, { timeout: 15_000 });
+  }
+
+  /** Select a changed file by name. */
+  async selectFile(filename: string) {
+    const file = this.fileTree.getByText(filename, { exact: true }).first();
+    await this.expect(file).toBeVisible({ timeout: 15_000 });
+    await file.click();
+  }
+
+  /** Assert the selected file's header shows its old and new generated paths. */
+  async expectSelectedFileMove(before: string, after: string) {
+    const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    await this.expect(this.selectedFileMove.getByRole('group', {
+      name: new RegExp(`: ${escape(before)} → ${escape(after)}$`),
+    })).toBeVisible({ timeout: 15_000 });
+  }
+
+  /** Assert the before and after images of the selected file are both shown. */
+  async expectImageComparison() {
+    await this.expect(this.page.getByRole('img', { name: 'Committed version' })).toBeVisible({ timeout: 15_000 });
+    await this.expect(this.page.getByRole('img', { name: 'Current version' })).toBeVisible();
   }
 
   /** Assert the "No changed files" message is visible. */

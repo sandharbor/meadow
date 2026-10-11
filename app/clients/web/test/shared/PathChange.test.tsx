@@ -2,7 +2,8 @@
 
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { PathChange, DirectoryChange, splitPathChange } from '../../src/shared/components/PathChange.js';
+import { PathChange, splitPathChange } from '../../src/shared/components/PathChange.js';
+import { SourceDirectoryChange, SourcePathChange } from '../../src/shared/components/SourcePathChange.js';
 import { SourceNamesProvider, splitSourcePathLabel } from '../../src/shared/components/SourceNames.js';
 
 describe('source path changes', () => {
@@ -14,7 +15,7 @@ describe('source path changes', () => {
 
   it('distinguishes a cross-source move from a folder move', () => {
     render(<SourceNamesProvider sources={[{ id: 'source000001', name: 'notes' }, { id: 'source000002', name: 'research' }]}>
-      <PathChange before="_mw_sources/source000001/Same/Inside.md" after="_mw_sources/source000002/Moved/Inside.md" />
+      <SourcePathChange before="_mw_sources/source000001/Same/Inside.md" after="_mw_sources/source000002/Moved/Inside.md" />
     </SourceNamesProvider>);
     expect(screen.getByRole('group', { name: 'Moved: notes://Same/Inside.md → research://Moved/Inside.md' })).toBeInTheDocument();
     expect(screen.getByTestId('source-path-before')).toHaveTextContent('notes://Same/Inside.md');
@@ -29,7 +30,7 @@ describe('source path changes', () => {
     ['notes/Page.md', 'Page.md', 'Moved', 'notes', null],
     ['docs/研究 old.md', 'docs/研究 new.md', 'Renamed', 'old', 'new'],
   ])('shows %s → %s with readable changes', (before, after, kind, removed, added) => {
-    const { container } = render(<PathChange before={before} after={after} />);
+    const { container } = render(<SourcePathChange before={before} after={after} />);
     expect(screen.getByRole('group', { name: `${kind}: ${before} → ${after}` })).toBeInTheDocument();
     if (removed) expect([...container.querySelectorAll('del')].some(element => element.textContent === removed)).toBe(true);
     else expect(container.querySelector('del')).toBeNull();
@@ -47,7 +48,7 @@ describe('source path changes', () => {
 
   it('retains full long paths for accessible comparison with each directory attached to its filename', () => {
     const directory = 'long-directory/'.repeat(20);
-    render(<PathChange before={`${directory}old.md`} after={`${directory}new.md`} />);
+    render(<SourcePathChange before={`${directory}old.md`} after={`${directory}new.md`} />);
     expect(screen.getByRole('group')).toHaveAttribute('title', `${directory}old.md → ${directory}new.md`);
     expect(screen.getByTestId('source-path-before')).toHaveTextContent(`${directory}old.md`);
     expect(screen.getByTestId('source-path-after')).toHaveTextContent(`${directory}new.md`);
@@ -60,7 +61,7 @@ describe('source path changes', () => {
     ['notes/Page.md', 'Page.md', 'notes', 'Source root'],
     ['old/Before.md', 'new/After.md', 'old/Before.md', 'new/After.md'],
   ])('compacts %s → %s to the path parts that changed', (before, after, oldLabel, newLabel) => {
-    render(<PathChange compact before={before} after={after} />);
+    render(<SourcePathChange compact before={before} after={after} />);
     expect(screen.getByTestId('source-path-before')).toHaveTextContent(oldLabel);
     expect(screen.getByTestId('source-path-after')).toHaveTextContent(newLabel);
     expect(screen.getByTestId('source-path-before').textContent).toBe(oldLabel);
@@ -70,7 +71,7 @@ describe('source path changes', () => {
 
   it('keeps registered source names in a compact cross-source directory move', () => {
     render(<SourceNamesProvider sources={[{ id: 'source000001', name: 'notes' }, { id: 'source000002', name: 'research' }]}>
-      <PathChange compact before="_mw_sources/source000001/Same/Inside.md" after="_mw_sources/source000002/Same/Inside.md" />
+      <SourcePathChange compact before="_mw_sources/source000001/Same/Inside.md" after="_mw_sources/source000002/Same/Inside.md" />
     </SourceNamesProvider>);
     expect(screen.getByTestId('source-path-before')).toHaveTextContent('notes://Same');
     expect(screen.getByTestId('source-path-after')).toHaveTextContent('research://Same');
@@ -79,10 +80,26 @@ describe('source path changes', () => {
 });
 
 
+describe('generated path changes', () => {
+  it('presents prepared labels with the caller’s root wording and test IDs', () => {
+    render(<PathChange compact before="Page.html" after="archive/Page.html" rootLabel="Site root" testIdPrefix="generated-path" />);
+    expect(screen.getByRole('group', { name: 'Moved: Page.html → archive/Page.html' })).toBeInTheDocument();
+    expect(screen.getByTestId('generated-path-before').textContent).toBe('Site root');
+    expect(screen.getByTestId('generated-path-after').textContent).toBe('archive');
+  });
+
+  it('does not reinterpret generated paths as registered source locators', () => {
+    render(<SourceNamesProvider sources={[{ id: 'source000001', name: 'notes' }]}>
+      <PathChange before="_mw_sources/source000001/A.html" after="_mw_sources/source000001/B.html" />
+    </SourceNamesProvider>);
+    expect(screen.getByTestId('path-before')).toHaveTextContent('_mw_sources/source000001/A.html');
+  });
+});
+
 describe('directory change overviews', () => {
   it('formats registered sources while highlighting only the added directory', () => {
     const { container } = render(<SourceNamesProvider sources={[{ id: 'source000001', name: 'mwd' }]}>
-      <DirectoryChange before="_mw_sources/source000001" after="_mw_sources/source000001/mwd development" />
+      <SourceDirectoryChange before="_mw_sources/source000001" after="_mw_sources/source000001/mwd development" />
     </SourceNamesProvider>);
     expect(screen.getByRole('group')).toHaveAccessibleName('Changed directories: mwd:// → mwd://mwd development');
     expect(container.querySelector('ins')).toHaveTextContent('mwd development');

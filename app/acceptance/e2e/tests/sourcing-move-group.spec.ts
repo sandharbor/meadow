@@ -56,11 +56,11 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '2f0bd0e6-f5e
   const savedChoice = page.waitForResponse(response => response.url().endsWith('/sourcing/proposal/identities') && response.ok());
   const changedRecord = page.getByTestId(`source-move-${original[0].bundleNodeId}`);
   try {
-    await sourceCommand(() => editor.sourceReview.pressIdentity(original[0].bundleNodeId, 'New page'));
-    await sourceCommand(() => editor.sourceReview.expectIdentityDecision(original[0].bundleNodeId, 'New page'));
+    await sourceCommand(() => editor.sourceReview.pressIdentity(original[0].bundleNodeId, 'New file'));
+    await sourceCommand(() => editor.sourceReview.expectIdentityDecision(original[0].bundleNodeId, 'New file'));
     await sourceCommand(() => editor.sourceReview.expectMixedIdentityGroup(original[0].bundleNodeId));
     await sourceCommand(() => expect(page.getByRole('status').filter({ hasText: 'Saving choices' })).toBeVisible());
-    await sourceCommand(() => expect(changedRecord.getByRole('button', { name: 'Same page', exact: true })).toBeEnabled());
+    await sourceCommand(() => expect(changedRecord.getByRole('button', { name: 'Same file', exact: true })).toBeEnabled());
     await sourceCommand(() => addKeyFrame(sourceMove));
   } finally { releaseSave(); }
   await savedChoice;
@@ -68,11 +68,11 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '2f0bd0e6-f5e
   await sourceCommand(() => expect(page.getByRole('status').filter({ hasText: 'Saving choices' })).toHaveCount(0));
   await sourceCommand(() => editor.sourceReview.expectDirectoryGroupExpanded('t001', 'source-changes/nested', 3));
   await sourceCommand(() => editor.sourceReview.expectMixedIdentityGroup(original[0].bundleNodeId));
-  await sourceCommand(() => editor.sourceReview.expectIdentityDecision(original[1].bundleNodeId, 'Same page'));
+  await sourceCommand(() => editor.sourceReview.expectIdentityDecision(original[1].bundleNodeId, 'Same file'));
   await sourceCommand(() => addKeyFrame(sourceMove));
   await sourceCommand(() => checkpoint('one expanded group keeps all three files and shows mixed choices'));
 
-  // Set the whole group back to Same page.
+  // Set the whole group back to Same file.
   await sourceCommand(() => editor.sourceReview.chooseCompactIdentity(original[0].bundleNodeId, 'Same'));
   await sourceCommand(() => editor.sourceReview.expectCompactIdentity(original[0].bundleNodeId, 'Same', 3));
   await sourceCommand(() => editor.sourceReview.expectDirectoryGroupExpanded('t001', 'source-changes/nested', 3));

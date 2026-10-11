@@ -26,13 +26,39 @@ const MIN_FILE_TREE_WIDTH = 100;
 const DEFAULT_FILE_TREE_WIDTH = 288; // w-72 equivalent
 const MAX_FILE_TREE_WIDTH = 600;
 
+/** One side of a compared file: exact bytes identified by endpoint and blob. */
+export interface ComparedFileReference {
+  path: string;
+  objectId: string;
+  endpoint: 'empty' | 'saved' | 'working';
+  versionId: string | null;
+}
+
+/**
+ * A logical change between two generated results. Its entry ID, not its path,
+ * identifies it: a deletion and an addition can share one path, and a move is
+ * listed once under its destination.
+ */
+export interface FileNodeComparison {
+  entryId: string;
+  kind: 'added' | 'deleted' | 'changed';
+  moved: boolean;
+  modified: boolean;
+  before: ComparedFileReference | null;
+  after: ComparedFileReference | null;
+}
+
 export interface FileNode {
   name: string;
   path: string;
   type: 'file' | 'directory';
   children?: FileNode[];
   gitStatus?: string;
+  comparison?: FileNodeComparison;
 }
+
+/** Stable identity of a tree node for selection, keys, and indexing. */
+export const fileNodeKey = (node: Pick<FileNode, 'path' | 'comparison'>): string => node.comparison?.entryId ?? node.path;
 
 export interface FileTreeResponse {
   tree: FileNode[];
@@ -109,6 +135,11 @@ export interface ConfigFileExplorerApi {
   fetchCommitFileContent?: (sha: string, path: string, contextDir?: string) => Promise<FileContentResponse>;
   fetchCommitFileOriginal?: (sha: string, path: string, parentSha?: string | null, contextDir?: string) => Promise<OriginalContentResponse>;
   fetchFileLog?: (path: string, limit?: number) => Promise<FileLogResponse>;
+  /** Exact old and new contents of a compared node, which may live at different paths. */
+  fetchComparedContents?: (comparison: FileNodeComparison) => Promise<{
+    current: FileContentResponse | null;
+    original: OriginalContentResponse;
+  }>;
 }
 
 export interface ConfigFileExplorerProps {
@@ -137,14 +168,16 @@ export interface ConfigFileExplorerProps {
   initialSelectedFile?: string;
   /** Refresh the selected working file without clearing its view or selection. */
   contentRefreshKey?: number;
+  /** Additional details shown under the selected file's name, such as its old and new paths. */
+  renderSelectedFileDetails?: (node: FileNode) => React.ReactNode;
 }
 
 interface TreeNodeProps {
   node: FileNode;
   depth: number;
-  selectedPath: string | null;
+  selectedKey: string | null;
   expandedPaths: Set<string>;
-  onSelect: (path: string) => void;
+  onSelect: (node: FileNode) => void;
   onToggle: (path: string) => void;
   onPreviewFile?: (path: string) => void;
   scrollToSelected?: boolean;
@@ -167,7 +200,19 @@ const PreviewIcon: React.FC = () => (
   </svg>
 );
 
-const GitStatusIcon: React.FC<{ status?: string }> = ({ status }) => {
+const MovedIcon: React.FC = () => (
+  <span className="ml-1.5 text-info-500 text-xs font-bold" title="Moved">
+    →
+  </span>
+);
+
+const GitStatusIcon: React.FC<{ status?: string; comparison?: FileNodeComparison }> = ({ status, comparison }) => {
+  if (comparison?.moved) {
+    return <>
+      <MovedIcon />
+      {comparison.modified && <span className="ml-0.5 text-warning-500 text-xs font-bold" title="Modified">M</span>}
+    </>;
+  }
   if (!status) return null;
 
   switch (status) {
@@ -205,7 +250,7 @@ const GitStatusIcon: React.FC<{ status?: string }> = ({ status }) => {
 const TreeNode: React.FC<TreeNodeProps> = ({
   node,
   depth,
-  selectedPath,
+  selectedKey,
   expandedPaths,
   onSelect,
   onToggle,
@@ -214,7 +259,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
 }) => {
   const nodeRef = React.useRef<HTMLDivElement>(null);
   const isExpanded = expandedPaths.has(node.path);
-  const isSelected = selectedPath === node.path;
+  const isSelected = selectedKey === fileNodeKey(node);
   const isDirectory = node.type === 'directory';
   const isHtmlFile = !isDirectory && node.name.toLowerCase().endsWith('.html');
 
@@ -229,7 +274,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
     if (isDirectory) {
       onToggle(node.path);
     } else {
-      onSelect(node.path);
+      onSelect(node);
     }
   };
 
@@ -273,16 +318,16 @@ const TreeNode: React.FC<TreeNodeProps> = ({
             <PreviewIcon />
           </button>
         )}
-        <GitStatusIcon status={node.gitStatus} />
+        <GitStatusIcon status={node.gitStatus} comparison={node.comparison} />
       </div>
       {isDirectory && isExpanded && node.children && (
         <div>
           {node.children.map((child) => (
             <TreeNode
-              key={child.path}
+              key={fileNodeKey(child)}
               node={child}
               depth={depth + 1}
-              selectedPath={selectedPath}
+              selectedKey={selectedKey}
               expandedPaths={expandedPaths}
               onSelect={onSelect}
               onToggle={onToggle}
@@ -341,7 +386,7 @@ export const collectDirectoryPaths = (
 const findFirstChangedFile = (
   nodes: FileNode[],
   predicate?: (node: FileNode) => boolean,
-): string | null => {
+): FileNode | null => {
   for (const node of nodes) {
     if (
       node.type === 'file'
@@ -349,7 +394,7 @@ const findFirstChangedFile = (
       && node.gitStatus !== 'has-changes'
       && (!predicate || predicate(node))
     ) {
-      return node.path;
+      return node;
     }
     if (node.type === 'directory' && node.children) {
       const found = findFirstChangedFile(node.children, predicate);
@@ -362,7 +407,7 @@ const findFirstChangedFile = (
 export const findAutoSelectedChangedFile = (
   nodes: FileNode[],
   shouldPrefer?: (node: FileNode) => boolean,
-): string | null => {
+): FileNode | null => {
   return (shouldPrefer ? findFirstChangedFile(nodes, shouldPrefer) : null)
     ?? findFirstChangedFile(nodes);
 };
@@ -386,6 +431,7 @@ const ConfigFileExplorer: React.FC<ConfigFileExplorerProps> = ({
   onPreviewFile,
   initialSelectedFile,
   contentRefreshKey = 0,
+  renderSelectedFileDetails,
 }) => {
   console.log('[ConfigFileExplorer] Component mounting/rendering', {
     title,
@@ -414,6 +460,8 @@ const ConfigFileExplorer: React.FC<ConfigFileExplorerProps> = ({
   const [fileLogCommits, setFileLogCommits] = useState<FileLogCommitEntry[]>([]);
   const [fileLogDiffs, setFileLogDiffs] = useState<Record<string, { current: FileContentResponse; original: OriginalContentResponse }>>({});
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  const [selectedNode, setSelectedNode] = useState<FileNode | null>(null);
+  const selectedKey = selectedNode ? fileNodeKey(selectedNode) : selectedPath;
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set());
   const [fileContent, setFileContent] = useState<string>('');
   const [originalContent, setOriginalContent] = useState<string>('');
@@ -510,15 +558,23 @@ const ConfigFileExplorer: React.FC<ConfigFileExplorerProps> = ({
     });
   };
 
-  // Helper to find a file's git status from the tree
-  const findFileGitStatus = useCallback((nodes: FileNode[], targetPath: string): string | undefined => {
+  // Helper to find a file node by its identity (entry ID or path) in the tree
+  const findFileNode = useCallback((nodes: FileNode[], targetKey: string): FileNode | undefined => {
     for (const node of nodes) {
-      if (node.path === targetPath) {
-        return node.gitStatus;
-      }
+      if (node.type === 'file' && fileNodeKey(node) === targetKey) return node;
       if (node.children) {
-        const found = findFileGitStatus(node.children, targetPath);
-        if (found !== undefined) return found;
+        const found = findFileNode(node.children, targetKey);
+        if (found) return found;
+      }
+    }
+    return undefined;
+  }, []);
+  const findFileByPath = useCallback((nodes: FileNode[], targetPath: string): FileNode | undefined => {
+    for (const node of nodes) {
+      if (node.type === 'file' && node.path === targetPath) return node;
+      if (node.children) {
+        const found = findFileByPath(node.children, targetPath);
+        if (found) return found;
       }
     }
     return undefined;
@@ -547,9 +603,12 @@ const ConfigFileExplorer: React.FC<ConfigFileExplorerProps> = ({
   }, []);
 
   // Select a file and load its content - takes tree as parameter to avoid stale closure
-  const selectFile = useCallback(async (path: string, currentTree: FileNode[], preserveDisplay = false) => {
+  const selectFile = useCallback(async (key: string, currentTree: FileNode[], preserveDisplay = false) => {
     const requestId = ++fileLoadRequestIdRef.current;
+    const node = findFileNode(currentTree, key) ?? findFileByPath(currentTree, key);
+    const path = node?.path ?? key;
     setSelectedPath(path);
+    setSelectedNode(node ?? null);
     setSaveStatus('idle');
     if (!preserveDisplay) {
       setSelectedFileLoading(true);
@@ -558,10 +617,29 @@ const ConfigFileExplorer: React.FC<ConfigFileExplorerProps> = ({
     onFileSelect?.(path);
 
     // Find git status for this file
-    const gitStatus = findFileGitStatus(currentTree, path);
+    const gitStatus = node?.gitStatus;
     setSelectedFileGitStatus(gitStatus);
 
     try {
+      if (node?.comparison && api.fetchComparedContents) {
+        const { current, original } = await api.fetchComparedContents(node.comparison);
+        if (requestId !== fileLoadRequestIdRef.current) return;
+        if (!current) {
+          applyDeletedFileState(original);
+          return;
+        }
+        const currentFileType = current.fileType || 'text';
+        setFileType(currentFileType);
+        setOriginalFileType(original.fileType || 'text');
+        setFileContent(current.content);
+        setOriginalContent(current.content);
+        setCommittedContent(original.content);
+        setIsNewFile(original.isNew === true);
+        const isBinaryOrImage = currentFileType === 'binary' || currentFileType === 'image';
+        if (!preserveDisplay) setActiveTab(node.comparison.modified || node.comparison.kind === 'added' ? (isBinaryOrImage ? 'whole' : 'diff') : 'whole');
+        return;
+      }
+
       // For deleted files, only fetch the original content (current doesn't exist)
       if (gitStatus === 'deleted') {
         const originalData = await api.fetchOriginal(path);
@@ -603,26 +681,27 @@ const ConfigFileExplorer: React.FC<ConfigFileExplorerProps> = ({
         setSelectedFileLoading(false);
       }
     }
-  }, [api, onFileSelect, findFileGitStatus, applyDeletedFileState, resetSelectedFileState]);
+  }, [api, onFileSelect, findFileNode, findFileByPath, applyDeletedFileState, resetSelectedFileState]);
 
   const lastContentRefreshKey = useRef(contentRefreshKey);
   useEffect(() => {
     if (lastContentRefreshKey.current === contentRefreshKey) return;
     lastContentRefreshKey.current = contentRefreshKey;
-    if (mode === 'normal' && selectedPath) void selectFile(selectedPath, tree, true);
-  }, [contentRefreshKey, mode, selectedPath, selectFile, tree]);
+    if (mode === 'normal' && selectedKey) void selectFile(selectedKey, tree, true);
+  }, [contentRefreshKey, mode, selectedKey, selectFile, tree]);
 
   const selectCommitFile = useCallback(async (path: string, currentTree: FileNode[]) => {
     if (!commitSha || !api.fetchCommitFileContent || !api.fetchCommitFileOriginal) return;
 
     const requestId = ++fileLoadRequestIdRef.current;
     setSelectedPath(path);
+    setSelectedNode(null);
     setSaveStatus('idle');
     setSelectedFileLoading(true);
     resetSelectedFileState();
     onFileSelect?.(path);
 
-    const gitStatus = findFileGitStatus(currentTree, path);
+    const gitStatus = findFileByPath(currentTree, path)?.gitStatus;
     setSelectedFileGitStatus(gitStatus);
 
     try {
@@ -663,7 +742,7 @@ const ConfigFileExplorer: React.FC<ConfigFileExplorerProps> = ({
         setSelectedFileLoading(false);
       }
     }
-  }, [api, commitSha, commitParentSha, rootPath, onFileSelect, findFileGitStatus, applyDeletedFileState, resetSelectedFileState]);
+  }, [api, commitSha, commitParentSha, rootPath, onFileSelect, findFileByPath, applyDeletedFileState, resetSelectedFileState]);
 
   const supportsDirLog = !!api.fetchDirLog && !!api.fetchCommitFiles;
   const supportsCommitContent = !!api.fetchCommitFileContent && !!api.fetchCommitFileOriginal;
@@ -691,6 +770,7 @@ const ConfigFileExplorer: React.FC<ConfigFileExplorerProps> = ({
     setCommitParentSha(null);
     setCommitTree([]);
     setSelectedPath(null);
+    setSelectedNode(null);
     setSelectedFileGitStatus(undefined);
     setSelectedFileLoading(false);
     setFileContent('');
@@ -700,18 +780,18 @@ const ConfigFileExplorer: React.FC<ConfigFileExplorerProps> = ({
   }, []);
 
   // Wrapper that uses current tree state - for use by click handlers
-  const handleSelect = useCallback(async (path: string) => {
+  const handleSelect = useCallback(async (node: FileNode) => {
     if (mode === 'fileLog') {
       // Selecting another file exits file-log mode back to normal browsing.
       backToFiles();
-      await selectFile(path, tree);
+      await selectFile(fileNodeKey(node), tree);
       return;
     }
     if (mode === 'commitViewer') {
-      await selectCommitFile(path, commitTree);
+      await selectCommitFile(node.path, commitTree);
       return;
     }
-    await selectFile(path, tree);
+    await selectFile(fileNodeKey(node), tree);
   }, [mode, selectFile, tree, selectCommitFile, commitTree, backToFiles]);
 
   useEffect(() => {
@@ -739,7 +819,7 @@ const ConfigFileExplorer: React.FC<ConfigFileExplorerProps> = ({
         if (firstChanged) {
           setHasAutoSelected(true);
           // Use selectFile directly with the just-loaded tree to avoid stale state
-          selectFile(firstChanged, loadedTree);
+          selectFile(fileNodeKey(firstChanged), loadedTree);
         }
       }
     });
@@ -789,6 +869,7 @@ const ConfigFileExplorer: React.FC<ConfigFileExplorerProps> = ({
     setCommitParentSha(commit.parent_sha);
     setDirLogLoading(false);
     setSelectedPath(null);
+    setSelectedNode(null);
     setFileContent('');
     setOriginalContent('');
     setCommittedContent(null);
@@ -1099,7 +1180,8 @@ const ConfigFileExplorer: React.FC<ConfigFileExplorerProps> = ({
         ) : (
           <>
         {/* File tree */}
-        <div 
+        <div
+          data-testid="file-tree"
           className="border-r border-neutral-200 bg-neutral-50 overflow-y-auto flex-shrink-0"
           style={{ width: `${fileTreeWidth}px`, minWidth: `${MIN_FILE_TREE_WIDTH}px` }}
         >
@@ -1115,10 +1197,10 @@ const ConfigFileExplorer: React.FC<ConfigFileExplorerProps> = ({
               }
               return displayTree.map((node) => (
                 <TreeNode
-                  key={node.path}
+                  key={fileNodeKey(node)}
                   node={node}
                   depth={0}
-                  selectedPath={selectedPath}
+                  selectedKey={selectedKey}
                   expandedPaths={expandedPaths}
                   onSelect={handleSelect}
                   onToggle={handleToggle}
@@ -1277,6 +1359,10 @@ const ConfigFileExplorer: React.FC<ConfigFileExplorerProps> = ({
                   )}
                 </div>
 
+                {mode === 'normal' && selectedNode && renderSelectedFileDetails && (
+                  <div className="px-4 pb-2">{renderSelectedFileDetails(selectedNode)}</div>
+                )}
+
                 {/* Tabs - only show for text files */}
                 {fileType === 'text' && (
                   <div className="px-4 flex gap-1">
@@ -1406,6 +1492,9 @@ const ConfigFileExplorer: React.FC<ConfigFileExplorerProps> = ({
           </span>
           <span className="flex items-center gap-1 mr-2">
             <span className="text-danger-500 font-bold">D</span> Deleted
+          </span>
+          <span className="flex items-center gap-1 mr-2">
+            <span className="text-info-500 font-bold">→</span> Moved
           </span>
           <span className="flex items-center gap-1 mr-2">
             <span className="text-info-400 text-base leading-none">•</span> Folder with changes

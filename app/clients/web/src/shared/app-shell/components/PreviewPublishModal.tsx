@@ -24,7 +24,7 @@ import { AppShellComponentUntrackedPagesButton as UntrackedPagesButton } from '.
 import { AppShellComponentPreviewChangesTab as PreviewChangesTab } from '../../../areas/bundle/review/exported.js';
 import { AppShellComponentVersionsTab as VersionsTab } from '../../../areas/bundle/review/exported.js';
 import { appShellQueryCasualVersionName as casualVersionName, appShellQueryVersionCreatedDate as versionCreatedDate } from '../../../areas/bundle/review/exported.js';
-import { ConfigFileExplorerApi } from '../../../../shared_components/ConfigFileExplorer/index';
+import type { ComparedFileReference, ConfigFileExplorerApi, FileContentResponse, FileNodeComparison, OriginalContentResponse } from '../../../../shared_components/ConfigFileExplorer/index';
 import { encodePathForUrl } from '../../../../../../shared_code/utils/urlUtils';
 import { apiRequest, AuthenticatedEventSource } from '../../utils/apiClient';
 import { logger } from '../../utils/logger';
@@ -273,11 +273,19 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
   const [previewRootPath, setPreviewRootPath] = useState<string>('');
   const [changedFiles, setChangedFiles] = useState<Set<string>>(new Set());
   const [changedFilesReady, setChangedFilesReady] = useState(false);
+  // Logical generated-file changes against the comparison baseline. A deletion
+  // and an addition at one path are two changes; a move counts once.
+  const [changeCount, setChangeCount] = useState(0);
+  // Save state is independent of the comparison: a new version can have no
+  // site differences from its predecessor and still be unsaved.
+  const [currentVersionSaved, setCurrentVersionSaved] = useState<boolean | null>(null);
   const [impactedPages, setImpactedPages] = useState<string[]>([]);
   const [impactedPagesTotal, setImpactedPagesTotal] = useState(0);
   const changedFilesSnapshotRef = useRef<Set<string> | null>(null);
   const [openKnowledgeFormatRenames, setOpenKnowledgeFormatRenames] = useState<OpenKnowledgeFormatRename[]>([]);
   const [isOkfRenameModalOpen, setIsOkfRenameModalOpen] = useState(false);
+
+  const needsSave = currentVersionSaved === null ? changedFiles.size > 0 : !currentVersionSaved;
 
   // Save changes state
   const [isSavingChanges, setIsSavingChanges] = useState(false);
@@ -404,6 +412,10 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
       // Capture root path and changed files for use in preview tab
       setPreviewRootPath(data.root || '');
       setChangedFiles(new Set(collectChangedFiles(data.tree || [])));
+      if (options?.changedOnly) {
+        setChangeCount(data.comparison?.counts?.total ?? collectChangedFiles(data.tree || []).length);
+        setCurrentVersionSaved(typeof data.saveState?.saved === 'boolean' ? data.saveState.saved : null);
+      }
       return data;
     },
     fetchContent: async (path: string) => {
@@ -451,6 +463,26 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
         return { content: null, path: pathStr, isNew: true };
       }
       return res.json();
+    },
+    fetchComparedContents: async (comparison: FileNodeComparison) => {
+      const read = async (reference: ComparedFileReference) => {
+        const params = new URLSearchParams({
+          endpoint: reference.endpoint,
+          path: reference.path,
+          objectId: reference.objectId,
+          versionId: reference.versionId ?? '',
+        });
+        const res = await apiRequest(`bundles/${slug}/review/generated-changes/file?${params.toString()}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to read compared file');
+        if (data.stale) throw new Error('This generated file changed after the comparison was loaded. Refresh Changes to see the latest comparison.');
+        return data as FileContentResponse;
+      };
+      const current = comparison.after ? await read(comparison.after) : null;
+      const original: OriginalContentResponse = comparison.before
+        ? { ...await read(comparison.before), isNew: false }
+        : { content: null, path: comparison.after?.path ?? '', isNew: true, fileType: current?.fileType, mimeType: current?.mimeType };
+      return { current, original };
     },
     fetchFileLog: async (pathStr: string, limit = 50) => {
       const res = await apiRequest(
@@ -809,7 +841,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           notes: createVersionNote,
-          confirmedNoGeneratedChanges: changedFiles.size > 0 || confirmNoGeneratedChanges,
+          confirmedNoGeneratedChanges: changeCount > 0 || confirmNoGeneratedChanges,
         }),
       });
       const data = await response.json();
@@ -826,7 +858,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
     } finally {
       setIsCreatingVersion(false);
     }
-  }, [slug, isCreatingVersion, createVersionNote, changedFiles.size, confirmNoGeneratedChanges, previewFileExplorerApi, resetVersionChanges]);
+  }, [slug, isCreatingVersion, createVersionNote, changeCount, confirmNoGeneratedChanges, previewFileExplorerApi, resetVersionChanges]);
 
   // Handle closing the modal — unmount resets all state automatically
   const handleClose = useCallback(() => {
@@ -1162,20 +1194,20 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
             </button>
 
             {/* Arrow connector */}
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={changedFiles.size > 0 || isRegeneratingPreview || !changedFilesReady ? 'text-neutral-200' : 'text-neutral-400'}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={needsSave || isRegeneratingPreview || !changedFilesReady ? 'text-neutral-200' : 'text-neutral-400'}>
               <path d="M5 12h14M12 5l7 7-7 7"/>
             </svg>
 
             {/* Step 2: Share */}
             <DisabledTooltip
-              disabled={changedFiles.size > 0 || isRegeneratingPreview || !changedFilesReady}
-              tooltip={changedFiles.size > 0 ? 'Save your changes before sharing' : isRegeneratingPreview || !changedFilesReady ? 'Wait for preview to finish generating' : undefined}
+              disabled={needsSave || isRegeneratingPreview || !changedFilesReady}
+              tooltip={needsSave ? 'Save your changes before sharing' : isRegeneratingPreview || !changedFilesReady ? 'Wait for preview to finish generating' : undefined}
             >
               <button
-                onClick={() => changedFiles.size === 0 && !isRegeneratingPreview && changedFilesReady && setTopLevelTab('share')}
-                disabled={changedFiles.size > 0 || isRegeneratingPreview || !changedFilesReady}
+                onClick={() => !needsSave && !isRegeneratingPreview && changedFilesReady && setTopLevelTab('share')}
+                disabled={needsSave || isRegeneratingPreview || !changedFilesReady}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                  changedFiles.size > 0 || isRegeneratingPreview || !changedFilesReady
+                  needsSave || isRegeneratingPreview || !changedFilesReady
                     ? 'bg-neutral-50 text-neutral-300 cursor-not-allowed'
                     : topLevelTab === 'share'
                       ? 'bg-main-100 text-main-700 font-medium'
@@ -1183,7 +1215,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
                 }`}
               >
                 <span className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-medium ${
-                  changedFiles.size > 0 || isRegeneratingPreview || !changedFilesReady
+                  needsSave || isRegeneratingPreview || !changedFilesReady
                     ? 'bg-neutral-200 text-neutral-400'
                     : topLevelTab === 'share'
                       ? 'bg-main-600 text-white'
@@ -1206,7 +1238,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
                   setPreviewSubTab('bundlePreview');
                   setChangesInitialFile(undefined);
                 }}>Bundle Preview</ModalTab>
-                <ModalTab selected={previewSubTab === 'changes'} count={changedFiles.size > 0 ? changedFiles.size : undefined} loading={isRegeneratingPreview} onClick={() => {
+                <ModalTab selected={previewSubTab === 'changes'} count={changeCount > 0 ? changeCount : undefined} loading={isRegeneratingPreview} onClick={() => {
                   logger.debug('[PreviewPublishModal] Changes tab clicked, switching to changes tab');
                   setPreviewSubTab('changes');
                 }}>Changes</ModalTab>
@@ -1218,10 +1250,10 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
                     {saveChangesMessage.text}
                   </span>
                 )}
-                <DisabledTooltip disabled={isRegeneratingPreview || changedFiles.size === 0} tooltip={isRegeneratingPreview ? 'Wait for preview to finish generating' : 'No changes to save'}>
+                <DisabledTooltip disabled={isRegeneratingPreview || !needsSave} tooltip={isRegeneratingPreview ? 'Wait for preview to finish generating' : 'No changes to save'}>
                   <button
                     onClick={handleSaveChanges}
-                    disabled={isSavingChanges || isRegeneratingPreview || changedFiles.size === 0}
+                    disabled={isSavingChanges || isRegeneratingPreview || !needsSave}
                     className="px-3 py-1 bg-btn-standard-normal text-btn-standard-text text-sm rounded font-medium hover:bg-btn-standard-hover disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isSavingChanges ? 'Saving...' : 'Save Changes'}
@@ -1345,7 +1377,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
                           bundleSlug={slug || ''}
                           selectedVersionId={selectedShareVersionId}
                           generatedVersionLabels={generatedVersionLabels}
-                          changedFilesCount={changedFiles.size}
+                          changedFilesCount={changeCount}
                           onBusyChange={setProviderBusy}
                           onAuthError={onAuthError}
                           onPublishSuccess={onPublishSuccess}
@@ -1482,7 +1514,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
                 disabled={isCreatingVersion}
               />
             </div>
-            {changedFiles.size === 0 && (
+            {changeCount === 0 && (
               <label className="flex items-start gap-3 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
                 <input
                   type="checkbox"
@@ -1502,7 +1534,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
               >Cancel</button>
               <button
                 onClick={() => void handleCreateVersion()}
-                disabled={isCreatingVersion || (changedFiles.size === 0 && !confirmNoGeneratedChanges)}
+                disabled={isCreatingVersion || (changeCount === 0 && !confirmNoGeneratedChanges)}
                 className="rounded bg-btn-confirm-normal px-4 py-2 text-sm font-medium text-btn-confirm-text hover:bg-btn-confirm-hover disabled:cursor-not-allowed disabled:opacity-50"
               >{isCreatingVersion ? 'Creating…' : 'Create New Version'}</button>
             </div>

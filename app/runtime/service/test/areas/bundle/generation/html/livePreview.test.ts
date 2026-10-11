@@ -29,6 +29,8 @@ import { generateHtmlForBundle } from '../../../../../src/areas/bundle/generatio
 import { generateCurrentBundleVersion } from '../../../../../src/shared/generated-bundle-versioning/generatedBundleVersionLifecycle.js';
 import { currentGeneratedBundleVersionDirectory } from '../../../../../src/shared/generated-bundle-versioning/generatedBundleVersionManifestService.js';
 
+import { testGenerationMetadata } from '../../../../shared/support/generationRecordTestUtils.js';
+
 vi.mock('../../../../../src/areas/bundle/generation/html/htmlService.js', () => ({ generateHtmlForBundle: vi.fn() }));
 vi.mock('../../../../../src/shared/bundle-boundary-review/bundleBoundaryReviewService.js', () => ({
   assessBundleBoundary: vi.fn(async () => ({ reviewRequired: false })),
@@ -98,6 +100,7 @@ describe('live preview during atomic version generation', () => {
       await finish.promise;
       if (failRender) throw new Error('Injected failure after the selected page rendered');
       fs.writeFileSync(path.join(options.outputDirectory, 'Last page.html'), '<h1>Last page</h1>');
+      return { owners: [], includedBundleNodeIds: [] };
     });
     const app = express();
     responseErrors = [];
@@ -217,6 +220,7 @@ describe('live preview during atomic version generation', () => {
       generate: async directory => {
         fs.mkdirSync(path.join(directory, 'nested'), { recursive: true });
         fs.writeFileSync(path.join(directory, selectedPage), '<h1>Saved page</h1>');
+        return testGenerationMetadata();
       },
     });
     failRender = failure;

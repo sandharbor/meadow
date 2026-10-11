@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { SourcingError, acceptedSourceRoot, loadSourceSnapshot, verifySourceSnapshot, loadSourcingState, sourceConfigFingerprint, withSourcingLock, writeSourcingJson } from '../../../../shared/source-snapshot/sourceSnapshots.js';
+import { SourcingError, acceptedSourceRoot, withSourcingLock } from '../../../../shared/source-snapshot/sourceSnapshots.js';
 
 import express from 'express';
 import fs from 'fs';
@@ -27,12 +27,8 @@ import { loadGzipPathSet, COMPRESSION_MANIFEST_FILENAME } from '../../../../../.
 import { BundleConfig } from '../../../../../../../contracts/types/bundleConfig.js';
 import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundleConfigPaths.js';
 import { getConfigDirectory, getBundleDirectory, getBundleConfigPath } from '../../../../shared/bundle-config/bundleConfigPaths.js';
-import { generateHtmlForBundle } from '../html/htmlService.js';
-import { clearLivePreview, previewFileDirectory, showLivePreview } from '../../../../shared/generated-bundle-versioning/livePreview.js';
-import {
-  createNewGeneratedBundleVersion,
-  generateCurrentBundleVersion,
-} from '../../../../shared/generated-bundle-versioning/generatedBundleVersionLifecycle.js';
+import { previewFileDirectory } from '../../../../shared/generated-bundle-versioning/livePreview.js';
+import { createSuccessorGeneratedVersion, generateCurrentGeneratedVersion } from '../services/generationOperation.js';
 import { normalizePageTitle } from '../html/shared.js';
 import { loadBundleConfig, saveBundleConfigToPath } from '../../../../shared/utils/bundleConfigUtils.js';
 import { getHtmlPathForPage } from '../html/htmlPathLookup.js';
@@ -52,7 +48,6 @@ import {
   CLI_OPERATION_SCHEMA_VERSION,
 } from '../../../../../../../contracts/types/cliOperations.js';
 import { assessBundleBoundary } from '../../../../shared/bundle-boundary-review/bundleBoundaryReviewService.js';
-import { loadAppConfig } from '../../../../../../../shared_code/utils/appConfigUtils.js';
 import type { BundleBoundaryReviewRequest } from '../../../../../../../contracts/types/bundleBoundaryReview.js';
 
 const router = express.Router();
@@ -90,94 +85,6 @@ function sendGeneratingPreviewPage(res: express.Response): void {
     h2 { color: #374151; margin: 0 0 0.5rem; } p { color: #6b7280; margin: 0; }
   </style>
 </head><body><div class="container"><div class="spinner"></div><h2>Generating Preview...</h2><p>This page is being rendered. It will load automatically when ready.</p></div></body></html>`);
-}
-
-function generationAppConfigFingerprint(config: ReturnType<typeof loadAppConfig>): string {
-  // UI preferences can be persisted while the first preview is still rendering.
-  // Only settings that affect generated material invalidate that render.
-  const otherInputs = new Set(['allowImagesToExtendToFrontier', 'globalStylePresetId', 'disableBaseStyleCss', 'disableBaseJavascriptJs']);
-  return JSON.stringify(Object.entries(config)
-    .filter(([key]) => key.startsWith('generation') || otherInputs.has(key))
-    .sort(([left], [right]) => left.localeCompare(right)));
-}
-
-async function withSnapshotGeneration<T>(bundleDirectory: string, action: (inputs: unknown, validate: () => void) => Promise<T>): Promise<T> {
-  return await withSourcingLock(bundleDirectory, async () => {
-    const sourceDirectory = acceptedSourceRoot(bundleDirectory);
-    verifySourceSnapshot(bundleDirectory, loadSourceSnapshot(bundleDirectory, loadSourcingState(bundleDirectory)!.acceptedId));
-    const fingerprint = sourceConfigFingerprint(bundleDirectory);
-    const appConfig = loadAppConfig(getConfigDirectory());
-    const inputs = {
-      sourceSnapshotId: loadSourcingState(bundleDirectory)!.acceptedId,
-      bundleConfig: loadBundleConfig(bundleDirectory),
-      nodeConfig: fs.readFileSync(BundleConfigPaths.getBundleNodeConfigFile(bundleDirectory), 'utf8'),
-      appConfig,
-    };
-    const boundary = await assessBundleBoundary(path.basename(bundleDirectory));
-    if (boundary.reviewRequired) throw new Error('Source sensitivity requires review before generation.');
-    await ensureTrackedPageContent(bundleDirectory, sourceDirectory);
-    const validate = () => {
-      if (sourceConfigFingerprint(bundleDirectory) !== fingerprint
-        || generationAppConfigFingerprint(loadAppConfig(getConfigDirectory())) !== generationAppConfigFingerprint(appConfig)) {
-        throw new Error('Generation settings or curation changed during generation. Generate again with the saved settings.');
-      }
-    };
-    validate();
-    return await action(inputs, validate);
-  });
-}
-
-function saveGenerationInputs(bundleDirectory: string, versionId: string, inputs: unknown): void {
-  writeSourcingJson(path.join(bundleDirectory, 'raw/generation_inputs', `${versionId}.json`), inputs);
-}
-
-async function generateCurrentVersionHtml(
-  bundleSlug: string,
-  bundleDirectory: string,
-  options: Omit<NonNullable<Parameters<typeof generateHtmlForBundle>[1]>, 'outputDirectory'>,
-) {
-  return await withSnapshotGeneration(bundleDirectory, async (inputs, validateInputs) => {
-  const operation = createBundleOperationLogger(bundleSlug, 'version-generate');
-  let liveDirectory: string | undefined;
-  operation.info('Started staging the current generated version');
-  try {
-    const result = await generateCurrentBundleVersion(bundleDirectory, {
-      operationId: () => operation.operationId,
-      onPhase: phase => operation.debug(`Reached ${phase}`),
-      generate: async (stagingDirectory) => {
-        await generateHtmlForBundle(bundleDirectory, {
-          ...options,
-          outputDirectory: stagingDirectory,
-          onStartPageRendered: info => {
-            if (options.shouldCancel?.()) return;
-            if (options.preview) {
-              liveDirectory = stagingDirectory;
-              showLivePreview(bundleDirectory, stagingDirectory);
-            }
-            options.onStartPageRendered?.(info);
-          },
-        });
-      },
-      validate: () => {
-        validateInputs();
-        if (options.shouldCancel?.()) throw new Error('Preview generation was superseded by a newer request');
-      },
-    });
-    saveGenerationInputs(bundleDirectory, result.versionId, inputs);
-    operation.info(`${result.created ? 'Created first' : 'Regenerated current'} version ${result.versionId}; manifest and generated files installed atomically`);
-    return result;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (message.includes('superseded by a newer request')) {
-      operation.warn('Superseded by a newer preview request; local staging was rolled back safely');
-    } else {
-      operation.error(`Failed and rolled back local staging; retry is safe: ${message}`);
-    }
-    throw error;
-  } finally {
-    if (liveDirectory) clearLivePreview(bundleDirectory, liveDirectory);
-  }
-  });
 }
 
 const __filename = fileURLToPath(import.meta.url);
@@ -293,19 +200,11 @@ router.post('/bundles/:bundleSlug/generation/versions', (req, res, next) => {
         return res.status(400).json({ error: 'notes must be a string' });
       }
       operation.info('Started creating a new local generated version');
-      const result = await withSnapshotGeneration(bundleDirectory, async (inputs, validate) => {
-      const generated = await createNewGeneratedBundleVersion(bundleDirectory, {
-        validate,
-        operationId: () => operation.operationId,
+      const result = await createSuccessorGeneratedVersion(bundleDirectory, {
+        operationId: operation.operationId,
         onPhase: phase => operation.debug(`Reached ${phase}`),
         notes: typeof body.notes === 'string' ? body.notes : '',
         confirmedNoGeneratedChanges: body.confirmedNoGeneratedChanges === true,
-        generate: async stagingDirectory => {
-          await generateHtmlForBundle(bundleDirectory, { preview: true, outputDirectory: stagingDirectory });
-        },
-      });
-      saveGenerationInputs(bundleDirectory, generated.versionId, inputs);
-      return generated;
       });
       operation.info(`Created version ${result.versionId}; predecessor ${result.manifest.versions.at(-2)?.versionId ?? 'none'} is frozen and the manifest is committed`);
       res.json({ success: true, versionId: result.versionId, operationId: operation.operationId });
@@ -381,7 +280,7 @@ router.post('/bundles/:bundleSlug/generation/preview', (req, res, next) => {
         const generationResult = await timeAsync(
           'bundle.preview.request.stage',
           { stage: 'generate_html', bundle_slug: bundleSlug },
-          () => generateCurrentVersionHtml(bundleSlug, bundleDirectory, { preview: true })
+          () => generateCurrentGeneratedVersion(bundleSlug, bundleDirectory, { preview: true })
         );
 
         const generatedHtmlDir = generationResult.directory;
@@ -594,7 +493,7 @@ router.get('/bundles/:bundleSlug/generation/preview-stream', (req, res, _next) =
       const generationResult = await timeAsync(
         'bundle.preview.request.stage',
         { stage: 'generate_html', bundle_slug: bundleSlug },
-        () => generateCurrentVersionHtml(bundleSlug, bundleDirectory, {
+        () => generateCurrentGeneratedVersion(bundleSlug, bundleDirectory, {
           preview: true,
           startPage: startPageTitle ? { title: startPageTitle, directory: startPageDirectory, sourceId: startPageSourceId } : undefined,
           startPagePath,

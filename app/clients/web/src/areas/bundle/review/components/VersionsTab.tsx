@@ -20,6 +20,7 @@ import { apiRequest } from '../../../../shared/utils/apiClient';
 import { DisabledTooltip } from '../../../../shared/components/DisabledTooltip';
 import { useAppNavigation } from '../../../../shared/utils/appNavigation';
 import { casualVersionName, versionCreatedDate } from '../utils/versionLabels';
+import { PathChange } from '../../../../shared/components/PathChange';
 
 interface VersionChange {
   status: string;
@@ -40,8 +41,30 @@ interface VersionView {
 }
 
 interface ComparisonChange {
-  status: 'added' | 'modified' | 'deleted';
-  relativePath: string;
+  entryId: string;
+  kind: 'added' | 'deleted' | 'changed';
+  moved: boolean;
+  modified: boolean;
+  before: { path: string } | null;
+  after: { path: string } | null;
+}
+
+type ComparisonRecordState = { kind: 'valid' | 'legacy' } | { kind: 'unsupported' | 'corrupt'; diagnostic: string };
+
+function comparisonLabel(change: ComparisonChange): string {
+  if (change.kind !== 'changed') return change.kind;
+  return [change.moved && 'moved', change.modified && 'modified'].filter(Boolean).join(', ');
+}
+
+function comparisonNotice(left?: ComparisonRecordState, right?: ComparisonRecordState): string | null {
+  for (const record of [left, right]) {
+    if (record?.kind === 'corrupt') return `Identity records are damaged (${record.diagnostic}); files are compared by path, so moves are not shown.`;
+    if (record?.kind === 'unsupported') return `${record.diagnostic} Files are compared by path.`;
+  }
+  if (left?.kind === 'legacy' || right?.kind === 'legacy') {
+    return 'One version was generated before Meadow recorded file identity, so moved files appear as additions and deletions.';
+  }
+  return null;
 }
 
 const stateLabel: Record<VersionView['displayState'], string> = {
@@ -82,6 +105,7 @@ export function VersionsTab({
   const [leftComparison, setLeftComparison] = useState('');
   const [rightComparison, setRightComparison] = useState('working');
   const [comparison, setComparison] = useState<ComparisonChange[]>([]);
+  const [comparisonIdentityNotice, setComparisonIdentityNotice] = useState<string | null>(null);
   const [pendingBundleRename, setPendingBundleRename] = useState(false);
   const navigateInApp = useAppNavigation('versionsTab');
 
@@ -134,6 +158,7 @@ export function VersionsTab({
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Failed to compare versions');
         setComparison(data.changes ?? []);
+        setComparisonIdentityNotice(comparisonNotice(data.left?.record, data.right?.record));
       })
       .catch(caught => {
         if ((caught as Error).name !== 'AbortError') setError(caught instanceof Error ? caught.message : 'Failed to compare versions');
@@ -341,11 +366,19 @@ export function VersionsTab({
               ))}
             </select>
           </div>
+          {comparisonIdentityNotice && <p role="status" className="mt-3 text-xs text-warning-800">{comparisonIdentityNotice}</p>}
           {comparison.length === 0 ? (
             <p className="mt-3 text-sm text-neutral-500">No generated-file differences.</p>
           ) : (
             <ul className="mt-3 max-h-64 space-y-1 overflow-y-auto font-mono text-xs text-neutral-700">
-              {comparison.map(change => <li key={`${change.status}:${change.relativePath}`}><span className="inline-block w-16 uppercase text-neutral-500">{change.status}</span>{change.relativePath}</li>)}
+              {comparison.map(change => (
+                <li key={change.entryId} className="flex items-baseline gap-2">
+                  <span className="inline-block w-28 shrink-0 uppercase text-neutral-500">{comparisonLabel(change)}</span>
+                  {change.moved && change.before && change.after
+                    ? <PathChange compact before={change.before.path} after={change.after.path} rootLabel="Site root" testIdPrefix="generated-path" />
+                    : <span className="min-w-0 [overflow-wrap:anywhere]">{(change.after ?? change.before)!.path}</span>}
+                </li>
+              ))}
             </ul>
           )}
         </section>

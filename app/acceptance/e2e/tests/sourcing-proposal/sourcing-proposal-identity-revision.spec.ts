@@ -58,7 +58,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '0724132a-c64
   await sourceCommand(() => addKeyFrame(sourceReviewIdentity));
   await sourceCommand(() => checkpoint('revised identity exposes an unresolved dependent tracking choice'));
 
-  // Explicit confirmation tracks the new page with a fresh identity.
+  // Explicit confirmation tracks the new file with a fresh identity.
   await sourceCommand(() => sourcing.sensitivityReview.getByRole('button', { name: 'Confirm tracking current page', exact: true }).click());
   await sourceCommand(() => expect(sourcing.sensitivityReview).toContainText('All tracking choices reviewed.'));
   await sourceCommand(() => sourcing.sensitivityReview.getByRole('button', { name: 'Close', exact: true }).click());
@@ -82,7 +82,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '0724132a-c64
   const history = page.getByRole('dialog', { name: 'Source snapshots', exact: true });
   await sourceCommand(() => history.getByText('Accepted identity decisions', { exact: true }).click());
   await sourceCommand(() => expect(history).toContainText('Routes/Branch/Bridge.md'));
-  await sourceCommand(() => expect(history).toContainText('Different pages; old configuration removed'));
+  await sourceCommand(() => expect(history).toContainText('Different files; old configuration removed'));
   await sourceCommand(() => expect(history.getByRole('radio')).toHaveCount(0));
   await sourceCommand(() => addKeyFrame(sourceReviewAcceptance));
   await sourceCommand(() => checkpoint('accepted identity evidence is inspectable as read-only history'));

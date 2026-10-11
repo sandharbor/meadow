@@ -27,8 +27,8 @@ test.use({ serialGroup: "generated-bundle-versioning" });
 const name = linkedScenarioName(conceptText`V06 generated version connected successor freezes its predecessor and supports comparison`);
 
 const description = linkedScenarioDescription(conceptText`Change a saved generation and create a connected successor. The predecessor should
-freeze, comparison should remain available, and sharing should warn when an older
-version is selected.`);
+freeze, the unsaved successor should show only its differences from the predecessor's
+saved generation, and sharing should warn when an older version is selected.`);
 test(name.name, { annotation: [{ type: 'scenario-id', description: '74ff8663-eed7-4380-b7d6-bfd3ded60fda' }, name.annotation, description.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
@@ -97,9 +97,14 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '74ff8663-eed
   await sourceCommand(() => addKeyFrame(versioning));
   await sourceCommand(() => checkpoint("connected successor created and compared"));
 
-  // Compare sharing the old and new versions.
+  // The unsaved successor compares with its predecessor's saved generation.
   await sourceCommand(() => modal.clickChangesTab());
-  await sourceCommand(() => changesTab.expectOnlyNewFiles());
+  await sourceCommand(() => changesTab.expectComparisonBaseline("Compared with the saved generation of the previous version"));
+  await sourceCommand(() => changesTab.expectOnlyModifiedFiles());
+  await sourceCommand(() => changesTab.expectNoIdentityNotice());
+  await sourceCommand(() => checkpoint("the unsaved successor shows its differences from the frozen predecessor"));
+
+  // Compare sharing the old and new versions.
   await sourceCommand(() => modal.clickSaveChanges());
   await sourceCommand(() => modal.waitForSaveComplete());
   await sourceCommand(() => modal.expectShareVersionPurpose("publish"));

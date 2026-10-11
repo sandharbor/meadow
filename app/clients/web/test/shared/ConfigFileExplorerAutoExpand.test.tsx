@@ -77,7 +77,7 @@ describe('ConfigFileExplorer selective automatic expansion', () => {
     expect(findAutoSelectedChangedFile(
       tree,
       (node) => !node.path.includes('/_mw_assets/'),
-    )).toBe(pagePath);
+    )?.path).toBe(pagePath);
   });
 
   it('falls back to the first changed file when none match the selection preference', () => {
@@ -86,6 +86,6 @@ describe('ConfigFileExplorer selective automatic expansion', () => {
       folder('_mw_gen', '/preview/_mw_gen', [file('metadata.json', internalPath)]),
     ];
 
-    expect(findAutoSelectedChangedFile(tree, () => false)).toBe(internalPath);
+    expect(findAutoSelectedChangedFile(tree, () => false)?.path).toBe(internalPath);
   });
 });

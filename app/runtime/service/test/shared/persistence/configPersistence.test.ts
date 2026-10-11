@@ -176,6 +176,7 @@ describe('startup-critical configuration persistence', () => {
     expect(source.split('\n').filter(line => line === '/cache/source-index/')).toHaveLength(1);
     expect(source.match(/>>> Meadow managed private paths >>>/g)).toHaveLength(1);
     expect(source.match(/\.meadow-migration-recovery\//g)).toHaveLength(1);
+    expect(source.split('\n').filter(line => line === 'bundles/*/html/.generated_bundle_version_operations/')).toHaveLength(1);
     expect(source.match(/app\/publishing_providers\/\*\/pp_secrets\.yaml/g)).toHaveLength(1);
   });
 });

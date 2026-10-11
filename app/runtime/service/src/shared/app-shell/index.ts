@@ -1,6 +1,7 @@
 import { appShellCommandCreateSourcingRoutes as createSourcingRoutes } from '../../areas/bundle/sourcing/exported.js';
 import { sourceCurationWorkflow } from './sourceCurationWorkflow.js';
-import { acceptedSourceRoot, SourcingError } from '../source-snapshot/sourceSnapshots.js';
+import { SourcingError } from '../source-snapshot/sourceSnapshots.js';
+import { randomUUID } from 'crypto';
 /*
 Copyright 2026 Sand Harbor Software, LLC
 
@@ -33,8 +34,10 @@ import { appShellCommandBuildFilteredSourcesExportForBundle as buildFilteredSour
 import { appShellCommandBuildFilteredOpenKnowledgeFormatForBundle as buildFilteredOpenKnowledgeFormatForBundle } from '../../areas/bundle/generation/exported.js';
 import { appShellRouterBundleListingRoutes as bundleListingRoutes } from '../../areas/bundles/exported.js';
 import { appShellRouterBundleGenerationRoutes as bundleGenerationRoutes } from '../../areas/bundle/generation/exported.js';
-import { appShellCommandGenerateHtmlForBundle as generateHtmlForBundle } from '../../areas/bundle/generation/exported.js';
-import { appShellCommandEnsureTrackedPageContent as ensureTrackedPageContent } from '../../areas/bundle/generation/exported.js';
+import {
+  appShellCommandCreateSuccessorGeneratedVersion as createSuccessorGeneratedVersion,
+  appShellCommandGenerateCurrentGeneratedVersion as generateCurrentGeneratedVersion,
+} from '../../areas/bundle/generation/exported.js';
 import { appShellQueryHasPendingBundleRename as hasPendingBundleRename, appShellCommandUndoPendingBundleRename as undoPendingBundleRename } from '../../areas/bundles/exported.js';
 import { appShellRouterStylePresetsRoutes as stylePresetsRoutes } from '../../areas/bundle/generation/exported.js';
 import logRoutes from '../routes/logRoutes.js';
@@ -96,10 +99,11 @@ import {
 const app = express();
 
 configureBundleRenameGenerationOperations({
-  refreshTrackedContent: (bundleDirectory) => ensureTrackedPageContent(bundleDirectory, acceptedSourceRoot(bundleDirectory)),
-  generateHtml: (bundleDirectory, outputDirectory) => generateHtmlForBundle(bundleDirectory, {
-    preview: true,
-    outputDirectory,
+  regenerateCurrentVersion: (bundleSlug, bundleDirectory) => generateCurrentGeneratedVersion(bundleSlug, bundleDirectory, { preview: true }),
+  createSuccessorVersion: (bundleDirectory, notes) => createSuccessorGeneratedVersion(bundleDirectory, {
+    operationId: randomUUID(),
+    notes,
+    confirmedNoGeneratedChanges: true,
   }),
 });
 configureBundleRenameWorkflowOperations({

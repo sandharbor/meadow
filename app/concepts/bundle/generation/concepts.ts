@@ -103,11 +103,27 @@ export const versioning = define({
     text`Versions move from initial unsaved output to saved current versions with comparisons, recovery, and cancellation.`,
     text`Adding a second source or renaming a canonical source can change output paths. Source review recommends a new generated version, a connected publication revision, and retention of the prior publication. This guidance is optional and does not generate or publish a version automatically.`,
     text`Saving completes the local site workflow and returns a local preview link. Publishing is a separate, optional operation that requires an explicit user request.`,
+    text`A version's generated files and its local generation record are one pair. Generation installs them together; Save, freezing a predecessor, restoration, cancellation, and recovery keep them together under one exclusive versioning operation. Freezing restores the predecessor's saved files and saved record, including a legitimately absent record.`,
+    text`Review compares a saved current version with its saved generation, a never-saved new version with its predecessor's saved generation, and the first version with an empty site. Paths are relative to each version root, so a new version namespace alone is not a change. Save state is independent of that comparison: a new version can show no site differences and still be unsaved.`,
   ],
-  interplay: text`${link(id.bundleGeneration, "Bundle Generation")} creates versions and ${link(id.bundleReview, "Bundle Review")} explains their currentness and differences. Reader connections and remote addresses belong to ${link(id.publicationRevision, "Publication Revisions")}, not generated versions.`,
+  interplay: text`${link(id.bundleGeneration, "Bundle Generation")} creates versions and ${link(id.bundleReview, "Bundle Review")} explains their currentness and differences. ${link(id.generationRecord, "Generation Records")} explain how one version's files correspond to another's. Reader connections and remote addresses belong to ${link(id.publicationRevision, "Publication Revisions")}, not generated versions.`,
+});
+
+export const generationRecord = define({
+  id: id.generationRecord, name: "Generation Record", aliases: ["Generated Output Identity"], kind: "artifact", searchFacet: false,
+  appAreaIds: [id.bundleGeneration, id.bundleReview],
+  implementationRoles: ["record", "classify", "pair"] as const,
+  definition: text`Local metadata pairing one generated result with the accepted inputs it captured and the logical identity of each file it emitted.`,
+  mechanics: [
+    text`Every generation entry point captures the accepted source snapshot and generation-affecting configuration, records the actual final writer of each source-backed output, and binds the record to a fingerprint of the generated files' relative paths and bytes. A content-addressed generation ID distinguishes identical output generated from different inputs.`,
+    text`A source-backed output's logical identity is its ${link(id.bundleNodeId, "Bundle Node ID")} plus a stable role: page, drawing data, asset, or structural preview. Roles never derive from filenames, directories, version prefixes, or contents. Files without a recorded owner are compared by path and bytes; no rename or similarity inference is applied.`,
+    text`The record also lists the original captured source files admitted to the generated artifact, by source identity and snapshot-relative path. It stays outside the generated website, never appears in publication payloads or site-change listings, and the public reader route index remains a minimal projection of emitted page ownership.`,
+    text`A result generated before records existed is Legacy and uses ordinary path comparison. A record from a newer application is Unsupported. A lost, damaged, or mismatched record is Corrupt: Review shows ordinary file differences with a notice, and the current generation must be regenerated before Save.`,
+  ],
+  interplay: text`${link(id.versioning, "Generated Bundle Versions")} install, save, and restore records with their files. The ${link(id.changesTab, "Changes Tab")} pairs outputs by recorded identity to show moves.`,
 });
 
 export const generationConcepts = [
   customize, excalidraw, generatedBundleSearch, hooks, htmlGeneration, htmlNode,
-  images, openKnowledgeFormat, sourcesExport, svg, versioning,
+  images, openKnowledgeFormat, sourcesExport, svg, versioning, generationRecord,
 ] as const;

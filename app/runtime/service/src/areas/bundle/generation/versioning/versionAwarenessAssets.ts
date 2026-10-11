@@ -19,7 +19,6 @@ import path from 'path';
 import { createHash } from 'crypto';
 import type { BundleNodeId } from '../../../../../../../contracts/types/bundleNodeConfig.js';
 import type { GeneratedBundleReaderRouteIndex } from '../../../../../../../contracts/types/generatedBundleVersioning.js';
-import type { BundleRouteTable } from '../html/bundleRoutePlanner.js';
 
 const VERSIONING_ASSET_DIRECTORY = path.posix.join('_mw_assets', 'versioning');
 
@@ -170,21 +169,23 @@ export interface VersionAwarenessAssetResult {
 
 export function emitVersionAwarenessAssets(input: {
   outputDirectory: string;
-  routeTable: BundleRouteTable;
-  entryBundleNodeId: BundleNodeId;
+  /** Generated page path → node whose output it actually is (its final writer). */
+  pageOwners: ReadonlyMap<string, BundleNodeId>;
+  entryRoute: string;
 }): VersionAwarenessAssetResult {
   const htmlFiles = collectGeneratedHtmlFiles(input.outputDirectory);
+  const generated = new Set(htmlFiles);
   const routeOwners = new Map<string, string>();
-  for (const [bundleNodeId, route] of input.routeTable) {
-    if (htmlFiles.includes(route)) routeOwners.set(route, bundleNodeId);
+  for (const [route, bundleNodeId] of input.pageOwners) {
+    if (generated.has(route)) routeOwners.set(route, bundleNodeId);
   }
   const routesByBundleNodeId = Object.fromEntries(
     [...routeOwners.entries()]
       .map(([route, bundleNodeId]) => [bundleNodeId, route] as const)
       .sort(([left], [right]) => left.localeCompare(right)),
   );
-  const entryPath = input.routeTable.get(input.entryBundleNodeId);
-  if (!entryPath || !htmlFiles.includes(entryPath)) throw new Error('Generated entry route is missing');
+  const entryPath = input.entryRoute;
+  if (!generated.has(entryPath)) throw new Error('Generated entry route is missing');
   const routeIndex: GeneratedBundleReaderRouteIndex = {
     schemaVersion: 1,
     entryPath,

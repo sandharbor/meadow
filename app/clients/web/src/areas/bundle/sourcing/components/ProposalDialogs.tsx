@@ -105,7 +105,7 @@ export function ProposalDialogs({ dialog, review, busy, close, later, discard, m
       <div className="flex min-h-0 flex-1 flex-col px-5 py-4">
         <div className="mb-4 shrink-0 space-y-1">
           <p>Some files that were part of this bundle are gone, and new files look like them.</p>
-          <p className="text-sm text-neutral-600"><strong className="font-semibold text-neutral-800">Same page</strong> keeps the page’s tracking and settings. <strong className="font-semibold text-neutral-800">New page</strong> removes the old page and starts the new file fresh.</p>
+          <p className="text-sm text-neutral-600"><strong className="font-semibold text-neutral-800">Same file</strong> keeps the file’s tracking and settings. <strong className="font-semibold text-neutral-800">New file</strong> removes the old file’s configuration and starts the new file fresh.</p>
         </div>
         <SourceIdentityReview moves={review.moves} choices={shownChoices} busy={identityBusy || confirming} previouslyDecided={previouslyDecided}
           choose={required ? chooseIdentities : choices => setDraft(current => ({ ...current, ...choices }))} compare={move => onIdentityComparison(JSON.stringify([move.bundleNodeId, move.newPath]))} />
@@ -133,7 +133,7 @@ export function ProposalDialogs({ dialog, review, busy, close, later, discard, m
       {review.conflicts.length === 0 && <p>All conflicts resolved.</p>}
     </Modal>
     <Modal isOpen={dialog === 'sensitivity'} title="Review tracking sensitivity" onClose={close}>
-      <p className="mb-4">The material, page identity, or sensitivity policy changed after your explicit tracking choice. Review the current evidence before keeping it tracked.</p>
+      <p className="mb-4">The material, file identity, or sensitivity policy changed after your explicit tracking choice. Review the current evidence before keeping it tracked.</p>
       {pendingTracking.map(([key, decision]) => <section key={key} className="mb-4 rounded border p-3">
         <SourcePath value={bundleNodeKeySourceGraphPath(parseBundleNodeKey(key))} /><p className="text-sm">{decision.invalidated ?? review.trackingTargets[key]?.sensitivityReasons?.join(' ') ?? 'This page is sensitive under the current policy.'}</p>
         <div className="mt-3 flex flex-wrap gap-3"><button className={secondaryButtonStyle} disabled={busy} onClick={() => void mutate('tracking', { nodeKeys: [key], track: false })}>Leave untracked</button>

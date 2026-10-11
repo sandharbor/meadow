@@ -18,15 +18,17 @@ import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import PreviewChangesTab, {
+  passesChangeFilters,
   shouldAutoExpandPreviewFolder,
   shouldPreferPreviewChangeFile,
   shouldShowHtmlForSectionFilters,
 } from '../../../../../src/areas/bundle/review/components/PreviewChangesTab';
 
-vi.mock('../../../../../shared_components/ConfigFileExplorer/index', async () => {
+vi.mock('../../../../../shared_components/ConfigFileExplorer/index', async (importOriginal) => {
   const ReactModule = await import('react');
 
   return {
+    ...await importOriginal<typeof import('../../../../../shared_components/ConfigFileExplorer/index')>(),
     ConfigFileExplorer: ({ api, headerLeftContent }: { api: { fetchTree: (options?: { changedOnly?: boolean }) => Promise<unknown> }; headerLeftContent?: React.ReactNode }) => {
       ReactModule.useEffect(() => {
         void api.fetchTree({ changedOnly: true });
@@ -87,6 +89,31 @@ describe('PreviewChangesTab', () => {
       path: '/repo/preview/pages/welcome.html',
       type: 'file',
     })).toBe(true);
+  });
+
+  it('shows a moved and modified file under either filter while section filters constrain only content changes', () => {
+    const comparison = (moved: boolean, modified: boolean) => ({
+      name: 'B.html',
+      path: '/repo/preview/B.html',
+      type: 'file' as const,
+      gitStatus: modified ? 'modified' : 'moved',
+      comparison: {
+        entryId: 'owner:aaaaaaaaaaaa:page',
+        kind: 'changed' as const,
+        moved,
+        modified,
+        before: { path: 'A.html', objectId: 'a', endpoint: 'saved' as const, versionId: 'vAbc123' },
+        after: { path: 'B.html', objectId: 'b', endpoint: 'working' as const, versionId: 'vAbc123' },
+      },
+    });
+    const all = { added: true, modified: true, moved: true, deleted: true };
+    const movedAndModified = comparison(true, true);
+    expect(passesChangeFilters(movedAndModified, { ...all, modified: false }, true)).toBe(true);
+    expect(passesChangeFilters(movedAndModified, { ...all, moved: false }, true)).toBe(true);
+    expect(passesChangeFilters(movedAndModified, { ...all, moved: false, modified: false }, true)).toBe(false);
+    expect(passesChangeFilters(movedAndModified, { ...all, moved: false }, false)).toBe(false);
+    expect(passesChangeFilters(movedAndModified, all, false)).toBe(true);
+    expect(passesChangeFilters(comparison(true, false), all, false)).toBe(true);
   });
 
   it('routes unclassified HTML changes through the Other filter', () => {

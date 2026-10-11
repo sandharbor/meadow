@@ -22,13 +22,13 @@ describe('source identity review', () => {
     expect(screen.queryByRole('tab')).not.toBeInTheDocument();
   });
 
-  it('shows a likely rename as Same page without saving it until the file is changed', () => {
+  it('shows a likely rename as Same file without saving it until the file is changed', () => {
     const actions = callbacks();
     render(<SourceIdentityReview moves={[move('a')]} choices={{}} busy={false} {...actions} />);
     const record = screen.getByTestId('source-move-a');
-    expect(pressed(record)).toEqual(['Same page']);
+    expect(pressed(record)).toEqual(['Same file']);
     expect(actions.choose).not.toHaveBeenCalled();
-    fireEvent.click(within(record).getByRole('button', { name: 'New page' }));
+    fireEvent.click(within(record).getByRole('button', { name: 'New file' }));
     expect(actions.choose).toHaveBeenCalledExactlyOnceWith({ a: null });
   });
 
@@ -41,7 +41,7 @@ describe('source identity review', () => {
     fireEvent.click(within(record).getByRole('button', { name: 'Details' }));
     expect(within(record).getByText('Similarity 55/100 · Show criteria')).toBeVisible();
     expect(within(record).getByText('Traversal details')).toBeVisible();
-    fireEvent.click(within(record).getByRole('button', { name: 'Same page' }));
+    fireEvent.click(within(record).getByRole('button', { name: 'Same file' }));
     expect(actions.choose).toHaveBeenCalledExactlyOnceWith({ weak: 'weak-new.md' });
   });
 
@@ -55,7 +55,7 @@ describe('source identity review', () => {
     expect(within(record).queryByRole('radio', { checked: true })).not.toBeInTheDocument();
     fireEvent.click(within(record.querySelector('li[data-identity-destination="other.md"]') as Rendered).getByRole('radio'));
     expect(actions.choose).toHaveBeenCalledExactlyOnceWith({ a: 'other.md' });
-    fireEvent.click(within(record).getByRole('radio', { name: 'None of these — it’s a new page' }));
+    fireEvent.click(within(record).getByRole('radio', { name: 'None of these — it’s a new file' }));
     expect(actions.choose).toHaveBeenLastCalledWith({ a: null });
   });
 
@@ -67,7 +67,7 @@ describe('source identity review', () => {
     expect(within(group).getAllByRole('group', { name: /→/ })[0]).toHaveAccessibleName('Moved: mwd/one.md → mwd/development/one.md');
     expect(group).toHaveTextContent('+ 2 more files renamed the same way');
     expect(screen.queryByTestId('source-move-two')).not.toBeInTheDocument();
-    fireEvent.click(within(group).getAllByRole('button', { name: 'New page' })[0]);
+    fireEvent.click(within(group).getAllByRole('button', { name: 'New file' })[0]);
     expect(actions.choose).toHaveBeenCalledExactlyOnceWith({ one: null, two: null, three: null });
     view.rerender(<SourceIdentityReview moves={moves} choices={{ one: null }} busy={false} {...actions} />);
     expect(group).toHaveTextContent('mixed choices');
@@ -82,9 +82,9 @@ describe('source identity review', () => {
     expect(within(section('Choose a match')).getAllByTestId(/^source-move-/).map(record => record.dataset.testid)).toEqual(['source-move-new']);
     expect(screen.queryByRole('region', { name: /^Likely renamed/ })).not.toBeInTheDocument();
     const decided = section('Already decided');
-    expect(pressed(within(decided).getByTestId('source-move-a'))).toEqual(['Same page']);
-    expect(pressed(within(decided).getByTestId('source-move-weak'))).toEqual(['New page']);
-    fireEvent.click(within(within(decided).getByTestId('source-move-weak')).getByRole('button', { name: 'Same page' }));
+    expect(pressed(within(decided).getByTestId('source-move-a'))).toEqual(['Same file']);
+    expect(pressed(within(decided).getByTestId('source-move-weak'))).toEqual(['New file']);
+    fireEvent.click(within(within(decided).getByTestId('source-move-weak')).getByRole('button', { name: 'Same file' }));
     expect(actions.choose).toHaveBeenCalledExactlyOnceWith({ weak: 'weak-new.md' });
   });
 

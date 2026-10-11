@@ -5,7 +5,7 @@ import type { SourceNodeReview } from '../../../../../../../contracts/types/sour
 import Modal from '../../../../shared/components/Modal.js';
 import DiffView from '../../../../../shared_components/ConfigFileExplorer/DiffView.js';
 import type { EditorOperations } from '../types/editorOperations.js';
-import { PathChange, PathPresence } from '../../../../shared/components/PathChange.js';
+import { SourcePathChange, SourcePathPresence } from '../../../../shared/components/SourcePathChange.js';
 
 type Comparison = { before: string | null; after: string | null; binary: boolean; beforeImage?: boolean; afterImage?: boolean };
 
@@ -43,8 +43,8 @@ export function SourceContentComparison({ evidence, onClose, request }: { eviden
   }, [evidence, request, removed]);
   const before = evidence.previousPath, after = removed ? undefined : evidence.proposedPath;
   // Only a path that changes is shown: removed in red, added in green, or the before → after difference.
-  const path = before && after ? before !== after && <PathChange before={before} after={after} />
-    : before ? <PathPresence path={before} side="before" /> : after ? <PathPresence path={after} side="after" /> : null;
+  const path = before && after ? before !== after && <SourcePathChange before={before} after={after} />
+    : before ? <SourcePathPresence path={before} side="before" /> : after ? <SourcePathPresence path={after} side="after" /> : null;
   return <Modal isOpen title="Changes" onClose={onClose}>
     {path && <div className="mb-3">{path}</div>}
       {error && <p role="alert">{error}</p>}

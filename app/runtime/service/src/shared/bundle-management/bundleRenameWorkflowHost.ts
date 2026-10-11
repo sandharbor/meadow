@@ -19,9 +19,13 @@ limitations under the License.
  * boundaries. The app shell wires the concrete area implementations once at
  * startup; individual areas depend only on this shared contract.
  */
+/**
+ * Rename generation uses the same accepted-input capture and generation
+ * record contract as preview and explicit version creation.
+ */
 export interface BundleRenameGenerationOperations {
-  refreshTrackedContent(bundleDirectory: string, sourceDirectory: string): Promise<void>;
-  generateHtml(bundleDirectory: string, outputDirectory: string): Promise<void>;
+  regenerateCurrentVersion(bundleSlug: string, bundleDirectory: string): Promise<{ versionId: string; created: boolean }>;
+  createSuccessorVersion(bundleDirectory: string, notes: string): Promise<{ versionId: string; created: boolean }>;
 }
 
 export interface BundleRenameWorkflowOperations {

@@ -16,10 +16,11 @@ limitations under the License.
 
 import fs from 'fs';
 import path from 'path';
-import { execFile, spawnSync } from 'child_process';
+import { spawn, spawnSync } from 'child_process';
 import type { GeneratedBundleVersionId } from '../../../../../contracts/types/generatedBundleVersioning.js';
 import { findGitRoot } from '../utils/configFileExplorerUtils.js';
 import { generatedBundleVersionDirectory } from './generatedBundleVersionManifestService.js';
+import { generationRecordPaths } from './generationRecords.js';
 
 export interface GeneratedVersionGitChange {
   status: string;
@@ -28,14 +29,13 @@ export interface GeneratedVersionGitChange {
 
 export interface GeneratedVersionGitState {
   savedGenerationId: string | null;
+  /** Generated files and their local generation records both match HEAD. */
   isSaved: boolean;
   changes: GeneratedVersionGitChange[];
+  /** Local generation-record files that differ from HEAD (outside the generated website). */
+  recordChanges: GeneratedVersionGitChange[];
 }
 
-export interface GeneratedVersionComparisonChange {
-  status: 'added' | 'modified' | 'deleted';
-  relativePath: string;
-}
 
 function requireGitRoot(bundleDirectory: string): string {
   const gitRoot = findGitRoot(bundleDirectory);
@@ -154,11 +154,112 @@ export function inspectGeneratedVersionGitState(
   }
 
   changes.sort((left, right) => left.relativePath.localeCompare(right.relativePath));
+  const recordChanges = generationRecordStatusChanges(gitRoot, bundleDirectory, versionId);
   return {
     savedGenerationId,
-    isSaved: savedGenerationId !== null && fs.existsSync(versionDirectory) && changes.length === 0,
+    isSaved: savedGenerationId !== null && fs.existsSync(versionDirectory) && changes.length === 0
+      && recordChanges.length === 0,
     changes,
+    recordChanges,
   };
+}
+
+function generationRecordStatusChanges(
+  gitRoot: string,
+  bundleDirectory: string,
+  versionId: GeneratedBundleVersionId,
+): GeneratedVersionGitChange[] {
+  const paths = generationRecordPaths(bundleDirectory, versionId);
+  const repositoryPaths = [paths.inputs, paths.output].map(filePath => repositoryRelativePath(gitRoot, filePath));
+  const output = runGit(
+    gitRoot,
+    ['status', '--porcelain=v1', '-z', '--untracked-files=all', '--no-renames', '--', ...repositoryPaths],
+    { encoding: 'buffer' },
+  ) as Buffer;
+  return output.toString('utf8').split('\0').filter(Boolean).map(entry => ({
+    status: entry.slice(0, 2),
+    relativePath: entry.slice(3),
+  }));
+}
+
+export function resolveHeadCommit(bundleDirectory: string): string | null {
+  const gitRoot = requireGitRoot(bundleDirectory);
+  const head = (runGit(gitRoot, ['rev-parse', '--verify', '--quiet', 'HEAD^{commit}'], { allowFailure: true }) as string).trim();
+  return head || null;
+}
+
+/** Exact bytes of a file at a commit, or null when it is absent there. */
+export function readFileAtCommit(bundleDirectory: string, commit: string, absolutePath: string): Buffer | null {
+  const gitRoot = requireGitRoot(bundleDirectory);
+  const repositoryPath = repositoryRelativePath(gitRoot, absolutePath);
+  const result = spawnSync('git', ['cat-file', 'blob', `${commit}:${repositoryPath}`], {
+    cwd: gitRoot,
+    maxBuffer: 50 * 1024 * 1024,
+  });
+  if (result.error) throw result.error;
+  return result.status === 0 ? result.stdout : null;
+}
+
+/** Relative path → blob ID for a version directory at a commit, or null when it is absent there. */
+export function generatedTreeFilesAtCommit(
+  bundleDirectory: string,
+  commit: string,
+  versionId: GeneratedBundleVersionId,
+): { savedGenerationId: string; files: Map<string, string> } | null {
+  const gitRoot = requireGitRoot(bundleDirectory);
+  const repositoryVersionPath = repositoryRelativePath(gitRoot, generatedBundleVersionDirectory(bundleDirectory, versionId));
+  const listed = (runGit(gitRoot, ['ls-tree', '-d', commit, '--', repositoryVersionPath], { allowFailure: true }) as string).trim();
+  const match = listed.match(/^\d+\s+tree\s+([0-9a-f]{40}|[0-9a-f]{64})\t/);
+  if (!match) return null;
+  return { savedGenerationId: match[1], files: generatedTreeFiles(bundleDirectory, match[1]) };
+}
+
+/** Relative path → blob ID for a retained generated tree object. */
+export function generatedTreeFiles(bundleDirectory: string, treeId: string): Map<string, string> {
+  return treeFileObjectIds(requireGitRoot(bundleDirectory), treeId);
+}
+
+/** Exact bytes of a blob, or null when the repository no longer has it. */
+export function readGitBlob(bundleDirectory: string, objectId: string): Buffer | null {
+  if (!/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(objectId)) return null;
+  const result = spawnSync('git', ['cat-file', 'blob', objectId], {
+    cwd: requireGitRoot(bundleDirectory),
+    maxBuffer: 200 * 1024 * 1024,
+  });
+  if (result.error) throw result.error;
+  return result.status === 0 ? result.stdout : null;
+}
+
+/** Exact bytes of many blobs through one Git process; absent blobs are omitted. */
+export async function readGitBlobs(bundleDirectory: string, objectIds: readonly string[]): Promise<Map<string, Buffer>> {
+  const requested = [...new Set(objectIds.filter(objectId => /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(objectId)))];
+  const blobs = new Map<string, Buffer>();
+  if (requested.length === 0) return blobs;
+  const output = await new Promise<Buffer>((resolve, reject) => {
+    const child = spawn('git', ['cat-file', '--batch'], { cwd: requireGitRoot(bundleDirectory) });
+    const chunks: Buffer[] = [];
+    child.stdout.on('data', (chunk: Buffer) => chunks.push(chunk));
+    child.on('error', reject);
+    child.on('close', code => code === 0 ? resolve(Buffer.concat(chunks)) : reject(new Error(`git cat-file exited ${code}`)));
+    child.stdin.on('error', reject);
+    child.stdin.end(`${requested.join('\n')}\n`);
+  });
+  let offset = 0;
+  while (offset < output.length) {
+    const lineEnd = output.indexOf(0x0a, offset);
+    if (lineEnd < 0) break;
+    const [objectId, type, size] = output.subarray(offset, lineEnd).toString('utf8').split(' ');
+    offset = lineEnd + 1;
+    if (type === 'missing' || size === undefined) continue;
+    const length = Number(size);
+    if (type === 'blob') blobs.set(objectId, output.subarray(offset, offset + length));
+    offset += length + 1;
+  }
+  return blobs;
+}
+
+export function hasGitRepository(bundleDirectory: string): boolean {
+  return findGitRoot(bundleDirectory) !== null;
 }
 
 function untrackedAndIgnoredPaths(gitRoot: string, repositoryVersionPath: string): string[] {
@@ -194,9 +295,29 @@ export function restoreGeneratedVersionFromGit(
   }
 
   runGit(gitRoot, ['restore', '--source=HEAD', '--staged', '--worktree', '--', repositoryVersionPath]);
+  restoreGenerationRecordsFromHead(bundleDirectory, versionId);
   const restored = inspectGeneratedVersionGitState(bundleDirectory, versionId);
   if (!restored.isSaved) throw new Error(`Version ${versionId} did not match its saved generation after restore`);
   return restored;
+}
+
+/**
+ * Return a version's local generation records to their saved state, including
+ * legitimate absence for a result saved before the records existed.
+ */
+export function restoreGenerationRecordsFromHead(bundleDirectory: string, versionId: GeneratedBundleVersionId): void {
+  const gitRoot = requireGitRoot(bundleDirectory);
+  const paths = generationRecordPaths(bundleDirectory, versionId);
+  for (const filePath of [paths.inputs, paths.output]) {
+    const repositoryPath = repositoryRelativePath(gitRoot, filePath);
+    const tracked = (runGit(gitRoot, ['ls-tree', '--name-only', 'HEAD', '--', repositoryPath], { allowFailure: true }) as string).trim();
+    if (tracked) {
+      runGit(gitRoot, ['restore', '--source=HEAD', '--staged', '--worktree', '--', repositoryPath]);
+    } else {
+      runGit(gitRoot, ['rm', '--cached', '--quiet', '--ignore-unmatch', '--', repositoryPath], { allowFailure: true });
+      fs.rmSync(filePath, { force: true });
+    }
+  }
 }
 
 function treeFileObjectIds(gitRoot: string, treeId: string): Map<string, string> {
@@ -207,55 +328,4 @@ function treeFileObjectIds(gitRoot: string, treeId: string): Map<string, string>
     if (match) files.set(match[2], match[1]);
   }
   return files;
-}
-
-async function workingFileObjectIds(gitRoot: string, directory: string): Promise<Map<string, string>> {
-  const paths = [...workingFiles(directory)];
-  if (paths.length === 0) return new Map();
-  // One asynchronous Git process keeps preview requests responsive even for
-  // thousands of files. Git accepts C-quoted paths, including embedded newlines.
-  const input = paths.map(relativePath => JSON.stringify(path.join(directory, relativePath))).join('\n') + '\n';
-  const output = await new Promise<string>((resolve, reject) => {
-    const child = execFile('git', ['hash-object', '--stdin-paths'], {
-      cwd: gitRoot,
-      encoding: 'utf8',
-      maxBuffer: 50 * 1024 * 1024,
-    }, (error, stdout) => error ? reject(new Error(error.message)) : resolve(stdout));
-    child.stdin?.on('error', reject);
-    child.stdin?.end(input);
-  });
-  const objectIds = output.trim().split('\n');
-  if (objectIds.length !== paths.length) throw new Error('Git returned an incomplete generated file comparison');
-  return new Map(paths.map((relativePath, index) => [relativePath, objectIds[index]]));
-}
-
-export async function compareGeneratedBundleVersionTrees(
-  bundleDirectory: string,
-  leftVersionId: GeneratedBundleVersionId,
-  right: { versionId: GeneratedBundleVersionId } | { workingCurrentVersionId: GeneratedBundleVersionId },
-): Promise<GeneratedVersionComparisonChange[]> {
-  const gitRoot = requireGitRoot(bundleDirectory);
-  const leftTreeId = deriveSavedGenerationId(bundleDirectory, leftVersionId);
-  if (!leftTreeId) throw new Error(`Version ${leftVersionId} has no saved generation to compare`);
-  const leftFiles = treeFileObjectIds(gitRoot, leftTreeId);
-  const rightFiles = 'versionId' in right
-    ? (() => {
-      const rightTreeId = deriveSavedGenerationId(bundleDirectory, right.versionId);
-      if (!rightTreeId) throw new Error(`Version ${right.versionId} has no saved generation to compare`);
-      return treeFileObjectIds(gitRoot, rightTreeId);
-    })()
-    : await workingFileObjectIds(
-      gitRoot,
-      generatedBundleVersionDirectory(bundleDirectory, right.workingCurrentVersionId),
-    );
-  const paths = [...new Set([...leftFiles.keys(), ...rightFiles.keys()])].sort((left, rightPath) => left.localeCompare(rightPath));
-  return paths.flatMap(relativePath => {
-    const leftObjectId = leftFiles.get(relativePath);
-    const rightObjectId = rightFiles.get(relativePath);
-    if (leftObjectId === rightObjectId) return [];
-    return [{
-      status: leftObjectId === undefined ? 'added' : rightObjectId === undefined ? 'deleted' : 'modified',
-      relativePath,
-    } satisfies GeneratedVersionComparisonChange];
-  });
 }
