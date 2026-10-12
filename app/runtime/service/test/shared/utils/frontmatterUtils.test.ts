@@ -33,11 +33,13 @@ describe('FrontmatterUtils', () => {
     }
   });
 
-  test('creates frontmatter when none exists and sets property', () => {
+  test.each([0o600, 0o640])('creates frontmatter and preserves existing file mode %i', (mode) => {
     const testFile = path.join(tempDir, 'test.md');
     const originalContent = 'This is just content without frontmatter';
     
-    fs.writeFileSync(testFile, originalContent, { encoding: 'utf-8', mode: 0o640 });
+    fs.writeFileSync(testFile, originalContent, { encoding: 'utf-8', mode });
+    // Creation modes are filtered by umask; establish the permission fixture explicitly.
+    fs.chmodSync(testFile, mode);
     
     // Update the sensitive property
     FrontmatterUtils.updateSensitiveProperty(testFile, true);
@@ -47,7 +49,7 @@ describe('FrontmatterUtils', () => {
     expect(updatedContent).toMatch(/^---\n/);
     expect(updatedContent).toContain('meadow-sensitive: true');
     expect(updatedContent).toContain('This is just content without frontmatter');
-    expect(fs.statSync(testFile).mode & 0o777).toBe(0o640);
+    expect(fs.statSync(testFile).mode & 0o777).toBe(mode);
   });
 
   test('preserves existing properties when adding new property', () => {
