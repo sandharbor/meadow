@@ -10,7 +10,7 @@ import { DevSourceChangesControl } from '../src/run/pages/dev-tools/SourceChange
 import { DevSavedStatesPage } from '../src/run/pages/dev-tools/SavedStatesPage.js';
 import { BundleEditorPage } from '../src/run/pages/index.js';
 import { Workflows } from '../src/run/workflows.js';
-import { sourcingReviewRedesign, sourceChange, sourceSnapshot, savedState, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, sourceChange, sourceSnapshot, savedState, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewIdentity } from '../../../concepts/index.js';
 import { createBrowserLaunchUrl } from '../../../runtime/supervisor/src/runtimeClient.js';
 import { readRuntimeSessionDescriptor } from '../../../runtime/supervisor/src/sessionDescriptor.js';
 
@@ -24,7 +24,8 @@ const name = linkedScenarioName(conceptText`Sourcing dev controls apply the same
 const description = linkedScenarioDescription(conceptText`Apply a shared source change from Dev Tools to the open saved state, which is
 this scenario's own running home. The application should review the same move
 used by the automated test, and fixture menus that share the graph agree.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'e990e4cb-3410-43f9-9054-f3f40ce902e7' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }, testInfo) => {
+const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewIdentity] });
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'e990e4cb-3410-43f9-9054-f3f40ce902e7' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }, testInfo) => {
   // --- Setup ---
   await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
   await sourceCommand(() => new BundleEditorPage(page, expect).waitForSourceCheck());

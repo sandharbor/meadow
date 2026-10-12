@@ -17,7 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleEditorPage, FilterPanelComponent } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { linkGap, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
+import { linkGap, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -26,7 +26,8 @@ const name = linkedScenarioName(conceptText`outlink gap filter auto-calculates t
 
 const description = linkedScenarioDescription(conceptText`Enable the outgoing-link gap filter. Check its calculated threshold and the pages
 selected by that threshold.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '8ffd467d-ec88-4ef7-894d-72fe4354dd1a' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, checkpoint, assertMeadowHomeState, addKeyFrame }) => {
+const areas = scenarioAreas([bundleCuration]);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '8ffd467d-ec88-4ef7-894d-72fe4354dd1a' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, checkpoint, assertMeadowHomeState, addKeyFrame }) => {
   // --- Setup ---
   const wf = new Workflows(page, expect);
   await sourceCommand(() => wf.navigateToBigBundle());

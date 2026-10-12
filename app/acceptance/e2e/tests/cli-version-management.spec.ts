@@ -16,7 +16,7 @@ limitations under the License.
 
 import fs from "fs";
 import path from "path";
-import { cli, versioning, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
+import { cli, versioning, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleGeneration } from "../../../concepts/index.js";
 import { expect, test } from "../src/run/test-fixtures.js";
 import { Bundle } from "../src/run/workflows.js";
 
@@ -55,7 +55,8 @@ const name = linkedScenarioName(conceptText`CLI manages generated versions throu
 const description = linkedScenarioDescription(conceptText`Create and save generated versions through the CLI. Edit notes, cancel a temporary
 successor, restore damaged frozen files, and delete local files while retaining version
 history.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '8b742038-6302-4432-851c-241d7446a677' }, name.annotation, description.annotation] }, async ({ sourceCommand,
+const areas = scenarioAreas([bundleGeneration]);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '8b742038-6302-4432-851c-241d7446a677' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
   assertMeadowHomeState,
   meadowCli,
   testServer,

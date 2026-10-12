@@ -3,7 +3,7 @@
 import { test, expect } from '../src/run/test-fixtures.js';
 import { Workflows } from '../src/run/workflows.js';
 import { BundleEditorPage, FilterPanelComponent, Pill, SelectedPageDetailComponent } from '../src/run/pages/index.js';
-import { sourcingReviewRedesign, sourceSnapshot, sensitive, filterSensitivity, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, sourceSnapshot, sensitive, filterSensitivity, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 
@@ -12,7 +12,8 @@ const name = linkedScenarioName(conceptText`Sourcing acceptance tracks safe addi
 const description = linkedScenarioDescription(conceptText`Enable a custom filter's Mark Sensitive action, then add matching pages without source
 sensitivity markings. Acceptance tracks the safe additions and leaves those effectively sensitive pages
 untracked in the ordinary Untracked filter.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '4d83d151-9db8-4af0-8e65-7b701110951f' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
+test(name.name, { annotation: [{ type: 'scenario-id', description: '4d83d151-9db8-4af0-8e65-7b701110951f' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
   const editor = new BundleEditorPage(page, expect);

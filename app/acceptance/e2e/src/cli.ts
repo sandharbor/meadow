@@ -26,10 +26,10 @@ import {
   allCoreConcepts,
   acceptanceAppAreaConcepts as appAreaConcepts,
   assertConceptRegistry,
-  deriveAppAreaIds,
   type AnyMeadowConcept,
 } from "../../../concepts/index.ts";
 import * as coreConceptExports from "../../../concepts/index.ts";
+import { declaredScenarioAreaIds } from "./artifacts/declaredScenarioAreas.ts";
 
 const E2E_DIR = path.join(import.meta.dirname, "..");
 
@@ -85,7 +85,6 @@ for (const exports of [coreConceptExports, contributedConceptExports]) {
 }
 
 const acceptanceIds = new Set(allAcceptanceConcepts.map(concept => concept.id));
-const appAreaIds = new Set(appAreaConcepts.map(concept => concept.id));
 
 function extractImportedConceptIds(testSource: string, acceptedIds: ReadonlySet<string>): string[] {
   const re = /import\s+\{([^}]+)\}\s+from\s+["'][^"']*concepts[^"']*["']/g;
@@ -105,7 +104,6 @@ function extractImportedConceptIds(testSource: string, acceptedIds: ReadonlySet<
 }
 
 const extractAcceptanceConceptIds = (source: string) => extractImportedConceptIds(source, acceptanceIds);
-const extractExplicitAppAreaIds = (source: string) => extractImportedConceptIds(source, appAreaIds);
 
 function listSpecFiles(dir: string): string[] {
   const files: string[] = [];
@@ -141,11 +139,8 @@ function resolveSpecFilesForAppAreas(appAreaIds: string[]): string[] {
   const matchingFiles: Set<string> = new Set();
 
   for (const specFile of listSpecFiles(testsDir)) {
-    const source = readFileSync(specFile, "utf8");
-    const conceptIds = extractAcceptanceConceptIds(source);
-    const explicitAreaIds = extractExplicitAppAreaIds(source);
-    const derivedAreaIds = deriveAppAreaIds(conceptIds, allConcepts, appAreaConcepts, explicitAreaIds);
-    if (appAreaIds.some((id) => derivedAreaIds.includes(id))) {
+    const declaredAreaIds = declaredScenarioAreaIds(readFileSync(specFile, "utf8"), exportNameToConceptId).appAreaIds;
+    if (appAreaIds.some((id) => declaredAreaIds.includes(id))) {
       matchingFiles.add(specFile);
     }
   }

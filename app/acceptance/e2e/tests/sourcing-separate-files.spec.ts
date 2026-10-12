@@ -3,7 +3,7 @@
 import { test, expect } from '../src/run/test-fixtures.js';
 import { Workflows } from '../src/run/workflows.js';
 import { BundleEditorPage } from '../src/run/pages/index.js';
-import { sourcingReviewRedesign, orphan, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, orphan, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewIdentity } from '../../../concepts/index.js';
 
 const originalTitle = 't003 ---- page with section to link to';
 
@@ -13,7 +13,8 @@ const name = linkedScenarioName(conceptText`Sourcing treats a rejected rename as
 
 const description = linkedScenarioDescription(conceptText`Reject a proposed rename by keeping the old and new files separate. Acceptance should
 remove the old configuration instead of transferring its identity.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '30c13a6a-547f-4c87-ac13-cc68a5a6592a' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewIdentity] });
+test(name.name, { annotation: [{ type: 'scenario-id', description: '30c13a6a-547f-4c87-ac13-cc68a5a6592a' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
   const editor = new BundleEditorPage(page, expect);

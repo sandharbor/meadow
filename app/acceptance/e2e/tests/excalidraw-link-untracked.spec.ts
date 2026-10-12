@@ -17,7 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { Workflows } from "../src/run/workflows.js";
 import { BundleEditorPage, PreviewPublishModal } from "../src/run/pages/index.js";
-import { excalidraw, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
+import { excalidraw, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleGeneration } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -33,7 +33,8 @@ const name = linkedScenarioName(conceptText`Excalidraw link to untracked page re
 
 const description = linkedScenarioDescription(conceptText`Leave a drawing's target page untracked and generate the bundle. Its link should explain
 that the target is not tracked.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'fbc5bf52-5ae6-43d8-8409-d6814ea7dad7' }, name.annotation, description.annotation] }, async ({ sourceCommand,
+const areas = scenarioAreas([bundleGeneration]);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'fbc5bf52-5ae6-43d8-8409-d6814ea7dad7' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   skipMeadowHomeStateCheck,

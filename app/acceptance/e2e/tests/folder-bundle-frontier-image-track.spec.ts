@@ -24,7 +24,7 @@ import {
   SelectedPageDetailComponent,
 } from "../src/run/pages/index.js";
 import { Fixture, Bundle } from "../src/run/workflows.js";
-import { sourcingReviewRedesign, frontier, htmlGeneration, tracking, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
+import { sourcingReviewRedesign, frontier, htmlGeneration, tracking, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
 import { customBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-folder" });
@@ -34,7 +34,8 @@ const name = linkedScenarioName(conceptText`tracks a depth-three frontier image 
 
 const description = linkedScenarioDescription(conceptText`Find an image beyond a folder bundle's normal traversal boundary and track it. The
 tracked image should become part of the generated bundle.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '78112a8f-5b71-4770-b9e2-e33a205bef9f' }, name.annotation, description.annotation] }, async ({ sourceCommand,
+const areas = scenarioAreas([bundleCuration]);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '78112a8f-5b71-4770-b9e2-e33a205bef9f' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   addKeyFrame,

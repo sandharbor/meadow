@@ -3,7 +3,7 @@
 import { test, expect } from '../src/run/test-fixtures.js';
 import { Workflows } from '../src/run/workflows.js';
 import { BundleEditorPage, Pill, SelectedPageDetailComponent } from '../src/run/pages/index.js';
-import { sourcingReviewRedesign, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 
@@ -12,7 +12,8 @@ const name = linkedScenarioName(conceptText`Sourcing tracks safe additions by de
 const description = linkedScenarioDescription(conceptText`Add a reachable page and review the source changes. Track added pages starts on, so the
 page is counted among the tracking changes and arrives tracked. Turning it off leaves the page untracked until it is
 turned back on; acceptance applies whichever choice is current.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '7437de34-d543-4c52-950b-c3d7c192ee15' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
+test(name.name, { annotation: [{ type: 'scenario-id', description: '7437de34-d543-4c52-950b-c3d7c192ee15' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
   const editor = new BundleEditorPage(page, expect);

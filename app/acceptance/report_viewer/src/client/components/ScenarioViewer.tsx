@@ -48,6 +48,7 @@ import {
 } from '../helpers.ts'
 import { CheckpointOpenControl } from './CheckpointOpenControl.tsx'
 import { bundleModeLabel, type BundleMode } from '../../bundleModes.ts'
+import { groupSubAreas } from '../subAreaGroups.ts'
 
 // --- Types ---
 
@@ -75,6 +76,7 @@ interface Manifest {
   logs: LogEntry[]
   conceptIds?: string[]
   appAreaDocIds?: string[]
+  subAreaDocIds?: string[]
   keyFrames?: KeyFrame[]
 }
 
@@ -102,6 +104,7 @@ interface ConceptView {
   name: string
   description: string
   isContribution?: boolean
+  subAreas?: { areaId: string; order: number }[]
 }
 
 interface AppAreaView {
@@ -734,7 +737,7 @@ export default function ScenarioViewer() {
   const matchingDocs = useMemo(() => {
     const docIds = manifest?.conceptIds || []
     if (docIds.length === 0) return []
-    return concepts.filter((doc) => docIds.includes(doc.id))
+    return concepts.filter((doc) => docIds.includes(doc.id) && !manifest?.subAreaDocIds?.includes(doc.id))
   }, [concepts, manifest])
 
   const matchingAppAreas = useMemo(() => {
@@ -742,6 +745,9 @@ export default function ScenarioViewer() {
     if (docIds.length === 0) return []
     return appAreas.filter((doc) => docIds.includes(doc.id))
   }, [appAreas, manifest])
+
+  const matchingSubAreaGroups = useMemo(() => groupSubAreas(matchingAppAreas,
+    concepts.filter(doc => manifest?.subAreaDocIds?.includes(doc.id))), [matchingAppAreas, concepts, manifest])
 
   const parseOptions = useMemo(() => ({
     recordKeyMap: stateRepoMeta?.recordKeyMap,
@@ -1924,13 +1930,14 @@ export default function ScenarioViewer() {
           indicators={[
             ...(manifest.bundleMode ? [{ key: 'mode', label: `Starts: ${bundleModeLabel(manifest.bundleMode)}`, accent: 'filter-starts-with' }] : []),
             ...matchingAppAreas.map(area => ({ key: `area-${area.id}`, label: `Area: ${area.name}`, accent: 'filter-areas' })),
+            ...matchingSubAreaGroups.flatMap(({ area, subAreas }) => subAreas.map(doc => ({ key: `${area.id}-${doc.id}`, label: `${area.name}: ${doc.name}`, accent: 'filter-areas' }))),
             ...matchingDocs.map(doc => ({ key: `concept-${doc.id}`, label: `Concept: ${doc.name}`, accent: doc.isContribution ? 'filter-contributed-tags' : 'filter-tags' })),
           ]}
         >
           {expanded => <>
           {/* Bundle-origin mode, app area, and concept chips */}
           {manifest?.bundleMode && (
-            <div className={`scenario-metadata-group filter-starts-with flex items-center gap-1.5 ${expanded ? 'min-w-0 flex-wrap' : 'shrink-0'}`}>
+            <div role="group" aria-label="Starts with" className={`scenario-metadata-group filter-starts-with flex items-center gap-1.5 ${expanded ? 'min-w-0 flex-wrap' : 'shrink-0'}`}>
               <span className="text-[11px] text-neutral-400">{isMobile ? 'Starts:' : 'Starts with:'}</span>
               <Link
                 to={`/${runId}?mode=${encodeURIComponent(manifest.bundleMode)}`}
@@ -1942,7 +1949,7 @@ export default function ScenarioViewer() {
             </div>
           )}
           {matchingAppAreas.length > 0 && (
-            <div className={`scenario-metadata-group filter-areas flex items-center gap-1.5 ${expanded ? 'min-w-0 flex-wrap' : 'shrink-0'}`}>
+            <div role="group" aria-label="Areas" className={`scenario-metadata-group filter-areas flex items-center gap-1.5 ${expanded ? 'min-w-0 flex-wrap' : 'shrink-0'}`}>
               <span className="text-[11px] text-neutral-400">Areas:</span>
               {matchingAppAreas.map((area) => (
                 <Link
@@ -1957,8 +1964,23 @@ export default function ScenarioViewer() {
               ))}
             </div>
           )}
+          {matchingSubAreaGroups.map(({ area, subAreas }) => (
+            <div key={area.id} role="group" aria-label={`${area.name} sub-areas`}
+              className={`scenario-metadata-group filter-areas flex items-center gap-1.5 ${expanded ? 'area-subareas min-w-0 flex-wrap rounded-r-md px-3 py-1.5' : 'shrink-0'}`}>
+              <span className="text-[11px] text-neutral-500">{area.name.replace(/^Bundle /, '')} sub-areas:</span>
+              {subAreas.map(doc => (
+                <Link key={doc.id} to={`/${runId}?area=${encodeURIComponent(area.id)}&subarea=${encodeURIComponent(doc.id)}`}
+                  title={doc.description} data-selected="false" data-highlighted={hoveredDocId === doc.id}
+                  onMouseEnter={() => manifest.keyFrames?.some(frame => frame.docId === doc.id) ? setHoveredDocId(doc.id) : undefined}
+                  onMouseLeave={() => setHoveredDocId(null)}
+                  className="scenario-metadata-chip max-w-full break-words px-2 py-0.5 rounded-full text-[11px] font-medium text-neutral-600 transition-colors">
+                  {doc.name}
+                </Link>
+              ))}
+            </div>
+          ))}
           {matchingDocs.length > 0 && (
-            <div className={`flex items-center gap-1.5 ${expanded ? 'min-w-0 flex-wrap' : 'shrink-0'}`}>
+            <div role="group" aria-label="Concepts" className={`flex items-center gap-1.5 ${expanded ? 'min-w-0 flex-wrap' : 'shrink-0'}`}>
               <span className="text-[11px] text-neutral-400">Concepts:</span>
               {matchingDocs.map((doc) => {
                 const hasKeyFrame = manifest?.keyFrames?.some(kf => kf.docId === doc.id)

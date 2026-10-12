@@ -39,6 +39,13 @@ html, body {
   background-color: var(--filter-background);
 }
 
+/* Repeat the parent label and inset its children on both report surfaces. */
+.area-subareas {
+  margin-left: 1rem;
+  border-left: 2px solid color-mix(in srgb, var(--filter-accent) 35%, white);
+  background-color: var(--filter-background);
+}
+
 .filter-row {
   display: grid;
   grid-template-columns: clamp(5.5rem, 12vw, 8rem) 5rem minmax(0, 1fr);
@@ -66,6 +73,33 @@ html, body {
 
 .filter-choices button {
   max-width: 100%;
+}
+
+@media (max-width: 639px) {
+  .filter-row {
+    grid-template-columns: 5.5rem minmax(0, 1fr);
+    grid-template-rows: min-content 1fr;
+  }
+
+  .filter-row > .filter-label {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .filter-row > .filter-all {
+    grid-column: 1;
+    grid-row: 2;
+    justify-self: start;
+  }
+
+  .filter-row > .filter-all .filter-default {
+    width: auto;
+  }
+
+  .filter-row > .filter-choices {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
 }
 
 .filter-section button[aria-pressed="false"],

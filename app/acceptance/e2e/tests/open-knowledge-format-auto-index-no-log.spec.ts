@@ -18,7 +18,7 @@ import path from "path";
 import { test, expect } from "../src/run/test-fixtures.js";
 import { PreviewPublishModal, ChangesTab, CustomizeTab } from "../src/run/pages/index.js";
 import { Workflows, Bundle } from "../src/run/workflows.js";
-import { customize, openKnowledgeFormat, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
+import { customize, openKnowledgeFormat, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleGeneration } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 import { seedTrackedAndLinkedFile } from "../src/run/utils/index.js";
 import { OpenKnowledgeFormatBundle } from "./open-knowledge-format-support.js";
@@ -39,7 +39,8 @@ const name = linkedScenarioName(conceptText`OKF: auto-detect index.md and omit l
 
 const description = linkedScenarioDescription(conceptText`Enable Open Knowledge Format for a source with an index but no log page. The index
 should be detected automatically and no log should be invented.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '7e00589f-d582-413b-a337-02cee8ffe895' }, name.annotation, description.annotation] }, async ({ sourceCommand,
+const areas = scenarioAreas([bundleGeneration]);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '7e00589f-d582-413b-a337-02cee8ffe895' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   skipMeadowHomeStateCheck,

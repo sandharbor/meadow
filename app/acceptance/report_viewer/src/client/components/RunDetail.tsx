@@ -35,27 +35,69 @@ import { CopyReferenceButton } from './CopyReferenceButton.tsx'
 import { ScenarioFilterPill, type ScenarioFilterAction } from './ScenarioFilterPill.tsx'
 import { categorizeScenarios, SectionHeader, StatusBadge } from './scenarioCategories.tsx'
 import { isBundleMode, BUNDLE_MODE_OPTIONS, type BundleMode } from '../../bundleModes.ts'
+import { SOURCE_CHANGE_CATEGORIES, type SourceChangeCategory } from '../../../../../shared_code/shared_dev/sourceChangesTypes.ts'
 import {
   EXECUTION_SURFACE_OPTIONS,
   isExecutionSurface,
   executionSurfacesFor,
   type ExecutionSurface,
 } from '../../../../e2e/src/run/executionSurface.ts'
+import type { FilterExpression } from '../../../../../contracts/types/filterExpression.ts'
+import { FilterMixPanel } from './FilterMixPanel.tsx'
+import { groupSubAreas } from '../subAreaGroups.ts'
+import {
+  SCENARIO_FILTER_SECTION_LABELS,
+  addScenarioFilterTerm,
+  defaultScenarioFilterExpression,
+  formatScenarioFilterExpression,
+  isDefaultScenarioFilterExpression,
+  parseScenarioFilterExpression,
+  removeScenarioFilterTerms,
+  scenarioFilterSelectionsOf,
+  scenarioMatchesFilterExpression,
+  type ScenarioFilterSection,
+  type ScenarioFilterSelections,
+} from '../scenarioFilterExpression.ts'
 
 const VIEW_TABS = ['thumbs', 'list', 'videos', 'details', 'timing'] as const
 type ViewTab = typeof VIEW_TABS[number]
-type FilterGroup = 'surface' | 'bundle' | 'mode' | 'area' | 'subarea'
+
+/** Source-change categories narrow scenarios only while Sourcing is selected. */
+const SOURCING_AREA_ID = 'bundle/sourcing'
+const isSourceChangeCategory = (value: string): value is SourceChangeCategory => (SOURCE_CHANGE_CATEGORIES as readonly string[]).includes(value)
 
 interface FilterValues {
   areaIds: string[]
   subAreaIds: string[]
+  sourceChangeCategories: SourceChangeCategory[]
   docIds: string[]
   bundleIds: string[]
   bundleModes: BundleMode[]
   executionSurfaces: ExecutionSurface[]
 }
 
-const EMPTY_FILTERS: FilterValues = { areaIds: [], subAreaIds: [], docIds: [], bundleIds: [], bundleModes: [], executionSurfaces: [] }
+const EMPTY_FILTERS: FilterValues = { areaIds: [], subAreaIds: [], sourceChangeCategories: [], docIds: [], bundleIds: [], bundleModes: [], executionSurfaces: [] }
+
+/** Each filter row's values and URL parameter, in URL order. */
+const FILTER_VALUE_SECTIONS: [keyof FilterValues, ScenarioFilterSection][] = [
+  ['executionSurfaces', 'surface'], ['bundleModes', 'mode'], ['areaIds', 'area'], ['subAreaIds', 'subarea'],
+  ['sourceChangeCategories', 'sourcechange'], ['docIds', 'doc'], ['bundleIds', 'bundle'],
+]
+const FILTER_VALUE_KEYS = Object.fromEntries(FILTER_VALUE_SECTIONS.map(([key, section]) => [section, key])) as Record<ScenarioFilterSection, keyof FilterValues>
+
+/** A customized filter mix replaces the per-row parameters in the URL. */
+const FILTER_MIX_PARAM = 'mix'
+const FILTER_MIX_ALLOWED_VALUES: Partial<Record<ScenarioFilterSection, readonly string[]>> = {
+  surface: EXECUTION_SURFACE_OPTIONS.map(option => option.id),
+  mode: BUNDLE_MODE_OPTIONS.map(option => option.id),
+  sourcechange: SOURCE_CHANGE_CATEGORIES,
+}
+
+/** Rows whose own selection is ignored when listing a row's alternatives. */
+const AVAILABILITY_IGNORES: Record<ScenarioFilterSection, ScenarioFilterSection[]> = {
+  surface: ['surface'], mode: ['mode'], area: ['area', 'subarea', 'sourcechange'], subarea: ['subarea'],
+  sourcechange: ['sourcechange'], doc: [], bundle: ['bundle'],
+}
 
 interface ConceptView {
   searchFacet: boolean
@@ -102,6 +144,8 @@ interface Scenario {
   conceptIds: string[]
   bundleDocIds: string[]
   appAreaDocIds: string[]
+  subAreaDocIds?: string[]
+  sourceChangeCategories?: SourceChangeCategory[]
   failureReason?: string
   keyFrames: KeyFrame[]
   hasIssues: boolean
@@ -272,21 +316,33 @@ export default function RunDetail() {
   const [playSpeed, setPlaySpeed] = useState(DEFAULT_PLAYBACK_SPEED_PERCENT)
   const videoRefs = useRef<Map<string, HTMLVideoElement>>(new Map())
 
-  const selectedAreaIds = searchParams.getAll('area')
+  // A customized mix carries its own pills; otherwise each row has its own parameter.
+  const mixText = searchParams.get(FILTER_MIX_PARAM)
+  const parsedMix = mixText === null ? null : parseScenarioFilterExpression(mixText, FILTER_MIX_ALLOWED_VALUES)
+  const customMix = parsedMix?.expression ?? null
+  const mixSelections = scenarioFilterSelectionsOf(customMix)
+  const selectedValues = (section: ScenarioFilterSection) => mixText === null ? searchParams.getAll(section) : mixSelections[section]
+
+  const selectedAreaIds = selectedValues('area')
   const selectedAreas = appAreas.filter((d) => selectedAreaIds.includes(d.id))
-  const selectedDocIds = searchParams.getAll('doc')
+  const selectedDocIds = selectedValues('doc')
   const allDocs = [...docs, ...conceptCatalog.filter(concept => !docs.some(doc => doc.id === concept.id))]
   const selectedDocs = allDocs.filter((d) => selectedDocIds.includes(d.id))
-  const subAreaDocs = allDocs.filter(doc => doc.subAreas?.some(subArea => selectedAreaIds.includes(subArea.areaId)))
-    .sort((a, b) => {
-      const order = (doc: ConceptView) => Math.min(...(doc.subAreas ?? []).filter(subArea => selectedAreaIds.includes(subArea.areaId)).map(subArea => subArea.order))
-      return order(a) - order(b) || a.name.localeCompare(b.name)
-    })
-  const selectedSubAreaIds = searchParams.getAll('subarea').filter(id => subAreaDocs.some(doc => doc.id === id))
-  const selectedBundleIds = searchParams.getAll('bundle')
+  const subAreaGroups = groupSubAreas(appAreas.filter(area => selectedAreaIds.includes(area.id)
+    || allDocs.some(doc => mixSelections.subarea.includes(doc.id) && doc.subAreas?.some(entry => entry.areaId === area.id))), allDocs)
+  const subAreaDocs = [...new Map(subAreaGroups.flatMap(group => group.subAreas).map(doc => [doc.id, doc])).values()]
+  const selectedSubAreaIds = customMix ? mixSelections.subarea : selectedValues('subarea').filter(id => subAreaDocs.some(doc => doc.id === id))
+  const sourcingSelected = selectedAreaIds.includes(SOURCING_AREA_ID)
+  const selectedSourceChangeCategories = customMix || sourcingSelected ? selectedValues('sourcechange').filter(isSourceChangeCategory) : []
+  const showSourceChanges = sourcingSelected || selectedSourceChangeCategories.length > 0
+  const selectedBundleIds = selectedValues('bundle')
   const selectedBundles = bundleDocs.filter((d) => selectedBundleIds.includes(d.id))
-  const selectedBundleModes = searchParams.getAll('mode').filter(isBundleMode)
-  const selectedExecutionSurfaces = searchParams.getAll('surface').filter(isExecutionSurface)
+  const selectedBundleModes = selectedValues('mode').filter(isBundleMode)
+  const selectedExecutionSurfaces = selectedValues('surface').filter(isExecutionSurface)
+  const currentFilters: FilterValues = {
+    areaIds: selectedAreaIds, subAreaIds: selectedSubAreaIds, sourceChangeCategories: selectedSourceChangeCategories, docIds: selectedDocIds,
+    bundleIds: selectedBundleIds, bundleModes: selectedBundleModes, executionSurfaces: selectedExecutionSurfaces,
+  }
 
   const scenarioConceptIds = (scenario: Scenario) => new Set([
     ...scenario.conceptIds,
@@ -322,32 +378,83 @@ export default function RunDetail() {
       .flatMap((s) => s.conceptIds)
   )
 
-  const setFilters = (next: Partial<FilterValues>) => {
+  const subAreaFitsAreas = (id: string, areaIds: readonly string[]) => allDocs.some(doc => doc.id === id && doc.subAreas?.some(subArea => areaIds.includes(subArea.areaId)))
+
+  /** Plain rows keep only sub-areas of the selected areas, and source changes only under Sourcing. */
+  const plainFilters = (next: Partial<FilterValues>): FilterValues => {
     const areaIds = next.areaIds ?? selectedAreaIds
-    const subAreaIds = (next.subAreaIds ?? selectedSubAreaIds).filter(id => allDocs.some(doc => doc.id === id && doc.subAreas?.some(subArea => areaIds.includes(subArea.areaId))))
-    const docIds = next.docIds ?? selectedDocIds
-    const bundleIds = next.bundleIds ?? selectedBundleIds
-    const bundleModes = next.bundleModes ?? selectedBundleModes
-    const executionSurfaces = next.executionSurfaces ?? selectedExecutionSurfaces
-    setSearchParams([
-      ['view', activeTab],
-      ...executionSurfaces.map((surface): [string, string] => ['surface', surface]),
-      ...bundleModes.map((mode): [string, string] => ['mode', mode]),
-      ...areaIds.map((id): [string, string] => ['area', id]),
-      ...subAreaIds.map((id): [string, string] => ['subarea', id]),
-      ...docIds.map((id): [string, string] => ['doc', id]),
-      ...bundleIds.map((id): [string, string] => ['bundle', id]),
-    ])
+    return {
+      areaIds,
+      subAreaIds: (next.subAreaIds ?? selectedSubAreaIds).filter(id => subAreaFitsAreas(id, areaIds)),
+      sourceChangeCategories: areaIds.includes(SOURCING_AREA_ID) ? next.sourceChangeCategories ?? selectedSourceChangeCategories : [],
+      docIds: next.docIds ?? selectedDocIds,
+      bundleIds: next.bundleIds ?? selectedBundleIds,
+      bundleModes: next.bundleModes ?? selectedBundleModes,
+      executionSurfaces: next.executionSurfaces ?? selectedExecutionSurfaces,
+    }
+  }
+
+  const writeFilterParams = (params: [string, string][], preserveOtherParams: boolean) => {
+    if (!preserveOtherParams) {
+      setSearchParams([['view', activeTab], ...params])
+      return
+    }
+    const next = createSearchParams(searchParams)
+    ;[...FILTER_VALUE_SECTIONS.map(([, section]) => section), FILTER_MIX_PARAM].forEach(key => next.delete(key))
+    params.forEach(([key, value]) => next.append(key, value))
+    setSearchParams(next)
+  }
+  const plainFilterParams = (filters: FilterValues) =>
+    FILTER_VALUE_SECTIONS.flatMap(([key, section]) => filters[key].map((value): [string, string] => [section, value]))
+
+  /** Writes a mix as plain row parameters when it means exactly what they mean. */
+  const setFilterMix = (expression: FilterExpression | null, preserveOtherParams = false) => {
+    const selections = scenarioFilterSelectionsOf(expression)
+    const filters: FilterValues = {
+      areaIds: selections.area, subAreaIds: selections.subarea, sourceChangeCategories: selections.sourcechange.filter(isSourceChangeCategory),
+      docIds: selections.doc, bundleIds: selections.bundle, bundleModes: selections.mode.filter(isBundleMode),
+      executionSurfaces: selections.surface.filter(isExecutionSurface),
+    }
+    const plain = plainFilters(filters)
+    const plainKeepsEverything = FILTER_VALUE_SECTIONS.every(([key, section]) => plain[key].length === selections[section].length)
+    if (!expression || isDefaultScenarioFilterExpression(expression) && plainKeepsEverything) writeFilterParams(plainFilterParams(plain), preserveOtherParams)
+    else writeFilterParams([[FILTER_MIX_PARAM, formatScenarioFilterExpression(expression)]], preserveOtherParams)
+  }
+
+  const setFilters = (next: Partial<FilterValues>, preserveOtherParams = false) => {
+    if (!customMix) {
+      writeFilterParams(plainFilterParams(plainFilters(next)), preserveOtherParams)
+      return
+    }
+    // Within a customized mix, pills leave their place in the mix and new pills join it.
+    const nextFilters = { ...currentFilters, ...next }
+    const removed = (section: ScenarioFilterSection, value: string) => {
+      const key = FILTER_VALUE_KEYS[section]
+      return (currentFilters[key] as string[]).includes(value) && !(nextFilters[key] as string[]).includes(value)
+    }
+    let expression = removeScenarioFilterTerms(customMix, removed)
+    if (currentFilters.areaIds.some(id => removed('area', id))) {
+      const areaIds = scenarioFilterSelectionsOf(expression).area
+      expression = removeScenarioFilterTerms(expression, (section, value) => section === 'subarea' && !subAreaFitsAreas(value, areaIds)
+        || section === 'sourcechange' && !areaIds.includes(SOURCING_AREA_ID))
+    }
+    FILTER_VALUE_SECTIONS.forEach(([key, section]) => {
+      (nextFilters[key] as string[]).filter(value => !(currentFilters[key] as string[]).includes(value))
+        .forEach(value => { expression = addScenarioFilterTerm(expression, section, value) })
+    })
+    setFilterMix(expression, preserveOtherParams)
   }
 
   const chooseMetadataFilter = (next: Partial<FilterValues>, action: ScenarioFilterAction) => {
-    const current = action === 'restart' ? EMPTY_FILTERS : {
-      areaIds: selectedAreaIds, subAreaIds: selectedSubAreaIds, docIds: selectedDocIds, bundleIds: selectedBundleIds,
-      bundleModes: selectedBundleModes, executionSurfaces: selectedExecutionSurfaces,
+    if (action === 'restart') {
+      writeFilterParams(plainFilterParams(plainFilters({ ...EMPTY_FILTERS, ...next })), false)
+      return
     }
+    const current = currentFilters
     setFilters({
       areaIds: [...new Set([...current.areaIds, ...next.areaIds ?? []])],
       subAreaIds: [...new Set([...current.subAreaIds, ...next.subAreaIds ?? []])],
+      sourceChangeCategories: [...new Set([...current.sourceChangeCategories, ...next.sourceChangeCategories ?? []])],
       docIds: [...new Set([...current.docIds, ...next.docIds ?? []])],
       bundleIds: [...new Set([...current.bundleIds, ...next.bundleIds ?? []])],
       bundleModes: [...new Set([...current.bundleModes, ...next.bundleModes ?? []])],
@@ -452,31 +559,70 @@ export default function RunDetail() {
     return b.slug.localeCompare(a.slug)
   })
 
-  const matchesFilters = (scenario: Scenario, except?: FilterGroup) =>
-    (except === 'surface' || selectedExecutionSurfaces.length === 0 || selectedExecutionSurfaces.some(surface => executionSurfacesFor(scenario).includes(surface)))
-    && (except === 'bundle' || selectedBundles.length === 0 || selectedBundles.some(bundle => scenario.bundleDocIds.includes(bundle.id)))
-    && (except === 'mode' || selectedBundleModes.length === 0 || !!scenario.bundleMode && selectedBundleModes.includes(scenario.bundleMode))
-    && (except === 'area' || selectedAreas.length === 0 || selectedAreas.some(area => scenario.appAreaDocIds.includes(area.id)))
-    && (except === 'area' || except === 'subarea' || selectedSubAreaIds.length === 0 || selectedSubAreaIds.some(id => scenarioConceptIds(scenario).has(id)))
-    && (selectedDocIds.length === 0 || selectedDocIds.some(id => scenarioConceptIds(scenario).has(id)))
+  const scenarioValueSets = new Map<Scenario, Partial<Record<ScenarioFilterSection, ReadonlySet<string>>>>()
+  const scenarioFilterValues = (scenario: Scenario, section: ScenarioFilterSection): ReadonlySet<string> => {
+    const sets = scenarioValueSets.get(scenario) ?? {}
+    scenarioValueSets.set(scenario, sets)
+    return sets[section] ??= section === 'surface' ? new Set(executionSurfacesFor(scenario))
+      : section === 'mode' ? new Set(scenario.bundleMode ? [scenario.bundleMode] : [])
+      : section === 'area' ? new Set(scenario.appAreaDocIds)
+      : section === 'subarea' ? new Set(scenario.subAreaDocIds ?? [])
+      : section === 'sourcechange' ? new Set(scenario.sourceChangeCategories ?? [])
+      : section === 'doc' ? scenarioConceptIds(scenario)
+      : new Set(scenario.bundleDocIds)
+  }
+  const matchesExpression = (expression: FilterExpression | null, scenario: Scenario) =>
+    scenarioMatchesFilterExpression(expression, (section, value) => scenarioFilterValues(scenario, section).has(value))
+
+  const plainSelections: ScenarioFilterSelections = {
+    surface: selectedExecutionSurfaces, mode: selectedBundleModes, area: selectedAreas.map(area => area.id), subarea: selectedSubAreaIds,
+    sourcechange: selectedSourceChangeCategories, doc: selectedDocIds, bundle: selectedBundles.map(bundle => bundle.id),
+  }
+  const plainExpressionIgnoring = (sections: readonly ScenarioFilterSection[]) =>
+    defaultScenarioFilterExpression({ ...plainSelections, ...Object.fromEntries(sections.map(section => [section, []])) })
+  const filterExpression = customMix ?? plainExpressionIgnoring([])
 
   const matchesReview = (scenario: Scenario) => !reviewMode || reviewMode === 'logs'
     || findReview(reviews.data, scenario)?.status === (reviewMode === 'incomplete' ? 'TOREVIEW' : 'REVIEWED')
-  const filteredScenarios = sortedScenarios.filter(scenario => matchesFilters(scenario) && matchesReview(scenario))
+  const filteredScenarios = sortedScenarios.filter(scenario => matchesExpression(filterExpression, scenario) && matchesReview(scenario))
 
-  // The primary rows keep alternatives to their own selection available.
-  const surfaceMatches = sortedScenarios.filter(scenario => matchesFilters(scenario, 'surface'))
-  const bundleMatches = sortedScenarios.filter(scenario => matchesFilters(scenario, 'bundle'))
-  const modeMatches = sortedScenarios.filter(scenario => matchesFilters(scenario, 'mode'))
-  const areaMatches = sortedScenarios.filter(scenario => matchesFilters(scenario, 'area'))
-  const subAreaMatches = sortedScenarios.filter(scenario => matchesFilters(scenario, 'subarea'))
-  const availableSubAreaIds = new Set(subAreaMatches.flatMap(s => [...scenarioConceptIds(s)]))
-  const availableSurfaceIds = new Set(surfaceMatches.flatMap(executionSurfacesFor))
-  const availableBundleIds = new Set(bundleMatches.flatMap(s => s.bundleDocIds))
-  const availableModeIds = new Set(modeMatches.flatMap(s => s.bundleMode ? [s.bundleMode] : []))
-  const availableAreaIds = new Set(areaMatches.flatMap(s => s.appAreaDocIds))
-  // Tags show what co-occurs in the displayed scenarios, including selected tags.
-  const availableDocIds = new Set(filteredScenarios.flatMap(s => [...scenarioConceptIds(s)]))
+  /**
+   * Plain rows keep alternatives to their own selection available. In a
+   * customized mix, a pill is available when clicking it would show a
+   * scenario that carries it.
+   */
+  const availableValues = (section: ScenarioFilterSection): Set<string> => {
+    if (!customMix) {
+      const expression = plainExpressionIgnoring(AVAILABILITY_IGNORES[section])
+      return new Set(sortedScenarios.filter(scenario => matchesExpression(expression, scenario)).flatMap(scenario => [...scenarioFilterValues(scenario, section)]))
+    }
+    const available = new Set<string>()
+    const withPill = new Map<string, FilterExpression>()
+    sortedScenarios.forEach(scenario => scenarioFilterValues(scenario, section).forEach(value => {
+      if (available.has(value)) return
+      const expression = withPill.get(value) ?? addScenarioFilterTerm(customMix, section, value)
+      withPill.set(value, expression)
+      if (matchesExpression(expression, scenario)) available.add(value)
+    }))
+    return available
+  }
+  const availableSubAreaIds = availableValues('subarea')
+  const availableSourceChangeCategories = availableValues('sourcechange')
+  const availableSurfaceIds = availableValues('surface')
+  const availableBundleIds = availableValues('bundle')
+  const availableModeIds = availableValues('mode')
+  const availableAreaIds = availableValues('area')
+  // Plain tags show what co-occurs in the displayed scenarios, including selected tags.
+  const availableDocIds = customMix ? availableValues('doc') : new Set(filteredScenarios.flatMap(s => [...scenarioConceptIds(s)]))
+  const filterTermLabel = (section: ScenarioFilterSection, value: string) => {
+    const name = section === 'surface' ? EXECUTION_SURFACE_OPTIONS.find(option => option.id === value)?.label
+      : section === 'mode' ? BUNDLE_MODE_OPTIONS.find(option => option.id === value)?.label
+      : section === 'area' ? appAreas.find(area => area.id === value)?.name
+      : section === 'bundle' ? bundleDocs.find(bundle => bundle.id === value)?.name
+      : section === 'sourcechange' ? value
+      : allDocs.find(doc => doc.id === value)?.name
+    return `${SCENARIO_FILTER_SECTION_LABELS[section]}: ${name ?? value}`
+  }
   const visibleFacetDocIds = new Set([
     ...facetDocs,
     ...(conceptsExpanded ? detailedDocs : []),
@@ -636,19 +782,41 @@ export default function RunDetail() {
         )
       })()}
 
-      {selectedAreaIds.length > 0 && subAreaDocs.length > 0 && <div className="filter-section filter-areas mb-1 w-full rounded-md px-3 py-1.5">
-        <div className="filter-row" role="group" aria-label="Sub-areas">
-          <span className="filter-label text-xs text-neutral-400 font-medium">Sub-areas:</span>
-          <div className="filter-all"><button className="filter-default text-neutral-600 px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
-            aria-pressed={selectedSubAreaIds.length === 0} onClick={() => setFilters({ subAreaIds: [] })}>All</button></div>
-          <div className="filter-choices">{subAreaDocs.map(doc => {
-            const selected = selectedSubAreaIds.includes(doc.id)
-            const available = availableSubAreaIds.has(doc.id)
-            return <button key={doc.id} aria-pressed={selected} title={available ? undefined : 'No matching scenarios with the current filters.'}
-              className={`px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors ${selected ? 'bg-sky-500 text-white' : available ? 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200' : 'bg-neutral-50 text-neutral-400 hover:bg-neutral-100'}${selected && !available ? ' opacity-60' : ''}`}
-              onClick={() => setFilters({ subAreaIds: selected ? selectedSubAreaIds.filter(id => id !== doc.id) : [...selectedSubAreaIds, doc.id] })}>{doc.name}</button>
-          })}</div>
-        </div>
+      {(subAreaGroups.length > 0 || showSourceChanges) && <div role="group" aria-label="Area details">
+        {appAreas.map(area => {
+          const subAreas = subAreaGroups.find(group => group.area.id === area.id)?.subAreas
+          return <Fragment key={area.id}>
+            {subAreas && <div className="filter-section filter-areas area-subareas mb-1 rounded-md px-3 py-1.5">
+              <div className="filter-row" role="group" aria-label={`${area.name} sub-areas`}>
+                <span className="filter-label text-xs text-neutral-500 font-medium">{area.name.replace(/^Bundle /, '')}<span className="block text-[10px] font-normal text-neutral-400">Sub-areas</span></span>
+                <div className="filter-all"><button className="filter-default text-neutral-600 px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
+                  aria-pressed={!subAreas.some(doc => selectedSubAreaIds.includes(doc.id))}
+                  onClick={() => setFilters({ subAreaIds: selectedSubAreaIds.filter(id => !subAreas.some(doc => doc.id === id)) })}>All</button></div>
+                <div className="filter-choices">{subAreas.map(doc => {
+                  const selected = selectedSubAreaIds.includes(doc.id)
+                  const available = availableSubAreaIds.has(doc.id)
+                  return <button key={doc.id} aria-pressed={selected} title={available ? undefined : 'No matching scenarios with the current filters.'}
+                    className={`px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors ${selected ? 'bg-sky-500 text-white' : available ? 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200' : 'bg-neutral-50 text-neutral-400 hover:bg-neutral-100'}${selected && !available ? ' opacity-60' : ''}`}
+                    onClick={() => setFilters({ subAreaIds: selected ? selectedSubAreaIds.filter(id => id !== doc.id) : [...selectedSubAreaIds, doc.id] })}>{doc.name}</button>
+                })}</div>
+              </div>
+            </div>}
+            {area.id === SOURCING_AREA_ID && showSourceChanges && <div className="filter-section filter-areas area-subareas mb-1 rounded-md px-3 py-1.5">
+              <div className="filter-row" role="group" aria-label="Source changes">
+                <span className="filter-label text-xs text-neutral-500 font-medium">Sourcing<span className="block text-[10px] font-normal text-neutral-400">Source changes</span></span>
+                <div className="filter-all"><button className="filter-default text-neutral-600 px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
+                  aria-pressed={selectedSourceChangeCategories.length === 0} onClick={() => setFilters({ sourceChangeCategories: [] })}>All</button></div>
+                <div className="filter-choices">{SOURCE_CHANGE_CATEGORIES.map(category => {
+                  const selected = selectedSourceChangeCategories.includes(category)
+                  const available = availableSourceChangeCategories.has(category)
+                  return <button key={category} aria-pressed={selected} title={available ? undefined : 'No matching scenarios with the current filters.'}
+                    className={`px-3 py-1 rounded-full text-xs font-medium capitalize cursor-pointer transition-colors ${selected ? 'bg-sky-500 text-white' : available ? 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200' : 'bg-neutral-50 text-neutral-400 hover:bg-neutral-100'}${selected && !available ? ' opacity-60' : ''}`}
+                    onClick={() => setFilters({ sourceChangeCategories: selected ? selectedSourceChangeCategories.filter(item => item !== category) : [...selectedSourceChangeCategories, category] })}>{category}</button>
+                })}</div>
+              </div>
+            </div>}
+          </Fragment>
+        })}
       </div>}
 
       {/* Bundle filter chips */}
@@ -845,16 +1013,22 @@ export default function RunDetail() {
             </div>}
 
             <ConceptExplorer concept={selectedDocs.length === 1 ? selectedDocs[0] : null} selectedConceptIds={selectedDocIds}
-              onSelectConcept={(id, add) => {
-                const next = createSearchParams(searchParams)
-                next.delete('doc')
-                const ids = add ? [...new Set([...selectedDocIds, id])] : [id]
-                ids.forEach(conceptId => next.append('doc', conceptId))
-                setSearchParams(next)
-              }} onSidebarWidth={setConceptSidebarWidth} />
+              onSelectConcept={(id, add) => setFilters({ docIds: add ? [...new Set([...selectedDocIds, id])] : [id] }, true)}
+              onSidebarWidth={setConceptSidebarWidth} />
           </div>
         )
       })()}
+
+      <FilterMixPanel
+        expression={filterExpression}
+        customized={!!customMix}
+        urlText={parsedMix?.error !== undefined ? mixText : null}
+        urlError={parsedMix?.error ?? null}
+        termLabel={filterTermLabel}
+        allowedValues={FILTER_MIX_ALLOWED_VALUES}
+        onChange={expression => setFilterMix(expression)}
+        onReset={() => writeFilterParams(plainFilterParams(plainFilters(currentFilters)), false)}
+      />
 
       {reviewMode === 'logs' ? <ReviewLog data={reviews.data} /> : <>
       {/* Tab bar */}

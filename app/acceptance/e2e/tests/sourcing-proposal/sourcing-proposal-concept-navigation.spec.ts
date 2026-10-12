@@ -5,7 +5,7 @@ import path from 'node:path';
 import { test, expect } from '../../src/run/test-fixtures.js';
 import { startReportViewer } from '../../src/run/reportViewer.js';
 import { BundleListPage } from '../../src/run/pages/index.js';
-import { sourcingReviewRedesign, conceptImplementationNavigation, conceptRoleValidation, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../../concepts/index.js';
+import { sourcingReviewRedesign, conceptImplementationNavigation, conceptRoleValidation, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
 test.use({ executionSurfaces: ['browser'] });
@@ -15,7 +15,8 @@ const name = linkedScenarioName(conceptText`Concept pages derive implemented-by 
 const description = linkedScenarioDescription(conceptText`Open a canonical concept from a real report and follow its derived role/symbol/location link.
 The highlighted source line must name the production function, and two concepts sharing a
 role name must retain separate identities. Concepts without participants show no invented links.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '646aabe1-ce31-4123-a574-b9cd8ca878da' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, checkpoint, addKeyFrame, assertMeadowHomeState }, testInfo) => {
+const areas = scenarioAreas([]);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '646aabe1-ce31-4123-a574-b9cd8ca878da' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, checkpoint, addKeyFrame, assertMeadowHomeState }, testInfo) => {
   // --- Setup ---
   await sourceCommand(() => new BundleListPage(page, expect).goto());
   const viewer = await sourceCommand(() => startReportViewer(expect));

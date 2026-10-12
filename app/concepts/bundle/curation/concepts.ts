@@ -63,16 +63,33 @@ export const callout = defineMeadowConcept({
 
 export const filters = defineMeadowConcept({
   id: coreConceptIds.filters,
-  name: "Custom Filter",
-  aliases: ["Filters", "Filter"],
+  name: "Custom Filtering",
+  aliases: ["Custom Filter", "Custom Filters", "Filters", "Filter"],
   kind: "mechanism",
-  searchFacet: true,
+  searchFacet: false,
   appAreaIds: curationArea,
-  definition: conceptText`A reusable rule that selects and optionally acts on matching pages in the curation graph.`,
+  subAreas: [{ areaId: coreConceptIds.bundleCuration, order: 1 }],
+  definition: conceptText`The curation feature for creating and managing reusable rules that select and optionally act on matching pages.`,
   mechanics: [
-    conceptText`Filters can be created, combined into a filter mix, viewed alone, and evaluated against changing page data.`,
+    conceptText`Custom filters define matching criteria and optional actions, can be viewed alone, and are evaluated against changing page data. Their matching sets can participate in ${conceptLink(coreConceptIds.filterMixing, "Filter Mixing")}.`,
   ],
   interplay: conceptText`Specialized filters expose ${conceptLink(coreConceptIds.frontier, "Frontier Bundle Pages")}, ${conceptLink(coreConceptIds.sensitive, "Sensitive Bundle Pages")}, ${conceptLink(coreConceptIds.overrides, "Page Configuration Overrides")}, and ${conceptLink(coreConceptIds.linkGap, "In-Link Gaps")}. A Mark Sensitive action provides ${conceptLink(coreConceptIds.filterSensitivity, "Filter-Derived Sensitivity")}.`,
+});
+
+export const filterMixing = defineMeadowConcept({
+  id: coreConceptIds.filterMixing,
+  name: "Filter Mixing",
+  aliases: ["Filter Mix", "Mix Filters"],
+  kind: "mechanism",
+  searchFacet: false,
+  appAreaIds: curationArea,
+  subAreas: [{ areaId: coreConceptIds.bundleCuration, order: 2 }],
+  definition: conceptText`The curation feature for combining filter results into a set expression that determines the visible pages.`,
+  mechanics: [
+    conceptText`Any combines matching sets, All intersects them, and Without subtracts later terms from the first. Groups and term order determine how the expression is evaluated.`,
+    conceptText`Solo and hidden choices produce a default mix. The Mix Filters editor supports changing operators, grouping and reordering terms, and resetting the mix. Graph and list views use the same result.`,
+  ],
+  interplay: conceptText`Mixes combine built-in filters, selection, ${conceptLink(coreConceptIds.folderFilter, "Source Folder Filters")}, and rules from ${conceptLink(coreConceptIds.filters, "Custom Filtering")}. Mixing existing filters does not require creating a custom filter.`,
 });
 
 export const filterSensitivity = defineMeadowConcept({
@@ -302,6 +319,7 @@ export const curationConcepts = [
   bundleConfig,
   callout,
   filters,
+  filterMixing,
   filterSensitivity,
   folderFilter,
   frontier,

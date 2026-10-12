@@ -21,7 +21,7 @@ import {
   BundleListPage,
 } from "../src/run/pages/index.js";
 import { Fixture, Bundle } from "../src/run/workflows.js";
-import { sourcingReviewRedesign, folderBundles, htmlGeneration, tracking, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
+import { sourcingReviewRedesign, folderBundles, htmlGeneration, tracking, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration, bundleGeneration } from "../../../concepts/index.js";
 import { customBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "multiple-folders" });
@@ -32,7 +32,8 @@ const name = linkedScenarioName(conceptText`previews a configured multiple-folde
 
 const description = linkedScenarioDescription(conceptText`Generate a bundle assembled from several folders. The preview should preserve the
 collection's home page, folder order, and contents.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'df33875b-e30f-4dba-8c86-b342facc6d2e' }, name.annotation, description.annotation] }, async ({ sourceCommand,
+const areas = scenarioAreas([bundleCuration, bundleGeneration]);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'df33875b-e30f-4dba-8c86-b342facc6d2e' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   addKeyFrame,

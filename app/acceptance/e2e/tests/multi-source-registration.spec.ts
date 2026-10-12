@@ -6,7 +6,7 @@ import YAML from 'yaml';
 import { test, expect } from '../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent, SelectedPageDetailComponent, Pill } from '../src/run/pages/index.js';
 import { SourcesControl } from '../src/run/pages/areas/bundle/sourcing/SourcesControl.js';
-import { sourcingReviewRedesign, bundleSource, frontier, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, bundleSource, frontier, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, bundleCuration, sourceReviewWorkspace } from '../../../concepts/index.js';
 import type { BundleConfig } from '../../../contracts/types/bundleConfig.js';
 
 test.use({ bundleMode: "single-file" });
@@ -16,7 +16,8 @@ const name = linkedScenarioName(conceptText`Multi-source registration admits a f
 
 const description = linkedScenarioDescription(conceptText`Register another source containing a frontier reference. That page should enter the
 bundle only when normal traversal reaches it within the configured boundary.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '01fdc497-0439-4ac2-9272-220e4ef9504e' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
+const areas = scenarioAreas([bundleSourcing, bundleCuration], { subAreas: [sourceReviewWorkspace] });
+test(name.name, { annotation: [{ type: 'scenario-id', description: '01fdc497-0439-4ac2-9272-220e4ef9504e' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, testServer, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   const slug = 'multi-source-omitted';
   const list = new BundleListPage(page, expect);

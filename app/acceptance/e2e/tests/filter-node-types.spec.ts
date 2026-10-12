@@ -17,7 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { FilterPanelComponent, BundleEditorPage } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { filters, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
+import { filters, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -26,7 +26,8 @@ const name = linkedScenarioName(conceptText`type filter lists concrete file type
 
 const description = linkedScenarioDescription(conceptText`Inspect the available concrete file types and solo Markdown. The graph should retain
 only pages of that type.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '463d5905-356e-4fd4-bbc9-ef4078d3ecba' }, name.annotation, description.annotation] }, async ({ sourceCommand,
+const areas = scenarioAreas([bundleCuration]);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '463d5905-356e-4fd4-bbc9-ef4078d3ecba' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   assertMeadowHomeState,

@@ -23,7 +23,7 @@ import {
   SelectedPageDetailComponent,
 } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { changesTab as changesTabDoc, htmlGeneration, tracking, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
+import { changesTab as changesTabDoc, htmlGeneration, tracking, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration, bundleReview } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -32,7 +32,8 @@ const name = linkedScenarioName(conceptText`untracking a saved page deletes it f
 
 const description = linkedScenarioDescription(conceptText`Untrack a page from a saved bundle and regenerate, then track it again. Review should
 first show its removal and then its return before each save.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '09f3977f-b9a3-4467-af26-51cc5f4423f3' }, name.annotation, description.annotation] }, async ({ sourceCommand,
+const areas = scenarioAreas([bundleCuration, bundleReview]);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '09f3977f-b9a3-4467-af26-51cc5f4423f3' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   assertMeadowHomeState,

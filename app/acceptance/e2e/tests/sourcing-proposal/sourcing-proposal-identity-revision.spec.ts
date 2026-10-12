@@ -8,7 +8,7 @@ import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { sourcingReviewRedesign, sourceReviewIdentity, pendingProposalRevalidation, sourceReviewAcceptance, sourceMove, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../../concepts/index.js';
+import { sourcingReviewRedesign, sourceReviewIdentity, pendingProposalRevalidation, sourceReviewAcceptance, sourceMove, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });
@@ -18,7 +18,8 @@ const name = linkedScenarioName(conceptText`Sourcing identity choices remain rev
 const description = linkedScenarioDescription(conceptText`Confirm a rename, untrack that identity, then revise the match to separate pages. The dependent
 tracking choice needs review against the new identity. Later preserves that revised decision;
 acceptance records immutable identity evidence and a subsequent review starts a new proposal.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '0724132a-c64b-45a4-b38f-84ec951f6b49' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewIdentity, sourceReviewWorkspace] });
+test(name.name, { annotation: [{ type: 'scenario-id', description: '0724132a-c64b-45a4-b38f-84ec951f6b49' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);

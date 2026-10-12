@@ -5,7 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage } from "../src/run/pages/index.js";
-import { emptyHome, homeCommit, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
+import { emptyHome, homeCommit, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundles } from "../../../concepts/index.js";
 
 test.use({ bundleMode: "single-file" });
 
@@ -16,7 +16,8 @@ const name = linkedScenarioName(conceptText`Fresh install creates the Meadow Hom
 const description = linkedScenarioDescription(conceptText`Launch Meadow when its home folder does not exist, as on a fresh install. The
 application creates the home, records its format, makes the initial Meadow Home
 commit, and opens an empty bundle list that invites the first bundle.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '793de8b7-8389-4f34-a9ad-6c9f4a3fa593' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+const areas = scenarioAreas([bundles]);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '793de8b7-8389-4f34-a9ad-6c9f4a3fa593' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
   // --- Test start ---
   // Open the application against a home that did not exist before launch.
   const bundleList = new BundleListPage(page, expect);

@@ -17,7 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleEditorPage } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { sourcingReviewRedesign, orphan, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
+import { sourcingReviewRedesign, orphan, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 const EXPECTED_ORPHAN_COUNT = 13;
@@ -30,7 +30,8 @@ const name = linkedScenarioName(conceptText`Sourcing reviews existing and candid
 
 const description = linkedScenarioDescription(conceptText`Remove a link that leaves previously captured pages orphaned. Review the existing and
 proposed orphans, then confirm that acceptance removes the chosen configuration.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'fc541bcb-6df3-4c55-90f6-6c5dd6cf7871' }, name.annotation, description.annotation] }, async ({ sourceCommand,
+const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'fc541bcb-6df3-4c55-90f6-6c5dd6cf7871' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
   page,
   sourceChanges,
   checkpoint,

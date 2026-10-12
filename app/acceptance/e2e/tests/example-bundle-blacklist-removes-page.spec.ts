@@ -21,7 +21,7 @@ import {
   PreviewPublishModal,
 } from "../src/run/pages/index.js";
 import { Fixture } from "../src/run/workflows.js";
-import { sourcingReviewRedesign, blacklist, bundleConfig, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
+import { sourcingReviewRedesign, blacklist, bundleConfig, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration, bundleGeneration } from "../../../concepts/index.js";
 import { exampleBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -32,7 +32,8 @@ const name = linkedScenarioName(conceptText`blacklisting a single page removes i
 
 const description = linkedScenarioDescription(conceptText`Blacklist a page in the example bundle and regenerate it. The rendered bundle should
 omit that page.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '1e577e1d-98d4-4d19-abf1-e48652aa4196' }, name.annotation, description.annotation] }, async ({ sourceCommand,
+const areas = scenarioAreas([bundleCuration, bundleGeneration]);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '1e577e1d-98d4-4d19-abf1-e48652aa4196' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   skipMeadowHomeStateCheck,

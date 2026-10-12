@@ -5,7 +5,7 @@ import path from 'node:path';
 import { test, expect } from '../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage } from '../src/run/pages/index.js';
 import { SourcesControl } from '../src/run/pages/areas/bundle/sourcing/SourcesControl.js';
-import { sourcingReviewRedesign, bundleSource, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, bundleSource, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../concepts/index.js';
 import { MeadowHomeBundleConfig } from '../src/run/utils/index.js';
 
 test.use({ bundleMode: 'single-file' });
@@ -15,7 +15,8 @@ const name = linkedScenarioName(conceptText`Multi-source disconnection preserves
 
 const description = linkedScenarioDescription(conceptText`Make one registered source unavailable. Captured pages should remain usable until the
 source is explicitly removed and the removal is accepted.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '5ac47ba7-f545-421b-8521-e3267e6d0380' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck, expectLogErrors }) => {
+const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
+test(name.name, { annotation: [{ type: 'scenario-id', description: '5ac47ba7-f545-421b-8521-e3267e6d0380' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck, expectLogErrors }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   await sourceCommand(() => list.goto());

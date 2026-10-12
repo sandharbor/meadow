@@ -4,7 +4,7 @@ import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { sourcingReviewRedesign, sourceReviewViewState, sourceReviewWorkspace, sourceReviewAcceptance, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../../concepts/index.js';
+import { sourcingReviewRedesign, sourceReviewViewState, sourceReviewWorkspace, sourceReviewAcceptance, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration, bundleSourcing } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });
@@ -14,7 +14,8 @@ const name = linkedScenarioName(conceptText`Sourcing and curation restore indepe
 const description = linkedScenarioDescription(conceptText`Remember different folder filters, mixes, labels, selection, hidden pages and framing in each
 mode. First sourcing entry shows additions despite curation's solo. Later, reload and acceptance
 restore the appropriate view, including list sorting and a graph viewport after switching back.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '859397f6-6a44-4c43-814a-dd65f147754d' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+const areas = scenarioAreas([bundleCuration, bundleSourcing], { subAreas: [sourceReviewWorkspace] });
+test(name.name, { annotation: [{ type: 'scenario-id', description: '859397f6-6a44-4c43-814a-dd65f147754d' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);

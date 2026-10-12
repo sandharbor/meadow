@@ -16,7 +16,7 @@ limitations under the License.
 
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, BundleEditorPage, FilterPanelComponent, SelectedPageDetailComponent, Pill, ActionButton } from "../src/run/pages/index.js";
-import { sourcingReviewRedesign, frontier, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
+import { sourcingReviewRedesign, frontier, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -25,7 +25,8 @@ const name = linkedScenarioName(conceptText`frontier nodes show filtered pages a
 
 const description = linkedScenarioDescription(conceptText`Inspect pages beyond the traversal boundary and change the traversal depth. The frontier
 should update as pages enter or leave the working graph.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '360daa04-8a00-4999-96b2-4e655a7fba25' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, checkpoint, assertMeadowHomeState, addKeyFrame }) => {
+const areas = scenarioAreas([bundleCuration]);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '360daa04-8a00-4999-96b2-4e655a7fba25' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, checkpoint, assertMeadowHomeState, addKeyFrame }) => {
   // --- Setup ---
   const bundleList = new BundleListPage(page, expect);
   await sourceCommand(() => bundleList.goto());

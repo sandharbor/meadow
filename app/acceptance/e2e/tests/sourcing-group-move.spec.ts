@@ -3,7 +3,7 @@
 import { test, expect } from '../src/run/test-fixtures.js';
 import { Workflows } from '../src/run/workflows.js';
 import { BundleEditorPage } from '../src/run/pages/index.js';
-import { sourcingReviewRedesign, sourceMove, sourceSnapshot, sourceChange, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, sourceMove, sourceSnapshot, sourceChange, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewIdentity, sourceReviewWorkspace } from '../../../concepts/index.js';
 import { MeadowHomeBundleConfig } from '../src/run/utils/index.js';
 
 test.use({ bundleMode: 'single-file' });
@@ -12,7 +12,8 @@ const name = linkedScenarioName(conceptText`Sourcing classifies a renamed linked
 
 const description = linkedScenarioDescription(conceptText`Rename a linked group of pages and review it. Meadow should classify the group once and
 avoid treating its members as unrelated orphans.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '107cf0b5-3e9e-4e5d-a0c8-23764a050e6c' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, sourceChanges, testServer, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
+const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewIdentity, sourceReviewWorkspace] });
+test(name.name, { annotation: [{ type: 'scenario-id', description: '107cf0b5-3e9e-4e5d-a0c8-23764a050e6c' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, sourceChanges, testServer, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
   const editor = new BundleEditorPage(page, expect);

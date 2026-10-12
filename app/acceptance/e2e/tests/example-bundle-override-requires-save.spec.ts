@@ -22,7 +22,7 @@ import {
   FilterPanelComponent,
 } from "../src/run/pages/index.js";
 import { Fixture } from "../src/run/workflows.js";
-import { sourcingReviewRedesign, bundleConfig, overrides, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
+import { sourcingReviewRedesign, bundleConfig, overrides, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration, bundleSourcing, sourceReviewWorkspace } from "../../../concepts/index.js";
 import { exampleBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -33,7 +33,8 @@ const name = linkedScenarioName(conceptText`adding a depth override on a child p
 
 const description = linkedScenarioDescription(conceptText`Add a depth override to a child page. Unlike simple tracking changes, the override
 should remain pending until explicitly saved.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '37d9c264-c863-4ac7-8b91-402f52ef1ffb' }, name.annotation, description.annotation] }, async ({ sourceCommand,
+const areas = scenarioAreas([bundleCuration, bundleSourcing], { subAreas: [sourceReviewWorkspace] });
+test(name.name, { annotation: [{ type: 'scenario-id', description: '37d9c264-c863-4ac7-8b91-402f52ef1ffb' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   assertMeadowHomeState,

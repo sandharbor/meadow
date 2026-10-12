@@ -17,7 +17,7 @@ limitations under the License.
 import { test, expect } from '../src/run/test-fixtures.js';
 import { CustomizeTab, PreviewPublishModal } from '../src/run/pages/index.js';
 import { Workflows } from '../src/run/workflows.js';
-import { htmlGeneration, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
+import { htmlGeneration, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleGeneration, bundleReview } from '../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
 
@@ -25,7 +25,8 @@ const name = linkedScenarioName(conceptText`regenerating from Customize keeps th
 
 const description = linkedScenarioDescription(conceptText`Change a generation option while viewing a child page. The new generated
 output should apply the option and keep that child page in the preview.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'beb448bf-8830-4679-ab10-8b55d20306d5' }, name.annotation, description.annotation] }, async ({ sourceCommand,
+const areas = scenarioAreas([bundleGeneration, bundleReview]);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'beb448bf-8830-4679-ab10-8b55d20306d5' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
   page, checkpoint, addKeyFrame, skipMeadowHomeStateCheck,
 }) => {
   // --- Setup ---

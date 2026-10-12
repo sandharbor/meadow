@@ -5,7 +5,7 @@ import { BundleEditorPage, ChangesTab, PreviewPublishModal } from '../src/run/pa
 import { acceptSourceBaseline } from '../../../shared_code/shared_dev/sourceScenario.js';
 import { appPlacePath } from '../../../contracts/places/index.js';
 import type { GenerateBundleCliResult } from '../../../contracts/types/cliOperations.js';
-import { changesTab as changesTabDoc, generationRecord, conceptLink, conceptText, linkedScenarioName, linkedScenarioDescription, bundleSourcing, bundleGeneration, bundleReview } from '../../../concepts/index.js';
+import { changesTab as changesTabDoc, generationRecord, conceptLink, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, bundleGeneration, bundleReview } from '../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
 
@@ -16,7 +16,8 @@ const name = linkedScenarioName(conceptText`Review shows an accepted page move a
 const description = linkedScenarioDescription(conceptText`Save a generation, then move and edit a source page and accept it as the same file. Review
 should pair the page's old and new generated paths through its ${conceptLink(generationRecord.id, "generation record")}, list it once under its destination,
 show both paths with the edited content, and keep it visible under either the Moved or Modified filter.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '20cb59b9-e1a1-49f7-910d-c17bcf1f8e64' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, meadowCli, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+const areas = scenarioAreas([bundleSourcing, bundleGeneration, bundleReview]);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '20cb59b9-e1a1-49f7-910d-c17bcf1f8e64' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, meadowCli, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   let command = 0;
   const run = (args: string[]) => meadowCli.run(args, { artifactName: `setup-${++command}` });

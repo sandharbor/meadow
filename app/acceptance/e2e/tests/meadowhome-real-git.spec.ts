@@ -18,7 +18,7 @@ import { execSync } from "child_process";
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, BundleEditorPage } from "../src/run/pages/index.js";
 import { Fixture } from "../src/run/workflows.js";
-import { git, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
+import { git, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundles } from "../../../concepts/index.js";
 import { exampleBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -29,7 +29,8 @@ const name = linkedScenarioName(conceptText`MeadowHome is a real (non-bare) git 
 
 const description = linkedScenarioDescription(conceptText`Create the example bundle and inspect MeadowHome's Git repository. It should be a normal
 working repository with the expected saved files.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '2288b7fe-637e-48aa-984f-762ae66da6ff' }, name.annotation, description.annotation] }, async ({ sourceCommand,
+const areas = scenarioAreas([bundles]);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '2288b7fe-637e-48aa-984f-762ae66da6ff' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
   page, checkpoint, assertMeadowHomeState, addKeyFrame, testServer,
 }) => {
   // --- Setup ---

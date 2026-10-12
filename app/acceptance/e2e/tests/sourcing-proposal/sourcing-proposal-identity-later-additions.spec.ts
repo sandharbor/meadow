@@ -8,7 +8,7 @@ import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { sourceReviewIdentity, sourceChangesDuringReview, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../../concepts/index.js';
+import { sourceReviewIdentity, sourceChangesDuringReview, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });
@@ -18,7 +18,8 @@ const name = linkedScenarioName(conceptText`A refresh asks only about newly rena
 const description = linkedScenarioDescription(conceptText`Decide every identity in a rename review, then refresh after another page is renamed and
 extended. Identity review is required again, but only the new file needs a choice; the earlier decisions are listed as
 already decided with their choices intact, and stay in place when one of them is changed.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '3f58ea0a-6f02-4de3-869d-2965c0b497d2' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewIdentity] });
+test(name.name, { annotation: [{ type: 'scenario-id', description: '3f58ea0a-6f02-4de3-869d-2965c0b497d2' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);

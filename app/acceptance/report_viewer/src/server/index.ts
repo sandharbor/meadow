@@ -27,6 +27,7 @@ import { readConceptImplementations } from '../../../e2e/src/artifacts/conceptIm
 import { testSourceDisplay } from '../testSourceDisplay.ts';
 import { testSourceLocations } from '../testSourceLocations.ts';
 import { describeTestSourceChanges } from '../../../e2e/src/artifacts/testSourceChanges.ts';
+import { sourceChangeCategoriesOf, type SourceChangeCategory } from '../../../../shared_code/shared_dev/sourceChangesTypes.ts';
 import { expandManifest } from '../../../e2e/src/artifacts/manifestEncoding.ts';
 import { FINAL_WORKTREE_REF } from '../../../e2e/src/run/stateRepoCompaction.ts';
 import {
@@ -696,6 +697,8 @@ app.get("/api/runs/:runId", (req, res) => {
       let conceptIds: string[] = [];
       let bundleDocIds: string[] = [];
       let appAreaDocIds: string[] = [];
+      let subAreaDocIds: string[] = [];
+      let sourceChangeCategories: SourceChangeCategory[] = [];
       let keyFrames: { docId: string; filename: string }[] = [];
       let failureReason: string | undefined;
       let hasIssues = runMeta?.[slug]?.hasIssues ?? false;
@@ -727,6 +730,8 @@ app.get("/api/runs/:runId", (req, res) => {
             conceptIds = meta.scenarioInfo.conceptIds ?? meta.scenarioInfo.scenarioDocIds ?? [];
             bundleDocIds = meta.scenarioInfo.bundleDocIds || [];
             appAreaDocIds = meta.scenarioInfo.appAreaDocIds || [];
+            subAreaDocIds = meta.scenarioInfo.subAreaDocIds || [];
+            sourceChangeCategories = meta.scenarioInfo.sourceChangeCategories || [];
             keyFrames = meta.scenarioInfo.keyFrames || [];
             failureReason = meta.scenarioInfo.failureReason;
             hasIssues = meta.summary?.hasIssues ?? hasIssues;
@@ -756,6 +761,8 @@ app.get("/api/runs/:runId", (req, res) => {
             conceptIds = manifest.conceptIds ?? manifest.scenarioDocIds ?? [];
             bundleDocIds = manifest.bundleDocIds || [];
             appAreaDocIds = manifest.appAreaDocIds || [];
+            subAreaDocIds = manifest.subAreaDocIds || [];
+            sourceChangeCategories = manifest.sourceChangeCategories ?? sourceChangeCategoriesOf(manifest.testSourceChanges ?? []);
             keyFrames = manifest.keyFrames || [];
             if (manifest.startTime && manifest.endTime) {
               duration =
@@ -792,7 +799,7 @@ app.get("/api/runs/:runId", (req, res) => {
         }
       }
 
-      return { scenarioId, slug, testName, description, nameText, descriptionText, testBasename, status, duration, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, keyFrames, failureReason, hasIssues };
+      return { scenarioId, slug, testName, description, nameText, descriptionText, testBasename, status, duration, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, subAreaDocIds, sourceChangeCategories, keyFrames, failureReason, hasIssues };
     });
 
   // Read concept targeting metadata, with a fallback for historical runs.

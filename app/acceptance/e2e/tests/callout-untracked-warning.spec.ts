@@ -16,7 +16,7 @@ limitations under the License.
 
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, BundleEditorPage, PreviewPublishModal } from "../src/run/pages/index.js";
-import { callout, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
+import { callout, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleReview } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -25,7 +25,8 @@ const name = linkedScenarioName(conceptText`Callout preview warns about untracke
 
 const description = linkedScenarioDescription(conceptText`Preview a bundle with untracked pages. Inspect the warning that prompts the user to
 review those pages before publishing.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '4ca9ede4-b658-40dc-96e2-487c29608fea' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame }) => {
+const areas = scenarioAreas([bundleReview]);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '4ca9ede4-b658-40dc-96e2-487c29608fea' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame }) => {
   // --- Setup ---
   const bundleList = new BundleListPage(page, expect);
   await sourceCommand(() => bundleList.goto());

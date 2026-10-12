@@ -17,7 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { FilterPanelComponent, BundleEditorPage } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { filters, folderFilter, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
+import { filterMixing, folderFilter, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -26,7 +26,8 @@ const name = linkedScenarioName(conceptText`hidden folders are intersected with 
 
 const description = linkedScenarioDescription(conceptText`Hide one folder and solo another. The default filter mix should combine those choices
 and show only the expected pages.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '4fa68df7-a9cd-48a7-b397-a7138cb61106' }, name.annotation, description.annotation] }, async ({ sourceCommand,
+const areas = scenarioAreas([bundleCuration], { subAreas: [filterMixing] });
+test(name.name, { annotation: [{ type: 'scenario-id', description: '4fa68df7-a9cd-48a7-b397-a7138cb61106' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   assertMeadowHomeState,
@@ -60,7 +61,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '4fa68df7-a9c
     hides: ["Folder: t024"],
     solos: ["Folder: t023"],
   }));
-  await sourceCommand(() => addKeyFrame(filters));
+  await sourceCommand(() => addKeyFrame(filterMixing));
   await sourceCommand(() => addKeyFrame(folderFilter));
   await sourceCommand(() => checkpoint("hidden and soloed folders use the default grouped mix"));
 

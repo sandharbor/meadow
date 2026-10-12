@@ -11,7 +11,7 @@ import { Fixture } from '../../src/run/workflows.js';
 import { getRuntimePaths } from '../../../../runtime/supervisor/src/runtimePaths.js';
 import { readRuntimeSessionDescriptor } from '../../../../runtime/supervisor/src/sessionDescriptor.js';
 import { postRuntimeControl, waitForRuntimeHomeRelease } from '../../../../runtime/supervisor/src/runtimeClient.js';
-import { sourcingReviewRedesign, checkpointViewRestoration, sourceReviewViewState, checkpoint as checkpointConcept, appPlace, savedState, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../../concepts/index.js';
+import { sourcingReviewRedesign, checkpointViewRestoration, sourceReviewViewState, checkpoint as checkpointConcept, appPlace, savedState, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview, executionSurfaces: ['dev-tools', 'browser'] });
@@ -21,7 +21,8 @@ const name = linkedScenarioName(conceptText`Fresh Dev Tools forks restore both m
 const description = linkedScenarioDescription(conceptText`Capture separate editor views and Preview's Versions tab, then open that checkpoint in a fresh
 Dev Tools home. Continue in the fork and capture unresolved conflict and sensitivity dialogs;
 fork each again and prove that both modes and the actionable review are restored exactly.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '852f3ce6-3489-4b5e-b396-1beb1e98f63e' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, artifactDir, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }, testInfo) => {
+const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
+test(name.name, { annotation: [{ type: 'scenario-id', description: '852f3ce6-3489-4b5e-b396-1beb1e98f63e' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, artifactDir, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }, testInfo) => {
   test.setTimeout(180000);
   // --- Setup ---
   const list = new BundleListPage(page, expect);

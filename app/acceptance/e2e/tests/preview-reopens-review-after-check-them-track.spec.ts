@@ -20,7 +20,7 @@ import {
   PreviewPublishModal,
 } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { tracking, callout, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
+import { tracking, callout, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration, bundleReview } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -29,7 +29,8 @@ const name = linkedScenarioName(conceptText`Preview reopens on Review step after
 
 const description = linkedScenarioDescription(conceptText`Follow the preview warning's Check Them link and track more pages. Reopening preview
 should return to Review so the new output can be inspected.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '21247a8b-c295-4725-a5dd-d78f071f8e4d' }, name.annotation, description.annotation] }, async ({ sourceCommand,
+const areas = scenarioAreas([bundleCuration, bundleReview]);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '21247a8b-c295-4725-a5dd-d78f071f8e4d' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   skipMeadowHomeStateCheck,

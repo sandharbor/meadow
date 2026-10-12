@@ -8,7 +8,7 @@ import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { sourcingReviewRedesign, pendingProposalRevalidation, sourceReviewSensitivity, sensitive, filterSensitivity, tracking, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../../concepts/index.js';
+import { sourcingReviewRedesign, pendingProposalRevalidation, sourceReviewSensitivity, sensitive, filterSensitivity, tracking, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });
@@ -18,7 +18,8 @@ const name = linkedScenarioName(conceptText`Deferred proposals stop tracking add
 const description = linkedScenarioDescription(conceptText`Defer a proposal whose safe additions Track added pages tracks, change accepted sensitivity policy, and reopen the
 same capture. The additions the policy now marks sensitive become untracked without requiring explicit confirmation.
 Checkpoints preserve the pending decisions and their current sensitivity evidence.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '3e04d1b9-c0b5-4cc8-add8-195f0b7d1537' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
+test(name.name, { annotation: [{ type: 'scenario-id', description: '3e04d1b9-c0b5-4cc8-add8-195f0b7d1537' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);

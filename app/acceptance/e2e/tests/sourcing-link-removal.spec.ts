@@ -3,7 +3,7 @@
 import { test, expect } from '../src/run/test-fixtures.js';
 import { Workflows } from '../src/run/workflows.js';
 import { BundleEditorPage } from '../src/run/pages/index.js';
-import { sourcingReviewRedesign, sourceChange, orphan, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, sourceChange, orphan, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../concepts/index.js';
 
 
 test.use({ bundleMode: "single-file" });
@@ -12,7 +12,8 @@ const name = linkedScenarioName(conceptText`Sourcing accepts a shared link delet
 
 const description = linkedScenarioDescription(conceptText`Remove a source link and review the broken route. The accepted bundle should stay
 unchanged until the user accepts the proposed change.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '4fb06514-5b88-41e5-a377-234c3f5b85e4' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
+test(name.name, { annotation: [{ type: 'scenario-id', description: '4fb06514-5b88-41e5-a377-234c3f5b85e4' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
   const editor = new BundleEditorPage(page, expect);

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { cli, publicationRevision, publishing, s3, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
+import { cli, publicationRevision, publishing, s3, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSharing } from "../../../concepts/index.js";
 import { expect, test } from "../src/run/test-fixtures.js";
 import { Bundle } from "../src/run/workflows.js";
 
@@ -49,7 +49,8 @@ const name = linkedScenarioName(conceptText`CLI manages S3 publication revisions
 const description = linkedScenarioDescription(conceptText`Publish a saved generation to S3, then plan, cancel, and publish it under a new slug.
 Check reader connections, predecessor cleanup, and repeatable deletion with retained
 history.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '6f66d070-98df-4b44-b9cc-464f88a4ff60' }, name.annotation, description.annotation] }, async ({ sourceCommand,
+const areas = scenarioAreas([bundleSharing]);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '6f66d070-98df-4b44-b9cc-464f88a4ff60' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
   meadowCli,
   minioS3,
   skipMeadowHomeStateCheck,

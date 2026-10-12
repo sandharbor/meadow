@@ -5,7 +5,7 @@ import { BundleEditorPage, ChangesTab, PreviewPublishModal } from '../src/run/pa
 import { acceptSourceBaseline } from '../../../shared_code/shared_dev/sourceScenario.js';
 import { appPlacePath } from '../../../contracts/places/index.js';
 import type { GenerateBundleCliResult } from '../../../contracts/types/cliOperations.js';
-import { changesTab as changesTabDoc, generationRecord, conceptLink, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
+import { changesTab as changesTabDoc, generationRecord, conceptLink, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleReview } from '../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
 
@@ -16,7 +16,8 @@ const name = linkedScenarioName(conceptText`Review shows a tracked image move wi
 const description = linkedScenarioDescription(conceptText`Save a generation, then move a tracked image and accept it as the same file. Review should
 pair the image's generated copies through its ${conceptLink(generationRecord.id, "generation record")} as one unmodified move and preview its saved and
 current bytes side by side.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'e6332af2-80c8-4c20-9104-8bb2e1375b37' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, meadowCli, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+const areas = scenarioAreas([bundleReview]);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'e6332af2-80c8-4c20-9104-8bb2e1375b37' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, meadowCli, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   let command = 0;
   const run = (args: string[]) => meadowCli.run(args, { artifactName: `setup-${++command}` });

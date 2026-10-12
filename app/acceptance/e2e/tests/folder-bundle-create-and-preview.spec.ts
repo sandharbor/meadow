@@ -21,7 +21,7 @@ import {
   BundleListPage,
 } from "../src/run/pages/index.js";
 import { Fixture, Bundle } from "../src/run/workflows.js";
-import { sourcingReviewRedesign, folderBundles, htmlGeneration, tracking, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
+import { sourcingReviewRedesign, folderBundles, htmlGeneration, tracking, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration, bundleGeneration } from "../../../concepts/index.js";
 import { customBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-folder" });
@@ -32,7 +32,8 @@ const name = linkedScenarioName(conceptText`previews a configured bundle from on
 
 const description = linkedScenarioDescription(conceptText`Open a bundle rooted at a recursively scanned folder and generate it. Check that its
 pages and folder structure appear in the preview.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'ce4b027f-df25-47e3-b545-f864e40a7890' }, name.annotation, description.annotation] }, async ({ sourceCommand,
+const areas = scenarioAreas([bundleCuration, bundleGeneration]);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'ce4b027f-df25-47e3-b545-f864e40a7890' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   addKeyFrame,

@@ -17,7 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { Workflows } from "../src/run/workflows.js";
 import { BundleEditorPage, PreviewPublishModal } from "../src/run/pages/index.js";
-import { excalidraw, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
+import { excalidraw, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration, bundleGeneration } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -38,7 +38,8 @@ const name = linkedScenarioName(conceptText`excalidraw thumbnail in list view, e
 
 const description = linkedScenarioDescription(conceptText`Inspect an Excalidraw thumbnail in the list, then view the drawing embedded and on its
 own. All three representations should render correctly.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '5cc5229f-f7a7-4fba-96e2-3d1b28ea265f' }, name.annotation, description.annotation] }, async ({ sourceCommand,
+const areas = scenarioAreas([bundleCuration, bundleGeneration]);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '5cc5229f-f7a7-4fba-96e2-3d1b28ea265f' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   skipMeadowHomeStateCheck,

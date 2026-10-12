@@ -46,19 +46,38 @@ export function scenarioMetadataIssues(source: ts.SourceFile): { line: number; m
       report(declaration, `${helper} requires non-empty typed conceptText prose.`);
     }
   };
+  const importedIdentifiers = (node: ts.Expression | undefined) => !!node && ts.isArrayLiteralExpression(node)
+    && node.elements.every(element => ts.isIdentifier(element) && imports.has(element.text));
+  const areas = (test: ts.Node) => {
+    const declaration = declarations.get('areas');
+    const call = declaration?.initializer;
+    if (!declaration || !call || !ts.isCallExpression(call) || !ts.isIdentifier(call.expression)
+      || imports.get(call.expression.text) !== 'scenarioAreas' || declaration.getStart(source) > test.getStart(source)) {
+      report(test, 'Declare const areas = scenarioAreas([...app areas], { subAreas: [...] }) before the test, importing the helper from concepts/index.js; use [] for a scenario outside every app area.');
+      return;
+    }
+    const [appAreas, options, ...rest] = call.arguments;
+    const subAreas = options && ts.isObjectLiteralExpression(options) && options.properties.length === 1
+      && ts.isPropertyAssignment(options.properties[0]) && options.properties[0].name.getText(source) === 'subAreas'
+      ? options.properties[0].initializer : undefined;
+    if (rest.length || !importedIdentifiers(appAreas) || (options && !importedIdentifiers(subAreas))) {
+      report(declaration, 'scenarioAreas takes a literal list of app area concepts and an optional { subAreas: [...] } list, all imported from concepts/index.js.');
+    }
+  };
   const property = (node: ts.Node | undefined, variable: string, member: string) => !!node && ts.isPropertyAccessExpression(node)
     && ts.isIdentifier(node.expression) && node.expression.text === variable && node.name.text === member;
   const visit = (node: ts.Node) => {
     if (isScenarioTestCall(node)) {
       metadata('name', 'linkedScenarioName', node);
       metadata('description', 'linkedScenarioDescription', node);
+      areas(node);
       const name = declarations.get('name'), description = declarations.get('description');
       if (name && description && name.getStart(source) > description.getStart(source)) report(description, 'Declare the scenario name before its description.');
       if (!property(node.arguments[0], 'name', 'name')) report(node, 'Use name.name as the test title.');
       const options = node.arguments[1];
       const annotation = ts.isObjectLiteralExpression(options)
         ? options.properties.find((entry): entry is ts.PropertyAssignment => ts.isPropertyAssignment(entry) && entry.name.getText(source) === 'annotation')?.initializer : undefined;
-      for (const variable of ['name', 'description']) {
+      for (const variable of ['name', 'description', 'areas']) {
         if (!annotation || !ts.isArrayLiteralExpression(annotation) || !annotation.elements.some(entry => property(entry, variable, 'annotation'))) {
           report(node, `Include ${variable}.annotation in the test's annotation array.`);
         }

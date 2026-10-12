@@ -6,7 +6,7 @@ import { test, expect } from '../src/run/test-fixtures.js';
 import { BundleEditorPage, BundleListPage, ChangesTab, PreviewPublishModal } from '../src/run/pages/index.js';
 import { acceptSourceBaseline } from '../../../shared_code/shared_dev/sourceScenario.js';
 import type { GenerateBundleCliResult } from '../../../contracts/types/cliOperations.js';
-import { generationRecord, conceptLink, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
+import { generationRecord, conceptLink, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundles, bundleGeneration, bundleReview } from '../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
 
@@ -18,7 +18,8 @@ const name = linkedScenarioName(conceptText`Bundle rename regenerates with the s
 const description = linkedScenarioDescription(conceptText`Save a generation and rename the unpublished bundle. The rename's regeneration should capture
 the accepted inputs and a matching ${conceptLink(generationRecord.id, "generation record")} with page ownership, so Review compares it by identity without
 a metadata notice.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '9f9993e2-874a-47bc-bfd6-2d1cff3578ec' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, meadowCli, testServer, checkpoint, skipMeadowHomeStateCheck }) => {
+const areas = scenarioAreas([bundles, bundleGeneration, bundleReview]);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '9f9993e2-874a-47bc-bfd6-2d1cff3578ec' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, meadowCli, testServer, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   let command = 0;
   const run = (args: string[]) => meadowCli.run(args, { artifactName: `setup-${++command}` });

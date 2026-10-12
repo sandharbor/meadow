@@ -128,7 +128,8 @@ export function createDefaultFilterExpression(
   };
 }
 
-function comparableFilterExpression(
+/** Canonical text for the active portion of an expression; commutative groups ignore child order. */
+export function comparableFilterExpression(
   expression: FilterExpression,
   activeTermIds: ReadonlySet<string>
 ): string | null {

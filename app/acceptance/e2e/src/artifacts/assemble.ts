@@ -27,13 +27,11 @@ import {
 import os from "os";
 import path from "path";
 import { performance } from "perf_hooks";
-import type { SourceChangeDefinition } from "../../../../shared_code/shared_dev/sourceChangesTypes.js";
+import { sourceChangeCategoriesOf, type SourceChangeCategory, type SourceChangeDefinition } from "../../../../shared_code/shared_dev/sourceChangesTypes.js";
 import {
   acceptanceConcepts as baseConcepts,
   allCoreConcepts,
-  acceptanceAppAreaConcepts as appAreaConcepts,
   assertConceptRegistry,
-  deriveAppAreaIds,
   type AnyMeadowConcept,
 } from "../../../../concepts/index.ts";
 import * as coreConceptExports from "../../../../concepts/index.ts";
@@ -52,6 +50,7 @@ import {
 } from "../run/stateRepoCompaction.ts";
 import { compactManifest, contentBlobGitDir, expandManifest } from "./manifestEncoding.ts";
 import { declaredScenarioOptions } from "./declaredScenarioOptions.js";
+import { declaredScenarioAreaIds } from "./declaredScenarioAreas.js";
 import { assembleScenarioVideo, findScenarioRecording } from './scenarioVideo.js';
 import {
   collectReferencedCliFixtures,
@@ -88,7 +87,6 @@ const allAcceptanceConcepts = [...baseConcepts, ...contributedConcepts];
 const allConcepts = [...allCoreConcepts, ...contributedConcepts];
 assertConceptRegistry(allConcepts);
 const acceptanceIds = new Set(allAcceptanceConcepts.map(concept => concept.id));
-const appAreaIds = new Set(appAreaConcepts.map(concept => concept.id));
 
 // Build a parallel map for bundle doc exports
 const bundleExportNameToDocId = new Map<string, string>();
@@ -116,7 +114,6 @@ function extractImportedConceptIds(testSource: string, acceptedIds: ReadonlySet<
 }
 
 const extractAcceptanceConceptIds = (source: string) => extractImportedConceptIds(source, acceptanceIds);
-const extractExplicitAppAreaIds = (source: string) => extractImportedConceptIds(source, appAreaIds);
 
 function extractBundleDocIds(testSource: string): string[] {
   const match = testSource.match(
@@ -272,6 +269,8 @@ interface Manifest {
   conceptIds: string[];
   bundleDocIds: string[];
   appAreaDocIds: string[];
+  subAreaDocIds: string[];
+  sourceChangeCategories: SourceChangeCategory[];
   keyFrames: KeyFrame[];
   ticks: ProcessedTick[];
   consolidatedTicks: ConsolidatedTickGroup[];
@@ -359,6 +358,8 @@ interface ScenarioReportMeta {
     conceptIds: string[];
     bundleDocIds: string[];
     appAreaDocIds: string[];
+    subAreaDocIds: string[];
+    sourceChangeCategories: SourceChangeCategory[];
     keyFrames: { docId: string; filename: string; timestamp?: string }[];
     failureReason?: string;
   };
@@ -1032,7 +1033,7 @@ function computeScenarioReportMeta(
   testDir: string,
   manifest: Manifest
 ): ScenarioReportMeta {
-  const { testName, description, nameText, descriptionText, startTime, endTime, logs, uncommittedEntries, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, keyFrames } = manifest;
+  const { testName, description, nameText, descriptionText, startTime, endTime, logs, uncommittedEntries, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, subAreaDocIds, sourceChangeCategories, keyFrames } = manifest;
 
   // Compute duration
   const duration = (startTime && endTime)
@@ -1045,7 +1046,7 @@ function computeScenarioReportMeta(
     ? readFileSync(failureReasonPath, "utf8").trim()
     : undefined;
 
-  const scenarioInfo = { scenarioId: manifest.scenarioId, testName, description, nameText, descriptionText, duration, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, keyFrames, ...(failureReason && { failureReason }) };
+  const scenarioInfo = { scenarioId: manifest.scenarioId, testName, description, nameText, descriptionText, duration, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, subAreaDocIds, sourceChangeCategories, keyFrames, ...(failureReason && { failureReason }) };
 
   // Load expected error windows (written by the expectLogErrors fixture)
   const expectedWindowsPath = path.join(testDir, "expected-error-windows.json");
@@ -1269,6 +1270,7 @@ export function assembleTestArtifacts(testDir: string, options: { dropTickLog?: 
   const sourceChangesPath = path.join(testDir, "source-changes.json");
   const testSourceChanges: SourceChangeDefinition[] | undefined = existsSync(sourceChangesPath)
     ? JSON.parse(readFileSync(sourceChangesPath, "utf8")) : undefined;
+  const sourceChangeCategories = sourceChangeCategoriesOf(testSourceChanges ?? []);
   const testSourceFixtures = measured(assemblySteps, "read test source fixtures", () =>
     collectReferencedCliFixtures(testSourceFile, testSource)
   );
@@ -1334,18 +1336,15 @@ export function assembleTestArtifacts(testDir: string, options: { dropTickLog?: 
   const executionSurfaces = executionSurfacesFor({ executionSurface,
     executionSurfaces: existsSync(executionSurfacesPath) ? JSON.parse(readFileSync(executionSurfacesPath, "utf8")) : declaredOptions.executionSurfaces });
 
-  // Extract concept, app-area, and bundle-doc IDs from test source imports.
-  const { conceptIds, bundleDocIds, appAreaDocIds } = measured(assemblySteps, "extract doc ids", () => {
-    const scenarioIds = extractAcceptanceConceptIds(testSource);
+  // Concepts and bundle docs come from test source imports; app areas and
+  // sub-areas only from the scenario's own scenarioAreas declaration.
+  const { conceptIds, bundleDocIds, appAreaDocIds, subAreaDocIds } = measured(assemblySteps, "extract doc ids", () => {
+    const { appAreaIds, subAreaIds } = declaredScenarioAreaIds(testSource, exportNameToConceptId);
     return {
-      conceptIds: scenarioIds,
+      conceptIds: extractAcceptanceConceptIds(testSource),
       bundleDocIds: extractBundleDocIds(testSource),
-      appAreaDocIds: deriveAppAreaIds(
-        scenarioIds,
-        allConcepts,
-        appAreaConcepts,
-        extractExplicitAppAreaIds(testSource),
-      ),
+      appAreaDocIds: appAreaIds,
+      subAreaDocIds: subAreaIds,
     };
   });
 
@@ -1365,7 +1364,7 @@ export function assembleTestArtifacts(testDir: string, options: { dropTickLog?: 
   // Write manifest
   const identityPath = path.join(testDir, 'scenario-identity.json');
   const identity = existsSync(identityPath) ? JSON.parse(readFileSync(identityPath, 'utf8')) : {};
-  const manifest: Manifest = { ...identity, testName, description, nameText, descriptionText, status, startTime, endTime, homeCommits, homeCommitMeta, minioCommitMeta, extensionCommitMeta, uncommittedEntries, logs, testSourceFile, testSource, testSourceFixtures, testSourceChanges, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, keyFrames, ...tickData };
+  const manifest: Manifest = { ...identity, testName, description, nameText, descriptionText, status, startTime, endTime, homeCommits, homeCommitMeta, minioCommitMeta, extensionCommitMeta, uncommittedEntries, logs, testSourceFile, testSource, testSourceFixtures, testSourceChanges, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, subAreaDocIds, sourceChangeCategories, keyFrames, ...tickData };
   // On disk the manifest leaves out what the report viewer rebuilds, and
   // skips indentation; see manifestEncoding.ts.
   const blobGitDir = contentBlobGitDir(testDir);

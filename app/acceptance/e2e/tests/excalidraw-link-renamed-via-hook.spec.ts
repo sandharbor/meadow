@@ -21,7 +21,7 @@ import {
   PreviewPublishModal,
   CustomizeTab,
 } from "../src/run/pages/index.js";
-import { excalidraw, hooks, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
+import { excalidraw, hooks, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleGeneration } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -44,7 +44,8 @@ const name = linkedScenarioName(conceptText`Excalidraw embed and in-drawing link
 
 const description = linkedScenarioDescription(conceptText`Apply a page-title hook and preview an embedded drawing. Both the drawing's link labels
 and its targets should reflect the renamed pages.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '96c282bf-6c94-4f7c-95b7-f70b7af50808' }, name.annotation, description.annotation] }, async ({ sourceCommand,
+const areas = scenarioAreas([bundleGeneration]);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '96c282bf-6c94-4f7c-95b7-f70b7af50808' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   skipMeadowHomeStateCheck,

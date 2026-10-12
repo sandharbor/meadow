@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { bundles, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
+import { bundles, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 import { cli } from "../../../concepts/index.js";
 import { expect, test } from "../src/run/test-fixtures.js";
@@ -28,7 +28,8 @@ const name = linkedScenarioName(conceptText`CLI lists filters and applies defaul
 
 const description = linkedScenarioDescription(conceptText`Read the available filters through the CLI, then query nodes with default and explicit
 combinations. Each JSON result should match the expected set of pages.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'a2b621ca-663b-4ca5-a6a8-432abbbe713e' }, name.annotation, description.annotation] }, async ({ sourceCommand,
+const areas = scenarioAreas([bundleCuration]);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'a2b621ca-663b-4ca5-a6a8-432abbbe713e' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
   assertMeadowHomeState,
   meadowCli,
   checkpoint,

@@ -10,7 +10,7 @@ import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { sourcingReviewRedesign, sourceReviewAcceptance, proposalConfigurationDraft, pendingProposalRevalidation, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../../concepts/index.js';
+import { sourcingReviewRedesign, sourceReviewAcceptance, proposalConfigurationDraft, pendingProposalRevalidation, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
 test.use({ fixtureHome: Fixture.SourcingReview, _backendExtraEnv: {
@@ -23,7 +23,8 @@ const description = linkedScenarioDescription(conceptText`Stage captured materia
 and cleanup. Fail an actual document rename after partial installation, then interrupt the process
 at that same boundary. Restart the owned Runtime and verify exact rollback plus a recoverable
 proposal before accepting the whole change successfully.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '585e9b0e-3c46-47c8-b5d3-e0cf71bb3d8e' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState, expectLogErrors }) => {
+const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
+test(name.name, { annotation: [{ type: 'scenario-id', description: '585e9b0e-3c46-47c8-b5d3-e0cf71bb3d8e' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState, expectLogErrors }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);

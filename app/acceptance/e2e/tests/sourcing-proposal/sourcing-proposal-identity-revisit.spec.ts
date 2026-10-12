@@ -8,7 +8,7 @@ import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { sourceReviewIdentity, sourceChangesDuringReview, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../../concepts/index.js';
+import { sourceReviewIdentity, sourceChangesDuringReview, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });
@@ -18,7 +18,8 @@ const name = linkedScenarioName(conceptText`Identity review is required until de
 const description = linkedScenarioDescription(conceptText`The first identity review dims the editor and stays open until Confirm or Cancel. Once
 every file is decided, reopening it from its chip shows Cancel, which closes only the panel, and Update, which
 applies edited decisions. A refresh that brings a new uncertain rename makes identity review required again.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'cce81862-5cfe-4ddd-9ed5-915904993c7a' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewIdentity] });
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'cce81862-5cfe-4ddd-9ed5-915904993c7a' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);

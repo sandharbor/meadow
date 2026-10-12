@@ -53,3 +53,8 @@ export interface SourceChangeCheckpoint {
   hostedAvailable: boolean;
   hostedUnavailableReason?: string;
 }
+
+/** Every category a set of source changes exercises, in canonical order. */
+export function sourceChangeCategoriesOf(changes: readonly Pick<SourceChangeDefinition, 'categories'>[]): SourceChangeCategory[] {
+  return SOURCE_CHANGE_CATEGORIES.filter(category => changes.some(change => change.categories.includes(category)));
+}

@@ -17,7 +17,7 @@ limitations under the License.
 import path from "path";
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, BundleEditorPage, CreateAndEditBundleModal } from "../src/run/pages/index.js";
-import { callout, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
+import { callout, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleReview } from "../../../concepts/index.js";
 import { customBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -28,7 +28,8 @@ const name = linkedScenarioName(conceptText`Callout warns when previewing with o
 
 const description = linkedScenarioDescription(conceptText`Create a bundle with only its starting page tracked, then preview it. Check that the
 single-page warning explains how to include more pages.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'f4209c12-21ad-4a3a-8adc-8a858f1dedf0' }, name.annotation, description.annotation] }, async ({ sourceCommand,
+const areas = scenarioAreas([bundleReview]);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'f4209c12-21ad-4a3a-8adc-8a858f1dedf0' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
   page,
   testServer,
   checkpoint,

@@ -19,7 +19,7 @@ import path from "path";
 import { test, expect } from "../src/run/test-fixtures.js";
 import { PreviewPublishModal } from "../src/run/pages/index.js";
 import { Bundle, Workflows } from "../src/run/workflows.js";
-import { conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
+import { conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSharing } from '../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 
@@ -33,7 +33,8 @@ const name = linkedScenarioName(conceptText`D01 E01 E02 E03 selected and All Ver
 const description = linkedScenarioDescription(conceptText`Export one saved version and then all versions. Dirty current files should block their
 own export, while deleted local versions should remain in the inventory without
 misleading output folders.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '88cdda07-2ad1-4f28-9a3b-ed7ef17a4275' }, name.annotation, description.annotation] }, async ({ sourceCommand,
+const areas = scenarioAreas([bundleSharing]);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '88cdda07-2ad1-4f28-9a3b-ed7ef17a4275' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
   page,
   artifactDir,
   checkpoint,

@@ -67,6 +67,7 @@ export const coreConceptIds = {
   deletion: "deletion",
   excalidraw: "excalidraw",
   filters: "filters",
+  filterMixing: "filter-mixing",
   filterSensitivity: "filter-sensitivity",
   findInBundles: "find-in-bundles",
   folderBundles: "folder-bundles",

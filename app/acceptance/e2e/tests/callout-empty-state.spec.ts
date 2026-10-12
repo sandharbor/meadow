@@ -16,7 +16,7 @@ limitations under the License.
 
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage } from "../src/run/pages/index.js";
-import { callout, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
+import { callout, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundles as bundlesArea } from "../../../concepts/index.js";
 import { bundles } from "../../../concepts/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -27,7 +27,8 @@ const name = linkedScenarioName(conceptText`Callout turn your notes into bundles
 
 const description = linkedScenarioDescription(conceptText`Open an empty MeadowHome. The welcome callout should explain how to turn notes into a
 bundle.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'dbc2cba3-81b2-4fc8-9f2b-886298b8a570' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, checkpoint, assertMeadowHomeState, addKeyFrame }) => {
+const areas = scenarioAreas([bundlesArea]);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'dbc2cba3-81b2-4fc8-9f2b-886298b8a570' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, checkpoint, assertMeadowHomeState, addKeyFrame }) => {
   // --- Setup ---
   const bundleList = new BundleListPage(page, expect);
   await sourceCommand(() => bundleList.goto());

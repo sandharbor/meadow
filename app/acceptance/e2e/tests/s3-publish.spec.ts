@@ -24,7 +24,7 @@ import fs from "fs";
 import path from "path";
 import { PreviewPublishModal, PublishToS3Tab, PublishedBundlePage } from "../src/run/pages/index.js";
 import { Workflows, Bundle } from "../src/run/workflows.js";
-import { publishing, s3, deletion, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
+import { publishing, s3, deletion, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSharing } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -34,7 +34,8 @@ const name = linkedScenarioName(conceptText`R02 R04 R05 R06 R07 R08 P02 P06 D02 
 const description = linkedScenarioDescription(conceptText`Publish successive generated versions to S3 with different reader connections and
 cleanup choices. Check version links, remote files, publication history, and deletion
 behavior.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'f133eb45-0c07-4621-bf2a-b753ee1038b7' }, name.annotation, description.annotation] }, async ({ sourceCommand,
+const areas = scenarioAreas([bundleSharing]);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'f133eb45-0c07-4621-bf2a-b753ee1038b7' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   skipMeadowHomeStateCheck,

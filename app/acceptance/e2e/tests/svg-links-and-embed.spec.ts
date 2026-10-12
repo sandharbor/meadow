@@ -17,7 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleEditorPage, PreviewPublishModal } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { svg, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
+import { svg, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleGeneration } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -26,7 +26,8 @@ const name = linkedScenarioName(conceptText`SVG links work in a directed embed`)
 
 const description = linkedScenarioDescription(conceptText`Preview a directed SVG embed, open it fullscreen, and follow one of its links. The
 drawing and its link targets should work in the generated bundle.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'f414fbce-32af-4a36-a75f-d5c514c9993c' }, name.annotation, description.annotation] }, async ({ sourceCommand,
+const areas = scenarioAreas([bundleGeneration]);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'f414fbce-32af-4a36-a75f-d5c514c9993c' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   addKeyFrame,

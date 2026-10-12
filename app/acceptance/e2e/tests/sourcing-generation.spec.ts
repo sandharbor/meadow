@@ -8,7 +8,7 @@ import { extractMainSectionLinkPaths, extractFooterBacklinkPaths } from '../../.
 import { test, expect } from '../src/run/test-fixtures.js';
 import { BundleEditorPage, PreviewPublishModal } from '../src/run/pages/index.js';
 import { Workflows } from '../src/run/workflows.js';
-import { sourcingReviewRedesign, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, bundleGeneration, sourceReviewWorkspace } from '../../../concepts/index.js';
 
 const slug = 'meadow-test-bundle-big';
 const originalTitle = 't003 ---- page with section to link to';
@@ -19,7 +19,8 @@ const name = linkedScenarioName(conceptText`Sourcing keeps generated material st
 
 const description = linkedScenarioDescription(conceptText`Replace a source page while a saved generation exists. Generated material should remain
 unchanged until the source replacement is accepted and regenerated.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '7fcae7e6-194d-4a16-99bd-326d24679ee5' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, sourceChanges, testServer, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+const areas = scenarioAreas([bundleSourcing, bundleGeneration], { subAreas: [sourceReviewWorkspace] });
+test(name.name, { annotation: [{ type: 'scenario-id', description: '7fcae7e6-194d-4a16-99bd-326d24679ee5' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, sourceChanges, testServer, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   const wf = new Workflows(page, expect);
   const editor = new BundleEditorPage(page, expect);

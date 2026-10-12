@@ -17,7 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { FilterPanelComponent } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { callout, sensitive, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
+import { callout, sensitive, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -26,7 +26,8 @@ const name = linkedScenarioName(conceptText`Callout tooltip shown when hovering 
 
 const description = linkedScenarioDescription(conceptText`Hover over the sensitive filter's help icon. Its callout should explain which pages the
 filter includes.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'd7b5274b-db40-4d62-a90d-228408b96202' }, name.annotation, description.annotation] }, async ({ sourceCommand,
+const areas = scenarioAreas([bundleCuration]);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'd7b5274b-db40-4d62-a90d-228408b96202' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   assertMeadowHomeState,

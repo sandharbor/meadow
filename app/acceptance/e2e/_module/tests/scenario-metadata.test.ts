@@ -5,11 +5,12 @@ import ts from 'typescript';
 import { scenarioMetadataIssues } from '../scripts/scenario-metadata.js';
 
 const source = `
-import { conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../../concepts/index.js';
+import { conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../../concepts/index.js';
 test.use({ bundleMode: 'single-file' });
 const name = linkedScenarioName(conceptText\`A scenario\`);
 const description = linkedScenarioDescription(conceptText\`An existing description.\`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'stable-id' }, name.annotation, description.annotation] }, async () => {});
+const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'stable-id' }, name.annotation, description.annotation, areas.annotation] }, async () => {});
 `;
 const check = (text: string) => scenarioMetadataIssues(ts.createSourceFile('example.spec.ts', text, ts.ScriptTarget.Latest, true));
 
@@ -38,4 +39,16 @@ test('prose must be non-empty typed text from the registry and declared in name-
   assert.ok(check(source.replace('../../../../concepts/index.js', './fake-helper.js')).some(issue => issue.message.includes('importing the helper')));
   const reversed = source.replace(/const name[^\n]+\nconst description[^\n]+/, 'const description = linkedScenarioDescription(conceptText`Description`);\nconst name = linkedScenarioName(conceptText`Name`);');
   assert.ok(check(reversed).some(issue => issue.message.includes('before its description')));
+});
+
+test('every scenario declares its areas explicitly, including an empty list', () => {
+  assert.deepEqual(check(source.replace('scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] })', 'scenarioAreas([])')), []);
+  assert.ok(check(source.replace(/const areas = [^\n]+\n/, '')).some(issue => issue.message.includes('const areas =')));
+  assert.ok(check(source.replace(', areas.annotation', '')).some(issue => issue.message.includes('areas.annotation')));
+});
+
+test('areas are literal lists of imported concepts', () => {
+  for (const call of ['scenarioAreas(declaredElsewhere)', "scenarioAreas(['bundle-sourcing'])", 'scenarioAreas([bundleSourcing], { subAreas: [unknown] })', 'scenarioAreas([bundleSourcing], { other: [] })']) {
+    assert.ok(check(source.replace(/scenarioAreas\([^\n]+\);/, `${call};`)).some(issue => issue.message.includes('literal list')), call);
+  }
 });

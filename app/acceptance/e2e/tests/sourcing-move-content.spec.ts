@@ -3,7 +3,7 @@
 import { test, expect } from '../src/run/test-fixtures.js';
 import { BundleEditorPage } from '../src/run/pages/index.js';
 import { prepareSourceScenario } from '../../../shared_code/shared_dev/sourceScenario.js';
-import { sourcingReviewRedesign, sourceMove, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, sourceMove, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewIdentity } from '../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
 
@@ -11,7 +11,8 @@ const name = linkedScenarioName(conceptText`Sourcing compares edited content for
 
 const description = linkedScenarioDescription(conceptText`Move and edit a page at the same time. Review should compare the content and show the
 unchanged leading part of its route only once.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '465772d6-3cc4-4f5d-8cc7-081292592343' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, meadowCli, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
+const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewIdentity] });
+test(name.name, { annotation: [{ type: 'scenario-id', description: '465772d6-3cc4-4f5d-8cc7-081292592343' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, meadowCli, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   let command = 0;
   const destination = await sourceCommand(() => prepareSourceScenario(

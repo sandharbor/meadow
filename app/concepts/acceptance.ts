@@ -15,6 +15,7 @@ limitations under the License.
 */
 
 import { renderConceptText, type ConceptText, type AnyMeadowConcept } from "./types.js";
+import type { acceptanceAppAreaConcepts } from "./bundle/appAreas.js";
 
 /** The acceptance/report projection of a canonical concept. */
 export interface AcceptanceConceptView {
@@ -41,18 +42,24 @@ export function acceptanceConceptView(concept: AnyMeadowConcept): AcceptanceConc
   };
 }
 
-export function deriveAppAreaIds(
-  conceptIds: readonly string[],
-  concepts: readonly AnyMeadowConcept[],
-  appAreas: readonly AnyMeadowConcept[],
-  explicitAppAreaIds: readonly string[] = [],
-): string[] {
-  const byId = new Map(concepts.map(concept => [concept.id, concept]));
-  const ids = new Set(explicitAppAreaIds);
-  for (const conceptId of conceptIds) {
-    for (const appAreaId of byId.get(conceptId)?.appAreaIds ?? []) ids.add(appAreaId);
-  }
-  return appAreas.map(area => area.id).filter(id => ids.has(id));
+type ScenarioAppArea = { readonly id: (typeof acceptanceAppAreaConcepts)[number]["id"] };
+
+/**
+ * Declare the app areas and sub-areas a scenario exercises. Reports use only this
+ * declaration; concepts linked by the scenario never contribute their areas.
+ */
+export function scenarioAreas(
+  appAreas: readonly ScenarioAppArea[],
+  options: { readonly subAreas?: readonly AnyMeadowConcept[] } = {},
+) {
+  const appAreaIds = appAreas.map(area => area.id);
+  const subAreaIds = (options.subAreas ?? []).map(subArea => {
+    if (!subArea.subAreas?.some(entry => (appAreaIds as readonly string[]).includes(entry.areaId))) {
+      throw new Error(`${subArea.name} is not a sub-area of a declared app area.`);
+    }
+    return subArea.id;
+  });
+  return { appAreaIds, subAreaIds, annotation: { type: 'scenario-areas', description: JSON.stringify({ appAreaIds, subAreaIds }) } };
 }
 
 /** Capture linked scenario prose while retaining Playwright's plain-text name and stable slug. */

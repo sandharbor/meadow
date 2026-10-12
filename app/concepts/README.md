@@ -78,10 +78,24 @@ The report keeps every concept available for documentation and screenshot
 navigation, while only opted-in facets appear in the run filter pills.
 
 Use `subAreas: [{ areaId, order }]` to expose an existing concept as a workflow
-sub-area of one of its app areas. Reports show the Sub-areas row only when an
-area with sub-areas is selected, in the declared workflow order. All is the
-default; sub-area selections combine with other report filters. Source Review
-Identity precedes Source Review Workspace within Sourcing.
+sub-area of one of its app areas. Run reports show an indented, parent-labeled
+row for each selected area with sub-areas, in that area's declared workflow
+order. Each row's All control clears only that parent's sub-area selections;
+sub-area selections combine with other report filters. Expanded scenario
+metadata shows Starts with, Areas, each area's declared sub-areas, then Concepts.
+Source Review Identity precedes Source Review Workspace within Sourcing;
+Custom Filtering and Filter Mixing are sub-areas of Curation. A sub-area keeps
+its canonical concept definition and documentation.
+
+## Scenario areas
+
+Each scenario declares its app areas and sub-areas explicitly with
+`scenarioAreas`. Reports, `--area` runs, and the Sub-areas row read only this
+declaration. A concept's `appAreaIds` describe the concept itself and never
+reach the scenarios that link it. List an area when the scenario acts in it or
+verifies an outcome it owns, not when setup merely passes through it. A scenario
+outside every app area declares `scenarioAreas([])`. Each listed sub-area must
+belong to a listed area.
 
 ## Scenario interfaces
 
@@ -103,7 +117,8 @@ description annotation. Put the name before the description:
 const name = linkedScenarioName(conceptText`Review ${conceptLink(scopeExclusion.id, 'scope exclusion')}s`);
 
 const description = linkedScenarioDescription(conceptText`Stage a ${conceptLink(bridgeExclusion.id, 'bridge exclusion')} before acceptance.`);
-test(name.name, { annotation: [scenarioIdentity, name.annotation, description.annotation] }, async () => {
+const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
+test(name.name, { annotation: [scenarioIdentity, name.annotation, description.annotation, areas.annotation] }, async () => {
   // Test behavior.
 });
 ```

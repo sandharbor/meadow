@@ -6,7 +6,7 @@ import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, SelectedPageDetailComponent } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { sourcingReviewRedesign, pendingSourceProposal, sourceReviewTrigger, sourceReviewWorkspace, overrides, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../../concepts/index.js';
+import { sourcingReviewRedesign, pendingSourceProposal, sourceReviewTrigger, sourceReviewWorkspace, overrides, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration, bundleSourcing } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.Example });
@@ -18,7 +18,8 @@ immediately, the staged depth in the header summary, and the unchanged accepted 
 Later, reload, and verify accepted curation still uses the old scope and reopening restores the
 proposed depth. Required checkpoints: accepted baseline; expanded candidate; reopened deferred
 proposal.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '75df4c30-b7f7-4342-9330-77af9f6eca5d' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+const areas = scenarioAreas([bundleCuration, bundleSourcing], { subAreas: [sourceReviewWorkspace] });
+test(name.name, { annotation: [{ type: 'scenario-id', description: '75df4c30-b7f7-4342-9330-77af9f6eca5d' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);

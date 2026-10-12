@@ -7,7 +7,7 @@ import { BundleListPage, BundleEditorPage, FilterPanelComponent } from '../../sr
 import { SelectedPageDetailComponent } from '../../src/run/pages/areas/bundle/curation/SelectedPageDetailComponent.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { sourcingReviewRedesign, sourceReviewWorkspace, sourceReviewViewState, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../../concepts/index.js';
+import { sourcingReviewRedesign, sourceReviewWorkspace, sourceReviewViewState, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration, bundleSourcing } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });
@@ -18,7 +18,8 @@ const description = linkedScenarioDescription(conceptText`Use the complete edito
 selection, resize and page details. Curation inspects accepted material; sourcing stages tracking
 until acceptance. Unchanged pages retain normal details without a source-change card, and Later
 preserves both modes' choices.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '8200e571-3323-4e87-8ca1-817d55a94bee' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, sourceChanges, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+const areas = scenarioAreas([bundleCuration, bundleSourcing], { subAreas: [sourceReviewWorkspace] });
+test(name.name, { annotation: [{ type: 'scenario-id', description: '8200e571-3323-4e87-8ca1-817d55a94bee' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, sourceChanges, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);

@@ -7,7 +7,7 @@ import { test, expect } from '../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, PreviewPublishModal, PublishToS3Tab, PublishedBundlePage } from '../src/run/pages/index.js';
 import { SourcesControl } from '../src/run/pages/areas/bundle/sourcing/SourcesControl.js';
 import { GeneratedBundleVersions } from '../src/run/utils/index.js';
-import { sourcingReviewRedesign, bundleSource, versioning, publicationRevision, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, bundleSource, versioning, publicationRevision, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, bundleSharing } from '../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
 test.use({ fixtureHome: 'home_fixture_multi_source' });
@@ -16,7 +16,8 @@ const name = linkedScenarioName(conceptText`Multi-source publication retains old
 
 const description = linkedScenarioDescription(conceptText`Publish a multi-source bundle, rename a source, and publish a successor. Previously
 published pages should remain available and link to their corresponding new pages.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'ee4a97bf-6cac-45f3-8f0e-a1504a703777' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, minioS3, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
+const areas = scenarioAreas([bundleSourcing, bundleSharing]);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'ee4a97bf-6cac-45f3-8f0e-a1504a703777' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, testServer, minioS3, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   await sourceCommand(() => testServer.activateS3Provider());
   const slug = 'multi-source-page';

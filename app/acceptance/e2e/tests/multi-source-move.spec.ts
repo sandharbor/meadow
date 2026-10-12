@@ -2,7 +2,7 @@
 
 import { test, expect } from '../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, SelectedPageDetailComponent } from '../src/run/pages/index.js';
-import { sourcingReviewRedesign, sourceSnapshot, sourceMove, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, sourceSnapshot, sourceMove, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewIdentity, sourceReviewWorkspace } from '../../../concepts/index.js';
 import { MeadowHomeBundleConfig } from '../src/run/utils/index.js';
 
 test.use({ bundleMode: 'single-file' });
@@ -12,7 +12,8 @@ const name = linkedScenarioName(conceptText`Multi-source move review preserves t
 
 const description = linkedScenarioDescription(conceptText`Move a captured page into another source and review the proposed match. Accepting the
 move should preserve its stable identity and curation.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '25840ba8-3533-4257-8e57-ecd39d614a23' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
+const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewIdentity, sourceReviewWorkspace] });
+test(name.name, { annotation: [{ type: 'scenario-id', description: '25840ba8-3533-4257-8e57-ecd39d614a23' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   await sourceCommand(() => list.goto());

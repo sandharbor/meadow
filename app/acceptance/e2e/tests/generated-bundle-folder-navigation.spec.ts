@@ -21,7 +21,7 @@ import {
   PreviewPublishModal,
 } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { customize, htmlGeneration, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
+import { customize, htmlGeneration, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleGeneration } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 const NORMALIZATION_HOOK_SOURCE = `function pageTitleNormalization(bundleSlug: string, pageTitle: string): string {
@@ -71,7 +71,8 @@ const name = linkedScenarioName(conceptText`generated-bundle folder navigation u
 
 const description = linkedScenarioDescription(conceptText`Browse generated pages through the folder navigation. Check normalized filenames and
 persistence of the reader's navigation settings.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '9a5da1c5-dbc5-469e-b131-ee051d4de4b4' }, name.annotation, description.annotation] }, async ({ sourceCommand,
+const areas = scenarioAreas([bundleGeneration]);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '9a5da1c5-dbc5-469e-b131-ee051d4de4b4' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   skipMeadowHomeStateCheck,

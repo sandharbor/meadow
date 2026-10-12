@@ -17,7 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, BundleEditorPage } from "../src/run/pages/index.js";
 import { Workflows, Bundle } from "../src/run/workflows.js";
-import { multiBundle, findInBundles, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
+import { multiBundle, findInBundles, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundles } from "../../../concepts/index.js";
 import { bigBundle, smallBundle, exampleBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -26,7 +26,8 @@ const name = linkedScenarioName(conceptText`find in bundles navigates from small
 
 const description = linkedScenarioDescription(conceptText`Find a page shared by the small and big bundles. Opening the other match should select
 that page in the destination bundle.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'f1f1b810-8fb1-40d2-8c0c-108081f4e876' }, name.annotation, description.annotation] }, async ({ sourceCommand,
+const areas = scenarioAreas([bundles]);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'f1f1b810-8fb1-40d2-8c0c-108081f4e876' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   assertMeadowHomeState,

@@ -20,7 +20,7 @@ import YAML from "yaml";
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, PublishToS3Tab } from "../src/run/pages/index.js";
 import { Bundle, Workflows } from "../src/run/workflows.js";
-import { conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
+import { conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundles, bundleSharing } from '../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 
@@ -28,7 +28,8 @@ const name = linkedScenarioName(conceptText`D04 D05 L02 provider cleanup failure
 
 const description = linkedScenarioDescription(conceptText`Publish two revisions, remove S3 credentials, and try deleting the bundle. Failed
 cleanup must preserve local files; restoring credentials should make the retry complete.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'd81c197a-003f-471d-a728-1a6a91d1479c' }, name.annotation, description.annotation] }, async ({ sourceCommand,
+const areas = scenarioAreas([bundles, bundleSharing]);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'd81c197a-003f-471d-a728-1a6a91d1479c' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   skipMeadowHomeStateCheck,

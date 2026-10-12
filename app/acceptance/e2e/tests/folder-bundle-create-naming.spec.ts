@@ -18,7 +18,7 @@ import path from "path";
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, BundleEditorPage, CreateAndEditBundleModal, PreviewPublishModal } from "../src/run/pages/index.js";
 import { Fixture } from "../src/run/workflows.js";
-import { folderBundles, bundleSlug, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
+import { folderBundles, bundleSlug, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundles, bundleGeneration } from "../../../concepts/index.js";
 import { customBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-folder" });
@@ -28,7 +28,8 @@ const name = linkedScenarioName(conceptText`choose folders before naming a bundl
 
 const description = linkedScenarioDescription(conceptText`Select folders before naming a bundle and its home page. Check invalid source roots, an
 independently chosen slug, and the resulting preview title.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '0c8889cc-f2c8-4006-ba40-06d83037b3b9' }, name.annotation, description.annotation] }, async ({ sourceCommand,
+const areas = scenarioAreas([bundles, bundleGeneration]);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '0c8889cc-f2c8-4006-ba40-06d83037b3b9' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
   page,
   testServer,
   checkpoint,

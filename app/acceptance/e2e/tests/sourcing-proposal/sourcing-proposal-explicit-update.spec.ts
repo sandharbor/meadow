@@ -8,7 +8,7 @@ import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { sourcingReviewRedesign, pendingProposalRevalidation, sourceChangesDuringReview, pendingSourceProposal, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../../concepts/index.js';
+import { sourcingReviewRedesign, pendingProposalRevalidation, sourceChangesDuringReview, pendingSourceProposal, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });
@@ -18,7 +18,8 @@ const name = linkedScenarioName(conceptText`Updating a sourcing proposal preserv
 const description = linkedScenarioDescription(conceptText`Refresh after a tracked page loses its route. The proposal keeps a compatible untrack choice and
 exposes the now-unavailable tracked target. A disconnected-source failure preserves that complete
 proposal; the user can leave the unavailable page untracked and accept the reviewed capture.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '47eff446-9951-43f2-9c24-e60fea06abfc' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState, expectLogErrors }) => {
+const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
+test(name.name, { annotation: [{ type: 'scenario-id', description: '47eff446-9951-43f2-9c24-e60fea06abfc' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState, expectLogErrors }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);

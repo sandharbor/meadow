@@ -3,7 +3,7 @@
 import { test, expect } from '../src/run/test-fixtures.js';
 import { BundleEditorPage } from '../src/run/pages/index.js';
 import { Workflows } from '../src/run/workflows.js';
-import { sourcingReviewRedesign, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 
@@ -11,7 +11,8 @@ const name = linkedScenarioName(conceptText`Sourcing toolbar checks on entry and
 
 const description = linkedScenarioDescription(conceptText`Open a bundle, request source checks, and introduce a change. The toolbar should briefly
 report no changes when appropriate and retain access to pending review.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'fcb8cf0e-4985-43b0-bc5f-514b7e7211d2' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
+const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'fcb8cf0e-4985-43b0-bc5f-514b7e7211d2' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   let release!: () => void;
   let gate = new Promise<void>(resolve => { release = resolve; });

@@ -17,7 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { FilterPanelComponent, BundleEditorPage } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { filters, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
+import { filterMixing, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -26,7 +26,8 @@ const name = linkedScenarioName(conceptText`without mix terms can be reordered b
 
 const description = linkedScenarioDescription(conceptText`Build a filter expression with two exclusions and drag one onto the other. The
 expression should preserve the intended ordering and result.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '9a8a5d08-d311-4deb-81a8-c6b2a608761e' }, name.annotation, description.annotation] }, async ({ sourceCommand,
+const areas = scenarioAreas([bundleCuration], { subAreas: [filterMixing] });
+test(name.name, { annotation: [{ type: 'scenario-id', description: '9a8a5d08-d311-4deb-81a8-c6b2a608761e' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   assertMeadowHomeState,
@@ -58,7 +59,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '9a8a5d08-d31
   await sourceCommand(() => filterPanel.openMixFilters());
   await sourceCommand(() => filterPanel.dragMixTermOnto("Selection Solo", "Untracked"));
   await sourceCommand(() => filterPanel.expectMixTermOrder(["Untracked", "Selection Solo"]));
-  await sourceCommand(() => addKeyFrame(filters));
+  await sourceCommand(() => addKeyFrame(filterMixing));
   await sourceCommand(() => checkpoint("without terms reordered directly"));
 
   // Check the reversed result.

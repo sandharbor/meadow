@@ -3,7 +3,7 @@
 import { test, expect } from '../src/run/test-fixtures.js';
 import { Workflows } from '../src/run/workflows.js';
 import { BundleEditorPage, ChangesTab, PreviewPublishModal } from '../src/run/pages/index.js';
-import { sourcingReviewRedesign, sourceSnapshot, sourceMove, sourceChange, changesTab as changesTabDoc, conceptText, linkedScenarioName, linkedScenarioDescription, bundleSourcing, bundleGeneration, bundleReview } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, sourceSnapshot, sourceMove, sourceChange, changesTab as changesTabDoc, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, bundleGeneration, bundleReview, sourceReviewIdentity, sourceReviewWorkspace } from '../../../concepts/index.js';
 import { MeadowHomeBundleConfig } from '../src/run/utils/index.js';
 
 const slug = 'meadow-test-bundle-big';
@@ -17,7 +17,8 @@ const name = linkedScenarioName(conceptText`A source page rename preserves ident
 const description = linkedScenarioDescription(conceptText`Save a generated baseline, rename a source page and update its incoming link, then accept
 the rename in Sourcing. Curation settings and page identity should survive acceptance. After regeneration,
 Review should show one moved file with its old and new paths rather than a separate deletion and addition.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '86ec9574-29c5-4f44-b44e-58cfbbbae216' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, sourceChanges, testServer, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+const areas = scenarioAreas([bundleSourcing, bundleGeneration, bundleReview], { subAreas: [sourceReviewIdentity, sourceReviewWorkspace] });
+test(name.name, { annotation: [{ type: 'scenario-id', description: '86ec9574-29c5-4f44-b44e-58cfbbbae216' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, sourceChanges, testServer, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   const wf = new Workflows(page, expect);
   await sourceCommand(() => wf.navigateToBigBundle());

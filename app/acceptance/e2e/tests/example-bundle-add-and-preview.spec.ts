@@ -17,7 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, BundleEditorPage, PreviewPublishModal } from "../src/run/pages/index.js";
 import { Fixture } from "../src/run/workflows.js";
-import { htmlGeneration, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
+import { htmlGeneration, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundles as bundlesArea, bundleReview } from "../../../concepts/index.js";
 import { exampleBundle } from "../src/bundle-docs/index.js";
 import { bundles } from "../../../concepts/index.js";
 
@@ -29,7 +29,8 @@ const name = linkedScenarioName(conceptText`add example bundle from empty state 
 
 const description = linkedScenarioDescription(conceptText`Add the example bundle to an empty MeadowHome and generate its preview. The example
 should open with its expected content.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'a309795d-d7b8-4abd-8ca6-74c7f5ea2ea9' }, name.annotation, description.annotation] }, async ({ sourceCommand,
+const areas = scenarioAreas([bundlesArea, bundleReview]);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'a309795d-d7b8-4abd-8ca6-74c7f5ea2ea9' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
   page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame,
 }) => {
   // --- Setup ---

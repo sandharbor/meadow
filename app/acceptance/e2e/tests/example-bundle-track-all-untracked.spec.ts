@@ -17,7 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, BundleEditorPage } from "../src/run/pages/index.js";
 import { Fixture } from "../src/run/workflows.js";
-import { tracking, sensitive, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
+import { tracking, sensitive, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
 import { exampleBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -28,7 +28,8 @@ const name = linkedScenarioName(conceptText`Track All on example bundle untracke
 
 const description = linkedScenarioDescription(conceptText`Select all untracked pages in the example bundle and track them. The operation should
 save automatically without an extra Save click.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'f7ebd9d2-d561-4f63-95f4-0e08e6dfdfe4' }, name.annotation, description.annotation] }, async ({ sourceCommand,
+const areas = scenarioAreas([bundleCuration]);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'f7ebd9d2-d561-4f63-95f4-0e08e6dfdfe4' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   assertMeadowHomeState,

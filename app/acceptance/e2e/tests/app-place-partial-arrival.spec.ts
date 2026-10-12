@@ -2,7 +2,7 @@
 
 import { test, expect } from "../src/run/test-fixtures.js";
 import { AppPlace, BundleEditorPage } from "../src/run/pages/index.js";
-import { appPlace, callout, conceptText, linkedScenarioName, linkedScenarioDescription } from "../../../concepts/index.js";
+import { appPlace, callout, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
 
 test.use({ bundleMode: "single-file" });
 
@@ -12,7 +12,8 @@ const description = linkedScenarioDescription(conceptText`Follow a link that ask
 that does not exist and a selected page that is gone. The app opens as deep
 as it can, selects the page that still exists, and a callout says exactly
 where it stopped. The Runtime receives the same report a CLI caller reads.`);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '2771ea2c-ce5c-44d6-81dd-eabb2aa8f97a' }, name.annotation, description.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+const areas = scenarioAreas([bundleCuration]);
+test(name.name, { annotation: [{ type: 'scenario-id', description: '2771ea2c-ce5c-44d6-81dd-eabb2aa8f97a' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Test start ---
   // Follow the link into the big bundle.
   const places = new AppPlace(page, expect);

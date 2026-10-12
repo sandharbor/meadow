@@ -12,7 +12,7 @@ export function ScenarioMetadata({ isMobile, indicators, children }: {
   const viewportRef = useRef<HTMLDivElement>(null)
   const rowRef = useRef<HTMLDivElement>(null)
   const naturalWidthRef = useRef(0)
-  const wrapping = isMobile && expanded
+  const wrapping = expanded
 
   useLayoutEffect(() => {
     const viewport = viewportRef.current!
@@ -31,7 +31,7 @@ export function ScenarioMetadata({ isMobile, indicators, children }: {
 
   return (
     <div role="region" aria-label="Scenario metadata" className="col-span-2 shrink-0 min-w-0 border-b border-neutral-200 bg-neutral-50 px-4 py-1.5">
-      {isMobile && (overflows || expanded) && (
+      {(overflows || expanded || !isMobile) && (
         <button
           type="button"
           aria-label={expanded ? 'Collapse scenario metadata' : 'Expand scenario metadata'}
@@ -53,7 +53,7 @@ export function ScenarioMetadata({ isMobile, indicators, children }: {
         </button>
       )}
       <div ref={viewportRef} id="scenario-metadata-labels" className={wrapping ? '' : 'overflow-x-auto'}>
-        <div ref={rowRef} className={`flex gap-x-4 gap-y-2 ${wrapping ? 'flex-wrap items-start' : 'w-max items-center whitespace-nowrap'}`}>
+        <div ref={rowRef} className={`flex gap-x-4 gap-y-2 ${wrapping ? 'flex-col items-stretch' : 'w-max items-center whitespace-nowrap'}`}>
           {children(wrapping)}
         </div>
       </div>
