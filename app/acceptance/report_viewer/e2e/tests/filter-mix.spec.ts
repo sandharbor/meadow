@@ -3,8 +3,8 @@ import { test, expect, type Page } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/concepts*', route => route.fulfill({ json: [] }));
-  await page.route('**/api/bundle-docs', route => route.fulfill({ json: [] }));
-  await page.route('**/api/app-areas', route => route.fulfill({ json: [
+  await page.route(/\/api\/bundle-docs(?:\?.*)?$/,  route => route.fulfill({ json: [] }));
+  await page.route(/\/api\/app-areas(?:\?.*)?$/,  route => route.fulfill({ json: [
     { id: 'bundle/sourcing', name: 'Bundle Sourcing', parentId: 'bundle' },
     { id: 'bundle/review', name: 'Bundle Review', parentId: 'bundle' },
     { id: 'bundle/curation', name: 'Bundle Curation', parentId: 'bundle' },

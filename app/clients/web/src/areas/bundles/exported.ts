@@ -12,3 +12,5 @@
 
 export { default as AppShellComponentCreateOrEditBundleModal } from './components/CreateOrEditBundleModal.js';
 export { default as AppShellComponentBundleList } from './components/BundleList.js';
+
+export { default as AppShellComponentDeleteBundleModal } from './components/DeleteBundleModal.js';

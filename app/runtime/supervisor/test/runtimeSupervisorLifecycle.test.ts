@@ -18,7 +18,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import type { RuntimePayloadReference, RuntimeSupervisorLaunchSpec } from "../../../contracts/types/runtime.js";
+import type { RuntimePayloadReference, RuntimeSupervisorLaunchSpec } from "../../../contracts/types/shared/runtime/runtime.js";
 import {
   ensureRuntime,
   postRuntimeControl,

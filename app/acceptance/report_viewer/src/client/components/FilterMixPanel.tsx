@@ -12,7 +12,7 @@ import {
   type FilterExpression,
   type FilterExpressionGroup,
   type FilterExpressionOperator,
-} from '../../../../../contracts/types/filterExpression.ts'
+} from '../../../../../contracts/types/shared/curation/filterExpression.ts'
 import {
   appendScenarioFilterNode,
   formatScenarioFilterExpression,

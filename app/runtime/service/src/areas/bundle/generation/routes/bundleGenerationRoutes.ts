@@ -24,7 +24,7 @@ import YAML from 'yaml';
 import { sourceFileRequestPathCandidates } from '../../../../../../../shared_code/utils/fileTypeUtils.js';
 import { splitSourceGraphPath } from '../../../../../../../shared_code/utils/bundleSourceUtils.js';
 import { loadGzipPathSet, COMPRESSION_MANIFEST_FILENAME } from '../../../../../../../shared_code/utils/compressionManifestUtils.js';
-import { BundleConfig } from '../../../../../../../contracts/types/bundleConfig.js';
+import { BundleConfig } from '../../../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
 import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundleConfigPaths.js';
 import { getConfigDirectory, getBundleDirectory, getBundleConfigPath } from '../../../../shared/bundle-config/bundleConfigPaths.js';
 import { previewFileDirectory } from '../../../../shared/generated-bundle-versioning/livePreview.js';
@@ -46,9 +46,9 @@ import {
 import {
   CLI_MUTATION_BEHAVIORS,
   CLI_OPERATION_SCHEMA_VERSION,
-} from '../../../../../../../contracts/types/cliOperations.js';
+} from '../../../../../../../contracts/types/shared/cli/cliOperations.js';
 import { assessBundleBoundary } from '../../../../shared/bundle-boundary-review/bundleBoundaryReviewService.js';
-import type { BundleBoundaryReviewRequest } from '../../../../../../../contracts/types/bundleBoundaryReview.js';
+import type { BundleBoundaryReviewRequest } from '../../../../../../../contracts/types/shared/bundle-boundary-review/bundleBoundaryReview.js';
 
 const router = express.Router();
 

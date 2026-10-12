@@ -1,7 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import type { BundleSource } from '../../../../../../../contracts/types/bundleConfig.js';
-import type { IBundleNode } from '../../../../../../../contracts/types/IBundleNode.js';
+import type { BundleSource } from '../../../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
+import type { IBundleNode } from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode.js';
 import { sourceLocationLabel } from '../../../../../../../shared_code/utils/bundleSourceUtils.js';
 
 export function NodeFolderDetails({ node, sources }: { node: IBundleNode; sources: readonly BundleSource[] }) {

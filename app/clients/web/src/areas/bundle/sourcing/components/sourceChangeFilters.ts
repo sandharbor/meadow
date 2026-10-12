@@ -2,7 +2,7 @@
 
 import type { SourcingTypeGraphFilter } from '../../shared-sourcing-curation/exported.js';
 import { sourceReviewAppearance, sourceRemovalReasons, sourceModificationKinds } from '../../../../shared/utils/sourceReviewAppearance.js';
-import type { IBundleNode } from '../../../../../../../contracts/types/IBundleNode.js';
+import type { IBundleNode } from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode.js';
 
 export function sourceChangeFilters(): SourcingTypeGraphFilter[] {
   const definitions: Array<{ id: string; name: string; select: (node: IBundleNode) => boolean; color?: string; fade?: boolean; description: string; parent?: string }> = [

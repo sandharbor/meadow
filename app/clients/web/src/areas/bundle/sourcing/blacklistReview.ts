@@ -1,7 +1,8 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import type { BundleNodeConfig } from '../../../../../../contracts/types/bundleNodeConfig.js';
-import type { BlacklistEditResult, BlacklistShortcutUndo } from '../../../../../../contracts/types/blacklistReview.js';
+import type { BundleNodeConfig } from '../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
+import type { BlacklistEditResult } from '../../../../../../contracts/types/areas/bundle/sourcing/blacklistReview.js';
+import type { BlacklistShortcutUndo } from '../../../../../../contracts/types/shared/sourcing/blacklistReview.js';
 import { apiRequest } from '../../../shared/utils/apiClient.js';
 
 async function request(slug: string, operation: string, body: unknown) {

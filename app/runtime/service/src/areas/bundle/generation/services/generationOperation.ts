@@ -2,7 +2,7 @@
 
 import fs from 'fs';
 import path from 'path';
-import type { ReaderConnectionToPredecessor } from '../../../../../../../contracts/types/generatedBundleVersioning.js';
+import type { ReaderConnectionToPredecessor } from '../../../../../../../contracts/types/shared/generated-bundle-versioning/generatedBundleVersioning.js';
 import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundleConfigPaths.js';
 import { loadAppConfig } from '../../../../../../../shared_code/utils/appConfigUtils.js';
 import { getConfigDirectory } from '../../../../shared/bundle-config/bundleConfigPaths.js';

@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import type { BundleSource } from '../../contracts/types/bundleConfig.js';
-import { IBundleNode } from '../../contracts/types/IBundleNode.js';
+import type { BundleSource } from '../../contracts/types/shared/bundle-config/bundleConfig.js';
+import { IBundleNode } from '../../contracts/types/shared/bundle-graph/IBundleNode.js';
 import { sourceLocationLabel } from './bundleSourceUtils.js';
 
 export const ROOT_FOLDER_LABEL = 'Root';

@@ -19,7 +19,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { loadBundleConfig, saveBundleConfig } from '../../../src/shared/utils/bundleConfigUtils.js';
-import { CustomFilterConfig, GlobalCustomFiltersConfig } from '../../../../../contracts/types/customFilters.js';
+import { CustomFilterConfig, GlobalCustomFiltersConfig } from '../../../../../contracts/types/shared/curation/customFilters.js';
 
 describe('Disabled Global Filters', () => {
   let testDir: string;

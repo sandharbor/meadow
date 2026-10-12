@@ -23,10 +23,10 @@ import router from '../../../../../src/areas/bundle/sharing/routes/publishingCli
 import {
   type IPublishingProviderBackend,
   PublishingProviderOperationError,
-} from '../../../../../src/shared/publishing-provider-host/IPublishingProviderBackend.js';
-import { getActiveBackendProviders, getAllBackendProviders } from '../../../../../src/shared/publishing-provider-host/providerRegistry.js';
+} from '../../../../../src/areas/bundle/sharing/providers/IPublishingProviderBackend.js';
+import { getActiveBackendProviders, getAllBackendProviders } from '../../../../../src/areas/bundle/sharing/providers/providerRegistry.js';
 
-vi.mock('../../../../../src/shared/publishing-provider-host/providerRegistry.js', () => ({
+vi.mock('../../../../../src/areas/bundle/sharing/providers/providerRegistry.js', () => ({
   getActiveBackendProviders: vi.fn(),
   getAllBackendProviders: vi.fn(),
 }));

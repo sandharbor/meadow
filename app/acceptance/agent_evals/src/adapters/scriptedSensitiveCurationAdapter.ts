@@ -16,10 +16,10 @@ limitations under the License.
 
 import { execFile } from "node:child_process";
 import path from "node:path";
-import type { SourcingReview } from "../../../../../contracts/types/sourcing.js";
+import type { SourcingReview } from "../../../../../contracts/types/shared/sourcing/sourcing.js";
 import type {
   GenerateBundleCliResult,
-} from "../../../../../contracts/types/cliOperations.js";
+} from "../../../../../contracts/types/shared/cli/cliOperations.js";
 import {
   SENSITIVE_FILE,
 } from "../scenarios/curateSensitiveFile.js";

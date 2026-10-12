@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { apiJson } from './apiClient';
-import type { BundleConfig } from '../../../../../contracts/types/bundleConfig';
+import type { BundleConfig } from '../../../../../contracts/types/shared/bundle-config/bundleConfig';
 
 /**
  * Bundle config with slug included (as returned by the API). Provider-specific
@@ -46,7 +46,7 @@ export interface BundleConfigWithSlug extends BundleConfig {
  * Data needed for the edit bundle modal
  */
 export interface BundleEditData {
-  sources?: import('../../../../../contracts/types/bundleConfig.js').BundleSource[];
+  sources?: import('../../../../../contracts/types/shared/bundle-config/bundleConfig.js').BundleSource[];
   slug: string;
   sourceDirectory: string;
   entryBundleNodeName: string;

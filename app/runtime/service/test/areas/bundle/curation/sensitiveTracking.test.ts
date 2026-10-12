@@ -18,7 +18,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { BundleNodeId, FileBundleNodeConfig } from '../../../../../../contracts/types/bundleNodeConfig.js';
+import type { BundleNodeId, FileBundleNodeConfig } from '../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import { parseNodeCommand } from '../../../../../../clients/cli/src/nodeCommands.js';
 import { parseTrackBundleOptions } from '../../../../../../clients/cli/src/trackCommands.js';
 import { BundleConfigPaths } from '../../../../../../shared_code/paths/bundleConfigPaths.js';
@@ -29,7 +29,7 @@ import {
   trackingEvidenceMatches,
 } from '../../../../src/shared/bundle-node/trackingEvidence.js';
 import { deriveTrackingEvidenceFindings } from '../../../../src/shared/bundle-boundary-review/bundleBoundaryReviewService.js';
-import type { IBundleNode } from '../../../../../../contracts/types/IBundleNode.js';
+import type { IBundleNode } from '../../../../../../contracts/types/shared/bundle-graph/IBundleNode.js';
 
 const temporaryRoots: string[] = [];
 afterEach(() => {

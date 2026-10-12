@@ -21,16 +21,16 @@ import { IFilter } from '../types/filters';
 import { createSearchByTitleSelector, createOutlinkDiscrepancySelector, createInlinkDiscrepancySelector } from '../types/filters';
 import { useDebounce } from '../../../../shared/hooks/useDebounce';
 import CustomFilterModal from './CustomFilterModal';
-import { CustomFilterConfig } from '../../../../../../../contracts/types/customFilters';
+import { CustomFilterConfig } from '../../../../../../../contracts/types/shared/curation/customFilters';
 import { useEditorOperations } from '../types/editorOperations.js';
 import { logger } from '../../../../shared/utils/logger';
-import { IBundleNode } from '../../../../../../../contracts/types/IBundleNode';
+import { IBundleNode } from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode';
 import { hasNodesInMultipleFolders } from '../utils/folderFilterUtils';
 import FolderFilterTree from './FolderFilterTree';
 import NodeTypeFilterList from './NodeTypeFilterList';
 import GapFilterList from './GapFilterList';
 import FilterExpressionComposer from './FilterExpressionComposer';
-import type { Graph } from '../../../../../../../contracts/types/graph';
+import type { Graph } from '../../../../../../../contracts/types/shared/bundle-graph/graph';
 import { getPresentNodeTypeFilters } from '../utils/nodeTypeFilterUtils';
 import {
   FilterExpression,

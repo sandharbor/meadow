@@ -1,7 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { SourcingReview } from '../../../../../../../contracts/types/sourcing.js';
+import type { SourcingReview } from '../../../../../../../contracts/types/shared/sourcing/sourcing.js';
 import { apiRequest } from '../../../../shared/utils/apiClient.js';
 
 export function useSourceStatus(bundleSlug: string, onPendingChanges?: (pending: boolean) => void) {

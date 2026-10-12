@@ -1,6 +1,6 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import type { SourceMoveCandidate } from '../../../../../../../contracts/types/sourcing.js';
+import type { SourceMoveCandidate } from '../../../../../../../contracts/types/shared/sourcing/sourcing.js';
 
 export function MoveSimilarity({ move }: { move: SourceMoveCandidate }) {
   return <details className="ml-6 rounded border border-neutral-200 bg-neutral-50 text-sm">

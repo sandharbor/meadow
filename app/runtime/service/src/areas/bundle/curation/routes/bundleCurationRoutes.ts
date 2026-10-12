@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { sourceGraphPath, sourceForNode } from '../../../../../../../shared_code/utils/bundleSourceUtils.js';
-import type { BundleConfig } from '../../../../../../../contracts/types/bundleConfig.js';
+import type { BundleConfig } from '../../../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
 
 
 import express from 'express';
@@ -36,7 +36,7 @@ import type {
   GraphFilterApplication,
   GraphFilterCombination,
   GraphInspectionScope,
-} from '../../../../../../../contracts/types/graphInspection.js';
+} from '../../../../../../../contracts/types/shared/curation/graphInspection.js';
 import { describeWorkingGraph } from '../services/graphDescriptionService.js';
 import { loadCustomFiltersForBundle } from '../../../../shared/custom-filters/customFilterLoader.js';
 import {

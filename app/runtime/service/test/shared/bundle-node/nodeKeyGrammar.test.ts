@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { test } from 'vitest';
 import { createFileNodeKey, createFolderNodeKey, parseBundleNodeKey, serializeBundleNodeKey, encodedBundleNodeKey, bundleNodeKeySourceGraphPath } from '../../../../../shared_code/utils/bundleNodeKey.js';
-import { Graph } from '../../../../../contracts/types/graph.js';
+import { Graph } from '../../../../../contracts/types/shared/bundle-graph/graph.js';
 import { decodeWorkingGraphKeys } from '../../../src/shared/bundle-graph/workingGraphKeyCodec.js';
 import type { WorkingGraphRustOutput } from '../../../src/shared/bundle-graph/workingGraphService.js';
 

@@ -27,6 +27,7 @@ export const bundle = defineMeadowConcept({
     conceptText`Each area has one deliberately narrow exported.ts interface on each implementation surface. All outside callers, including the application shell, use named exports from that interface; private implementations stay inside their area.`,
     conceptText`Public service operations name their actual permitted caller followed by Command for business mutations or Query for reads. The closed caller vocabulary is bundles, sourcing, curation, generation, review, sharing, and appShell; there is no general caller. Type exports use CallerType, UI components use CallerComponent, state hooks use useCallerState, and shell-mounted router objects use appShellRouter. These prefixes identify the importer, not the area providing the capability.`,
     conceptText`Boundary checks validate the importing file's owner as well as the exported name, allow only explicit named re-exports of owned implementation, and limit each exported.ts to 100 lines and 15 exports. Queries may cache results but must not change business state; commands own their mutation safeguards. Naming is linted; these behavioral semantics remain covered by tests and review.`,
+    conceptText`Contract types follow the same areas and shared hierarchy. An area-private contract is available only to that same area across registered implementation and test surfaces; shared and unowned code cannot import it. Shared contracts have named owners and exist for data that must cross areas or serve infrastructure. Split mixed declarations so a shared record does not expose an area's private types. The common boundary checker and surface registry enforce this alongside the narrower implementation interfaces.`,
     conceptText`Prefer leaving durable data for the next area over back-and-forth calls. The usual flow is sourcing → curation → generation → review → sharing. A specific query against another area's policy is allowed when its owner deliberately exposes it; genuinely shared capabilities belong in shared rather than a general public-interface escape.`,
   ],
   interplay: conceptText`${conceptLink(coreConceptIds.bundles, "Bundles")} manages the collection surface; ${conceptLink(coreConceptIds.bundleSourcing, "Sourcing")}, ${conceptLink(coreConceptIds.bundleCuration, "Curation")}, ${conceptLink(coreConceptIds.bundleGeneration, "Generation")}, ${conceptLink(coreConceptIds.bundleReview, "Review")}, and ${conceptLink(coreConceptIds.bundleSharing, "Sharing")} carry a bundle through its lifecycle.`,
@@ -50,8 +51,11 @@ export const bundleSourcing = defineMeadowConcept({
   aliases: ["Sourcing"],
   kind: "app-area",
   parentId: coreConceptIds.bundle,
-  definition: conceptText`The application area for discovering source material, resolving source identities, and accepting immutable source snapshots.`,
-  mechanics: [conceptText`It captures candidate updates without changing the accepted material and explains moves, source edits, and lost connections before acceptance.`],
+  definition: conceptText`The application area for configuring sources and starting selections, discovering source material, resolving source identities, and accepting immutable source snapshots.`,
+  mechanics: [
+    conceptText`${conceptLink(coreConceptIds.sourceSetupNew, "Source Setup - New")} chooses sources and starting pages or folders during bundle creation. ${conceptLink(coreConceptIds.sourceSetupEdit, "Source Setup - Edit")} changes those settings for an existing bundle.`,
+    conceptText`It captures candidate updates without changing the accepted material and explains moves, source edits, and lost connections before acceptance.`,
+  ],
   interplay: conceptText`It supplies the accepted ${conceptLink(coreConceptIds.sourceSnapshot, "Source Snapshot")} used by ${conceptLink(coreConceptIds.bundleCuration, "Curation")} and ${conceptLink(coreConceptIds.bundleGeneration, "Generation")}.`,
 });
 
@@ -103,6 +107,7 @@ export const bundleSharing = defineMeadowConcept({
   definition: conceptText`The application area for delivering or removing generated bundle artifacts through a selected publishing or export interface.`,
   mechanics: [
     conceptText`It coordinates provider operations, local exports, publication state, and removal of shared artifacts.`,
+    conceptText`It owns publishing-provider contracts, discovery, activation, configuration, and execution. Provider packages use the same areas/bundle/sharing hierarchy on their backend and frontend surfaces. The application shell asks Sharing to register routes, supply migration scopes, and initialize resources at startup; other areas request specific publication operations rather than receiving provider instances.`,
   ],
   interplay: conceptText`It receives approved output from ${conceptLink(coreConceptIds.bundleReview, "Bundle Review")} and artifacts from ${conceptLink(coreConceptIds.bundleGeneration, "Bundle Generation")} without taking ownership of their creation.`,
 });
@@ -118,6 +123,7 @@ export const sharedSourcingCuration = defineMeadowConcept({
     conceptText`It owns common graph presentation, filtering and view-state machinery, selection, and reusable sidebar pieces. Sourcing keeps ownership of discovery, capture, proposals, and acceptance; curation keeps ownership of tracking and presentation policy.`,
     conceptText`Only sourcing and curation consume its narrow named exported interface. Generation, review, sharing, general shared code, and the application shell cannot import it directly. The shell composes area-owned facades. It cannot import sourcing or curation implementations: mode-specific data and actions enter through explicit inputs.`,
     conceptText`The same export-count, file-length, and private-import checks apply, together with negative boundary tests for disallowed consumers and reverse dependencies. Adding code here requires a common editor responsibility rather than convenience.`,
+    conceptText`Contract types under areas/bundle/shared-sourcing-curation are restricted to sourcing, curation, and this common area across registered surfaces. General shared code and other areas cannot import them. Globally consumed persisted records stay under named shared owners.`,
   ],
   interplay: conceptText`It supports ${conceptLink(coreConceptIds.sourceReviewWorkspace, "Source Review Workspace")} while preserving the ownership of ${conceptLink(coreConceptIds.bundleSourcing, "Sourcing")} and ${conceptLink(coreConceptIds.bundleCuration, "Curation")}.`,
 });

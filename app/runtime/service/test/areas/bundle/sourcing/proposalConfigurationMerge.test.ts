@@ -1,9 +1,9 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import { describe, expect, it } from 'vitest';
-import type { BundleNodeId } from '../../../../../../contracts/types/bundleNodeConfig.js';
-import type { ProposalConfiguration } from '../../../../../../contracts/types/sourcingProposal.js';
-import type { CustomFilterConfig } from '../../../../../../contracts/types/customFilters.js';
+import type { BundleNodeId } from '../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
+import type { ProposalConfiguration } from '../../../../../../contracts/types/shared/sourcing/sourcingProposal.js';
+import type { CustomFilterConfig } from '../../../../../../contracts/types/shared/curation/customFilters.js';
 import { mergeProposalConfiguration } from '../../../../../../shared_code/utils/proposalConfigurationMerge.js';
 
 const nodeId = 'aaaaaaaaaaaa' as BundleNodeId;

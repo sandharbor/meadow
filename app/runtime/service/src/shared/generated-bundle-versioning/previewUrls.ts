@@ -18,7 +18,7 @@ limitations under the License.
 import type express from 'express';
 import fs from 'fs';
 import YAML from 'yaml';
-import type { BundleConfig } from '../../../../../contracts/types/bundleConfig.js';
+import type { BundleConfig } from '../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
 import { BundleConfigPaths } from '../../../../../shared_code/paths/bundleConfigPaths.js';
 import { encodePathForUrl } from '../../../../../shared_code/utils/urlUtils.js';
 import {

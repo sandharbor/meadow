@@ -1,6 +1,6 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import type { SnapshotTrackingOutcome } from '../../../../../../../contracts/types/curationTracking';
+import type { SnapshotTrackingOutcome } from '../../../../../../../contracts/types/shared/curation/curationTracking';
 import Modal from '../../../../shared/components/Modal';
 
 export default function SourceTrackingNotice({ outcome, onClose, onShowPages, canShowPages }: {

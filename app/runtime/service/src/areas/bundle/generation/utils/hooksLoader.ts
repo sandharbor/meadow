@@ -17,13 +17,13 @@ limitations under the License.
 import * as fs from 'fs';
 import { getConfigDirectory, getBundleDirectory } from '../../../../shared/bundle-config/bundleConfigPaths.js';
 import { parseHTML } from 'linkedom';
-import { PageTitleNormalizationHook, MarkdownProcessingHook, HtmlPostProcessingHook, HookType, HookScope, HookMetadata, HookLoadStatus } from '../../../../../../../contracts/types/hooks.js';
+import { PageTitleNormalizationHook, MarkdownProcessingHook, HtmlPostProcessingHook, HookType, HookScope, HookMetadata, HookLoadStatus } from '../../../../../../../contracts/types/areas/bundle/generation/hooks.js';
 import { AppConfigPaths } from '../../../../../../../shared_code/paths/appConfigPaths.js';
 import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundleConfigPaths.js';
 import { loadBundleConfig } from '../../../../shared/utils/bundleConfigUtils.js';
 import { logBundleWarn } from '../../../../shared/utils/logging/bundleLogger.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
-import type { BundleConfig } from '../../../../../../../contracts/types/bundleConfig.js';
+import type { BundleConfig } from '../../../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
 
 interface HookCacheEntry {
   hook: PageTitleNormalizationHook | MarkdownProcessingHook | HtmlPostProcessingHook | null;

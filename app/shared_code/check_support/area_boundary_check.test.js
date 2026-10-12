@@ -3,10 +3,19 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
-import { checkAreaBoundaries } from './area_boundary_check.js';
-import { INTERFACE_GUIDANCE } from './area_boundary_policy.js';
+import { checkAreaBoundaries, walkBoundarySources } from './area_boundary_check.js';
+import { INTERFACE_GUIDANCE, appAreaSurfaces } from './area_boundary_policy.js';
 
 const guidance = '/**\n' + INTERFACE_GUIDANCE.split('\n').map(line => ' * ' + line).join('\n') + '\n */\n';
+test('source discovery skips generated test workspaces and caches, including transient symlinks', t => {
+  const f = fixture(t);
+  const source = f.write('app/contracts/types/areas/bundle/sourcing/identity.ts', 'export type Identity = string;');
+  for (const folder of ['config_workspace', 'scratch_config_folder', 'expected_results', 'node_modules', '.linkrange-cache']) {
+    const file = f.write(`app/test/${folder}/generated.ts`, 'export type Generated = string;');
+    fs.symlinkSync(path.join(f.directory, 'deleted-test-output'), path.join(path.dirname(file), 'transient'));
+  }
+  assert.deepEqual(walkBoundarySources(path.join(f.directory, 'app')), [source]);
+});
 function fixture(t) {
   const directory = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'area-boundaries-')));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
@@ -196,5 +205,118 @@ for (const target of ['sourcing', 'curation']) {
       + "export { command as sharedSourcingCurationCommandEdit } from './operation.js';");
     f.caller(`import { sharedSourcingCurationCommandEdit } from '../${target}/exported.js';`, 'areas/bundle/shared-sourcing-curation');
     assert.match(f.messages(), /cannot import area implementations or facades/);
+  });
+}
+
+function contractFixture(t) {
+  const f = fixture(t);
+  const appRoot = path.join(f.directory, 'app');
+  const { roots, contractRoots } = appAreaSurfaces(appRoot);
+  const write = (relative, content) => f.write(`app/${relative}`, content);
+  const contract = write('contracts/types/areas/bundle/sourcing/identity.ts', 'export type Identity = string;');
+  write('contracts/types/shared/bundle-graph/node.ts', 'export type Node = string;');
+  const consumers = [];
+  const caller = (relative, declaration, target = contract) => {
+    const file = path.join(appRoot, relative);
+    let specifier = path.relative(path.dirname(file), target).replace(/\.ts$/, '.js');
+    if (!specifier.startsWith('.')) specifier = './' + specifier;
+    consumers.push(write(relative, declaration.replaceAll('CONTRACT', specifier)));
+  };
+  const check = () => checkAreaBoundaries({
+    sourceRoot: contractRoots[0], otherSourceRoots: roots.filter(root => root !== contractRoots[0]),
+    contractRoots, contractsOnly: true, consumerFiles: consumers,
+  });
+  return { write, caller, check, messages: () => check().map(item => item.message).join('\n') };
+}
+
+test('contract ownership spans the registered service, web, and test surfaces', t => {
+  const f = contractFixture(t);
+  for (const surface of ['clients/web/src', 'runtime/service/src', 'clients/web/test', 'runtime/service/test']) {
+    f.caller(`${surface}/areas/bundle/sourcing/consumer.ts`, "import type { Identity } from 'CONTRACT';");
+  }
+  assert.deepEqual(f.check(), []);
+});
+for (const owner of ['areas/bundle/curation', 'areas/bundle/generation', 'areas/bundle/review', 'areas/bundle/sharing', 'shared/app-shell', 'shared/helpers']) {
+  test(`${owner} cannot consume a Sourcing contract`, t => {
+    const f = contractFixture(t);
+    f.caller(`clients/web/src/${owner}/consumer.ts`, "import type { Identity as LocalIdentity } from 'CONTRACT';");
+    assert.match(f.messages(), /Private bundle\/sourcing contract/);
+  });
+}
+for (const declaration of [
+  "export type { Identity } from 'CONTRACT';", "export * from 'CONTRACT';",
+  "type Identity = import('CONTRACT').Identity;", "import * as identities from 'CONTRACT';",
+  "const types = await import('CONTRACT');", "const types = require('CONTRACT');",
+  "import types = require('CONTRACT');",
+]) {
+  test(`contract boundaries also cover ${declaration}`, t => {
+    const f = contractFixture(t);
+    f.caller('contracts/types/shared/transport/barrel.ts', declaration);
+    assert.match(f.messages(), /Private bundle\/sourcing contract/);
+  });
+}
+test('unregistered code cannot gain contract ownership from an incidental areas folder', t => {
+  const f = contractFixture(t);
+  f.caller('tooling/unregistered/areas/bundle/sourcing/consumer.ts', "import type { Identity } from 'CONTRACT';");
+  assert.match(f.messages(), /Private bundle\/sourcing contract/);
+});
+test('declaration files and JavaScript consumers cannot launder private contracts', t => {
+  const f = contractFixture(t);
+  f.caller('contracts/types/shared/transport/barrel.d.ts', "export type { Identity } from 'CONTRACT';");
+  f.caller('tooling/consumer.js', "export * from 'CONTRACT';");
+  assert.equal(f.check().filter(item => item.message.includes('Private bundle/sourcing contract')).length, 2);
+});
+test('shared contracts remain usable by areas and infrastructure', t => {
+  const f = contractFixture(t);
+  f.write('contracts/types/areas/bundle/sourcing/sharedUse.ts', "import type { Node } from '../../../shared/bundle-graph/node.js';");
+  f.write('contracts/types/shared/transport/sharedUse.ts', "import type { Node } from '../bundle-graph/node.js';");
+  assert.deepEqual(f.check(), []);
+});
+test('flat, unowned, unknown-area, and shared catch-all contract declarations fail', t => {
+  const f = contractFixture(t);
+  f.write('contracts/types/flat.ts', 'export type Flat = string;');
+  f.write('contracts/types/misc/record.ts', 'export type Record = string;');
+  f.write('contracts/types/shared/loose.ts', 'export type Loose = string;');
+  f.write('contracts/types/areas/invented/record.ts', 'export type Record = string;');
+  assert.match(f.messages(), /flat contract files are forbidden/);
+  assert.match(f.messages(), /Shared contracts require a named owner folder/);
+  assert.match(f.messages(), /Unknown app area 'invented'/);
+});
+
+for (const [consumer, allowed] of [
+  ['areas/bundle/sourcing', true], ['areas/bundle/curation', true], ['areas/bundle/shared-sourcing-curation', true],
+  ['areas/bundle/generation', false], ['areas/bundle/review', false], ['areas/bundle/sharing', false],
+  ['areas/bundles', false], ['shared/app-shell', false], ['shared/helpers', false],
+]) {
+  test(`restricted Sourcing/Curation contracts ${allowed ? 'allow' : 'reject'} ${consumer}`, t => {
+    const f = contractFixture(t);
+    const contract = f.write('contracts/types/areas/bundle/shared-sourcing-curation/selection.ts', 'export type Selection = string;');
+    f.caller(`clients/web/src/${consumer}/consumer.ts`, "import type { Selection } from 'CONTRACT';", contract);
+    if (allowed) assert.deepEqual(f.check(), []);
+    else assert.match(f.messages(), /Private bundle\/shared-sourcing-curation contract/);
+  });
+}
+
+test('the restricted contract area cannot import private Sourcing contracts in reverse', t => {
+  const f = contractFixture(t);
+  f.caller('contracts/types/areas/bundle/shared-sourcing-curation/reverse.ts', "import type { Identity } from 'CONTRACT';");
+  assert.match(f.messages(), /Private bundle\/sourcing contract/);
+});
+
+for (const [providerSurface, hostSurface, permitted] of [
+  ['backend', 'runtime/service/src', true], ['frontend', 'clients/web/src', true],
+  ['backend', 'clients/web/src', false], ['frontend', 'runtime/service/src', false],
+]) {
+  test(`provider ${providerSurface} Sharing implementation ${permitted ? 'joins' : 'cannot cross into'} ${hostSurface}`, t => {
+    const f = fixture(t);
+    const appRoot = path.join(f.directory, 'app');
+    const target = f.write(`app/${hostSurface}/areas/bundle/sharing/providers/private.ts`, 'export const provider = {};');
+    const consumer = f.write(`app/publishing_providers/Example/${providerSurface}/areas/bundle/sharing/index.ts`, '');
+    fs.writeFileSync(consumer, `import { provider } from '${path.relative(path.dirname(consumer), target).replace(/\.ts$/, '.js')}';`);
+    const { roots, contractRoots, implementationFamilies } = appAreaSurfaces(appRoot);
+    const sourceRoot = path.join(appRoot, hostSurface);
+    const violations = checkAreaBoundaries({ sourceRoot, otherSourceRoots: roots.filter(root => root !== sourceRoot), contractRoots, implementationFamilies, consumerFiles: [consumer] });
+    if (permitted) assert.deepEqual(violations, []);
+    else assert.ok(violations.some(item => item.message.includes('Private bundle/sharing import')));
   });
 }

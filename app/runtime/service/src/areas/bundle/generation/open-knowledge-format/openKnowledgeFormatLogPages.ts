@@ -16,8 +16,8 @@ limitations under the License.
 
 import fs from 'fs';
 import path from 'path';
-import type { FileBundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
-import type { SourcePageFileInfo } from '../../../../../../../contracts/types/sourcePageFileInfo.js';
+import type { FileBundleNodeConfig } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
+import type { SourcePageFileInfo } from '../../../../../../../contracts/types/shared/bundle-graph/sourcePageFileInfo.js';
 import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundleConfigPaths.js';
 import {
   rankSourcePageCandidatesWithCount,
@@ -175,5 +175,5 @@ export async function getOpenKnowledgeFormatLogPageOptions(
   };
 }
 
-import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';
 import { encodedBundleNodeKey } from '../../../../../../../shared_code/utils/bundleNodeKey.js';

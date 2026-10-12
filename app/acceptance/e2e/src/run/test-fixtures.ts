@@ -256,7 +256,7 @@ async function acquireSerialGroupLock(group: string): Promise<() => void> {
 async function readPlaceAndDialogs(page: import("@playwright/test").Page): Promise<{
   place?: string;
   openDialogs?: { name: string; classification: "surface" | "transient" | "unaddressable" }[];
-  editorView?: import('../../../../contracts/types/editorViewCheckpoint.js').EditorViewCheckpoint;
+  editorView?: import('../../../../contracts/types/shared/curation/editorViewCheckpoint.js').EditorViewCheckpoint;
 }> {
   const snapshot = await page.evaluate(() => {
     const place = document.documentElement.dataset.meadowPlace;

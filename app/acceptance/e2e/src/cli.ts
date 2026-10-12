@@ -21,36 +21,13 @@ import path from "path";
 import { performance } from "perf_hooks";
 import { assembleRun } from "./artifacts/assemble.ts";
 import { reportPlaceCoverage } from "./artifacts/placeCoverage.ts";
-import {
-  acceptanceConcepts as baseConcepts,
-  allCoreConcepts,
-  acceptanceAppAreaConcepts as appAreaConcepts,
-  assertConceptRegistry,
-  type AnyMeadowConcept,
-} from "../../../concepts/index.ts";
-import * as coreConceptExports from "../../../concepts/index.ts";
-import { declaredScenarioAreaIds } from "./artifacts/declaredScenarioAreas.ts";
+import { loadDocumentRegistry } from '../../../concepts/loadRegistry.js';
+import { declaredScenarioAreaIds } from './artifacts/declaredScenarioAreas.ts';
 
-const E2E_DIR = path.join(import.meta.dirname, "..");
-
-// Optionally load contributed concepts. When no contribution is mounted, this
-// folder is gone and the import no-ops.
-// Runtime-computed path so tsc doesn't require the module to exist.
-type ConceptLike = AnyMeadowConcept;
-let contributedConcepts: ConceptLike[] = [];
-let contributedConceptExports: Record<string, unknown> = {};
-const extensionMounted = existsSync(
-  path.join(import.meta.dirname, "..", "..", "..", "concepts", "meadow-extension", "index.ts")
-);
-{
-  if (extensionMounted) {
-    const extPath = "../../../concepts/meadow-extension/index.ts";
-    const mod = await import(extPath) as { meadowExtensionConcepts?: ConceptLike[] } & Record<string, unknown>;
-    contributedConcepts = mod.meadowExtensionConcepts ?? [];
-    contributedConceptExports = mod;
-  }
-}
-
+const E2E_DIR = path.join(import.meta.dirname, '..');
+const registry = await loadDocumentRegistry();
+const extensionMounted = existsSync(path.join(import.meta.dirname, '../../../concepts/meadow-extension/index.ts'));
+const appAreaConcepts = registry.appAreas;
 // Recursively count *.spec.ts files under a directory. Playwright's testDir
 // recurses into subdirectories (e.g. tests/meadow-extension/), so the
 // guardrail needs to match. Symlinks to directories are followed because
@@ -70,19 +47,8 @@ function countSpecFiles(dir: string): number {
 }
 const ARTIFACTS_BASE = path.join(os.homedir(), "meadow-e2e-artifacts", "current");
 
-const allAcceptanceConcepts = [...baseConcepts, ...contributedConcepts];
-const allConcepts = [...allCoreConcepts, ...contributedConcepts];
-assertConceptRegistry(allConcepts);
-
-// Build maps from imported concept export names to canonical IDs.
-const exportNameToConceptId = new Map<string, string>();
-for (const exports of [coreConceptExports, contributedConceptExports]) {
-  for (const [key, value] of Object.entries(exports)) {
-    if (value && typeof value === "object" && "id" in value && typeof value.id === "string") {
-      exportNameToConceptId.set(key, value.id);
-    }
-  }
-}
+const allAcceptanceConcepts = registry.acceptanceConcepts;
+const exportNameToConceptId = registry.exportNameToId;
 
 const acceptanceIds = new Set(allAcceptanceConcepts.map(concept => concept.id));
 

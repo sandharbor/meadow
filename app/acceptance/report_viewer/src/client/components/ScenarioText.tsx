@@ -1,5 +1,6 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
+import { documentUrl } from './DocumentText.tsx';
 import { Link } from 'react-router-dom';
 import type { ConceptText } from '../../../../../concepts/types.js';
 import { useScenarioConceptDetails, type ScenarioConceptReference } from './ScenarioConceptDetails.tsx';
@@ -23,8 +24,8 @@ export function ScenarioText({ text: plainText, linkedText, runId, scenarioHref,
     ? <Link key={key} to={scenarioHref} className="hover:text-brand-600 hover:underline">{value}</Link> : value;
   return <>
     <span>{linkedText ? linkedText.segments.map((segment, index) => segment.kind === 'text' ? text(segment.text, index)
-      : <a key={index} href={`/concepts/${encodeURIComponent(segment.conceptId)}`} className="text-brand-600 underline"
-        onClick={event => { event.preventDefault(); event.stopPropagation(); openConcept({ id: segment.conceptId, name: segment.label }); }}>{segment.label}</a>) : text(plainText)}</span>
+      : <Link key={index} to={documentUrl(segment.conceptId, runId)} className="text-brand-600 underline"
+        onClick={event => { event.preventDefault(); event.stopPropagation(); openConcept({ id: segment.conceptId, name: segment.label }); }}>{segment.label}</Link>) : text(plainText)}</span>
     {!onOpenConcept && localDetails.details}
   </>;
 }

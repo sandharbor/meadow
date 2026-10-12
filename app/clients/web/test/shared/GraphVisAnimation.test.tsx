@@ -16,7 +16,7 @@ limitations under the License.
 
 import { act, render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { Graph } from '../../../../contracts/types/graph';
+import type { Graph } from '../../../../contracts/types/shared/bundle-graph/graph';
 import type { DisplayGraph } from '../../src/areas/bundle/shared-sourcing-curation/types/displayGraph';
 
 vi.mock('../../src/areas/bundle/shared-sourcing-curation/components/DepthCallout', () => ({

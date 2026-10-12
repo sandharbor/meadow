@@ -17,9 +17,9 @@ limitations under the License.
 import fs from 'fs';
 import path from 'path';
 import LZString from 'lz-string';
-import type { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
-import type { FileType } from '../../../../../../../contracts/types/FileType.js';
-import type { LinkResolvedInfo } from '../../../../../../../contracts/types/IBundleNode.js';
+import type { BundleNodeConfig } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
+import type { FileType } from '../../../../../../../contracts/types/shared/bundle-graph/FileType.js';
+import type { LinkResolvedInfo } from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode.js';
 import { replaceOutsideCode } from '../html/markdown.js';
 import { LINK_PATTERN } from '../html/constants.js';
 import { isLinkTracked } from '../html/linkModificationService.js';
@@ -514,4 +514,4 @@ export function prepareScrubbedSourceDirectory(
   }
 }
 
-import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';

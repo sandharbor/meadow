@@ -2,7 +2,7 @@
 
 import fs from 'fs';
 import path from 'path';
-import type { GeneratedBundleVersionId } from '../../../../../contracts/types/generatedBundleVersioning.js';
+import type { GeneratedBundleVersionId } from '../../../../../contracts/types/shared/generated-bundle-versioning/generatedBundleVersioning.js';
 import { textDocumentCodec, writeDurableDocument } from '../../../../../shared_code/utils/durableDocument.js';
 import {
   generationRecordFilenames,

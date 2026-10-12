@@ -2,7 +2,7 @@
 
 import type { AppPlace, PlaceArrival, PlaceNodeReference } from '../../../contracts/places/index.js';
 import { appPlacePath, parseAppPlace, placeRegistry } from '../../../contracts/places/index.js';
-import type { BundleNodeDetails } from '../../../contracts/types/cliOperations.js';
+import type { BundleNodeDetails } from '../../../contracts/types/shared/cli/cliOperations.js';
 
 type RequestJson = (pathname: string, method?: string, body?: unknown) => Promise<unknown>;
 

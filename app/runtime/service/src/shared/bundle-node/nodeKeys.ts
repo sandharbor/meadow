@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import type { BundleNodeConfig, EncodedBundleNodeKey } from '../../../../../contracts/types/bundleNodeConfig.js';
+import type { BundleNodeConfig, EncodedBundleNodeKey } from '../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import { bundleNodeKeyFromConfig, fileNodeKeyFromSourceFilePath, serializeBundleNodeKey } from '../../../../../shared_code/utils/bundleNodeKey.js';
 
 export interface BundleNodeConfigMap {

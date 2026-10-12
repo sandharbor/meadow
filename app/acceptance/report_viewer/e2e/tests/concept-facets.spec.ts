@@ -48,10 +48,10 @@ test('run filters use explicit category facets while rules remain directly navig
   await expect(detailedConcepts).not.toBeVisible();
   const facets = page.getByRole('group', { name: 'Concept filters', exact: true });
   await expect(facets.getByRole('button', { name: 'Publishing', exact: true })).toHaveCount(0);
-  await facets.getByRole('button', { name: /^and \d+ hidden$/ }).click();
+  await facets.getByRole('button', { name: /^Show \d+ more$/ }).click();
   await expect(facets.getByRole('button', { name: 'Publishing', exact: true })).toBeVisible();
   await expect(facets.getByRole('button', { name: 'HTML Generation', exact: true })).toBeVisible();
-  await facets.getByRole('button', { name: 'hide', exact: true }).click();
+  await facets.getByRole('button', { name: 'Show less', exact: true }).click();
   await expect(facets.getByRole('button', { name: 'Newer source material pauses frontier exploration', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Details', exact: true }).click();
   const metadata = page.getByRole('article', { name: 'Frontier rule evidence', exact: true }).locator('dl[aria-label="Scenario metadata"]');
@@ -95,7 +95,7 @@ test('run filters use explicit category facets while rules remain directly navig
       page.waitForEvent('popup'),
       page.getByRole('link', { name: 'Open in new page', exact: true }).click(),
     ]);
-    await expect(conceptPage).toHaveURL(/\/concepts\/frontier-pending-sources$/);
+    await expect(conceptPage).toHaveURL(/\/concepts\/frontier-pending-sources\?run=facet-navigation$/);
     await expect(conceptPage.getByRole('heading', { name: 'Newer source material pauses frontier exploration', exact: true })).toBeVisible();
     await expect(page.getByRole('dialog', { name: 'Floating concept details', exact: true })).toHaveCount(0);
     await expect(page.getByRole('region', { name: 'Concept sidebar', exact: true })).toHaveCount(0);

@@ -1,6 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import type { SourceProposalReview, PendingSourceProposal } from '../../../../../../../contracts/types/sourcingProposal.js';
+import type { SourceProposalReview } from '../../../../../../../contracts/types/areas/bundle/sourcing/sourcingProposal.js';
+import type { PendingSourceProposal } from '../../../../../../../contracts/types/shared/sourcing/sourcingProposal.js';
 import { sameProposalValue } from '../../../../../../../shared_code/utils/proposalConfigurationMerge.js';
 import { bundleNodeKeyFromConfig, serializeBundleNodeKey } from '../../../../../../../shared_code/utils/bundleNodeKey.js';
 import { sourcingQueryPrepareProposalTracking } from '../../curation/exported.js';

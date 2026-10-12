@@ -15,8 +15,8 @@ limitations under the License.
 */
 
 import { describe, it, expect } from 'vitest';
-import { Graph, IBundleNode } from '../../../../../../../contracts/types/graph';
-import type { FileBundleNode } from '../../../../../../../contracts/types/IBundleNode';
+import { Graph, IBundleNode } from '../../../../../../../contracts/types/shared/bundle-graph/graph';
+import type { FileBundleNode } from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode';
 import { getSelectionChildrenOrdered, getSelectionDeeperPathsFromHereOrdered, getSelectionPathFromHereOrdered, getSelectionPathToHereOrdered } from '../../../../../src/areas/bundle/shared-sourcing-curation/utils/selectionPaths';
 
 function makePage(id: string, overrides: Partial<FileBundleNode> = {}): IBundleNode {

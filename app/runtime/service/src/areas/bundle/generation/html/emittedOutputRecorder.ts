@@ -2,11 +2,11 @@
 
 import fs from 'fs';
 import path from 'path';
-import type { BundleNodeId } from '../../../../../../../contracts/types/bundleNodeConfig.js';
+import type { BundleNodeId } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import type {
   GeneratedOutputOwnership,
   GeneratedOutputRole,
-} from '../../../../../../../contracts/types/generatedOutputIdentity.js';
+} from '../../../../../../../contracts/types/shared/generated-bundle-versioning/generatedOutputIdentity.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
 
 interface Claim {

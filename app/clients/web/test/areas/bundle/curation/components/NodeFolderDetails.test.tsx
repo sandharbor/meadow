@@ -2,7 +2,7 @@
 
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import type { IBundleNode } from '../../../../../../../contracts/types/IBundleNode.js';
+import type { IBundleNode } from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode.js';
 import { NodeFolderDetails } from '../../../../../src/areas/bundle/shared-sourcing-curation/components/NodeFolderDetails.js';
 
 const sources = [

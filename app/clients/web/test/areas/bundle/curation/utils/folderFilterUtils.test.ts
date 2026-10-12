@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { describe, expect, it } from 'vitest';
-import { IBundleNode } from '../../../../../../../contracts/types/IBundleNode';
+import { IBundleNode } from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode';
 import {
   buildFolderTree,
   hasNodesInMultipleFolders,

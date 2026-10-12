@@ -16,11 +16,8 @@ limitations under the License.
 
 import fs from 'fs';
 import path from 'path';
-import type {
-  GeneratedBundleVersionId,
-  PredecessorCleanupPolicy,
-  ReaderConnectionToPredecessor,
-} from '../../../../../../contracts/types/generatedBundleVersioning.js';
+import type { GeneratedBundleVersionId, ReaderConnectionToPredecessor } from '../../../../../../contracts/types/shared/generated-bundle-versioning/generatedBundleVersioning.js';
+import type { PredecessorCleanupPolicy } from '../../../../../../contracts/types/shared/publishing-provider-host/publicationVersioning.js';
 import { AppConfigGitUtils, GIT_AUTHORS } from '../../../../../../shared_code/utils/appConfigGitUtils.js';
 import {
   isPlainObject,
@@ -33,8 +30,8 @@ import { discardUnsavedCurrentGeneratedBundleVersion } from '../../../shared/gen
 import { requireBundleRenameGenerationOperations } from '../../../shared/bundle-management/bundleRenameWorkflowHost.js';
 import { loadGeneratedBundleVersionManifest } from '../../../shared/generated-bundle-versioning/generatedBundleVersionManifestService.js';
 import { inspectGeneratedVersionGitState } from '../../../shared/generated-bundle-versioning/generatedBundleVersionGitService.js';
-import { getAllBackendProviders } from '../../../shared/publishing-provider-host/providerRegistry.js';
-import type { BundleRenamePublicationPlan } from '../../../shared/publishing-provider-host/IPublishingProviderBackend.js';
+import { bundlesQueryRenamePublicationPlans, bundlesCommandPrepareRenamePublication, bundlesCommandCancelRenamePublication, bundlesCommandUndoRenamePublication } from '../../bundle/sharing/exported.js';
+import type { BundlesTypeRenamePublicationPlan as BundleRenamePublicationPlan } from '../../bundle/sharing/exported.js';
 import { getBundleDirectory, getConfigDirectory } from '../../../shared/bundle-config/bundleConfigPaths.js';
 import { clearBundleGuidCache, logBundleInfo } from '../../../shared/utils/logging/bundleLogger.js';
 
@@ -83,10 +80,7 @@ export function inspectBundleRename(bundleSlug: string): {
   const bundleDirectory = getBundleDirectory(bundleSlug);
   if (!fs.existsSync(bundleDirectory)) throw new Error(`Bundle '${bundleSlug}' not found`);
   const manifest = loadGeneratedBundleVersionManifest(bundleDirectory);
-  const providers = getAllBackendProviders().flatMap(provider => {
-    const plan = provider.getBundleRenamePublicationPlan?.(bundleSlug) ?? null;
-    return plan ? [plan] : [];
-  });
+  const providers = bundlesQueryRenamePublicationPlans(bundleSlug);
   return {
     bundleSlug,
     hasGeneratedVersion: manifest.versions.length > 0,
@@ -167,18 +161,14 @@ export async function renameBundle(
     if (createdVersion && versionId) {
       for (const providerPlan of plan.providers) {
         const decision = decisions.find(item => item.providerId === providerPlan.providerId)!;
-        const provider = getAllBackendProviders().find(item => item.manifest.id === providerPlan.providerId);
-        if (!provider?.prepareBundleRenamePublication) {
-          throw new Error(`${providerPlan.providerDisplayName} cannot prepare a bundle rename`);
-        }
-        attemptedProviders.push(providerPlan);
-        await provider.prepareBundleRenamePublication({
+        await bundlesCommandPrepareRenamePublication(providerPlan.providerId, {
           bundleSlug: newSlug,
           generatedVersionId: versionId as GeneratedBundleVersionId,
           publishSlug: decision.publishSlug,
           readerConnectionToPredecessor: decision.readerConnectionToPredecessor,
           predecessorCleanupPolicy: decision.predecessorCleanupPolicy,
-        });
+        }, providerPlan.currentPublishSlug);
+        attemptedProviders.push(providerPlan);
       }
       writeDurableDocument({
         path: markerPath(newDirectory),
@@ -201,8 +191,7 @@ export async function renameBundle(
     if (fs.existsSync(newDirectory)) {
       for (const providerPlan of attemptedProviders.reverse()) {
         try {
-          const provider = getAllBackendProviders().find(item => item.manifest.id === providerPlan.providerId);
-          await provider?.cancelPendingBundleRenamePublication?.(newSlug, providerPlan.currentPublishSlug);
+          await bundlesCommandCancelRenamePublication(providerPlan.providerId, newSlug, providerPlan.currentPublishSlug);
         } catch {
           // The original operation error remains authoritative; the folder and
           // generated-version rollback below still preserve the user's bundle.
@@ -236,13 +225,7 @@ export async function undoPendingBundleRename(bundleSlug: string): Promise<{ slu
   const previousDirectory = getBundleDirectory(marker.previousSlug);
   if (fs.existsSync(previousDirectory)) throw new Error(`Bundle '${marker.previousSlug}' already exists`);
   for (const providerSlug of marker.providerSlugs) {
-    const provider = getAllBackendProviders().find(item => item.manifest.id === providerSlug.providerId);
-    const providerPlan = provider?.getBundleRenamePublicationPlan?.(bundleSlug);
-    if (providerPlan && providerPlan.currentPublishSlug !== providerSlug.previousPublishSlug
-      && providerPlan.currentPublicUrl?.includes(`-${providerPlan.currentPublishSlug}-`)) {
-      throw new Error(`The rename has already been published by ${providerPlan.providerDisplayName}`);
-    }
-    await provider?.cancelPendingBundleRenamePublication?.(bundleSlug, providerSlug.previousPublishSlug);
+    await bundlesCommandUndoRenamePublication(providerSlug.providerId, bundleSlug, providerSlug.previousPublishSlug);
   }
   await discardUnsavedCurrentGeneratedBundleVersion(
     bundleDirectory,

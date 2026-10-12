@@ -2,8 +2,9 @@
 
 import path from 'node:path';
 import { bundleNodeConfigToKey } from '../../../../shared/bundle-node/nodeKeys.js';
-import type { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
-import type { BlacklistEditResult, BlacklistShortcutUndo } from '../../../../../../../contracts/types/blacklistReview.js';
+import type { BundleNodeConfig } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
+import type { BlacklistEditResult } from '../../../../../../../contracts/types/areas/bundle/sourcing/blacklistReview.js';
+import type { BlacklistShortcutUndo } from '../../../../../../../contracts/types/shared/sourcing/blacklistReview.js';
 import { stringifyBundleNodeConfig } from '../../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 import { sameProposalValue } from '../../../../../../../shared_code/utils/proposalConfigurationMerge.js';
 import { applySourcingTransaction } from '../../../../../../../shared_code/utils/sourcingTransaction.js';

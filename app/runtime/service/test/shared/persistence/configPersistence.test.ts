@@ -27,7 +27,7 @@ import {
   saveAppConfig,
 } from '../../../../../shared_code/utils/appConfigUtils.js';
 import { getGlobalCustomFiltersPath, loadGlobalCustomFilters, saveGlobalCustomFilters } from '../../../../../shared_code/utils/globalCustomFiltersUtils.js';
-import { loadProviderConfig, loadProviderSecrets } from '../../../../../shared_code/utils/publishingProviderConfigUtils.js';
+import { loadProviderConfig, loadProviderSecrets } from '../../../src/areas/bundle/sharing/providers/publishingProviderConfigUtils.js';
 import {
   ensureResourcesConfigInitialized,
   getResourcesConfigPath,

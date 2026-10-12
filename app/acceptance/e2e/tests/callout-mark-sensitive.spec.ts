@@ -14,10 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import path from 'node:path';
+import { sourceSensitivity } from '../src/run/utils/sourceSensitivity.js';
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleEditorPage, FilterPanelComponent } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { sourcingReviewRedesign, callout, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
+import { sourcingReviewRedesign, callout, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration, bundleSourcing, sensitive } from "../../../concepts/index.js";
+import { scenarioDesignPressures, preventAccidentalSharing } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -26,9 +29,11 @@ const name = linkedScenarioName(conceptText`callout for marking source node sens
 
 const description = linkedScenarioDescription(conceptText`Mark a page as sensitive for the first time. Check that the introductory callout
 explains the source change and can be dismissed.`);
-const areas = scenarioAreas([bundleCuration]);
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'b6df7a57-471f-4913-be4a-30eb32c38735' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
+const pressures = scenarioDesignPressures([preventAccidentalSharing]);
+const areas = scenarioAreas([bundleCuration, bundleSourcing]);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'b6df7a57-471f-4913-be4a-30eb32c38735' }, name.annotation, description.annotation, areas.annotation, pressures.annotation] }, async ({ sourceCommand,
   page,
+  testServer,
   checkpoint,
   skipMeadowHomeStateCheck,
   addKeyFrame,
@@ -37,6 +42,10 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'b6df7a57-471
   const wf = new Workflows(page, expect);
   await sourceCommand(() => wf.navigateToBigBundle());
   await sourceCommand(() => checkpoint("bundle editor loaded"));
+
+  const sourceFile = (name: string) => path.join(testServer.sourceGraphsDir, 'meadow-test-bundles-data', `${name}.md`);
+  const markedNames = ['t002 - dup pages and images', 't005 - in and out links'];
+  for (const name of markedNames) expect(sourceSensitivity(sourceFile(name))).toBeUndefined();
 
   // --- Test start ---
   // Mark the first page sensitive.
@@ -60,7 +69,8 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'b6df7a57-471
   // Accept the explanation.
   await sourceCommand(() => editor.clickConsentProceed());
   await sourceCommand(() => page.waitForTimeout(500));
-  await sourceCommand(() => checkpoint("first page marked sensitive"));
+  await expect.poll(() => sourceSensitivity(sourceFile(markedNames[0]))).toBe(true);
+  await sourceCommand(() => checkpoint("first page marked sensitive in source YAML front matter"));
 
   // Mark another page sensitive.
   await sourceCommand(() => editor.rightClickRow("t005 - in and out links"));
@@ -71,6 +81,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'b6df7a57-471
 
   // No consent modal this time - the dismissal persisted
   await sourceCommand(() => editor.expectConsentModalNotVisible());
+  await expect.poll(() => sourceSensitivity(sourceFile(markedNames[1]))).toBe(true);
   await sourceCommand(() => checkpoint("second page marked sensitive without consent modal"));
 
   // Accept and inspect the sensitive pages.
@@ -87,7 +98,8 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'b6df7a57-471
   await sourceCommand(() => editor.clickSelectAll());
   await sourceCommand(() => page.waitForTimeout(250));
   const selectedTitles = await sourceCommand(() => editor.getSelectedPageTitles());
-  expect(selectedTitles.length).toBe(3);
+  expect(selectedTitles.sort()).toEqual([...markedNames, 't004 ---- sensitive page'].sort());
+  await sourceCommand(() => addKeyFrame(sensitive));
   await sourceCommand(() => checkpoint("3 sensitive pages selected after solo"));
 
   // Remove the solo.
@@ -106,7 +118,8 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'b6df7a57-471
   await sourceCommand(() => editor.rightClickRow("t005 - in and out links"));
   await sourceCommand(() => editor.clickMarkNotSensitive());
   await sourceCommand(() => page.waitForTimeout(500));
-  await sourceCommand(() => checkpoint("two pages unmarked as sensitive"));
+  for (const name of markedNames) await expect.poll(() => sourceSensitivity(sourceFile(name))).toBeUndefined();
+  await sourceCommand(() => checkpoint("two pages unmarked and their source YAML sensitivity removed"));
 
   // Accept the edits and inspect the remaining page.
   await sourceCommand(() => editor.sourceReview.open());
@@ -118,7 +131,9 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'b6df7a57-471
   await sourceCommand(() => editor.clickSelectAll());
   await sourceCommand(() => page.waitForTimeout(250));
   const selectedTitlesAfter = await sourceCommand(() => editor.getSelectedPageTitles());
-  expect(selectedTitlesAfter.length).toBe(1);
+  expect(selectedTitlesAfter).toEqual(['t004 ---- sensitive page']);
+  expect(sourceSensitivity(sourceFile('t004 ---- sensitive page'))).toBe(true);
+  await sourceCommand(() => addKeyFrame(sensitive));
   await sourceCommand(() => checkpoint("1 sensitive page remaining after unmarking two"));
 
   void bigBundle;

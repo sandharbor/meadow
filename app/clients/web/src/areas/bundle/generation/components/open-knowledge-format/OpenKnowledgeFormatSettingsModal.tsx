@@ -18,7 +18,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Modal from '../../../../../shared/components/Modal';
 import { apiRequest } from '../../../../../shared/utils/apiClient';
 import { logger } from '../../../../../shared/utils/logger';
-import type { SourcePageFileInfo } from '../../../../../../../../contracts/types/sourcePageFileInfo';
+import type { SourcePageFileInfo } from '../../../../../../../../contracts/types/shared/bundle-graph/sourcePageFileInfo';
 
 export type OpenKnowledgeFormatIndexMode = 'generated' | 'trackedPage';
 export type OpenKnowledgeFormatLogMode = 'auto' | 'none' | 'trackedPage';

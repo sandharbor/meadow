@@ -3,7 +3,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { SourceIdentityReview, identityConfirmation } from '../../src/areas/bundle/sourcing/components/SourceIdentityReview.js';
-import type { SourceMoveCandidate } from '../../../../contracts/types/sourcing.js';
+import type { SourceMoveCandidate } from '../../../../contracts/types/shared/sourcing/sourcing.js';
 
 const move = (id: string, score = 0.9): SourceMoveCandidate => ({ bundleNodeId: id, oldPath: `${id}.md`, newPath: `${id}-new.md`, similarity: { score, criteria: [] }, confidence: 'strong', competing: false, evidence: ['Identical non-blank file contents'], previousRoute: [], currentRoute: [] });
 const callbacks = () => ({ choose: vi.fn(), compare: vi.fn() });

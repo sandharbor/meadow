@@ -15,9 +15,9 @@ limitations under the License.
 */
 
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Graph, IBundleNode } from '../../../../../../../contracts/types/graph';
-import { isUntrackableFrontierNode } from '../../../../../../../contracts/types/IBundleNode';
-import { FindInBundlesOptions } from '../../../../../../../contracts/types/findInBundlesOptions';
+import { Graph, IBundleNode } from '../../../../../../../contracts/types/shared/bundle-graph/graph';
+import { isUntrackableFrontierNode } from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode';
+import { FindInBundlesOptions } from '../../../../../../../contracts/types/shared/bundle-management/findInBundlesOptions';
 import { getSelectionChildrenOrdered, getSelectionDeeperPathsFromHereOrdered, getSelectionPathFromHereOrdered, getSelectionPathToHereOrdered } from '../utils/selectionPaths';
 import { openExternal } from '../../../../shared/utils/openExternal';
 import { useAppNavigation } from '../../../../shared/utils/appNavigation';
@@ -310,4 +310,4 @@ const BundleNodeContextMenu: React.FC<BundleNodeContextMenuProps> = ({
 
 export default BundleNodeContextMenu;
 
-import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';

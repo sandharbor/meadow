@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
-import type { PendingSourceProposal, ProposalConfiguration } from '../../../../../../../contracts/types/sourcingProposal.js';
+import type { PendingSourceProposal, ProposalConfiguration } from '../../../../../../../contracts/types/shared/sourcing/sourcingProposal.js';
 import { parseBundleNodeConfig, validateCanonicalBundleConfiguration } from '../../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 import { bundleCustomFiltersCodec, globalCustomFiltersCodec } from '../../../../../../../shared_code/utils/configDocumentCodecs.js';
 import { loadGlobalCustomFilters } from '../../../../../../../shared_code/utils/globalCustomFiltersUtils.js';

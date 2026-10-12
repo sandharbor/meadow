@@ -3,7 +3,7 @@
 import fs from 'fs';
 import path from 'path';
 import { createHash } from 'crypto';
-import type { BundleNodeId } from '../../../../../contracts/types/bundleNodeConfig.js';
+import type { BundleNodeId } from '../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import {
   GENERATED_OUTPUT_ROLES,
   GENERATION_INPUT_RECORD_SCHEMA_VERSION,
@@ -14,7 +14,7 @@ import {
   type GenerationOutputRecord,
   type GenerationRecordState,
   type IncludedSourceEntry,
-} from '../../../../../contracts/types/generatedOutputIdentity.js';
+} from '../../../../../contracts/types/shared/generated-bundle-versioning/generatedOutputIdentity.js';
 import { deterministicJson, isPlainObject } from '../../../../../shared_code/utils/durableDocument.js';
 
 /**

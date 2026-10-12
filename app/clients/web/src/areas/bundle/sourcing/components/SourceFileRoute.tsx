@@ -1,7 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import { FilePill } from '../../../../shared/components/FilePill.js';
-import type { Graph } from '../../../../../../../contracts/types/graph.js';
+import type { Graph } from '../../../../../../../contracts/types/shared/bundle-graph/graph.js';
 import { traversalLinkType, type TraversalLinkType } from '../../../../shared/utils/traversalLinkType.js';
 
 const connectors: Record<TraversalLinkType, { arrow: string; label: string }> = {
@@ -27,6 +27,6 @@ export function FileRoute({ paths, graph, onDetails }: { paths: EncodedBundleNod
   </div>;
 }
 
-import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';
 
 import { bundleNodeKeySourceGraphPath, parseBundleNodeKey } from '../../../../../../../shared_code/utils/bundleNodeKey.js';

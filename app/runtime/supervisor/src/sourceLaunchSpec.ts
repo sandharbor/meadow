@@ -18,7 +18,7 @@ import path from "node:path";
 import type {
   RuntimeBuildPerspective,
   RuntimeSupervisorLaunchSpec,
-} from "../../../contracts/types/runtime.js";
+} from "../../../contracts/types/shared/runtime/runtime.js";
 
 export interface SourceRuntimeLaunchOptions {
   projectRoot: string;

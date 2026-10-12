@@ -16,7 +16,7 @@ limitations under the License.
 
 import { existsSync } from "node:fs";
 import path from "node:path";
-import type { RuntimeSessionDescriptor } from "../../../../contracts/types/runtime.js";
+import type { RuntimeSessionDescriptor } from "../../../../contracts/types/shared/runtime/runtime.js";
 import {
   ensureRuntime,
   postRuntimeControl,

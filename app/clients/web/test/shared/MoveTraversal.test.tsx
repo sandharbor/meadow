@@ -3,7 +3,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { MoveTraversal } from '../../src/areas/bundle/sourcing/components/MoveTraversal.js';
-import type { SourceMoveCandidate } from '../../../../contracts/types/sourcing.js';
+import type { SourceMoveCandidate } from '../../../../contracts/types/shared/sourcing/sourcing.js';
 import { SourceNamesProvider } from '../../src/shared/components/SourceNames.js';
 
 const move: SourceMoveCandidate = {

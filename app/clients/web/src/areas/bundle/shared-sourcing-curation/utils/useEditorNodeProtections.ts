@@ -1,9 +1,9 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import { useCallback, useMemo } from 'react';
-import type { Graph, IBundleNode } from '../../../../../../../contracts/types/graph.js';
-import type { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
-import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';
+import type { Graph, IBundleNode } from '../../../../../../../contracts/types/shared/bundle-graph/graph.js';
+import type { BundleNodeConfig } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';
 
 export function useEditorNodeProtections(graph: Graph, bundleNodeConfigs: BundleNodeConfig[] | null, protectedBundleNodeIds: Set<string>) {
   const untrackProtectedBundleNodeIds = useMemo(() => {

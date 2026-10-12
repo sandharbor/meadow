@@ -8,7 +8,7 @@ import { saveFilterViews } from '../../../../../src/areas/bundle/shared-sourcing
 import { useEditorSelectionView } from '../../../../../src/areas/bundle/shared-sourcing-curation/utils/useEditorSelectionView.js';
 import { readEditorView, writeEditorView } from '../../../../../src/shared/utils/editorViewStorage.js';
 import { testKey } from '../../../../shared/nodeKeys.js';
-import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';
 
 const contextFilter = (): IFilter => ({ id: 'source-unchanged', group: 'source-changes', name: 'Unchanged', actions: [{ type: 'fade' }], enabled: true, isSolo: false, isHidden: false,
   bundleNodeSelectors: [], selectorApplicationCriteria: 'union' });

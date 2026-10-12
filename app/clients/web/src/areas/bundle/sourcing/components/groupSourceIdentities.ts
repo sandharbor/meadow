@@ -1,6 +1,6 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import type { SourceIdentityRecommendation } from '../../../../../../../shared_code/utils/sourceMoveResolutions.js';
+import type { SourceIdentityRecommendation } from '../../../../../../../contracts/types/areas/bundle/sourcing/sourceIdentity.js';
 import { splitPathChange } from '../../../../shared/components/PathChange.js';
 
 export type IdentityChangeKind = 'moved-renamed' | 'moved' | 'renamed';

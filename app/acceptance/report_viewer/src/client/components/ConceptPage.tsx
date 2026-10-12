@@ -2,15 +2,20 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
+import DocumentText, { documentUrl } from './DocumentText';
+import DocumentScenarios from './DocumentScenarios';
+import type { DocumentSection, DocumentBacklink, DocumentKind, DocumentText as Text } from '../../../../../concepts/index.js';
+import { highlightTypeScriptLines } from './highlightTypeScript';
 import type { ConceptImplementation } from '../../../../e2e/src/artifacts/conceptImplementations.js';
 import type { AcceptanceConceptView, conceptImplementationNavigation, ParticipatesIn } from '../../../../../concepts/index.js';
 
 type ConceptDetail = AcceptanceConceptView & {
-  mechanics: string[]; interplay: string; related: { id: string; name: string }[]; implementations: ConceptImplementation[];
+  documentKind: DocumentKind; descriptionText: Text; sections: DocumentSection[]; areas: { id: string; name: string }[];
+  backlinks: DocumentBacklink[]; provenance: string; capturedAt?: string; related: { id: string; name: string }[]; implementations: ConceptImplementation[];
 };
 
-export function ConceptDetails({ conceptId, selected = '', onNavigate, showTitle = true }: {
-  conceptId: string; selected?: string; onNavigate?: (id: string, implementation?: string) => void; showTitle?: boolean;
+export function ConceptDetails({ conceptId, selected = '', onNavigate, showTitle = true, runId, onDocumentKind }: {
+  conceptId: string; selected?: string; onNavigate?: (id: string, implementation?: string) => void; showTitle?: boolean; runId?: string; onDocumentKind?: (kind: DocumentKind) => void;
 }) {
   const [concept, setConcept] = useState<ConceptDetail | null>(null);
   const [implementation, setImplementation] = useState<(ConceptImplementation & { content: string }) | null>(null);
@@ -19,11 +24,11 @@ export function ConceptDetails({ conceptId, selected = '', onNavigate, showTitle
   useEffect(() => {
     const controller = new window.AbortController();
     setConcept(null); setError(null);
-    void fetch(`/api/concepts/${encodeURIComponent(conceptId ?? '')}`, { signal: controller.signal })
+    void fetch(`/api/concepts/${encodeURIComponent(conceptId ?? '')}${runId ? `?run=${encodeURIComponent(runId)}` : ''}`, { signal: controller.signal })
       .then(async response => { if (!response.ok) throw new Error('Could not load this concept.'); return response.json() as Promise<ConceptDetail>; })
-      .then(setConcept).catch(error => { if (!controller.signal.aborted) setError(String(error)); });
+      .then(value => { setConcept(value); onDocumentKind?.(value.documentKind); }).catch(error => { if (!controller.signal.aborted) setError(String(error)); });
     return () => controller.abort();
-  }, [conceptId]);
+  }, [conceptId, runId, onDocumentKind]);
   useEffect(() => {
     const controller = new window.AbortController();
     setImplementation(null); setError(null);
@@ -38,18 +43,36 @@ export function ConceptDetails({ conceptId, selected = '', onNavigate, showTitle
     if (line) sourceRef.current.scrollTop = line.offsetTop - sourceRef.current.clientHeight / 2;
     sourceRef.current.parentElement?.scrollIntoView({ block: 'nearest' });
   }, [implementation]);
-  const conceptLink = (id: string, label: string, implementation = '') => <Link className="text-brand-600 underline" to={`/concepts/${encodeURIComponent(id)}${implementation ? `?${implementation}` : ''}`}
+  const conceptLink = (id: string, label: string, implementation = '') => <Link className="text-brand-600 underline" to={documentUrl(id, runId, implementation)}
     onClick={onNavigate ? event => { event.preventDefault(); onNavigate(id, implementation); } : undefined}>{label}</Link>;
   return <div className="text-sm text-neutral-800">
     {error && <p role="alert">{error}</p>}
     {!concept && !error && <p role="status">Loading concept…</p>}
     {concept && <>
       {showTitle && <h1 className="text-2xl font-semibold">{concept.name}</h1>}
-      <p className="mt-3 max-w-4xl whitespace-pre-line">{concept.description}</p>
-      <ul className="my-4 max-w-4xl list-disc space-y-2 pl-5">{concept.mechanics.map((rule, index) => <li key={index}>{rule}</li>)}</ul>
-      <p className="max-w-4xl">{concept.interplay}</p>
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-500" aria-label="Document metadata">
+        <span>{concept.documentKind === 'concept' ? (concept.kind ?? 'concept').replaceAll('-', ' ') : concept.documentKind.replaceAll('-', ' ')}</span>
+        <span>App areas: {concept.areas.length ? concept.areas.map((area, index) => <span key={area.id}>{index ? ', ' : ''}{conceptLink(area.id, area.name)}</span>) : 'General'}</span>
+      </div>
+      {concept.provenance === 'current-fallback' && <p className="mt-2 text-xs text-amber-700">Current documentation · this older run has no captured document catalog.</p>}
+      {concept.provenance === 'captured' && <p className="mt-2 text-xs text-neutral-500">Documentation captured with this run.</p>}
+      <p className="mt-3 max-w-4xl whitespace-pre-line"><DocumentText text={concept.descriptionText} runId={runId} onNavigate={onNavigate} /></p>
+      {concept.sections.map(section => <section key={section.id} aria-label={section.heading} className="my-4 max-w-4xl">
+        <h2 className="mb-2 font-semibold">{section.heading}</h2>
+        {section.blocks.map((block, index) => block.kind === 'paragraph'
+          ? <p key={index} className="whitespace-pre-line"><DocumentText text={block.text} runId={runId} onNavigate={onNavigate} /></p>
+          : <ul key={index} className="list-disc space-y-2 pl-5">{block.items.map((item, itemIndex) => <li key={itemIndex}><DocumentText text={item} runId={runId} onNavigate={onNavigate} /></li>)}</ul>)}
+      </section>)}
+      {runId && <DocumentScenarios runId={runId} documentId={concept.id} />}
+      {concept.backlinks.length > 0 && <section aria-label="Referenced by" className="my-4 border-t pt-3">
+        <h2 className="font-semibold">Referenced by</h2>
+        <ul className="space-y-3">{concept.backlinks.map((link, index) => <li key={index}>
+          {conceptLink(link.documentId, link.documentName)} <span className="text-xs text-neutral-500">· {link.heading}</span>
+          <blockquote className="mt-1 border-l-2 pl-3 text-neutral-600"><DocumentText text={link.text} runId={runId} onNavigate={onNavigate} /></blockquote>
+        </li>)}</ul>
+      </section>}
       {concept.implementations.length ? <section aria-label="Implemented by" className="my-4 rounded border border-neutral-200 bg-white p-3">
-        <h2 className="mb-2 flex items-center gap-2 text-lg font-semibold">Implemented by
+        <h2 className="mb-2 flex items-center gap-2 text-lg font-semibold">Implemented by <span className="text-xs font-normal text-neutral-500">Current code</span>
           <span tabIndex={0} aria-label="About implementation locations" title="Locations are derived from inline participation declarations in the current checkout."
             className="inline-flex h-4 w-4 cursor-help items-center justify-center rounded-full border border-neutral-400 text-xs font-normal text-neutral-500">?</span>
         </h2>
@@ -61,8 +84,8 @@ export function ConceptDetails({ conceptId, selected = '', onNavigate, showTitle
       {implementation && <section aria-label="Implementation source" className="my-5">
         <h2 className="font-semibold">{implementation.symbol}</h2>
         <p className="mb-3 text-sm">{implementation.file}:{implementation.line} · {implementation.role}</p>
-        <pre ref={sourceRef} className="relative max-h-96 overflow-auto rounded border bg-white p-3 text-xs">{implementation.content.split('\n').map((line, index) => <span id={`implementation-line-${index + 1}`} key={index}
-          aria-current={index + 1 === implementation.line ? 'location' : undefined} className={`block ${index + 1 === implementation.line ? 'bg-amber-100 font-semibold' : ''}`}><span className="mr-4 inline-block w-8 select-none text-right text-neutral-400">{index + 1}</span>{line || ' '}</span>)}</pre>
+        <pre ref={sourceRef} className="relative max-h-96 overflow-auto rounded border bg-white p-3 text-xs">{highlightTypeScriptLines(implementation.content, implementation.file).map((lineHtml, index) => <span id={`implementation-line-${index + 1}`} key={index}
+          aria-current={index + 1 === implementation.line ? 'location' : undefined} className={`block ${index + 1 === implementation.line ? 'bg-amber-100 font-semibold' : ''}`}><span className="mr-4 inline-block w-8 select-none text-right text-neutral-400">{index + 1}</span><span dangerouslySetInnerHTML={{ __html: lineHtml || ' ' }} /></span>)}</pre>
       </section>}
       <nav aria-label="Related concepts" className="mt-4 flex flex-wrap gap-x-4 gap-y-2 border-t pt-4">{concept.related.map(related => <span key={related.id}>{conceptLink(related.id, related.name)}</span>)}</nav>
     </>}
@@ -72,7 +95,7 @@ export function ConceptDetails({ conceptId, selected = '', onNavigate, showTitle
 export default function ConceptPage() {
   const { conceptId } = useParams();
   const [parameters] = useSearchParams();
-  return <main className="h-full overflow-auto p-6"><ConceptDetails conceptId={conceptId ?? ''} selected={parameters.toString()} /></main>;
+  return <main className="h-full overflow-auto p-6"><ConceptDetails conceptId={conceptId ?? ''} runId={parameters.get('run') ?? undefined} selected={new window.URLSearchParams([...parameters].filter(([key]) => key !== 'run')).toString()} /></main>;
 }
 
 export type ConceptNavigationMeadowConceptParticipations = [

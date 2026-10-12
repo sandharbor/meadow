@@ -47,10 +47,11 @@ several such declarations at its real participants.
 
 ## Acceptance and documentation
 
-Acceptance tests import concept values and pass them to `scenario()`. Reports and
-labs render projections of those same values. A concept's acceptance coverage is
-therefore derived from test references; no separate `ScenarioDoc` prose record is
-canonical. New tests should reuse an existing concept when they exercise the same
+Acceptance tests import concept values, link them in prose, and pass them to
+`addKeyFrame()`. Reports and labs render projections of those same values.
+References provide discoverability, while executable assertions establish
+verification; no separate `ScenarioDoc` prose record is canonical. New tests
+should reuse an existing concept when they exercise the same
 language, and introduce or sharpen a concept only when the domain distinction is
 genuinely new.
 
@@ -83,7 +84,8 @@ row for each selected area with sub-areas, in that area's declared workflow
 order. Each row's All control clears only that parent's sub-area selections;
 sub-area selections combine with other report filters. Expanded scenario
 metadata shows Starts with, Areas, each area's declared sub-areas, then Concepts.
-Source Review Identity precedes Source Review Workspace within Sourcing;
+Source Setup - New and Source Setup - Edit precede Source Review Identity and
+Source Review Workspace within Sourcing;
 Custom Filtering and Filter Mixing are sub-areas of Curation. A sub-area keeps
 its canonical concept definition and documentation.
 
@@ -138,3 +140,63 @@ reveals the original source.
 Concept links in a captured name or description open the shared floating concept details
 within the report. Select related scenarios shows the count in that run and
 opens the run with that concept selected.
+
+## Shared documents and design pressures
+
+`MeadowDocument` supplies a stable ID, name, linked description, optional app-area
+associations, and ordered sections. Sections contain paragraphs or lists of
+`DocumentText`. This is the existing text/link encoding, so older captured
+`concept-link` segments remain readable. `documentText` and `documentLink` are
+authoring aliases with checked `CoreDocumentId` references.
+
+`documentKind` chooses the document schema; `kind` retains a concept's domain
+classification. `conceptDocument()` projects the canonical definition into the
+description and Mechanics/Interplay sections without a second prose registry.
+Fixtures use the same surface with a short description. Scenario name and
+description annotations remain beside executable tests and use the same linked
+text. Contract type documentation can later have a minimal schema with a checked
+type-only reference; do not import production values to populate documentation.
+
+Design pressures use `documentKind: 'design-pressure'` and require Motivation,
+Response, and Tradeoffs sections. They explain why several mechanisms coexist.
+They live in `designPressures`, outside `allCoreConcepts` and `acceptanceConcepts`,
+so importing a pressure does not turn it into an ordinary concept filter or a
+claim of test coverage. For a scenario that explicitly demonstrates the pressure:
+
+```ts
+const pressures = scenarioDesignPressures([preventAccidentalSharing]);
+// Include pressures.annotation beside name, description, areas, and scenario-id.
+```
+
+Quickcheck checks literal declarations, known pressure IDs, duplicates, and the
+annotation. Static declarations also cover skipped scenarios. A link in prose
+does not imply a pressure association. The first pressure explains protection
+against accidental sharing through source markings, filter-derived sensitivity,
+safe automatic tracking, renewed explicit decisions, generation, and publishing.
+Its generation guard has no direct E2E example yet; the document states that gap.
+
+`documentPassages()` traverses descriptions and every section block. Validation,
+related links, and contextual backlinks use this traversal. `loadDocumentRegistry()`
+is the tooling-only composition path for core concepts, optional contributions,
+pressures, and fixtures. IDs and names/aliases are validated across document kinds.
+
+Documents may belong to several app areas and appear in each area's browser.
+Area association does not make a concept a workflow sub-area; that still requires
+`subAreas`. The viewer shows kind and area links under the title and distinguishes
+browsing from explicit scenario selection. Concepts are documented ideas; tagging
+is their use as filters, with `searchFacet` retaining the curated filter list.
+
+## Captured document history
+
+The parent test reporter writes `documents.json` once at run start: the document
+catalog and the full declared scenario association index, even for a filtered
+run. Each scenario writes resolved concept, area, sub-area, fixture, and pressure
+IDs to `scenario-documents.json`. Assembly reads those IDs without re-resolving
+old imports through current export names. Partial reruns retain the run's catalog.
+
+Run navigation passes its context through links and new document pages. Results
+come from that run; declared examples absent from it are shown as not run. Missing
+legacy pressure associations stay distinct from explicit empty associations.
+Older runs without a catalog use a visibly identified current-documentation
+fallback. Corrupt captures report an error. Implementation navigation is labelled
+Current code and always checks the current inline participation locations.

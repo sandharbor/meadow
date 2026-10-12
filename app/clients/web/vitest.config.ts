@@ -30,7 +30,7 @@ export default defineConfig({
     setupFiles: ['./test/shared/setupTests.ts'],
     include: [
       'test/**/*.test.(ts|tsx)',
-      '../../publishing_providers/*/frontend/internal/**/*.test.(ts|tsx)',
+      '../../publishing_providers/*/frontend/areas/bundle/sharing/internal/**/*.test.(ts|tsx)',
     ],
     css: { modules: { classNameStrategy: 'non-scoped' } },
   },

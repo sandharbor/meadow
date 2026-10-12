@@ -1,11 +1,9 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import path from 'path';
-import type {
-  GeneratedChangeEntry,
-  GeneratedComparisonEndpointKind,
-} from '../../../../../../../contracts/types/generatedOutputIdentity.js';
-import type { ResolvedGeneratedComparison } from '../../../../shared/generated-bundle-versioning/generatedOutputComparison.js';
+import type { GeneratedChangeEntry } from '../../../../../../../contracts/types/areas/bundle/review/generatedOutputComparison.js';
+import type { GeneratedComparisonEndpointKind } from '../../../../../../../contracts/types/shared/generated-bundle-versioning/generatedOutputComparison.js';
+import type { ResolvedGeneratedComparison } from './generatedOutputComparison.js';
 import { buildFileTree, type FileNode } from '../../../../shared/utils/configFileExplorerUtils.js';
 
 /** A changed file as Review presents it: one logical change per node. */

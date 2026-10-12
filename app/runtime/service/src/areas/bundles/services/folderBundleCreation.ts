@@ -23,7 +23,7 @@ import type {
   FolderBundleNodeConfig,
   BundleNodeConfig,
   BundleNodeId,
-} from '../../../../../../contracts/types/bundleNodeConfig.js';
+} from '../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import {
   generateBundleNodeId,
   stringifyBundleNodeConfig,

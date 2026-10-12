@@ -20,7 +20,7 @@ import type {
   RuntimeBuildPerspective,
   RuntimeChildLaunchCommand,
   RuntimeSupervisorLaunchSpec,
-} from "../../../contracts/types/runtime.js";
+} from "../../../contracts/types/shared/runtime/runtime.js";
 import type {
   ParticipatesIn,
   runtimeLaunchSpec,

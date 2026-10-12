@@ -1,8 +1,8 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Graph } from '../../../../../../../contracts/types/graph.js';
-import type { SourceTraversalGraph, SourcingReview } from '../../../../../../../contracts/types/sourcing.js';
+import { Graph } from '../../../../../../../contracts/types/shared/bundle-graph/graph.js';
+import type { SourceTraversalGraph, SourcingReview } from '../../../../../../../contracts/types/shared/sourcing/sourcing.js';
 
 function hydrate(source?: SourceTraversalGraph): Graph | undefined {
   if (!source) return undefined;
@@ -34,6 +34,6 @@ export function useSourceTraversal(review: SourcingReview | null, bundleSlug: st
   } : null };
 }
 
-import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';
 
 import { serializeBundleNodeKey, fileNodeKeyFromSourceFilePath } from '../../../../../../../shared_code/utils/bundleNodeKey.js';

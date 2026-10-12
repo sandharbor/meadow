@@ -20,8 +20,8 @@ import path from 'path';
 import os from 'os';
 import { HooksLoader } from '../../../../../src/areas/bundle/generation/utils/hooksLoader.js';
 import { AppConfigPaths } from '../../../../../../../shared_code/paths/appConfigPaths.js';
-import { HookType } from '../../../../../../../contracts/types/hooks.js';
-import type { BundleConfig } from '../../../../../../../contracts/types/bundleConfig.js';
+import { HookType } from '../../../../../../../contracts/types/areas/bundle/generation/hooks.js';
+import type { BundleConfig } from '../../../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
 import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundleConfigPaths.js';
 import { saveBundleConfig } from '../../../../../src/shared/utils/bundleConfigUtils.js';
 

@@ -22,6 +22,13 @@ concept only for durable ubiquitous language, not for every helper, class, UI
 control, or test. Read [`app/concepts/README.md`](app/concepts/README.md) before
 adding or reorganizing concepts.
 
+Documents share linkable descriptions and sections through `MeadowDocument`.
+Keep each kind's authoring schema: concepts retain their existing identity and
+type-only participations; design pressures explain motivation, responses, and
+tradeoffs. Declare scenario pressure associations explicitly with
+`scenarioDesignPressures`; imports and prose links alone are not verification.
+See the shared-document and run-capture guidance in `app/concepts/README.md`.
+
 ## App-area interfaces
 
 Outside callers must use an area's `exported.ts`, never its private files.

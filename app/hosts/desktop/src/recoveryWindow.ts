@@ -17,7 +17,7 @@ limitations under the License.
 import { app, BrowserWindow, clipboard, dialog, ipcMain, shell } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
-import type { StartupFailureDiagnostic } from '../../../contracts/types/startupRecovery';
+import type { StartupFailureDiagnostic } from '../../../contracts/types/shared/app-shell/startupRecovery';
 import {
   selectMeadowHomeForRecovery,
   startupSupportDiagnosticText,

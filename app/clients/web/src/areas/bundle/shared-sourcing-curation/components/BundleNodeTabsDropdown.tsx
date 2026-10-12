@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Graph, IBundleNode } from '../../../../../../../contracts/types/graph';
+import { Graph, IBundleNode } from '../../../../../../../contracts/types/shared/bundle-graph/graph';
 import CopySelectedNodesModal from './CopySelectedNodesModal';
 import { useEventually } from '../../../../shared/places/placeContext.js';
 import { useEditorSurface as useLinkedSurface } from '../utils/useEditorSurface.js';
@@ -115,4 +115,4 @@ const BundleNodeTabsDropdown: React.FC<BundleNodeTabsDropdownProps> = ({
 
 export default BundleNodeTabsDropdown;
 
-import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';

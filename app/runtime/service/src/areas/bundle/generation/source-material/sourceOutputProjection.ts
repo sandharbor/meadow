@@ -2,8 +2,8 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import type { BundleConfig } from '../../../../../../../contracts/types/bundleConfig.js';
-import type { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
+import type { BundleConfig } from '../../../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
+import type { BundleNodeConfig } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundleConfigPaths.js';
 import { sourceGraphPath, sourceOutputDirectory, splitSourceGraphPath } from '../../../../../../../shared_code/utils/bundleSourceUtils.js';
 import { canonicalPageFilename } from '../../../../../../../shared_code/utils/fileTypeUtils.js';

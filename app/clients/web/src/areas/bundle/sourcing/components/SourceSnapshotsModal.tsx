@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { SourceSnapshotHistory } from '../../../../../../../contracts/types/sourcing.js';
+import type { SourceSnapshotHistory } from '../../../../../../../contracts/types/areas/bundle/sourcing/sourcing.js';
 import Modal from '../../../../shared/components/Modal.js';
 import { Spinner } from '../../../../shared/components/Spinner.js';
 import { apiRequest } from '../../../../shared/utils/apiClient.js';

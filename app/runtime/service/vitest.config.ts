@@ -21,7 +21,7 @@ export default defineConfig({
     environment: 'node',
     include: [
       '**/test/**/*.test.ts',
-      '../../publishing_providers/*/backend/test/**/*.test.ts',
+      '../../publishing_providers/*/backend/areas/bundle/sharing/test/**/*.test.ts',
     ],
   },
 });

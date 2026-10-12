@@ -26,6 +26,9 @@ import {
   scenarioDisplayName,
 } from '../helpers.ts'
 import HealthGraph from './HealthGraph.tsx'
+import { scenarioDocumentMembership } from '../../../../../concepts/scenarioMembership.ts';
+import { useScenarioConceptDetails } from './ScenarioConceptDetails.tsx';
+import type { DeclaredScenarioDocuments } from '../../../../e2e/src/artifacts/documentSnapshot.ts';
 import ConceptExplorer from './ConceptExplorer.tsx'
 import { ScenarioText } from './ScenarioText.tsx'
 import type { ConceptText } from '../../../../../concepts/types.js'
@@ -42,7 +45,7 @@ import {
   executionSurfacesFor,
   type ExecutionSurface,
 } from '../../../../e2e/src/run/executionSurface.ts'
-import type { FilterExpression } from '../../../../../contracts/types/filterExpression.ts'
+import type { FilterExpression } from '../../../../../contracts/types/shared/curation/filterExpression.ts'
 import { FilterMixPanel } from './FilterMixPanel.tsx'
 import { groupSubAreas } from '../subAreaGroups.ts'
 import {
@@ -70,18 +73,19 @@ interface FilterValues {
   areaIds: string[]
   subAreaIds: string[]
   sourceChangeCategories: SourceChangeCategory[]
+  pressureIds: string[]
   docIds: string[]
   bundleIds: string[]
   bundleModes: BundleMode[]
   executionSurfaces: ExecutionSurface[]
 }
 
-const EMPTY_FILTERS: FilterValues = { areaIds: [], subAreaIds: [], sourceChangeCategories: [], docIds: [], bundleIds: [], bundleModes: [], executionSurfaces: [] }
+const EMPTY_FILTERS: FilterValues = { areaIds: [], subAreaIds: [], sourceChangeCategories: [], pressureIds: [], docIds: [], bundleIds: [], bundleModes: [], executionSurfaces: [] }
 
 /** Each filter row's values and URL parameter, in URL order. */
 const FILTER_VALUE_SECTIONS: [keyof FilterValues, ScenarioFilterSection][] = [
   ['executionSurfaces', 'surface'], ['bundleModes', 'mode'], ['areaIds', 'area'], ['subAreaIds', 'subarea'],
-  ['sourceChangeCategories', 'sourcechange'], ['docIds', 'doc'], ['bundleIds', 'bundle'],
+  ['sourceChangeCategories', 'sourcechange'], ['docIds', 'doc'], ['pressureIds', 'pressure'], ['bundleIds', 'bundle'],
 ]
 const FILTER_VALUE_KEYS = Object.fromEntries(FILTER_VALUE_SECTIONS.map(([key, section]) => [section, key])) as Record<ScenarioFilterSection, keyof FilterValues>
 
@@ -96,10 +100,12 @@ const FILTER_MIX_ALLOWED_VALUES: Partial<Record<ScenarioFilterSection, readonly 
 /** Rows whose own selection is ignored when listing a row's alternatives. */
 const AVAILABILITY_IGNORES: Record<ScenarioFilterSection, ScenarioFilterSection[]> = {
   surface: ['surface'], mode: ['mode'], area: ['area', 'subarea', 'sourcechange'], subarea: ['subarea'],
-  sourcechange: ['sourcechange'], doc: [], bundle: ['bundle'],
+  sourcechange: ['sourcechange'], doc: [], pressure: ['pressure'], bundle: ['bundle'],
 }
 
 interface ConceptView {
+  documentKind?: string
+  appAreaIds?: string[]
   searchFacet: boolean
   subAreas?: { areaId: string; order: number }[]
   parentId?: string
@@ -145,6 +151,7 @@ interface Scenario {
   bundleDocIds: string[]
   appAreaDocIds: string[]
   subAreaDocIds?: string[]
+  designPressureIds?: string[]
   sourceChangeCategories?: SourceChangeCategory[]
   failureReason?: string
   keyFrames: KeyFrame[]
@@ -297,6 +304,11 @@ export default function RunDetail() {
     setSearchParams(next)
   }
   const [healthMap, setHealthMap] = useState<Record<string, HealthSummary>>({})
+  const { openConcept, details: documentDetails } = useScenarioConceptDetails(runId)
+  const [pressures, setPressures] = useState<ConceptView[]>([])
+  const [declaredScenarios, setDeclaredScenarios] = useState<DeclaredScenarioDocuments[] | undefined>()
+  const [documentProvenance, setDocumentProvenance] = useState('')
+  const [documentError, setDocumentError] = useState('')
   const [docs, setDocs] = useState<ConceptView[]>([])
   const [conceptCatalog, setConceptCatalog] = useState<ConceptView[]>([])
   const [conceptsExpanded, setConceptsExpanded] = useState(false)
@@ -325,6 +337,7 @@ export default function RunDetail() {
 
   const selectedAreaIds = selectedValues('area')
   const selectedAreas = appAreas.filter((d) => selectedAreaIds.includes(d.id))
+  const selectedPressureIds = selectedValues('pressure')
   const selectedDocIds = selectedValues('doc')
   const allDocs = [...docs, ...conceptCatalog.filter(concept => !docs.some(doc => doc.id === concept.id))]
   const selectedDocs = allDocs.filter((d) => selectedDocIds.includes(d.id))
@@ -340,22 +353,11 @@ export default function RunDetail() {
   const selectedBundleModes = selectedValues('mode').filter(isBundleMode)
   const selectedExecutionSurfaces = selectedValues('surface').filter(isExecutionSurface)
   const currentFilters: FilterValues = {
-    areaIds: selectedAreaIds, subAreaIds: selectedSubAreaIds, sourceChangeCategories: selectedSourceChangeCategories, docIds: selectedDocIds,
+    areaIds: selectedAreaIds, subAreaIds: selectedSubAreaIds, sourceChangeCategories: selectedSourceChangeCategories, docIds: selectedDocIds, pressureIds: selectedPressureIds,
     bundleIds: selectedBundleIds, bundleModes: selectedBundleModes, executionSurfaces: selectedExecutionSurfaces,
   }
 
-  const scenarioConceptIds = (scenario: Scenario) => new Set([
-    ...scenario.conceptIds,
-    ...scenario.appAreaDocIds.flatMap(id => {
-      const ids: string[] = []
-      let area = appAreas.find(area => area.id === id)
-      while (area && !ids.includes(area.id)) {
-        ids.push(area.id)
-        area = appAreas.find(parent => parent.id === area?.parentId)
-      }
-      return ids
-    }),
-  ])
+  const scenarioConceptIds = (scenario: Scenario) => new Set(scenarioDocumentMembership(scenario, appAreas))
 
   // Track which acceptance concept IDs appear in this run's data.
   const presentDocIds = new Set(
@@ -388,6 +390,7 @@ export default function RunDetail() {
       subAreaIds: (next.subAreaIds ?? selectedSubAreaIds).filter(id => subAreaFitsAreas(id, areaIds)),
       sourceChangeCategories: areaIds.includes(SOURCING_AREA_ID) ? next.sourceChangeCategories ?? selectedSourceChangeCategories : [],
       docIds: next.docIds ?? selectedDocIds,
+      pressureIds: next.pressureIds ?? selectedPressureIds,
       bundleIds: next.bundleIds ?? selectedBundleIds,
       bundleModes: next.bundleModes ?? selectedBundleModes,
       executionSurfaces: next.executionSurfaces ?? selectedExecutionSurfaces,
@@ -412,7 +415,7 @@ export default function RunDetail() {
     const selections = scenarioFilterSelectionsOf(expression)
     const filters: FilterValues = {
       areaIds: selections.area, subAreaIds: selections.subarea, sourceChangeCategories: selections.sourcechange.filter(isSourceChangeCategory),
-      docIds: selections.doc, bundleIds: selections.bundle, bundleModes: selections.mode.filter(isBundleMode),
+      docIds: selections.doc, pressureIds: selections.pressure, bundleIds: selections.bundle, bundleModes: selections.mode.filter(isBundleMode),
       executionSurfaces: selections.surface.filter(isExecutionSurface),
     }
     const plain = plainFilters(filters)
@@ -456,6 +459,7 @@ export default function RunDetail() {
       subAreaIds: [...new Set([...current.subAreaIds, ...next.subAreaIds ?? []])],
       sourceChangeCategories: [...new Set([...current.sourceChangeCategories, ...next.sourceChangeCategories ?? []])],
       docIds: [...new Set([...current.docIds, ...next.docIds ?? []])],
+      pressureIds: [...new Set([...current.pressureIds, ...next.pressureIds ?? []])],
       bundleIds: [...new Set([...current.bundleIds, ...next.bundleIds ?? []])],
       bundleModes: [...new Set([...current.bundleModes, ...next.bundleModes ?? []])],
       executionSurfaces: [...new Set([...current.executionSurfaces, ...next.executionSurfaces ?? []])],
@@ -487,23 +491,28 @@ export default function RunDetail() {
   }, [playSpeed])
 
   useEffect(() => {
-    fetch('/api/concepts')
+    fetch(`/api/concepts?run=${encodeURIComponent(runId ?? '')}`)
       .then((r) => r.ok ? r.json() : [])
       .then((d) => setDocs([...d].sort((a, b) => a.name.localeCompare(b.name))))
       .catch(() => {})
-    fetch('/api/concepts?all=true')
+    fetch(`/api/concepts?all=true&run=${encodeURIComponent(runId ?? '')}`)
       .then((r) => r.ok ? r.json() : [])
       .then((d) => setConceptCatalog(d))
       .catch(() => {})
-    fetch('/api/bundle-docs')
+    fetch(`/api/bundle-docs?run=${encodeURIComponent(runId ?? '')}`)
       .then((r) => r.ok ? r.json() : [])
       .then((d) => setBundleDocs(d))
       .catch(() => {})
-    fetch('/api/app-areas')
+    fetch(`/api/app-areas?run=${encodeURIComponent(runId ?? '')}`)
       .then((r) => r.ok ? r.json() : [])
       .then((d) => setAppAreas(d))
       .catch(() => {})
-  }, [])
+    setDocumentError('')
+    fetch(`/api/documents?run=${encodeURIComponent(runId ?? '')}`)
+      .then(async response => { if (!response.ok) throw new Error('Could not read the document catalog for this run.'); return response.json() })
+      .then(catalog => { setPressures(catalog.documents.filter((document: ConceptView) => document.documentKind === 'design-pressure')); setDeclaredScenarios(catalog.scenarios); setDocumentProvenance(catalog.provenance) })
+      .catch(error => setDocumentError(String(error)))
+  }, [runId])
 
   useEffect(() => {
     let mounted = true
@@ -568,6 +577,7 @@ export default function RunDetail() {
       : section === 'area' ? new Set(scenario.appAreaDocIds)
       : section === 'subarea' ? new Set(scenario.subAreaDocIds ?? [])
       : section === 'sourcechange' ? new Set(scenario.sourceChangeCategories ?? [])
+      : section === 'pressure' ? new Set(scenario.designPressureIds ?? [])
       : section === 'doc' ? scenarioConceptIds(scenario)
       : new Set(scenario.bundleDocIds)
   }
@@ -576,7 +586,7 @@ export default function RunDetail() {
 
   const plainSelections: ScenarioFilterSelections = {
     surface: selectedExecutionSurfaces, mode: selectedBundleModes, area: selectedAreas.map(area => area.id), subarea: selectedSubAreaIds,
-    sourcechange: selectedSourceChangeCategories, doc: selectedDocIds, bundle: selectedBundles.map(bundle => bundle.id),
+    sourcechange: selectedSourceChangeCategories, doc: selectedDocIds, pressure: selectedPressureIds, bundle: selectedBundles.map(bundle => bundle.id),
   }
   const plainExpressionIgnoring = (sections: readonly ScenarioFilterSection[]) =>
     defaultScenarioFilterExpression({ ...plainSelections, ...Object.fromEntries(sections.map(section => [section, []])) })
@@ -619,6 +629,7 @@ export default function RunDetail() {
       : section === 'mode' ? BUNDLE_MODE_OPTIONS.find(option => option.id === value)?.label
       : section === 'area' ? appAreas.find(area => area.id === value)?.name
       : section === 'bundle' ? bundleDocs.find(bundle => bundle.id === value)?.name
+      : section === 'pressure' ? pressures.find(pressure => pressure.id === value)?.name
       : section === 'sourcechange' ? value
       : allDocs.find(doc => doc.id === value)?.name
     return `${SCENARIO_FILTER_SECTION_LABELS[section]}: ${name ?? value}`
@@ -677,6 +688,33 @@ export default function RunDetail() {
 
   return (
     <div className="mx-auto px-6 py-3 max-w-[90vw]" style={conceptSidebarWidth ? { marginRight: conceptSidebarWidth, maxWidth: 'none' } : undefined}>
+      {documentDetails}
+      {documentError && <p role="alert" className="mb-2 text-sm text-red-700">{documentError}</p>}
+      {pressures.length > 0 && <section aria-label="Design pressures" className="mb-3 rounded-md border border-violet-200 bg-violet-50 px-3 py-2">
+        <div className="flex flex-wrap items-center gap-2"><span className="text-xs font-semibold text-violet-800">Design pressures:</span>
+          {pressures.map(pressure => {
+            const related = data.scenarios.filter(scenario => scenario.designPressureIds?.includes(pressure.id))
+            const declared = declaredScenarios?.filter(scenario => scenario.designPressureIds?.includes(pressure.id))
+            const missing = declared?.filter(scenario => !data.scenarios.some(actual => actual.scenarioId === scenario.scenarioId || actual.testBasename === scenario.testFile.split('/').at(-1)?.replace(/\.spec\.ts$/, ''))).length
+            return <div key={pressure.id} className="flex flex-wrap items-center gap-2 text-xs">
+              <button className="font-medium text-brand-600 underline" onClick={() => openConcept(pressure)}>{pressure.name}</button>
+              <button aria-pressed={selectedPressureIds.includes(pressure.id)} className="rounded border border-violet-300 px-2 py-1 aria-pressed:bg-violet-200"
+                onClick={() => setFilters({ pressureIds: selectedPressureIds.includes(pressure.id) ? selectedPressureIds.filter(id => id !== pressure.id) : [...selectedPressureIds, pressure.id] })}>Select scenarios ({related.length})</button>
+              <span>{related.length ? [...new Set(related.map(scenario => scenario.status))].map(status => `${related.filter(scenario => scenario.status === status).length} ${status}`).join(' · ') : declared?.length === 0 ? 'No scenarios declared' : 'No results in this run'}</span>
+              {!!missing && <span>{missing} declared, not run</span>}
+            </div>
+          })}
+        </div>
+        {documentProvenance === 'current-fallback' && <p className="mt-1 text-xs text-neutral-500">Current documentation · this older run did not capture design-pressure associations.</p>}
+      </section>}
+      <details className="mb-3 rounded border border-neutral-200 px-3 py-2 text-sm">
+        <summary className="cursor-pointer font-medium">Browse documents by app area</summary>
+        {[...appAreas, { id: '', name: 'General and cross-cutting' }].map(area => <section key={area.id} className="mt-3" aria-label={`${area.name} documents`}>
+          <h3 className="font-medium">{area.id ? <button className="text-brand-600 underline" onClick={() => openConcept(area)}>{area.name}</button> : area.name}</h3>
+          <div className="mt-1 flex flex-wrap gap-x-4 gap-y-2">{allDocs.filter(doc => doc.kind !== 'app-area' && (area.id ? doc.appAreaIds?.includes(area.id) : !doc.appAreaIds?.length || doc.appAreaIds.length > 1))
+            .map(doc => <span key={doc.id} className="text-xs"><button className="text-brand-600 underline" onClick={() => openConcept(doc)}>{doc.name}</button>{doc.subAreas?.some(entry => entry.areaId === area.id) && <span className="ml-1 text-neutral-500">(workflow sub-area)</span>}</span>)}</div>
+        </section>)}
+      </details>
       {(reviews.data.reviews.length > 0 || reviewMode) && <section aria-label="To review" className="mb-2 flex flex-wrap items-center gap-2 rounded-md bg-violet-50 px-3 py-2 text-xs">
         <span className="font-semibold text-neutral-600">To review:</span>
         {(['', 'incomplete', 'completed', 'logs'] as const).map(mode => <button key={mode} aria-pressed={(reviewMode ?? '') === mode}
@@ -926,8 +964,8 @@ export default function RunDetail() {
             : isPartialRun && hasData ? ' ring-1 ring-blue-300 bg-blue-50'
             : ''
           return (
+            <span key={doc.id} className="inline-flex items-center">
             <button
-              key={doc.id}
               title={!available ? 'No matching scenarios with the current filters.' : doc.isContribution ? 'Contributed Meadow concept' : undefined}
               className={`px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors ${
                 isSelected
@@ -945,6 +983,8 @@ export default function RunDetail() {
             >
               {doc.name}
             </button>
+            <button aria-label={`Read ${doc.name}`} className="px-1 text-xs text-brand-600" onClick={() => openConcept(doc)}>↗</button>
+            </span>
           )
         }
 
@@ -952,7 +992,7 @@ export default function RunDetail() {
           <div className="mb-3">
             {/* Base row */}
             <div className="filter-section filter-tags mb-1 w-full rounded-md px-3 py-1.5 filter-row" role="group" aria-label="Concept filters">
-              <span className="filter-label text-xs text-neutral-400 font-medium">Tags:</span>
+              <span className="filter-label text-xs text-neutral-400 font-medium">Concepts:</span>
               <FilterOptions preferenceId="tags" options={baseDocs} availableIds={availableDocIds} selectedIds={selectedDocIds} previewLimit={10}
                 allOption={
                   <button
@@ -975,7 +1015,7 @@ export default function RunDetail() {
                   allOption={
                     <button
                       className="filter-default text-neutral-600 px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
-                      title="Clear contributed tag selections"
+                      title="Clear contributed concept selections"
                       aria-pressed={selectedExtensionDocIds.length === 0}
                       onClick={() => setFilters({ docIds: [...selectedBaseDocIds, ...selectedDetailedDocIds] })}
                     >
@@ -1013,7 +1053,7 @@ export default function RunDetail() {
             </div>}
 
             <ConceptExplorer concept={selectedDocs.length === 1 ? selectedDocs[0] : null} selectedConceptIds={selectedDocIds}
-              onSelectConcept={(id, add) => setFilters({ docIds: add ? [...new Set([...selectedDocIds, id])] : [id] }, true)}
+              onSelectConcept={(id, add, kind) => kind === 'design-pressure' ? setFilters({ pressureIds: add ? [...new Set([...selectedPressureIds, id])] : [id] }, true) : kind === 'fixture' ? setFilters({ bundleIds: add ? [...new Set([...selectedBundleIds, id])] : [id] }, true) : setFilters({ docIds: add ? [...new Set([...selectedDocIds, id])] : [id] }, true)}
               onSidebarWidth={setConceptSidebarWidth} />
           </div>
         )
@@ -1342,7 +1382,11 @@ export default function RunDetail() {
                               options={BUNDLE_MODE_OPTIONS.filter(mode => mode.id === scenario.bundleMode).map(mode => ({ id: mode.id, name: mode.label }))}
                               availableIds={availableModeIds} selectedIds={selectedBundleModes}
                               onChoose={(id, action) => { if (isBundleMode(id)) chooseMetadataFilter({ bundleModes: [id] }, action) }} />
-                            <ScenarioMetadataGroup label="Tags" accent="filter-tags"
+                            <ScenarioMetadataGroup label="Design pressures" accent="filter-tags"
+                              options={pressures.filter(pressure => scenario.designPressureIds?.includes(pressure.id))}
+                              availableIds={availableValues('pressure')} selectedIds={selectedPressureIds}
+                              onChoose={(id, action) => chooseMetadataFilter({ pressureIds: [id] }, action)} />
+                            <ScenarioMetadataGroup label="Concepts" accent="filter-tags"
                               options={docs.filter(doc => !doc.isContribution && scenario.conceptIds.includes(doc.id))}
                               availableIds={visibleFacetDocIds} selectedIds={selectedDocIds}
                               onChoose={(id, action) => chooseMetadataFilter({ docIds: [id] }, action)} />

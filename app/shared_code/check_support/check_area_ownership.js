@@ -9,6 +9,7 @@
  */
 import fs from 'fs';
 import path from 'path';
+import { AREA_CALLERS, ownership } from './area_boundary_policy.js';
 
 const sourceExtensions = new Set([
   '.cjs',
@@ -73,20 +74,10 @@ function walkFiles(directory) {
 }
 
 function getOwner(sourceRoot, filePath) {
+  const owner = ownership(filePath, [sourceRoot]);
+  if (owner.area) return AREA_CALLERS.has(owner.area) ? `area:${owner.area}` : null;
   const relativePath = toPosixPath(path.relative(sourceRoot, filePath));
   const parts = relativePath.split('/');
-
-  if (parts[0] === 'areas') {
-    if (parts[1] === 'bundles') {
-      return 'area:bundles';
-    }
-    if (parts[1] === 'bundle' && parts[2]) {
-      return `area:bundle/${parts[2]}`;
-    }
-    if (parts[1]) {
-      return `area:${parts[1]}`;
-    }
-  }
 
   if (parts[0] === 'shared') {
     return 'shared';

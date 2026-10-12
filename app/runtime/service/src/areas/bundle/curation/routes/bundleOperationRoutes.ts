@@ -26,8 +26,8 @@ import {
   mutateBundleNode,
   type BundleNodeMutation,
 } from '../services/bundleNodeOperations.js';
-import type { BundleNodeId } from '../../../../../../../contracts/types/bundleNodeConfig.js';
-import type { BundleNodeLocator } from '../../../../../../../contracts/types/cliOperations.js';
+import type { BundleNodeId } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
+import type { BundleNodeLocator } from '../../../../../../../contracts/types/shared/cli/cliOperations.js';
 import { WorkingGraphOperationError } from '../../../../shared/bundle-graph/workingGraphService.js';
 import { runSerializedBundleNodeMutation } from '../../../../shared/bundle-node/bundleNodeMutationQueue.js';
 
@@ -166,4 +166,4 @@ export default router;
 
 import { encodedBundleNodeKey } from '../../../../../../../shared_code/utils/bundleNodeKey.js';
 
-import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';

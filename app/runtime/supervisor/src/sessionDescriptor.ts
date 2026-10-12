@@ -34,7 +34,7 @@ import {
   RUNTIME_SESSION_DESCRIPTOR_SCHEMA_VERSION,
   type RuntimeBuildPerspective,
   type RuntimeSessionDescriptor,
-} from "../../../contracts/types/runtime.js";
+} from "../../../contracts/types/shared/runtime/runtime.js";
 import { getRuntimePaths } from "./runtimePaths.js";
 
 function requireString(value: unknown, field: string): string {

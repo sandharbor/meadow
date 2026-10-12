@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { describe, it, expect } from 'vitest';
-import type { SourcePageFileInfo } from '../../../../../contracts/types/sourcePageFileInfo.js';
+import type { SourcePageFileInfo } from '../../../../../contracts/types/shared/bundle-graph/sourcePageFileInfo.js';
 import { rankSourceFolderCandidatesWithCount, rankSourcePageCandidates } from '../../../../../shared_code/utils/sourcePageSearchUtils.js';
 
 function p(

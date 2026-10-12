@@ -18,8 +18,8 @@ import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import type { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
-import type { BundleConfig } from '../../../../../../../contracts/types/bundleConfig.js';
+import type { BundleNodeConfig } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
+import type { BundleConfig } from '../../../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
 import { renderTransclusionToHtml } from '../../../../../src/areas/bundle/generation/html/transclusion.js';
 import { makeBundleNodeConfig } from '../../../../shared/support/bundleNodeConfigTestUtils.js';
 

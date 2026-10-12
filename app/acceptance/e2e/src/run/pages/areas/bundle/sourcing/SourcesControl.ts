@@ -11,7 +11,14 @@ export class SourcesControl {
 
   async open() {
     await this.page.getByTitle('Bundle options', { exact: true }).click();
-    await this.page.getByRole('button', { name: 'Manage sources…', exact: true }).click();
+    // Reopening briefly retains the previous form. Wait for this opening's
+    // registry read so it cannot overwrite the edit that follows.
+    const [loaded] = await Promise.all([
+      this.page.waitForResponse(response => response.request().method() === 'GET'
+        && response.url().endsWith('/sourcing/sources') && response.ok()),
+      this.page.getByRole('button', { name: 'Manage sources…', exact: true }).click(),
+    ]);
+    await loaded.finished();
     await this.expect(this.dialog).toBeVisible();
     await this.expect(this.dialog.getByRole('button', { name: 'Save', exact: true })).toBeEnabled();
   }

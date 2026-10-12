@@ -17,8 +17,8 @@ limitations under the License.
 import { editorSourcePath } from '../utils/editorSourcePath.js';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useEditorViewValue } from '../utils/useEditorViewValue.js';
-import { Graph } from '../../../../../../../contracts/types/graph';
-import { isUntrackableFrontierNode } from '../../../../../../../contracts/types/IBundleNode';
+import { Graph } from '../../../../../../../contracts/types/shared/bundle-graph/graph';
+import { isUntrackableFrontierNode } from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode';
 import { IFilter } from '../types/filters';
 import { DisplayGraph, DisplayNode, Highlight } from '../types/displayGraph';
 import { isImageFileType } from '../../../../../../../shared_code/utils/fileTypeUtils';
@@ -932,4 +932,4 @@ const GraphVis: React.FC<GraphVisProps> = ({
 };
 export default GraphVis;
 
-import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';

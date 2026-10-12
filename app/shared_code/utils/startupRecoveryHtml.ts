@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import type { StartupFailureDiagnostic } from '../../contracts/types/startupRecovery.js';
+import type { StartupFailureDiagnostic } from '../../contracts/types/shared/app-shell/startupRecovery.js';
 import { mainPalette, neutralPalette, warningPalette } from '../design/colors.js';
 
 function escapeHtml(value: string): string {

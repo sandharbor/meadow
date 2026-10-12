@@ -46,7 +46,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '646aabe1-ce3
     // The page survives reload and related-concept navigation preserves exact identities.
     await sourceCommand(() => page.reload());
     await sourceCommand(() => expect(source).toContainText('export async function captureSourceSnapshot'));
-    await sourceCommand(() => page.getByRole('link', { name: 'Source Changes During Review', exact: true }).click());
+    await sourceCommand(() => page.getByRole('navigation', { name: 'Related concepts', exact: true }).getByRole('link', { name: 'Source Changes During Review', exact: true }).click());
     await sourceCommand(() => expect(page.getByRole('heading', { name: 'Source Changes During Review', exact: true })).toBeVisible());
     await sourceCommand(() => expect(implementations).toHaveCount(0));
     await sourceCommand(() => expect(page.getByText('No implementation declared.', { exact: true })).toBeVisible());

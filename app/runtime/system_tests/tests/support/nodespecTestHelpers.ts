@@ -17,7 +17,7 @@ limitations under the License.
 import fs from 'fs';
 import path from 'path';
 import YAML from 'yaml';
-import type { BundleConfig, BundleSource } from '../../../../contracts/types/bundleConfig.js';
+import type { BundleConfig, BundleSource } from '../../../../contracts/types/shared/bundle-config/bundleConfig.js';
 import type { NodespecLinks } from '../../nodespecs/types.js';
 import { sourceGraphPath, sourceOutputDirectory } from '../../../../shared_code/utils/bundleSourceUtils.js';
 import { fixtureSourceLocation } from '../../../../shared_code/shared_dev/fixtureSourceLocation.js';
@@ -26,8 +26,8 @@ import {
   getSourceGraphsPath,
 } from '../../helpers/serverManager.js';
 import { SystemTestBundleSetup } from '../../helpers/testSetup.js';
-import type { BundleNodeConfig } from '../../../../contracts/types/bundleNodeConfig.js';
-import { FILE_TYPES } from '../../../../contracts/types/FileType.js';
+import type { BundleNodeConfig } from '../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
+import { FILE_TYPES } from '../../../../contracts/types/shared/bundle-graph/FileType.js';
 import { getNodespecBlock, getReferencedBundles, isExcalidrawMarkdown } from '../../nodespecs/index.js';
 
 const registryConfigs = new Map<string, BundleConfig>();

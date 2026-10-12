@@ -1,6 +1,6 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import { editorViewLocalPrefix, editorViewSessionPrefix, isEditorViewCheckpoint } from '../../../../../contracts/types/editorViewCheckpoint.js';
+import { editorViewLocalPrefix, editorViewSessionPrefix, isEditorViewCheckpoint } from '../../../../../contracts/types/shared/curation/editorViewCheckpoint.js';
 import { apiRequest } from './apiClient.js';
 
 let restoredThisLaunch = false;

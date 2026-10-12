@@ -26,7 +26,7 @@ import {
 } from "../src/run/pages/index.js";
 import { MeadowHomeBundleConfig } from "../src/run/utils/MeadowHomeBundleConfig.js";
 import { Fixture } from "../src/run/workflows.js";
-import { callout, folderBundles, tracking, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration, bundleGeneration } from "../../../concepts/index.js";
+import { callout, folderBundles, tracking, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration, bundleGeneration, sourceSetupNew, bundleSourcing } from "../../../concepts/index.js";
 import { customBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-folder" });
@@ -39,7 +39,7 @@ default traversal. Only the folder itself is tracked, so preview first explains
 that only the starting selection is tracked, and the generated bundle contains
 none of the untracked pages or folder names beneath it. Tracking one nested page
 then publishes exactly that page.`);
-const areas = scenarioAreas([bundleCuration, bundleGeneration]);
+const areas = scenarioAreas([bundleCuration, bundleGeneration, bundleSourcing], { subAreas: [sourceSetupNew] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: '51a96f0d-bf07-483a-aa21-c5ca76ab965f' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
   page,
   testServer,

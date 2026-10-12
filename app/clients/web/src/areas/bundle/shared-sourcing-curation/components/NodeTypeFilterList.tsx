@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import React from 'react';
-import type { Graph } from '../../../../../../../contracts/types/graph.js';
+import type { Graph } from '../../../../../../../contracts/types/shared/bundle-graph/graph.js';
 import type { IFilter, INodeTypeFilterState, NodeTypeFilterId } from '../types/filters.js';
 import { getPresentNodeTypeFilters } from '../utils/nodeTypeFilterUtils.js';
 

@@ -16,7 +16,7 @@ limitations under the License.
 
 import { useEditorViewValue } from './useEditorViewValue.js';
 import { useCallback, useEffect, useMemo } from 'react';
-import { Graph } from '../../../../../../../contracts/types/graph';
+import { Graph } from '../../../../../../../contracts/types/shared/bundle-graph/graph';
 import { IFilter, IBundleNodeSelector, NodeTypeFilterId, createFolderNodeSelector } from '../types/filters';
 import {
   FilterExpression,
@@ -175,4 +175,4 @@ export function useDisplayFilters({
   return { combinedFilters, effectiveExpression, setExpression };
 }
 
-import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';

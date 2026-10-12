@@ -15,7 +15,7 @@ if (false) {
   conceptLink('missing-scope-document', 'scope exclusion');
 }
 
-test('a typed name retains its plain title, plural suffix, captured links, and following description', t => {
+test('a typed name retains its plain title, plural suffix, captured links, and following description', async t => {
   const text = conceptText`Review ${conceptLink(scopeExclusion.id, 'scope exclusion')}s`;
   const name = linkedScenarioName(text);
   assert.equal(name.name, 'Review scope exclusions');
@@ -24,6 +24,7 @@ test('a typed name retains its plain title, plural suffix, captured links, and f
   const filename = path.join(directory, 'scenario.spec.ts');
   writeFileSync(filename, 'const name = linkedScenarioName(typedText);\n/* The description follows the named variable. */\ntest(name.name, {}, async () => {});');
   const reporter = new ArtifactReporter({ outputDir: directory });
+  await reporter.onBegin();
   reporter.onTestBegin({ title: name.name, annotations: [name.annotation], location: { file: filename, line: 3, column: 1 } } as unknown as TestCase,
     { startTime: new Date() } as TestResult);
   const artifact = getTestArtifactDirectory(name.name, directory);
@@ -33,7 +34,7 @@ test('a typed name retains its plain title, plural suffix, captured links, and f
   assert.deepEqual(JSON.parse(readFileSync(path.join(artifact, 'name-text.json'), 'utf8')), text);
 });
 
-test('formal linked descriptions override comment extraction and retain their captured links', t => {
+test('formal linked descriptions override comment extraction and retain their captured links', async t => {
   const text = conceptText`Combine a staged ${conceptLink(bridgeExclusion.id, 'bridge exclusion')} with an external departure.`;
   const description = linkedScenarioDescription(text);
   assert.equal(description.description, 'Combine a staged bridge exclusion with an external departure.');
@@ -42,6 +43,7 @@ test('formal linked descriptions override comment extraction and retain their ca
   const filename = path.join(directory, 'scenario.spec.ts');
   writeFileSync(filename, 'const description = linkedScenarioDescription(typedText);\n/* Old comment must not override formal metadata. */\ntest("scenario", {}, async () => {});');
   const reporter = new ArtifactReporter({ outputDir: directory });
+  await reporter.onBegin();
   reporter.onTestBegin({ title: 'scenario', annotations: [description.annotation], location: { file: filename, line: 3, column: 1 } } as unknown as TestCase,
     { startTime: new Date() } as TestResult);
   const artifact = getTestArtifactDirectory('scenario', directory);

@@ -16,7 +16,7 @@ limitations under the License.
 
 import fs from 'fs';
 import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundleConfigPaths.js';
-import { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
+import { BundleNodeConfig } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
 import { bundleNodeConfigToKey, BundleNodeConfigMap } from '../../../../shared/bundle-node/nodeKeys.js';
 import { loadValidatedBundleNodeConfiguration } from '../../../../shared/bundle-node/bundleNodeConfigLoader.js';
@@ -159,4 +159,4 @@ export async function buildFilteredOpenKnowledgeFormatForBundle(bundleDirectory:
 }
 
 import { encodedBundleNodeKey } from '../../../../../../../shared_code/utils/bundleNodeKey.js';
-import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';

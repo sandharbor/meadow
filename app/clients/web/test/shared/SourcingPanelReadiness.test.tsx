@@ -6,7 +6,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { SourcingPanel } from '../../src/areas/bundle/sourcing/components/SourcingPanel.js';
 import { PlaceContext, type PlaceContextValue, type SurfaceParticipant } from '../../src/shared/places/placeContext.js';
 import { apiRequest } from '../../src/shared/utils/apiClient.js';
-import type { SourcingReview } from '../../../../contracts/types/sourcing.js';
+import type { SourcingReview } from '../../../../contracts/types/shared/sourcing/sourcing.js';
 
 vi.mock('../../src/shared/utils/apiClient.js', () => ({ apiRequest: vi.fn() }));
 // A workspace whose page changes graph is ready as soon as it mounts.

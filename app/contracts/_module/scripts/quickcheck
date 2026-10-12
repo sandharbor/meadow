@@ -7,4 +7,5 @@ echo "🧪 Checking transport and domain contracts..."
 "$SHARED_TOOLING_DIR/node_modules/.bin/tsc" --project tsconfig.json
 "$SHARED_TOOLING_DIR/node_modules/.bin/eslint" --config "$SHARED_TOOLING_DIR/eslint.config.js" interfaces types places
 node "$SHARED_TOOLING_DIR/check_support/check_place_definitions.js"
+node "$SHARED_TOOLING_DIR/check_support/check_contract_boundaries.js"
 echo "✅ Contract checks passed!"

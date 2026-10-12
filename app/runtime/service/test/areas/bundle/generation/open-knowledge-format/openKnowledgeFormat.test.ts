@@ -18,7 +18,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import type { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
+import type { BundleNodeConfig } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import {
   prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory
 } from '../../../../../src/areas/bundle/generation/open-knowledge-format/openKnowledgeFormat.js';

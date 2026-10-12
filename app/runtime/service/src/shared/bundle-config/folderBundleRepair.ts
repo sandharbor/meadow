@@ -22,8 +22,8 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import YAML from 'yaml';
-import type { BundleConfig } from '../../../../../contracts/types/bundleConfig.js';
-import type { FolderBundleNodeConfig, BundleNodeConfig, BundleNodeId } from '../../../../../contracts/types/bundleNodeConfig.js';
+import type { BundleConfig } from '../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
+import type { FolderBundleNodeConfig, BundleNodeConfig, BundleNodeId } from '../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import {
   parseBundleNodeConfig,
   stringifyBundleNodeConfig,

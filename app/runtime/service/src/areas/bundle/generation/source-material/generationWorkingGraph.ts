@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import type { BundleConfig } from '../../../../../../../contracts/types/bundleConfig.js';
+import type { BundleConfig } from '../../../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
 import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundleConfigPaths.js';
 import { parseBundleNodeConfig, stringifyBundleNodeConfig } from '../../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 import { sourceGraphPath, sourceOutputDirectory } from '../../../../../../../shared_code/utils/bundleSourceUtils.js';

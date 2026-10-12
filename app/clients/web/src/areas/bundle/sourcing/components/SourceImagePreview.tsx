@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AuthenticatedImage } from '../../../../shared/components/AuthenticatedImage.js';
 import { FileRoute } from './SourceFileRoute.js';
-import type { Graph } from '../../../../../../../contracts/types/graph.js';
+import type { Graph } from '../../../../../../../contracts/types/shared/bundle-graph/graph.js';
 
 export const isSourceImage = (filename: string) => /\.(png|jpe?g|gif|webp|svg|avif|bmp)$/i.test(filename);
 export type SourceImageUrl = (filename: string, side: 'before' | 'after') => string;
@@ -35,4 +35,4 @@ export function SourceImageComparison({ beforePath, afterPath, beforeImage, afte
   </div>;
 }
 
-import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';

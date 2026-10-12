@@ -18,14 +18,14 @@ import { initializeSourcing } from '../../../shared/source-snapshot/sourceSnapsh
 
 import fs from 'fs';
 import path from 'path';
-import type { BundleConfig } from '../../../../../../contracts/types/bundleConfig.js';
-import type { BundleNodeConfig, FileBundleNodeConfig } from '../../../../../../contracts/types/bundleNodeConfig.js';
+import type { BundleConfig } from '../../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
+import type { BundleNodeConfig, FileBundleNodeConfig } from '../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import {
   CLI_MUTATION_BEHAVIORS,
   CLI_OPERATION_SCHEMA_VERSION,
   type CreateBundleCliResult,
-} from '../../../../../../contracts/types/cliOperations.js';
-import type { SourcePageFileInfo } from '../../../../../../contracts/types/sourcePageFileInfo.js';
+} from '../../../../../../contracts/types/shared/cli/cliOperations.js';
+import type { SourcePageFileInfo } from '../../../../../../contracts/types/shared/bundle-graph/sourcePageFileInfo.js';
 import { generateBundleGuid } from '../../../../../../shared_code/utils/bundleGuidUtils.js';
 import {
   generateBundleNodeId,

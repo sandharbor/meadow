@@ -1,12 +1,12 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import fs from 'node:fs';
-import type { BundleSource } from '../../../../../../../contracts/types/bundleConfig.js';
+import type { BundleSource } from '../../../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
 import { splitSourceGraphPath } from '../../../../../../../shared_code/utils/bundleSourceUtils.js';
-import type { SourceOrphanExplanation } from '../../../../../../../contracts/types/sourcing.js';
+import type { SourceOrphanExplanation } from '../../../../../../../contracts/types/shared/sourcing/sourcing.js';
 import { sourcePath, type SourceSnapshot } from '../../../../shared/source-snapshot/sourceSnapshots.js';
 
-import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';
 import { bundleNodeKeySourceGraphPath, parseBundleNodeKey } from '../../../../../../../shared_code/utils/bundleNodeKey.js';
 
 type Graph = SourceSnapshot['graph'];

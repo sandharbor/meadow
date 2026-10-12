@@ -23,7 +23,7 @@ import {
   SelectedPageDetailComponent,
 } from "../src/run/pages/index.js";
 import { Fixture } from "../src/run/workflows.js";
-import { sourcingReviewRedesign, excalidraw, images, initialPage, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
+import { sourcingReviewRedesign, excalidraw, images, initialPage, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration, sourceSetupNew, bundleSourcing } from "../../../concepts/index.js";
 import { customBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -42,7 +42,7 @@ const name = linkedScenarioName(conceptText`setting initial-page inlink depth to
 
 const description = linkedScenarioDescription(conceptText`Set the starting page's incoming-link depth to zero. Its depth-one outgoing media should
 remain visible.`);
-const areas = scenarioAreas([bundleCuration]);
+const areas = scenarioAreas([bundleCuration, bundleSourcing], { subAreas: [sourceSetupNew] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: '32d62495-d925-46a4-8627-97c343887ec3' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
   page,
   testServer,

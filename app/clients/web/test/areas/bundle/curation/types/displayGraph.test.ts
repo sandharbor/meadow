@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { describe, expect, it } from 'vitest';
-import { Graph, IBundleNode } from '../../../../../../../contracts/types/graph';
+import { Graph, IBundleNode } from '../../../../../../../contracts/types/shared/bundle-graph/graph';
 import { DisplayGraph } from '../../../../../src/areas/bundle/shared-sourcing-curation/types/displayGraph';
 import { FilterExpression } from '../../../../../src/areas/bundle/shared-sourcing-curation/types/filterExpression';
 import { IFilter } from '../../../../../src/areas/bundle/shared-sourcing-curation/types/filters';

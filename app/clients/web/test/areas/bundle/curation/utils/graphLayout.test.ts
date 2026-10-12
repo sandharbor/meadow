@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { describe, expect, it } from 'vitest';
-import type { IEdge } from '../../../../../../../contracts/types/graph';
+import type { IEdge } from '../../../../../../../contracts/types/shared/bundle-graph/graph';
 import {
   calculateGraphLayout,
   type GraphLayoutNode,

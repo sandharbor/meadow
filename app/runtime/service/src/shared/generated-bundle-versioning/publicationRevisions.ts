@@ -15,15 +15,9 @@ limitations under the License.
 */
 
 import { randomBytes } from 'crypto';
-import type {
-  GeneratedBundleVersionId,
-  PredecessorCleanupPolicy,
-  ProviderPublicationRevisionState,
-  PublicationRevision,
-  PublicationRevisionId,
-  ReaderConnectionToPredecessor,
-} from '../../../../../contracts/types/generatedBundleVersioning.js';
-import { PUBLICATION_REVISION_ID_PATTERN } from '../../../../../contracts/types/generatedBundleVersioning.js';
+import type { GeneratedBundleVersionId, ReaderConnectionToPredecessor } from '../../../../../contracts/types/shared/generated-bundle-versioning/generatedBundleVersioning.js';
+import type { PredecessorCleanupPolicy, ProviderPublicationRevisionState, PublicationRevision, PublicationRevisionId } from '../../../../../contracts/types/shared/publishing-provider-host/publicationVersioning.js';
+import { PUBLICATION_REVISION_ID_PATTERN } from '../../../../../contracts/types/shared/publishing-provider-host/publicationVersioning.js';
 
 const PUBLICATION_REVISION_ID_CHARACTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 

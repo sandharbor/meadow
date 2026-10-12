@@ -14,13 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import type { BundleNodeConfig } from '../../../../../contracts/types/bundleNodeConfig.js';
+import type { BundleNodeConfig } from '../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import type {
   FolderScopeChangeExplanation,
   FolderScopeChangeItem,
   FolderScopeGraphSnapshot,
   FolderScopeSnapshotNode,
-} from '../../../../../contracts/types/folderScopeChanges.js';
+} from '../../../../../contracts/types/shared/bundle-config/folderScopeChanges.js';
 import {
   isPlainObject,
   jsonDocumentCodec,
@@ -231,7 +231,7 @@ export function writeFolderScopeSnapshot(snapshotPath: string, snapshot: FolderS
   writeDurableDocument({ path: snapshotPath, value: snapshot, codec: folderScopeSnapshotCodec });
 }
 
-import type { EncodedBundleNodeKey } from '../../../../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';
 
 import { encodedBundleNodeKey } from '../../../../../shared_code/utils/bundleNodeKey.js';
 

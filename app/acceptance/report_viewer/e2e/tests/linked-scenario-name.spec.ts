@@ -93,7 +93,7 @@ test('captured scenario names open local concept details and select counted rela
       page.waitForEvent('popup'),
       panel.getByRole('link', { name: 'Open in new page', exact: true }).click(),
     ]);
-    await expect(conceptPage).toHaveURL(/\/concepts\/scope-exclusion$/);
+    await expect(conceptPage).toHaveURL(/\/concepts\/scope-exclusion\?run=rv-linked-name-/);
     await expect(conceptPage.getByRole('heading', { name: scopeExclusion.name, exact: true })).toBeVisible();
     await expect(panel).toHaveCount(0);
     await expect(page).toHaveURL(`/${runId}?view=details`);
@@ -181,6 +181,10 @@ test('captured scenario names open local concept details and select counted rela
     await expect(implementations.getByLabel('About implementation locations')).toHaveAttribute('title',
       'Locations are derived from inline participation declarations in the current checkout.');
     await expect(implementations.getByText('Locations are derived from inline participation declarations in the current checkout.', { exact: true })).toHaveCount(0);
+    await implementations.getByRole('link').first().click();
+    const source = page.getByRole('region', { name: 'Implementation source', exact: true });
+    await expect(source.locator('[aria-current="location"]')).toBeVisible();
+    await expect(source.locator('.token.keyword').first()).toBeVisible();
   } finally {
     await page.goto('about:blank');
     rmSync(run, { recursive: true, force: true });

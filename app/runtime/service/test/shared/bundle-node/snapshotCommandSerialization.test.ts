@@ -5,7 +5,7 @@ import { runSerializedBundleNodeMutation } from '../../../src/shared/bundle-node
 import { makeBundleNodeKey } from '../../../src/shared/bundle-node/nodeKeys.js';
 import { acceptSnapshotCommand } from '../../../src/areas/bundle/sourcing/services/acceptSnapshotCommand.js';
 import { trackSnapshotAdditions } from '../../../src/areas/bundle/curation/services/snapshotTracking.js';
-import type { SourceSnapshotAcceptance } from '../../../../../contracts/types/sourcing.js';
+import type { SourceSnapshotAcceptance } from '../../../../../contracts/types/shared/sourcing/sourcing.js';
 
 const state = vi.hoisted(() => ({ acceptedId: 'old', accept: vi.fn(), track: vi.fn() }));
 vi.mock('../../../src/areas/bundle/sourcing/services/sourceReview.js', () => ({ acceptSourceSnapshot: state.accept }));

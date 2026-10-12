@@ -441,6 +441,26 @@ export class SourcingWorkspacePage {
     if (await open.count()) await open.getByRole('button', { name: 'Close', exact: true }).click();
     await this.expect(open).toHaveCount(0);
   }
+  /** The live pre-acceptance panel identifies only the additions skipped for sensitivity. */
+  async expectSensitiveSkippedPages(names: string[]) {
+    const detail = this.acceptedChangeDetail('Tracking changes');
+    if (!await detail.isVisible()) await this.root.getByTestId('track-additions-sensitive').click();
+    await this.expect(detail).toBeVisible();
+    await this.expect(detail).toHaveCSS('opacity', '1');
+    const rows = detail.getByTestId('tracking-sensitive-skipped');
+    await this.expect(rows).toHaveCount(names.length);
+    for (const name of names) await this.expect(rows.getByRole('cell', { name, exact: true })).toBeVisible();
+  }
+  async selectSensitiveSkippedPage(name: string) {
+    await this.deselectAll();
+    const detail = this.acceptedChangeDetail('Tracking changes');
+    if (!await detail.isVisible()) await this.root.getByTestId('track-additions-sensitive').click();
+    await this.expect(detail).toBeVisible();
+    await detail.getByTestId('tracking-sensitive-skipped').filter({ has: this.page.getByRole('cell', { name, exact: true }) }).click();
+    await this.expect(detail).toBeHidden();
+    await this.expect(this.selectedPage).toHaveCount(1);
+    await this.expect(this.selectedPage).toContainText(name);
+  }
   /** Select a page from the tray's page change list. Tray selections add to the selection, so start from an empty one to inspect a single page. */
   async selectAcceptedPageChange(name: string) {
     await this.deselectAll();

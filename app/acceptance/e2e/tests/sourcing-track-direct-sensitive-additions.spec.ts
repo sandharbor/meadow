@@ -1,9 +1,12 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
+import path from 'node:path';
+import { sourceSensitivity } from '../src/run/utils/sourceSensitivity.js';
 import { test, expect } from '../src/run/test-fixtures.js';
 import { Workflows } from '../src/run/workflows.js';
 import { BundleEditorPage, FilterPanelComponent, Pill, SelectedPageDetailComponent } from '../src/run/pages/index.js';
 import { sourcingReviewRedesign, sourceSnapshot, sensitive, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../concepts/index.js';
+import { scenarioDesignPressures, preventAccidentalSharing } from '../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 
@@ -11,8 +14,9 @@ const name = linkedScenarioName(conceptText`Sourcing acceptance tracks safe addi
 
 const description = linkedScenarioDescription(conceptText`Add pages that are directly marked sensitive alongside a safe peer. Acceptance tracks the
 safe additions and leaves the sensitive ones untracked in the ordinary Untracked filter.`);
+const pressures = scenarioDesignPressures([preventAccidentalSharing]);
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '0b132f4e-f39f-47eb-b609-dc8151afb48e' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '0b132f4e-f39f-47eb-b609-dc8151afb48e' }, name.annotation, description.annotation, areas.annotation, pressures.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
   const editor = new BundleEditorPage(page, expect);
@@ -35,8 +39,16 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '0b132f4e-f39
   for (const name of privateNames) {
     await sourceCommand(() => editor.sourceReview.expectSensitivity(`source-changes/${name}.md`, 'Sensitive'));
   }
+  for (const name of privateNames) {
+    expect(sourceSensitivity(path.join(testServer.sourceGraphsDir, 'meadow-test-bundles-data', 'source-changes', `${name}.md`))).toBe(true);
+  }
+  await sourceCommand(() => editor.sourceReview.expectSensitiveSkippedPages(privateNames));
   await sourceCommand(() => addKeyFrame(sourceSnapshot));
   await sourceCommand(() => checkpoint('source review identifies sensitive additions before acceptance'));
+
+  // Select exactly one skipped addition without including safe or unrelated pages.
+  await sourceCommand(() => editor.sourceReview.selectSensitiveSkippedPage(privateNames[0]));
+  await sourceCommand(() => checkpoint('the skipped-pages panel selects only the requested sensitive addition'));
 
   // Accept the additions: the safe ones are tracked, and the sensitive ones remain in the normal Untracked filter.
   await sourceCommand(() => editor.sourceReview.accept());

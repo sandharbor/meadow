@@ -20,7 +20,7 @@ limitations under the License.
  */
 
 import { join } from 'path';
-import { GlobalCustomFiltersConfig } from '../../contracts/types/customFilters.js';
+import { GlobalCustomFiltersConfig } from '../../contracts/types/shared/curation/customFilters.js';
 import { globalCustomFiltersCodec } from './configDocumentCodecs.js';
 import { readDurableDocument, requireValidDocument, writeDurableDocument } from './durableDocument.js';
 import { recoverSourcingTransaction } from './sourcingTransaction.js';

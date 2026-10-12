@@ -6,8 +6,8 @@ test.beforeEach(async ({ page }) => {
     { id: 'source-review', name: 'Source Review', subAreas: [{ areaId: 'bundle/sourcing', order: 1 }] },
     { id: 'filter-mixing', name: 'Filter Mixing', subAreas: [{ areaId: 'bundle/curation', order: 1 }] },
   ] }));
-  await page.route('**/api/bundle-docs', route => route.fulfill({ json: [] }));
-  await page.route('**/api/app-areas', route => route.fulfill({ json: [
+  await page.route(/\/api\/bundle-docs(?:\?.*)?$/,  route => route.fulfill({ json: [] }));
+  await page.route(/\/api\/app-areas(?:\?.*)?$/,  route => route.fulfill({ json: [
     { id: 'bundle/sourcing', name: 'Bundle Sourcing', parentId: 'bundle' },
     { id: 'bundle/curation', name: 'Bundle Curation', parentId: 'bundle' },
   ] }));

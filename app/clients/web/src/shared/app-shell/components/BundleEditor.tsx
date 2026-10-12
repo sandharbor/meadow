@@ -14,15 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import type { SnapshotTrackingOutcome } from '../../../../../../contracts/types/curationTracking.js';
+import type { SnapshotTrackingOutcome } from '../../../../../../contracts/types/shared/curation/curationTracking.js';
 import { AppShellComponentSourcingPanel as SourcingPanel, AppShellComponentManageSources as ManageSources, appShellCommandStageBoundary as stageBoundary, appShellCommandApplyBlacklistReview as applyBlacklistReview, appShellCommandUndoBlacklistReview as undoBlacklistReview } from '../../../areas/bundle/sourcing/exported.js';
 import { SourceNamesProvider } from '../../components/SourceNames.js';
 
 /* global alert */
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { apiRequest } from '../../utils/apiClient';
-import { Graph, IEdge } from '../../../../../../contracts/types/graph';
-import { IBundleNode } from '../../../../../../contracts/types/IBundleNode.js';
+import { Graph, IEdge } from '../../../../../../contracts/types/shared/bundle-graph/graph';
+import { IBundleNode } from '../../../../../../contracts/types/shared/bundle-graph/IBundleNode.js';
 import { AppShellComponentBundleNodeTabs as BundleNodeTabs } from '../../../areas/bundle/curation/exported.js';
 import BundleLogsModal from './BundleLogsModal';
 import { AppShellComponentSinglePagePreviewCallout as SinglePagePreviewCallout, useAppShellStateSinglePagePreviewCallout as useSinglePagePreviewCallout } from '../../../areas/bundle/review/exported.js';
@@ -30,11 +30,11 @@ import { AppShellComponentCreateOrEditBundleModal as CreateOrEditBundleModal } f
 import PreviewPublishModal, { type PreviewModalTab } from './PreviewPublishModal';
 import type { AppShellTypeOpenKnowledgeFormatSettings as OpenKnowledgeFormatSettings } from '../../../areas/bundle/generation/exported.js';
 import { useAppShellStateFilterState as useFilterState, appShellQueryCreateUntrackedNodeSelector as createUntrackedNodeSelector } from '../../../areas/bundle/curation/exported.js';
-import type { BlacklistShortcutUndo } from '../../../../../../contracts/types/blacklistReview.js';
-import type { BundleNodeConfig } from '../../../../../../contracts/types/bundleNodeConfig';
+import type { BlacklistShortcutUndo } from '../../../../../../contracts/types/shared/sourcing/blacklistReview.js';
+import type { BundleNodeConfig } from '../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig';
 import { nodeConfigMatchesNode } from '../../../../../../shared_code/utils/bundleNodeConfigUtils';
 import { applySensitiveFromApiData, applyNodeConfigsToNodes, buildNodeConfigs } from '../../../../../../shared_code/utils/bundleNodeConfigUtils';
-import { getActiveFrontendProvider } from '../../publishing-provider-host/providerRegistry';
+import { appShellQueryPublishedUrl } from '../../../areas/bundle/sharing/exported.js';
 import { fetchBundleEditData, BundleEditData } from '../../utils/bundleApi';
 import { useParams } from 'react-router-dom';
 import { useLinkedSurface, usePlaceSelection } from '../../places/placeContext.js';
@@ -43,7 +43,7 @@ import { logger } from '../../utils/logger';
 import { openExternal } from '../../utils/openExternal';
 import { useAppNavigation } from '../../utils/appNavigation';
 import { DisabledTooltip } from '../../components/DisabledTooltip';
-import DeleteBundleModal from '../../bundle-management/DeleteBundleModal';
+import { AppShellComponentDeleteBundleModal as DeleteBundleModal } from '../../../areas/bundles/exported.js';
 import RenameBundleModal from '../../bundle-management/RenameBundleModal';
 
 const SHARE_TABS: readonly PreviewModalTab[] = ['publish', 'localExport', 'advanced'];
@@ -246,10 +246,9 @@ const BundleEditor: React.FC = () => {
 
   const handleOpenWebsite = async () => {
     if (!slug) return;
-    const provider = await getActiveFrontendProvider();
-    if (!provider?.fetchPublishedUrl) return;
     try {
-      const url = await provider.fetchPublishedUrl(slug);
+      const url = await appShellQueryPublishedUrl(slug);
+      if (!url) return;
       await openExternal(url, 'bundleEditor');
     } catch (err) {
       logger.error('Failed to get website URL:', err);
@@ -1357,6 +1356,6 @@ const BundleEditor: React.FC = () => {
 
 export default BundleEditor; 
 
-import type { EncodedBundleNodeKey } from '../../../../../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';
 
 import { encodedBundleNodeKey } from '../../../../../../shared_code/utils/bundleNodeKey.js';

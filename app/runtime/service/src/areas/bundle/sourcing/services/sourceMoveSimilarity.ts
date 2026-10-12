@@ -2,7 +2,7 @@
 
 import path from 'node:path';
 import { createHash } from 'node:crypto';
-import type { SourceMoveSimilarity } from '../../../../../../../contracts/types/sourcing.js';
+import type { SourceMoveSimilarity } from '../../../../../../../contracts/types/shared/sourcing/sourcing.js';
 import { sourceFilePathToBundleNodeKey } from '../../../../shared/bundle-node/nodeKeys.js';
 import type { SourceSnapshot } from '../../../../shared/source-snapshot/sourceSnapshots.js';
 

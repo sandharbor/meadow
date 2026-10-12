@@ -1,8 +1,8 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import type { IBundleNode } from '../../../../../../../contracts/types/IBundleNode.js';
-import type { SourceNodeReview, SourceRemovalCause, SourceSettingChange } from '../../../../../../../contracts/types/sourcingProposal.js';
-import type { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
+import type { IBundleNode } from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode.js';
+import type { SourceNodeReview, SourceRemovalCause, SourceSettingChange } from '../../../../../../../contracts/types/shared/sourcing/sourcingProposal.js';
+import type { BundleNodeConfig } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import { applyNodeConfigsToNodes, applySensitiveFromApiData } from '../../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 import { bundleNodeKeySourceGraphPath } from '../../../../../../../shared_code/utils/bundleNodeKey.js';
 import { serializeWorkingGraphOutput } from '../../../../shared/bundle-graph/workingGraphService.js';

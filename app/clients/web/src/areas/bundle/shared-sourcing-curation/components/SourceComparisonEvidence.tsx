@@ -1,8 +1,8 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import type { SourceNodeReview, SourceRemovalCause, SourceSettingChange } from '../../../../../../../contracts/types/sourcingProposal.js';
-import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';
-import type { Graph } from '../../../../../../../contracts/types/graph.js';
+import type { SourceNodeReview, SourceRemovalCause, SourceSettingChange } from '../../../../../../../contracts/types/shared/sourcing/sourcingProposal.js';
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';
+import type { Graph } from '../../../../../../../contracts/types/shared/bundle-graph/graph.js';
 import { sourceReviewAppearance, sourceRemovalReasons, sourceModificationKinds } from '../../../../shared/utils/sourceReviewAppearance.js';
 import { SourceLineCounts, useSourceLineCounts } from './SourceLineCounts.js';
 import { SourcePathChange } from '../../../../shared/components/SourcePathChange.js';

@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import React from 'react';
-import type { FolderBundleSelectionValidation } from '../../../../../../contracts/types/folderBundleSelection';
+import type { FolderBundleSelectionValidation } from '../../../../../../contracts/types/shared/bundle-config/folderBundleSelection';
 
 interface FolderBundleFieldsProps {
   bundleName: string;

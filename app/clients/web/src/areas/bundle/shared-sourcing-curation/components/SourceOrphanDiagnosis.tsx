@@ -1,7 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import type { ReactNode } from 'react';
-import type { SourceOrphanExplanation } from '../../../../../../../contracts/types/sourcing.js';
+import type { SourceOrphanExplanation } from '../../../../../../../contracts/types/shared/sourcing/sourcing.js';
 import { FilePill } from '../../../../shared/components/FilePill.js';
 
 /** The file-level reason a page's saved configuration is no longer reachable; `pill` renders each named file. */

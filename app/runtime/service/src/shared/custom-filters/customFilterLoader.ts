@@ -17,7 +17,7 @@ limitations under the License.
 import type {
   BundleCustomFiltersConfig,
   CustomFilterConfig,
-} from '../../../../../contracts/types/customFilters.js';
+} from '../../../../../contracts/types/shared/curation/customFilters.js';
 import { bundleCustomFiltersCodec } from '../../../../../shared_code/utils/configDocumentCodecs.js';
 import {
   readDurableDocument,

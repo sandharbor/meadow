@@ -217,6 +217,7 @@ const AppActionsMenu: React.FC = () => {
       </button>
       {open && (
         <div className="absolute top-full right-0 mt-1 bg-white border border-neutral-200 rounded shadow-lg z-30 py-1 min-w-[200px]">
+          {document.querySelector('meta[name="meadow-report-base"]') && <a href="/" className="block px-3 py-1 text-xs hover:bg-neutral-50">All reviews</a>}
           {onScenario && (
             <button
               className="w-full text-left px-3 py-1 text-xs hover:bg-neutral-50 cursor-pointer"
@@ -285,7 +286,7 @@ const AppHeader: React.FC = () => {
 
 const App: React.FC = () => {
   return (
-    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+    <BrowserRouter basename={document.querySelector('meta[name="meadow-report-base"]')?.getAttribute('content') || '/'} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <div className="h-full flex flex-col">
         <AppHeader />
         <div className="flex-1 min-h-0">

@@ -19,12 +19,12 @@ limitations under the License.
  * These pure selectors are shared by the frontend and backend.
  */
 
-import { Graph } from '../../contracts/types/graph.js';
-import { IBundleNode } from '../../contracts/types/IBundleNode.js';
-import { CustomBundleNodeSelectorConfig } from '../../contracts/types/customFilters.js';
+import { Graph } from '../../contracts/types/shared/bundle-graph/graph.js';
+import { IBundleNode } from '../../contracts/types/shared/bundle-graph/IBundleNode.js';
+import { CustomBundleNodeSelectorConfig } from '../../contracts/types/shared/curation/customFilters.js';
 import { nodeMatchesFolderState } from './folderFilterUtils.js';
-import type { BundleNodeKind } from '../../contracts/types/bundleNodeConfig.js';
-import type { FileType } from '../../contracts/types/FileType.js';
+import type { BundleNodeKind } from '../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
+import type { FileType } from '../../contracts/types/shared/bundle-graph/FileType.js';
 
 export interface SelectorBase {
   id: string;
@@ -396,4 +396,4 @@ export const createCustomBundleNodeSelector = (
   };
 };
 
-import type { EncodedBundleNodeKey } from '../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../contracts/types/shared/bundle-graph/bundleNodeKey.js';

@@ -32,8 +32,8 @@ import {
 } from './types.js';
 import { getBundlesDirectory, getConfigDirectory } from '../../../../shared/bundle-config/bundleConfigPaths.js';
 import { parseBundleNodeConfig, resolveBundleNodeRoles } from '../../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
-import { BundleConfig } from '../../../../../../../contracts/types/bundleConfig.js';
-import { FileType } from '../../../../../../../contracts/types/FileType.js';
+import { BundleConfig } from '../../../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
+import { FileType } from '../../../../../../../contracts/types/shared/bundle-graph/FileType.js';
 import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundleConfigPaths.js';
 import { loadBundleConfig } from '../../../../shared/utils/bundleConfigUtils.js';
 import { loadAppConfig } from '../../../../../../../shared_code/utils/appConfigUtils.js';
@@ -42,10 +42,10 @@ import {
   invalidateWorkingGraphCache,
 } from '../../../../shared/utils/workingGraphUtils.js';
 import { runGenerationWorkingGraph } from '../source-material/generationWorkingGraph.js';
-import type { LinkResolvedInfo } from '../../../../../../../contracts/types/IBundleNode.js';
-import type { IBundleNode } from '../../../../../../../contracts/types/IBundleNode.js';
-import type { IEdge } from '../../../../../../../contracts/types/graph.js';
-import type { BundleNodeId, EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeConfig.js';
+import type { LinkResolvedInfo } from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode.js';
+import type { IBundleNode } from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode.js';
+import type { IEdge } from '../../../../../../../contracts/types/shared/bundle-graph/graph.js';
+import type { BundleNodeId, EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import { buildVisibleStructuralProjection, type VisibleStructuralProjection } from '../../../../../../../shared_code/utils/structuralProjection.js';
 import { hashAndRenameStaticAssets, type PrecompressedAssetSource } from './staticAssets.js';
 import { createRequire } from 'module';
@@ -1909,4 +1909,4 @@ import { makeBundleNodeKey } from '../../../../shared/bundle-node/nodeKeys.js';
 
 import { EmittedOutputRecorder } from './emittedOutputRecorder.js';
 
-import type { GeneratedOutputOwnership } from '../../../../../../../contracts/types/generatedOutputIdentity.js';
+import type { GeneratedOutputOwnership } from '../../../../../../../contracts/types/shared/generated-bundle-versioning/generatedOutputIdentity.js';

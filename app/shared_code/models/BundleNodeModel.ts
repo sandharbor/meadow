@@ -14,9 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import type { FileBundleNode, LinkResolvedInfo } from '../../contracts/types/IBundleNode.js';
-import type { FileBundleNodeConfig, BundleNodeId, EncodedBundleNodeKey } from '../../contracts/types/bundleNodeConfig.js';
-import type { FileType } from '../../contracts/types/FileType.js';
+import type { FileBundleNode, LinkResolvedInfo } from '../../contracts/types/shared/bundle-graph/IBundleNode.js';
+import type { FileBundleNodeConfig, BundleNodeId, EncodedBundleNodeKey } from '../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
+import type { FileType } from '../../contracts/types/shared/bundle-graph/FileType.js';
 
 export class BundleNodeModel implements FileBundleNode {
   sourceId?: string;

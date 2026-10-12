@@ -20,7 +20,7 @@ import * as fs from 'fs';
 import {
   FindInBundlesOptions,
   parseFindInBundlesDeepLink,
-} from '../../../contracts/types/findInBundlesOptions';
+} from '../../../contracts/types/shared/bundle-management/findInBundlesOptions';
 import { appPlacePath, parseAppPlace } from '../../../contracts/places/index';
 import { getDefaultConfigDirectory } from '../../../shared_code/utils/appConfigUtils';
 import { getPlatformPaths } from '../../../shared_code/paths/getPlatformPaths';
@@ -37,7 +37,7 @@ import {
 import {
   MEADOW_RUNTIME_SESSION_ENV,
   type RuntimeSupervisorLaunchSpec,
-} from '../../../contracts/types/runtime';
+} from '../../../contracts/types/shared/runtime/runtime';
 import {
   ensureRuntime,
   RuntimeClientLease,

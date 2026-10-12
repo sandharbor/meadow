@@ -18,10 +18,10 @@ import {
   type FilterExpressionGroup,
   type FilterExpressionOperator,
   type FilterExpressionTerm,
-} from '../../../../contracts/types/filterExpression.ts'
+} from '../../../../contracts/types/shared/curation/filterExpression.ts'
 
 /** Row keys, matching the plain URL parameter for each filter row. */
-export const SCENARIO_FILTER_SECTIONS = ['surface', 'mode', 'area', 'subarea', 'sourcechange', 'doc', 'bundle'] as const
+export const SCENARIO_FILTER_SECTIONS = ['surface', 'mode', 'area', 'subarea', 'sourcechange', 'doc', 'pressure', 'bundle'] as const
 export type ScenarioFilterSection = typeof SCENARIO_FILTER_SECTIONS[number]
 export type ScenarioFilterSelections = Record<ScenarioFilterSection, string[]>
 
@@ -31,7 +31,8 @@ export const SCENARIO_FILTER_SECTION_LABELS: Record<ScenarioFilterSection, strin
   area: 'Area',
   subarea: 'Sub-area',
   sourcechange: 'Source change',
-  doc: 'Tag',
+  doc: 'Concept',
+  pressure: 'Design pressure',
   bundle: 'Bundle',
 }
 
@@ -47,7 +48,7 @@ export const EVERYTHING_KEYWORD = 'everything'
 const ROOT_GROUP_ID = 'scenario-filters'
 
 export function emptyScenarioFilterSelections(): ScenarioFilterSelections {
-  return { surface: [], mode: [], area: [], subarea: [], sourcechange: [], doc: [], bundle: [] }
+  return { surface: [], mode: [], area: [], subarea: [], sourcechange: [], doc: [], pressure: [], bundle: [] }
 }
 
 const isSection = (value: string): value is ScenarioFilterSection => (SCENARIO_FILTER_SECTIONS as readonly string[]).includes(value)

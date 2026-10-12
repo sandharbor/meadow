@@ -3,7 +3,7 @@
 import path from 'node:path';
 import { test, expect } from '../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, CreateAndEditBundleModal } from '../src/run/pages/index.js';
-import { sourcingReviewRedesign, bundleSource, startingSelection, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundles, bundleSourcing } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, bundleSource, startingSelection, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundles, bundleSourcing, sourceSetupNew } from '../../../concepts/index.js';
 import { MeadowHomeBundleConfig } from '../src/run/utils/index.js';
 
 test.use({ bundleMode: 'mixed-starts' });
@@ -13,7 +13,7 @@ const name = linkedScenarioName(conceptText`Multi-source initial creation captur
 
 const description = linkedScenarioDescription(conceptText`Create a bundle from ordered page and folder selections across sources. The initial
 capture should preserve that order without asking for another acceptance step.`);
-const areas = scenarioAreas([bundles, bundleSourcing]);
+const areas = scenarioAreas([bundles, bundleSourcing], { subAreas: [sourceSetupNew] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: 'ae17062f-0f31-4721-9594-504a8391aa6b' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, testServer, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);

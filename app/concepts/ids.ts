@@ -24,6 +24,8 @@ export const coreConceptIds = {
   bundle: "bundle",
   bundles: "bundles",
   bundleSourcing: "bundle/sourcing",
+  sourceSetupNew: "source-setup-new",
+  sourceSetupEdit: "source-setup-edit",
   sourceSnapshot: "source-snapshot",
   sourceChangesDuringReview: "source-changes-during-review",
   sourcingReviewRedesign: "sourcing-review-redesign",

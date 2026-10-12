@@ -24,7 +24,7 @@ import {
   type RuntimeCompatibilityDecision,
   type RuntimeSessionDescriptor,
   type RuntimeSupervisorLaunchSpec,
-} from "../../../contracts/types/runtime.js";
+} from "../../../contracts/types/shared/runtime/runtime.js";
 import { startRuntimeControlServer } from "./controlServer.js";
 import { BrowserSessionRegistry } from "./browserSessionRegistry.js";
 import { allocateDistinctRuntimePorts, type RuntimePorts } from "./freePort.js";

@@ -17,5 +17,5 @@
     "../../contracts/**/*",
     "../../publishing_providers/*/backend/**/*"
   ],
-  "exclude": ["node_modules", "test", "../../publishing_providers/*/backend/test"]
+  "exclude": ["node_modules", "test", "../../publishing_providers/*/backend/areas/bundle/sharing/test"]
 }

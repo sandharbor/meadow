@@ -25,7 +25,7 @@ import {
   type RuntimePayloadReference,
   type RuntimeSessionDescriptor,
   type RuntimeSupervisorLaunchSpec,
-} from "../../../contracts/types/runtime.js";
+} from "../../../contracts/types/shared/runtime/runtime.js";
 import type {
   cooperativeHandoff,
   officialClient,

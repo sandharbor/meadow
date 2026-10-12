@@ -16,8 +16,8 @@ limitations under the License.
 
 import React, { useState, useCallback } from 'react';
 import Modal from '../../../../shared/components/Modal';
-import { IBundleNode, LinkResolvedInfo } from '../../../../../../../contracts/types/IBundleNode';
-import { Graph } from '../../../../../../../contracts/types/graph';
+import { IBundleNode, LinkResolvedInfo } from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode';
+import { Graph } from '../../../../../../../contracts/types/shared/bundle-graph/graph';
 
 interface BundleNodeLinksModalProps {
   isOpen: boolean;
@@ -457,4 +457,4 @@ export default BundleNodeLinksModal;
 
 import { parseBundleNodeKey, bundleNodeKeySourceGraphPath, serializeBundleNodeKey, fileNodeKeyFromSourceGraphPath } from '../../../../../../../shared_code/utils/bundleNodeKey.js';
 
-import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';

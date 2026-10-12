@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import React, { useState } from 'react';
-import { Graph, IBundleNode } from '../../../../../../../contracts/types/graph';
+import { Graph, IBundleNode } from '../../../../../../../contracts/types/shared/bundle-graph/graph';
 import TraversalPathDetailsModal from '../../../../shared/components/TraversalPathDetailsModal.js';
 import BundleNodeLinksModal from './BundleNodeLinksModal';
 import { useEditorOperations } from '../types/editorOperations.js';
@@ -111,6 +111,6 @@ export function usePageInspectionDialogs(options: {
   };
 }
 
-import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';
 
 import { encodedBundleNodeKey } from '../../../../../../../shared_code/utils/bundleNodeKey.js';

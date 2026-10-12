@@ -16,10 +16,10 @@ limitations under the License.
 
 import fs from 'fs';
 import path from 'path';
-import type { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
+import type { BundleNodeConfig } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundleConfigPaths.js';
 import { replaceOutsideCode } from '../html/markdown.js';
-import type { LinkResolvedInfo } from '../../../../../../../contracts/types/IBundleNode.js';
+import type { LinkResolvedInfo } from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode.js';
 import { rewritePortableSourceWikilinks, rewriteResolvedSourceUrls } from '../source-material/portableSourceLinks.js';
 import {
   HTML_LINK_NOT_TRACKED_REPLACEMENT,
@@ -130,4 +130,4 @@ export function prepareSourcesExportDirectory(
 
 import { serializeBundleNodeKey, fileNodeKeyFromSourceGraphPath } from '../../../../../../../shared_code/utils/bundleNodeKey.js';
 
-import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';

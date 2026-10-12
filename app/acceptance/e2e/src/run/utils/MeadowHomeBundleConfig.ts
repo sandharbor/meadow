@@ -18,8 +18,8 @@ import fs from "fs";
 import path from "path";
 import YAML from "yaml";
 import type { Expect } from "@playwright/test";
-import type { BundleConfig } from '../../../../../contracts/types/bundleConfig.js';
-import type { BundleNodeConfig } from '../../../../../contracts/types/bundleNodeConfig.js';
+import type { BundleConfig } from '../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
+import type { BundleNodeConfig } from '../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import { BundleConfigPaths } from '../../../../../shared_code/paths/bundleConfigPaths.js';
 import { parseBundleNodeConfig } from '../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 

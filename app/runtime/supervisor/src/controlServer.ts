@@ -19,7 +19,7 @@ import type {
   RuntimeAttachRequirement,
   RuntimeCompatibilityDecision,
   RuntimeSessionDescriptor,
-} from "../../../contracts/types/runtime.js";
+} from "../../../contracts/types/shared/runtime/runtime.js";
 import { decideRuntimeCompatibility } from "./compatibility.js";
 import { BrowserSessionRegistry } from "./browserSessionRegistry.js";
 import { RuntimeLeaseRegistry, type RuntimeLeaseKind } from "./leaseRegistry.js";

@@ -1,6 +1,10 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
 import { createPortal } from 'react-dom';
+import { Link, useSearchParams, useParams } from 'react-router-dom';
+import { documentUrl } from './DocumentText.tsx';
+import type { DocumentKind } from '../../../../../concepts/documents.js';
+import { addScenarioFilterTerm, formatScenarioFilterExpression, parseScenarioFilterExpression } from '../scenarioFilterExpression.ts';
 import { ConceptDetails } from './ConceptPage.tsx';
 
 type Mode = 'embedded' | 'sidebar' | 'floating';
@@ -21,10 +25,14 @@ const fit = (bounds: Bounds): Bounds => {
 export default function ConceptExplorer({ concept: selected, selectedConceptIds, onSelectConcept, onSidebarWidth, scenario }: {
   concept: { id: string; name: string } | null;
   selectedConceptIds: string[];
-  onSelectConcept?: (id: string, add: boolean) => void;
+  onSelectConcept?: (id: string, add: boolean, kind: DocumentKind) => void;
   onSidebarWidth?: (width: number) => void;
   scenario?: { runId: string; counts: Readonly<Record<string, number>> | null; onClose: () => void };
 }) {
+  const [documentKind, setDocumentKind] = useState<DocumentKind>('concept');
+  const { runId: routeRunId } = useParams();
+  const runId = scenario?.runId ?? routeRunId;
+  const [searchParams] = useSearchParams();
   const [lastSelected, setLastSelected] = useState(selected);
   const concept = selected ?? lastSelected;
   const [expanded, setExpanded] = useState(Boolean(scenario));
@@ -81,17 +89,24 @@ export default function ConceptExplorer({ concept: selected, selectedConceptIds,
   const viewedConceptSelected = selectedConceptIds.includes(location.id);
   const selectConcept = (add: boolean) => {
     selectionFromExplorer.current = true;
-    onSelectConcept?.(location.id, add);
+    onSelectConcept?.(location.id, add, documentKind);
   };
   const close = () => { setExpanded(false); scenario?.onClose(); };
   const relatedCount = scenario?.counts ? scenario.counts[location.id] ?? 0 : null;
-  const selectRelated = scenario && <a href={`/${scenario.runId}?doc=${encodeURIComponent(location.id)}`} className="inline-flex cursor-pointer items-center gap-2 rounded border border-brand-200 px-2 py-1 text-xs font-medium text-brand-600 hover:bg-brand-50">
+  const relatedParams = new window.URLSearchParams(searchParams);
+  const section = documentKind === 'design-pressure' ? 'pressure' : documentKind === 'fixture' ? 'bundle' : 'doc';
+  const mix = relatedParams.get('mix');
+  if (mix) {
+    const parsed = parseScenarioFilterExpression(mix);
+    if (parsed.expression) relatedParams.set('mix', formatScenarioFilterExpression(addScenarioFilterTerm(parsed.expression, section, location.id)));
+  } else if (!relatedParams.getAll(section).includes(location.id)) relatedParams.append(section, location.id);
+  const selectRelated = scenario && <Link to={`/${scenario.runId}?${relatedParams}`} className="inline-flex cursor-pointer items-center gap-2 rounded border border-brand-200 px-2 py-1 text-xs font-medium text-brand-600 hover:bg-brand-50">
     Select related scenarios <span className="rounded-full bg-brand-100 px-1.5 py-0.5 tabular-nums" aria-label={relatedCount === null ? 'Loading related scenarios' : `${relatedCount} related scenarios`}>{relatedCount ?? '…'}</span>
-  </a>;
-  const openPage = <a href={`/concepts/${encodeURIComponent(location.id)}${location.implementation ? `?${location.implementation}` : ''}`}
+  </Link>;
+  const openPage = <Link to={documentUrl(location.id, runId, location.implementation)}
     target="_blank" rel="noopener noreferrer" onClick={close} className="cursor-pointer rounded border border-neutral-300 bg-white px-2 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-50">
     Open in new page <span aria-hidden="true">↗</span>
-  </a>;
+  </Link>;
   const displayControl = <label className="flex items-center gap-1 text-xs text-neutral-500">View
     <select aria-label="Concept display" value={mode} className="rounded border bg-white px-2 py-1 text-neutral-700"
       onChange={event => { setMode(event.target.value as Mode); setExpanded(true); }}>
@@ -117,7 +132,7 @@ export default function ConceptExplorer({ concept: selected, selectedConceptIds,
         disabled={viewedConceptSelected} onClick={() => selectConcept(true)}>Add to selection</button>
     </div>}
     <div className="min-h-0 flex-1 overflow-auto p-4" key={`${location.id}:${location.implementation ?? ''}`}>
-      <ConceptDetails conceptId={location.id} selected={location.implementation} onNavigate={navigate} showTitle={mode !== 'embedded' || location.id !== concept.id} />
+      <ConceptDetails runId={runId} onDocumentKind={setDocumentKind} conceptId={location.id} selected={location.implementation} onNavigate={navigate} showTitle={mode !== 'embedded' || location.id !== concept.id} />
     </div>
   </>;
   const detached = expanded && mode !== 'embedded' ? createPortal(

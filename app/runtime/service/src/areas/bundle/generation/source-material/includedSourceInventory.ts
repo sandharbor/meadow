@@ -2,8 +2,8 @@
 
 import fs from 'fs';
 import path from 'path';
-import type { BundleNodeId } from '../../../../../../../contracts/types/bundleNodeConfig.js';
-import type { IncludedSourceEntry } from '../../../../../../../contracts/types/generatedOutputIdentity.js';
+import type { BundleNodeId } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
+import type { IncludedSourceEntry } from '../../../../../../../contracts/types/shared/generated-bundle-versioning/generatedOutputIdentity.js';
 import { parseBundleNodeConfig } from '../../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 import { sourceGraphPath } from '../../../../../../../shared_code/utils/bundleSourceUtils.js';
 import { sourceFileCandidateFilenames } from '../../../../../../../shared_code/utils/fileTypeUtils.js';

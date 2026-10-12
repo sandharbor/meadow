@@ -11,6 +11,8 @@ import url from "url";
 import ts from "typescript";
 import { isScenarioTestCall, scenarioMetadataIssues } from './scenario-metadata.js';
 import { declaredScenarioAreas } from '../../src/artifacts/declaredScenarioAreas.js';
+import { loadDocumentRegistry } from '../../../../concepts/loadRegistry.js';
+import { resolveScenarioDocuments } from '../../src/artifacts/scenarioDocuments.js';
 import * as concepts from '../../../../concepts/index.js';
 
 const SCRIPT_DIR = path.dirname(url.fileURLToPath(import.meta.url));
@@ -74,6 +76,8 @@ function scenarioAreaIssues(source: ts.SourceFile): string[] {
   return issues;
 }
 
+const registry = await loadDocumentRegistry();
+
 function main(): void {
   const specs = readdirSync(TESTS_DIR, { recursive: true })
     .filter((f): f is string => typeof f === "string" && f.endsWith(".spec.ts"))
@@ -89,6 +93,7 @@ function main(): void {
     }
     const source = ts.createSourceFile(spec, readFileSync(spec, 'utf8'), ts.ScriptTarget.ESNext, true);
     for (const issue of scenarioMetadataIssues(source)) metadataIssues.push(`  ${path.relative(TEST_RUNNER_DIR, spec)}:${issue.line}: ${issue.message}`);
+    try { resolveScenarioDocuments(source.text, registry); } catch (error) { metadataIssues.push(`  ${path.relative(TEST_RUNNER_DIR, spec)}: ${String(error)}`); }
     for (const issue of scenarioAreaIssues(source)) metadataIssues.push(`  ${path.relative(TEST_RUNNER_DIR, spec)}: ${issue}`);
   }
 

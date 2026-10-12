@@ -1,7 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import type { Graph } from '../../../../../../../contracts/types/graph.js';
-import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';
+import type { Graph } from '../../../../../../../contracts/types/shared/bundle-graph/graph.js';
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';
 import { sourceReviewAppearance, sourceRemovalReasons } from '../../../../shared/utils/sourceReviewAppearance.js';
 import { bundleNodeKeySourceGraphPath } from '../../../../../../../shared_code/utils/bundleNodeKey.js';
 import { useSourcePath } from '../../../../shared/components/SourceNames.js';

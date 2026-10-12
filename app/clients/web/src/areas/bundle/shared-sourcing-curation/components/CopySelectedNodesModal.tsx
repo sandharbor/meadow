@@ -18,7 +18,7 @@ import React, { useState } from 'react';
 import { useSourcePathFormatter } from '../../../../shared/components/SourceNames.js';
 import { sourceGraphPath } from '../../../../../../../shared_code/utils/bundleSourceUtils.js';
 import Modal from '../../../../shared/components/Modal';
-import type { IBundleNode } from '../../../../../../../contracts/types/IBundleNode';
+import type { IBundleNode } from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode';
 
 type CopyFormat = 'titles' | 'paths' | 'json' | 'yaml';
 type PathsVariant = 'space-separated' | 'separate-lines';

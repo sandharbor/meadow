@@ -15,8 +15,8 @@ limitations under the License.
 */
 
 import crypto from 'crypto';
-import type { FileType } from '../../../../../contracts/types/FileType.js';
-import type { BundleNodeConfig, BundleNodeId } from '../../../../../contracts/types/bundleNodeConfig.js';
+import type { FileType } from '../../../../../contracts/types/shared/bundle-graph/FileType.js';
+import type { BundleNodeConfig, BundleNodeId } from '../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 
 export function makeBundleNodeConfig(
   bundleNodeName: string,

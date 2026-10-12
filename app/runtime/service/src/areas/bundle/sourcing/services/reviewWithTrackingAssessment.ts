@@ -1,6 +1,6 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import type { SourcingReview } from '../../../../../../../contracts/types/sourcing.js';
+import type { SourcingReview } from '../../../../../../../contracts/types/shared/sourcing/sourcing.js';
 import { sourcingQuerySnapshotSensitivity } from '../../curation/exported.js';
 import { scanSourceChanges, sourcingReview } from './sourceReview.js';
 

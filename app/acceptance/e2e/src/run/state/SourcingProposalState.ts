@@ -2,7 +2,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import type { PendingSourceProposal } from '../../../../../contracts/types/sourcingProposal.js';
+import type { PendingSourceProposal } from '../../../../../contracts/types/shared/sourcing/sourcingProposal.js';
 import type { TestServer } from '../test-fixtures.js';
 
 /** Reads persisted proposal state independently of the browser workspace. */

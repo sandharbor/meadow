@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { Graph } from '../../../../../../../contracts/types/graph';
-import { IBundleNode } from '../../../../../../../contracts/types/IBundleNode';
+import { Graph } from '../../../../../../../contracts/types/shared/bundle-graph/graph';
+import { IBundleNode } from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode';
 
 /**
  * Calculate the detail info for outlink gap filter.

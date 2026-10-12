@@ -14,11 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import type { CoreConceptId } from "./ids.js";
+import type { CoreDocumentId } from "./documentIds.js";
 import { createConceptLanguage } from "./types.js";
 
 export const {
   conceptLink,
   conceptText,
   defineMeadowConcept,
-} = createConceptLanguage<CoreConceptId>();
+} = createConceptLanguage<CoreDocumentId>();
+
+export const documentText = conceptText;
+export const documentLink = conceptLink;

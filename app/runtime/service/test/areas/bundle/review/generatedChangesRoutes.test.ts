@@ -7,7 +7,7 @@ import { execFileSync } from 'child_process';
 import express from 'express';
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { GeneratedOutputOwnership } from '../../../../../../contracts/types/generatedOutputIdentity.js';
+import type { GeneratedOutputOwnership } from '../../../../../../contracts/types/shared/generated-bundle-versioning/generatedOutputIdentity.js';
 import reviewRoutes from '../../../../src/areas/bundle/review/routes/reviewRoutes.js';
 import { generateCurrentBundleVersion } from '../../../../src/shared/generated-bundle-versioning/generatedBundleVersionLifecycle.js';
 import { generationRecordPaths } from '../../../../src/shared/generated-bundle-versioning/generationRecords.js';

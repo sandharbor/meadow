@@ -23,10 +23,10 @@ import {
   BUNDLE_BOUNDARY_REVIEW_SCHEMA_VERSION,
   type BundleBoundaryFinding,
   type BundleBoundaryReviewRequest,
-} from '../../../../../contracts/types/bundleBoundaryReview.js';
-import { Graph } from '../../../../../contracts/types/graph.js';
-import type { FileBundleNodeConfig } from '../../../../../contracts/types/bundleNodeConfig.js';
-import type { IBundleNode } from '../../../../../contracts/types/IBundleNode.js';
+} from '../../../../../contracts/types/shared/bundle-boundary-review/bundleBoundaryReview.js';
+import { Graph } from '../../../../../contracts/types/shared/bundle-graph/graph.js';
+import type { FileBundleNodeConfig } from '../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
+import type { IBundleNode } from '../../../../../contracts/types/shared/bundle-graph/IBundleNode.js';
 import {
   applyNodeConfigsToNodes,
   applySensitiveFromApiData,

@@ -14,15 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import type { CustomFilterConfig } from '../../../../../contracts/types/customFilters.js';
+import type { CustomFilterConfig } from '../../../../../contracts/types/shared/curation/customFilters.js';
 import type { filterSensitivity, ParticipatesIn } from '../../../../../concepts/index.js';
 import type {
   GraphFilterApplication,
   GraphFilterCatalog,
   GraphFilterCombination,
   GraphFilterDescriptor,
-} from '../../../../../contracts/types/graphInspection.js';
-import { Graph } from '../../../../../contracts/types/graph.js';
+} from '../../../../../contracts/types/shared/curation/graphInspection.js';
+import { Graph } from '../../../../../contracts/types/shared/bundle-graph/graph.js';
 import {
   createCustomBundleNodeSelector,
   type IBundleNodeSelector,
@@ -37,7 +37,7 @@ import {
   type ActiveFilterExpressionTerm,
   type FilterExpression,
   type FilterExpressionOperator,
-} from '../../../../../contracts/types/filterExpression.js';
+} from '../../../../../contracts/types/shared/curation/filterExpression.js';
 
 interface ExecutableFilter {
   id: string;
@@ -192,4 +192,4 @@ export type FilterSensitivityMeadowConceptParticipations = [
   ParticipatesIn<typeof filterSensitivity, "derive-sensitivity", typeof selectEffectivelySensitiveNodeKeys>,
 ];
 
-import type { EncodedBundleNodeKey } from '../../../../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';

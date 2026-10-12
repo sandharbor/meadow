@@ -14,9 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import type { IEdge } from '../../contracts/types/graph.js';
-import type { IBundleNode } from '../../contracts/types/IBundleNode.js';
-import type { BundleNodeConfig, BundleNodeId, EncodedBundleNodeKey } from '../../contracts/types/bundleNodeConfig.js';
+import type { IEdge } from '../../contracts/types/shared/bundle-graph/graph.js';
+import type { IBundleNode } from '../../contracts/types/shared/bundle-graph/IBundleNode.js';
+import type { BundleNodeConfig, BundleNodeId, EncodedBundleNodeKey } from '../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 
 export interface VisibleStructuralProjection {
   renderedNodeKeys: EncodedBundleNodeKey[];

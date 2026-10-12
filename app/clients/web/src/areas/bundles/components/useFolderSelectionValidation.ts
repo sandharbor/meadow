@@ -1,7 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import { useEffect, useState } from 'react';
-import type { FolderBundleSelectionValidation } from '../../../../../../contracts/types/folderBundleSelection';
+import type { FolderBundleSelectionValidation } from '../../../../../../contracts/types/shared/bundle-config/folderBundleSelection';
 import { apiRequest } from '../../../shared/utils/apiClient';
 
 export function useFolderSelectionValidation(enabled: boolean, sourceDirectory: string, selectedFolders: string[]) {

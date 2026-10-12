@@ -4,8 +4,9 @@ import path from 'node:path';
 import type { filterSensitivity, ParticipatesIn } from '../../../../../../../concepts/index.js';
 import { sourceProposalContext } from '../../../../shared/source-snapshot/sourceRegistrySnapshots.js';
 import { runSerializedBundleNodeMutation } from '../../../../shared/bundle-node/bundleNodeMutationQueue.js';
-import type { SnapshotTrackingRequest, SnapshotTrackingOutcome, TrackingSensitivity } from '../../../../../../../contracts/types/curationTracking.js';
-import { Graph } from '../../../../../../../contracts/types/graph.js';
+import type { SnapshotTrackingOutcome, TrackingSensitivity } from '../../../../../../../contracts/types/shared/curation/curationTracking.js';
+import type { SnapshotTrackingRequest } from '../../../../../../../contracts/types/areas/bundle/shared-sourcing-curation/snapshotTracking.js';
+import { Graph } from '../../../../../../../contracts/types/shared/bundle-graph/graph.js';
 import { applyNodeConfigsToNodes, applySensitiveFromApiData } from '../../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 import { serializeWorkingGraphOutput } from '../../../../shared/bundle-graph/workingGraphService.js';
 import { selectEffectivelySensitiveNodeKeys } from '../../../../shared/bundle-graph/graphFilterService.js';
@@ -53,4 +54,4 @@ export async function trackSnapshotAdditions(directory: string, request: Snapsho
   });
 }
 
-import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';

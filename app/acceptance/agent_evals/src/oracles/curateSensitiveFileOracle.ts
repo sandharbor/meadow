@@ -24,10 +24,10 @@ import {
 } from "node:fs";
 import path from "node:path";
 import YAML from "yaml";
-import type { BundleNodeConfig, TrackingEvidence } from "../../../../../contracts/types/bundleNodeConfig.js";
+import type { BundleNodeConfig, TrackingEvidence } from "../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js";
 import type {
   GenerateBundleCliResult,
-} from "../../../../../contracts/types/cliOperations.js";
+} from "../../../../../contracts/types/shared/cli/cliOperations.js";
 import {
   SENSITIVE_FILE,
   SOURCE_UPDATE_TEXT,

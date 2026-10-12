@@ -33,7 +33,7 @@ import path from "node:path";
 import {
   HOME_OWNERSHIP_LOCK_SCHEMA_VERSION,
   type HomeOwnershipLockRecord,
-} from "../../../contracts/types/runtime.js";
+} from "../../../contracts/types/shared/runtime/runtime.js";
 import { getRuntimePaths } from "./runtimePaths.js";
 
 export class MeadowHomeAlreadyOwnedError extends Error {

@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { sourceForNode } from '../../../../../../../shared_code/utils/bundleSourceUtils.js';
-import type { PendingSourceProposal, ProposalConfiguration } from '../../../../../../../contracts/types/sourcingProposal.js';
+import type { PendingSourceProposal, ProposalConfiguration } from '../../../../../../../contracts/types/shared/sourcing/sourcingProposal.js';
 import { sameProposalValue, mergeProposalConfiguration } from '../../../../../../../shared_code/utils/proposalConfigurationMerge.js';
 import { captureSourceSnapshot, discoverSourceSnapshot, loadSourceSnapshot, snapshotDirectory, SourcingError,
   withSourcingLock } from '../../../../shared/source-snapshot/sourceSnapshots.js';

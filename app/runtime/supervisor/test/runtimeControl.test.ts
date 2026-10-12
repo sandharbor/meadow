@@ -21,7 +21,7 @@ import {
   RUNTIME_SESSION_DESCRIPTOR_SCHEMA_VERSION,
   type RuntimeCompatibilityDecision,
   type RuntimeSessionDescriptor,
-} from "../../../contracts/types/runtime.js";
+} from "../../../contracts/types/shared/runtime/runtime.js";
 import { startRuntimeControlServer } from "../src/controlServer.js";
 import { BrowserSessionRegistry } from "../src/browserSessionRegistry.js";
 import { RuntimeLeaseRegistry } from "../src/leaseRegistry.js";

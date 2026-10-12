@@ -31,7 +31,7 @@ vi.mock('../../src/shared/utils/apiClient', () => ({
     constructor(public url: string) { transport.streams.push(this); }
   },
 }));
-vi.mock('../../src/shared/publishing-provider-host/useActivePublishingProvider', () => ({ useActivePublishingProvider: () => null }));
+vi.mock('../../src/areas/bundle/sharing/providers/publicationQueries.js', () => ({ usePublishingTab: () => ({ PublishTabComponent: null, publishTabLabel: 'Publish' }), getPublishedUrl: vi.fn(), getPublishedFileCounts: vi.fn() }));
 vi.mock('../../src/areas/bundle/review/components/VersionsTab', () => ({
   VersionsTab: ({ onVersionChanged }: { onVersionChanged: () => void }) => <button onClick={onVersionChanged}>Cancel new version</button>,
 }));
@@ -137,5 +137,30 @@ describe('progressive bundle preview', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Changes/ }));
     expect(screen.getByTestId('changes-content')).not.toBe(oldChanges);
     expect(screen.getByTitle('Preview')).toBe(iframe);
+  });
+
+  it('refreshes saved state and opens Share when saving needs no new commit', async () => {
+    let saved = false;
+    transport.request.mockImplementation(async (url: string) => {
+      if (url.endsWith('/review/save-changes')) {
+        saved = true;
+        return { ok: true, json: async () => ({ success: true, noChanges: true, savedGenerationId: 'saved-generation' }) };
+      }
+      return { ok: true, json: async () => ({
+        versions: [{ versionId: 'vAb1234', createdAt: '2026-10-12T00:00:00Z', localFilesState: 'present',
+          displayState: saved ? 'saved' : 'unsaved', savedGenerationId: saved ? 'saved-generation' : null }],
+        tree: saved ? [] : [{ path: '/preview/nested/Child.html', gitStatus: 'modified' }],
+        root: '/preview', saveState: { saved }, renames: [], calloutDismissals: { customizeSidebarAutoShown: true },
+      }) };
+    });
+    render(<PreviewPublishModal {...props} />);
+    await emit(0, 'complete', firstUrl);
+    const share = screen.getByRole('button', { name: /^2\s*Share$/ });
+    expect(share).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+    await waitFor(() => expect(transport.request).toHaveBeenCalledWith('bundles/example/review/save-changes'));
+    await waitFor(() => expect(share).toBeEnabled());
+    expect(share).toHaveClass('bg-main-100');
+    expect(screen.getByRole('button', { name: 'Local Export' })).toBeVisible();
   });
 });

@@ -1,7 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
-import type { IBundleNode } from '../../../../../contracts/types/IBundleNode.js';
-import type { BundleNodeTraversalPathStep } from '../../../../../contracts/types/bundleNodeGraph.js';
-import type { Graph } from '../../../../../contracts/types/graph.js';
+import type { IBundleNode } from '../../../../../contracts/types/shared/bundle-graph/IBundleNode.js';
+import type { BundleNodeTraversalPathStep } from '../../../../../contracts/types/shared/bundle-graph/bundleNodeGraph.js';
+import type { Graph } from '../../../../../contracts/types/shared/bundle-graph/graph.js';
 
 /** Use the displayed snapshot's registry, including steps absent from its node inventory. */
 export function traversalSourceName(graph: Graph, key: EncodedBundleNodeKey): string | undefined {
@@ -92,4 +92,4 @@ export function defaultTraversalRoute(routes: ExplainedTraversalRoute[]): number
 
 import { parseBundleNodeKey } from '../../../../../shared_code/utils/bundleNodeKey.js';
 
-import type { EncodedBundleNodeKey } from '../../../../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';

@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import type { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig';
-import type { IBundleNode } from '../../../../../../../contracts/types/IBundleNode';
+import type { BundleNodeConfig } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig';
+import type { IBundleNode } from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode';
 import { generateBundleNodeId } from '../../../../../../../shared_code/utils/bundleNodeConfigUtils';
 import { mutateFileTracking, trackSafeNodeKeys } from './bundleTrackingClient';
 import type { EditorOperations } from '../types/editorOperations.js';

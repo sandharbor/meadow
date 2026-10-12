@@ -17,7 +17,7 @@ limitations under the License.
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { PublishToS3Tab } from '../../../../../../publishing_providers/S3PublishingProvider/frontend/internal/PublishToS3Tab';
+import { PublishToS3Tab } from '../../../../../../publishing_providers/S3PublishingProvider/frontend/areas/bundle/sharing/internal/PublishToS3Tab';
 
 function jsonResponse(body: unknown) {
   return new globalThis.Response(JSON.stringify(body), {

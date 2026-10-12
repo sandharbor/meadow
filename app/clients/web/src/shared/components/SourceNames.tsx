@@ -1,7 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import { createContext, useCallback, useContext, type ReactNode } from 'react';
-import type { BundleSource } from '../../../../../contracts/types/bundleConfig.js';
+import type { BundleSource } from '../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
 import { sourceGraphPath, sourceLocationLabel } from '../../../../../shared_code/utils/bundleSourceUtils.js';
 import { splitPathLabel } from './PathChange.js';
 

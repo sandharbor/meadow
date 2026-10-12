@@ -12,3 +12,4 @@
 
 export { SaveLocallyTab as AppShellComponentSaveLocallyTab } from './components/SaveLocallyTab.js';
 export { AdvancedTab as AppShellComponentAdvancedTab } from './components/AdvancedTab.js';
+export { getPublishedUrl as appShellQueryPublishedUrl, getPublishedUrl as bundlesQueryPublishedUrl, getPublishedFileCounts as bundlesQueryPublishedFileCounts, usePublishingTab as useAppShellStatePublishingTab } from './providers/publicationQueries.js';

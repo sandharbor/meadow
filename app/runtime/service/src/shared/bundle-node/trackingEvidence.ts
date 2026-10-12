@@ -18,7 +18,7 @@ import { createHash } from 'crypto';
 import { sourceGraphPath } from '../../../../../shared_code/utils/bundleSourceUtils.js';
 import fs from 'fs';
 import path from 'path';
-import type { FileBundleNodeConfig, TrackingEvidence } from '../../../../../contracts/types/bundleNodeConfig.js';
+import type { FileBundleNodeConfig, TrackingEvidence } from '../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import { BundleConfigPaths } from '../../../../../shared_code/paths/bundleConfigPaths.js';
 import {
   canonicalPageFilename,

@@ -17,7 +17,7 @@ limitations under the License.
 import { describe, expect, it } from 'vitest';
 import { render } from '@testing-library/react';
 import BundleNodeGlyph from '../../../../../src/areas/bundle/shared-sourcing-curation/components/BundleNodeGlyph';
-import type { BundleNodeKind } from '../../../../../../../contracts/types/bundleNodeConfig';
+import type { BundleNodeKind } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig';
 
 const highlight = {
   color: '#14b8a6',

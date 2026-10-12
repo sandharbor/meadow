@@ -18,7 +18,7 @@ import type { EditorOperations } from '../types/editorOperations.js';
 import type {
   MutateBundleNodeCliResult,
   TrackBundleNodesCliResult,
-} from '../../../../../../../contracts/types/cliOperations';
+} from '../../../../../../../contracts/types/shared/cli/cliOperations';
 
 async function requireTrackingSuccess<T>(response: Response, fallback: string): Promise<T> {
   const body = await response.json().catch(() => ({})) as T & { error?: string };
@@ -64,4 +64,4 @@ export async function trackSafeNodeKeys(
   return requireTrackingSuccess<TrackBundleNodesCliResult>(response, 'Batch tracking failed');
 }
 
-import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';

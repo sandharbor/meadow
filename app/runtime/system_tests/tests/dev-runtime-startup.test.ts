@@ -19,7 +19,7 @@ import {
   MEADOW_RUNTIME_PROTOCOL,
   RUNTIME_SESSION_DESCRIPTOR_SCHEMA_VERSION,
   type RuntimeSessionDescriptor,
-} from "../../../contracts/types/runtime.js";
+} from "../../../contracts/types/shared/runtime/runtime.js";
 import {
   RuntimeClientLease,
   type EnsureRuntimeOptions,

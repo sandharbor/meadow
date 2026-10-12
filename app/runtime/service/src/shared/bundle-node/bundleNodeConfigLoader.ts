@@ -16,8 +16,8 @@ limitations under the License.
 
 import fs from 'fs';
 import { BundleConfigPaths } from '../../../../../shared_code/paths/bundleConfigPaths.js';
-import type { BundleConfig } from '../../../../../contracts/types/bundleConfig.js';
-import type { BundleNodeConfig, BundleNodeId } from '../../../../../contracts/types/bundleNodeConfig.js';
+import type { BundleConfig } from '../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
+import type { BundleNodeConfig, BundleNodeId } from '../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import {
   parseBundleNodeConfig,
   resolveBundleNodeRoles,

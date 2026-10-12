@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import type { IEdge } from '../../../../../../../contracts/types/graph';
-import type { BundleNodeKind } from '../../../../../../../contracts/types/bundleNodeConfig';
+import type { IEdge } from '../../../../../../../contracts/types/shared/bundle-graph/graph';
+import type { BundleNodeKind } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig';
 import type { NodePosition } from '../types/graphViewport';
 
 export interface GraphLayoutNode {
@@ -355,4 +355,4 @@ export function calculateGraphLayout(
   return { positions, guides, isFolderAware: true };
 }
 
-import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';

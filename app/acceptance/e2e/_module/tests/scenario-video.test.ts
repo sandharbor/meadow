@@ -8,7 +8,7 @@ import type { TestCase, TestResult } from '@playwright/test/reporter';
 import ArtifactReporter, { getTestArtifactDirectory } from '../../src/run/artifactReporter.js';
 import { assembleScenarioVideo, findScenarioRecording, scenarioRecordingDirectory } from '../../src/artifacts/scenarioVideo.js';
 
-test('partial reruns retain other scenarios recordings after temporary output is cleaned', t => {
+test('partial reruns retain other scenarios recordings after temporary output is cleaned', async t => {
   const root = mkdtempSync(path.join(os.tmpdir(), 'scenario-videos-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const run = path.join(root, 'run');
@@ -16,6 +16,7 @@ test('partial reruns retain other scenarios recordings after temporary output is
   const spec = path.join(root, 'scenario.spec.ts');
   writeFileSync(spec, '// Captured source');
   const reporter = new ArtifactReporter({ outputDir: run });
+  await reporter.onBegin();
   const begin = (title: string) => reporter.onTestBegin({ title, annotations: [], location: { file: spec, line: 1, column: 1 } } as unknown as TestCase,
     { startTime: new Date() } as TestResult);
   const directories = ['first', 'second'].map(title => getTestArtifactDirectory(title, run));
@@ -37,7 +38,7 @@ test('partial reruns retain other scenarios recordings after temporary output is
   assert.equal(readFileSync(path.join(directories[0], 'video.webm'), 'utf8'), 'new recording');
 });
 
-test('a scenario that executes without recording cannot inherit its previous video', t => {
+test('a scenario that executes without recording cannot inherit its previous video', async t => {
   const root = mkdtempSync(path.join(os.tmpdir(), 'scenario-no-video-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const directory = getTestArtifactDirectory('no recording', root);
@@ -45,7 +46,9 @@ test('a scenario that executes without recording cannot inherit its previous vid
   writeFileSync(path.join(directory, 'video.webm'), 'old recording');
   const spec = path.join(root, 'scenario.spec.ts');
   writeFileSync(spec, '// Recording disabled');
-  new ArtifactReporter({ outputDir: root }).onTestBegin({ title: 'no recording', annotations: [], location: { file: spec, line: 1, column: 1 } } as unknown as TestCase,
+  const reporter = new ArtifactReporter({ outputDir: root });
+  await reporter.onBegin();
+  reporter.onTestBegin({ title: 'no recording', annotations: [], location: { file: spec, line: 1, column: 1 } } as unknown as TestCase,
     { startTime: new Date() } as TestResult);
   assert.equal(assembleScenarioVideo(directory, null), undefined);
   assert.equal(existsSync(path.join(directory, 'video.webm')), false);

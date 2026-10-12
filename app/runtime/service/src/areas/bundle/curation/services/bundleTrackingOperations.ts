@@ -20,19 +20,19 @@ import { sourceGraphPath } from '../../../../../../../shared_code/utils/bundleSo
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import type { BundleNodeConfig, BundleNodeId, FileBundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
+import type { BundleNodeConfig, BundleNodeId, FileBundleNodeConfig } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import {
   CLI_MUTATION_BEHAVIORS,
   CLI_OPERATION_SCHEMA_VERSION,
   type SkippedBundleNodeResult,
   type TrackBundleNodesCliResult,
   type TrackedBundleNodeResult,
-} from '../../../../../../../contracts/types/cliOperations.js';
-import { Graph } from '../../../../../../../contracts/types/graph.js';
+} from '../../../../../../../contracts/types/shared/cli/cliOperations.js';
+import { Graph } from '../../../../../../../contracts/types/shared/bundle-graph/graph.js';
 import {
   isUntrackableFrontierNode,
   type IBundleNode,
-} from '../../../../../../../contracts/types/IBundleNode.js';
+} from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode.js';
 import {
   applyNodeConfigsToNodes,
   applySensitiveFromApiData,
@@ -439,4 +439,4 @@ export async function trackBundleNodes(
   };
 }
 
-import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';

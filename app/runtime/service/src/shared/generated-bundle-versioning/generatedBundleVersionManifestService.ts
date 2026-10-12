@@ -20,7 +20,7 @@ import YAML from 'yaml';
 import type {
   GeneratedBundleVersionId,
   GeneratedBundleVersionManifest,
-} from '../../../../../contracts/types/generatedBundleVersioning.js';
+} from '../../../../../contracts/types/shared/generated-bundle-versioning/generatedBundleVersioning.js';
 import {
   currentGeneratedBundleVersion,
   emptyGeneratedBundleVersionManifest,

@@ -17,18 +17,18 @@ limitations under the License.
 import { restoreFilterViews, saveFilterViews } from '../utils/filterViewState.js';
 import type { EditorOperations } from './editorOperations.js';
 import React, { useEffect, useState } from 'react';
-import { CustomFilterConfig } from '../../../../../../../contracts/types/customFilters.js';
+import { CustomFilterConfig } from '../../../../../../../contracts/types/shared/curation/customFilters.js';
 import type {
   BuiltInGraphFilterAction,
   NodeTypeFilterId,
-} from '../../../../../../../contracts/types/graphInspection.js';
+} from '../../../../../../../contracts/types/shared/curation/graphInspection.js';
 import {
   frontendBuiltInGraphFilterDefinitions,
   type BuiltInGraphFilterDefinition,
 } from '../../../../../../../shared_code/utils/builtInGraphFilters.js';
 import { logger } from '../../../../shared/utils/logger';
 
-export type { NodeTypeFilterId } from '../../../../../../../contracts/types/graphInspection.js';
+export type { NodeTypeFilterId } from '../../../../../../../contracts/types/shared/curation/graphInspection.js';
 
 // Re-export filter selector types and functions from local utils
 export type { SelectorBase, INormalBundleNodeSelector, IBundleNodeSelector } from '../utils/filterSelectors';
@@ -55,7 +55,7 @@ import {
   IBundleNodeSelector,
   createCustomBundleNodeSelector as createCustomBundleNodeSelectorBase
 } from '../utils/filterSelectors';
-import type { CustomBundleNodeSelectorConfig } from '../../../../../../../contracts/types/customFilters.js';
+import type { CustomBundleNodeSelectorConfig } from '../../../../../../../contracts/types/shared/curation/customFilters.js';
 
 export type FilterAction = BuiltInGraphFilterAction;
 

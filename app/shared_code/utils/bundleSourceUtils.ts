@@ -1,7 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import type { BundleConfig, BundleSource } from '../../contracts/types/bundleConfig.js';
-import type { BundleNodeConfig } from '../../contracts/types/bundleNodeConfig.js';
+import type { BundleConfig, BundleSource } from '../../contracts/types/shared/bundle-config/bundleConfig.js';
+import type { BundleNodeConfig } from '../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 
 export const LEGACY_SOURCE_ID = 'source000001';
 const SOURCE_PATH_PREFIX = '_mw_sources/';

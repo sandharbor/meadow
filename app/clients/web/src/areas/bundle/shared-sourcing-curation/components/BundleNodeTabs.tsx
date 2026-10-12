@@ -14,13 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import type { SnapshotTrackingOutcome } from '../../../../../../../contracts/types/curationTracking';
+import type { SnapshotTrackingOutcome } from '../../../../../../../contracts/types/shared/curation/curationTracking';
 import SourceTrackingNotice from './SourceTrackingNotice';
 import { EditorOperationsContext, useEditorOperations, type EditorOperations } from '../types/editorOperations.js';
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { apiRequest } from '../../../../shared/utils/apiClient';
-import { Graph, IBundleNode } from '../../../../../../../contracts/types/graph';
-import { isUntrackableFrontierNode } from '../../../../../../../contracts/types/IBundleNode';
+import { Graph, IBundleNode } from '../../../../../../../contracts/types/shared/bundle-graph/graph';
+import { isUntrackableFrontierNode } from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode';
 import { IFilter, calculateOptimalGapThreshold, createOutlinkDiscrepancySelector, createInlinkDiscrepancySelector } from '../types/filters';
 import { DisplayGraph } from '../types/displayGraph';
 import GraphVis from './GraphVis';
@@ -32,10 +32,10 @@ import BundleNodeContextMenu, { canMarkNodeSensitive, ObsidianInfo } from './Bun
 import EmptySoloCallout from './EmptySoloCallout';
 import BundlePagesToggle from './BundlePagesToggle';
 import ResizableSidebar from './ResizableSidebar';
-import { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig';
+import { BundleNodeConfig } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig';
 import { buildNodeConfigs } from '../../../../../../../shared_code/utils/bundleNodeConfigUtils';
 import Modal from '../../../../shared/components/Modal';
-import { AppConfig } from '../../../../../../../contracts/types/appConfig';
+import { AppConfig } from '../../../../../../../contracts/types/shared/app-shell/appConfig';
 import { logger } from '../../../../shared/utils/logger';
 import { useDisplayFilters } from '../utils/useDisplayFilters';
 import { useIsFolderBasedBundle } from '../utils/bundleMode';
@@ -958,7 +958,7 @@ export default function SharedGraphEditor(props: BundleNodeTabsProps & { operati
   return <ScopedGraphEditor key={`${props.bundleSlug}:${props.operations.mode}`} {...props} />;
 }
 
-import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';
 
 import type { ParticipatesIn, sharedSourcingCuration } from '../../../../../../../concepts/index.js';
 export type BundleNodeTabsMeadowConceptParticipations = [

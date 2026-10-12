@@ -7,6 +7,35 @@ export const AREA_CALLERS = new Map([
   ['bundle/generation', 'generation'], ['bundle/review', 'review'], ['bundle/sharing', 'sharing'],
   ['bundle/shared-sourcing-curation', 'sharedSourcingCuration'],
 ]);
+
+export const RESTRICTED_AREA_CONSUMERS = new Map([
+  ['bundle/shared-sourcing-curation', new Set(['bundle/sourcing', 'bundle/curation', 'bundle/shared-sourcing-curation'])],
+]);
+export function mayConsumeAreaContract(consumerArea, contractArea) {
+  return RESTRICTED_AREA_CONSUMERS.get(contractArea)?.has(consumerArea) ?? consumerArea === contractArea;
+}
+
+/** Register area ownership once for implementation, contracts, and their tests. */
+export function appAreaSurfaces(appRoot) {
+  const resolve = relative => path.join(appRoot, relative);
+  const implementationRoots = ['runtime/service/src', 'clients/web/src'].map(resolve);
+  const contractRoots = ['contracts/types', 'contracts/interfaces'].map(resolve);
+  // Provider packages keep their own dependency roots. Their explicit areas
+  // participate in the matching service or web implementation surface.
+  const providersDirectory = resolve('publishing_providers');
+  const providerDirectories = fs.existsSync(providersDirectory)
+    ? fs.readdirSync(providersDirectory).map(name => path.join(providersDirectory, name)) : [];
+  const implementationFamilies = implementationRoots.map((root, index) => [root,
+    ...providerDirectories.map(directory => path.join(directory, index === 0 ? 'backend' : 'frontend'))
+      .filter(directory => fs.existsSync(path.join(directory, 'areas'))).map(canonical),
+  ]);
+  const otherRoots = [
+    'runtime/service/test', 'clients/web/test', 'runtime/system_tests/tests',
+    'acceptance/e2e/src/run/pages', 'acceptance/e2e/tests', 'shared_code',
+  ].map(resolve);
+  return { implementationRoots, implementationFamilies, contractRoots,
+    roots: [...implementationFamilies.flat(), ...contractRoots, ...otherRoots] };
+}
 export const INTERFACE_GUIDANCE = `This area's deliberately narrow public interface.
 
 Prefer durable data produced by one area and consumed by the next.

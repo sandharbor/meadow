@@ -23,7 +23,7 @@ import type {
   StartupFailureCategory,
   StartupFailureDiagnostic,
   StartupRuntimeBlocker,
-} from '../../contracts/types/startupRecovery.js';
+} from '../../contracts/types/shared/app-shell/startupRecovery.js';
 import {
   CURRENT_MEADOW_HOME_FORMAT_VERSION,
   OLDEST_UPGRADABLE_MEADOW_HOME_FORMAT_VERSION,

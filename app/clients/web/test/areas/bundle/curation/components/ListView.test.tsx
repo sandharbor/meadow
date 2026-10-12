@@ -2,7 +2,7 @@
 
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { Graph } from '../../../../../../../contracts/types/graph';
+import { Graph } from '../../../../../../../contracts/types/shared/bundle-graph/graph';
 import ListView from '../../../../../src/areas/bundle/shared-sourcing-curation/components/ListView';
 import { DisplayGraph } from '../../../../../src/areas/bundle/shared-sourcing-curation/types/displayGraph';
 

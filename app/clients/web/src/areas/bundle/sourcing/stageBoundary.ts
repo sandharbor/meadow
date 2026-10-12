@@ -1,7 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import type { BundleNodeConfig } from '../../../../../../contracts/types/bundleNodeConfig.js';
-import type { SourceProposalReview } from '../../../../../../contracts/types/sourcingProposal.js';
+import type { BundleNodeConfig } from '../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
+import type { SourceProposalReview } from '../../../../../../contracts/types/areas/bundle/sourcing/sourcingProposal.js';
 import { proposalRequest, ProposalRequestError } from './components/proposalClient.js';
 
 /** A curation boundary gesture starts an isolated proposal and enters review. */

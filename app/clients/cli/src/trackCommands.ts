@@ -46,5 +46,5 @@ export function parseTrackBundleOptions(args: string[]): TrackBundleOptions {
   return allSafe ? { slug, mode: "all-safe" } : { slug, mode: "targeted", nodeKeys };
 }
 
-import type { EncodedBundleNodeKey } from '../../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';
 import { encodedBundleNodeKey } from '../../../shared_code/utils/bundleNodeKey.js';

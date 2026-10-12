@@ -18,7 +18,7 @@ import { spawn } from "node:child_process";
 import { chmodSync, copyFileSync, mkdirSync, unlinkSync } from "node:fs";
 import net from "node:net";
 import path from "node:path";
-import { MEADOW_RUNTIME_SESSION_ENV } from "../../../../../contracts/types/runtime.js";
+import { MEADOW_RUNTIME_SESSION_ENV } from "../../../../../contracts/types/shared/runtime/runtime.js";
 import { readRuntimeSessionDescriptor } from "../../../../../runtime/supervisor/src/sessionDescriptor.js";
 import type { MeadowCommandRecord, TrialPhase } from "../types.js";
 

@@ -4,9 +4,9 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { SourceLineCounts, useSourceLineCounts } from '../../src/areas/bundle/shared-sourcing-curation/components/SourceLineCounts.js';
 import { EditorOperationsContext, useEditorOperations } from '../../src/areas/bundle/shared-sourcing-curation/types/editorOperations.js';
-import type { SourceNodeReview } from '../../../../contracts/types/sourcingProposal.js';
+import type { SourceNodeReview } from '../../../../contracts/types/shared/sourcing/sourcingProposal.js';
 import { SourceComparisonEvidence } from '../../src/areas/bundle/shared-sourcing-curation/components/SourceComparisonEvidence.js';
-import { Graph } from '../../../../contracts/types/graph.js';
+import { Graph } from '../../../../contracts/types/shared/bundle-graph/graph.js';
 import { SourceContentComparison } from '../../src/areas/bundle/shared-sourcing-curation/components/SourceContentComparison.js';
 
 type ComparisonResponse = ReturnType<typeof globalThis.Response.json>;

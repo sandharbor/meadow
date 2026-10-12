@@ -13,7 +13,7 @@ import {
   scenarioMatchesFilterExpression,
   type ScenarioFilterSection,
 } from './scenarioFilterExpression.ts'
-import type { FilterExpression } from '../../../../contracts/types/filterExpression.ts'
+import type { FilterExpression } from '../../../../contracts/types/shared/curation/filterExpression.ts'
 
 const parse = (text: string): FilterExpression => {
   const result = parseScenarioFilterExpression(text)
@@ -37,6 +37,15 @@ describe('scenario filter mixes', () => {
     expect(scenarioMatchesFilterExpression(expression, reviewOnly)).toBe(false)
     expect(scenarioMatchesFilterExpression(expression, renamedSourcingOnly)).toBe(true)
     expect(defaultScenarioFilterExpression(emptyScenarioFilterSelections())).toBeNull()
+  })
+
+  it('combines explicit pressures with areas without treating a concept mention as pressure evidence', () => {
+    const expression = parse('all(pressure:prevent-accidental-sharing, area:bundle/sourcing)')
+    expect(scenarioMatchesFilterExpression(expression, scenario({ pressure: ['prevent-accidental-sharing'], area: ['bundle/sourcing'] }))).toBe(true)
+    expect(scenarioMatchesFilterExpression(expression, scenario({ doc: ['sensitive'], area: ['bundle/sourcing'] }))).toBe(false)
+    expect(scenarioMatchesFilterExpression(expression, scenario({ pressure: ['prevent-accidental-sharing'], area: ['bundle/curation'] }))).toBe(false)
+    expect(scenarioFilterSelectionsOf(expression).pressure).toEqual(['prevent-accidental-sharing'])
+    expect(formatScenarioFilterExpression(parse(formatScenarioFilterExpression(expression)))).toBe(formatScenarioFilterExpression(expression))
   })
 
   it('can require every pill within a row', () => {

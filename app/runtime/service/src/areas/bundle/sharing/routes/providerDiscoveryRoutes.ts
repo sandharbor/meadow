@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import express from 'express';
-import { getActiveBackendProviders, getAllBackendProviders } from '../../../../shared/publishing-provider-host/providerRegistry.js';
+import { getActiveBackendProviders, getAllBackendProviders } from '../providers/providerRegistry.js';
 
 const router = express.Router();
 

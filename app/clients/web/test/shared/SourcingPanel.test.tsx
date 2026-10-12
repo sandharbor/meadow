@@ -5,7 +5,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SourcingPanel } from '../../src/areas/bundle/sourcing/components/SourcingPanel.js';
 import { apiRequest } from '../../src/shared/utils/apiClient.js';
-import type { SourcingReview } from '../../../../contracts/types/sourcing.js';
+import type { SourcingReview } from '../../../../contracts/types/shared/sourcing/sourcing.js';
 
 vi.mock('../../src/shared/utils/apiClient.js', () => ({ apiRequest: vi.fn() }));
 

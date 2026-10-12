@@ -23,7 +23,7 @@ import {
   PreviewPublishModal,
 } from "../src/run/pages/index.js";
 import { customBundle } from "../src/bundle-docs/index.js";
-import { htmlNode, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleGeneration } from "../../../concepts/index.js";
+import { htmlNode, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleGeneration, sourceSetupNew, bundleSourcing } from "../../../concepts/index.js";
 import { Fixture } from "../src/run/workflows.js";
 
 test.use({ bundleMode: "single-file" });
@@ -33,7 +33,7 @@ const name = linkedScenarioName(conceptText`tracks and browses a native HTML nod
 
 const description = linkedScenarioDescription(conceptText`Track a native HTML page and explore its linked graph. Generate the bundle and verify
 that the HTML content is browsable.`);
-const areas = scenarioAreas([bundleGeneration]);
+const areas = scenarioAreas([bundleGeneration, bundleSourcing], { subAreas: [sourceSetupNew] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: '721b46f5-299e-4185-a676-d773b7b95308' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
   page,
   testServer,

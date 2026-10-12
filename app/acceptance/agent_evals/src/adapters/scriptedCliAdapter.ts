@@ -19,7 +19,7 @@ import path from "node:path";
 import type {
   GenerateBundleCliResult,
   PublishBundleCliResult,
-} from "../../../../../contracts/types/cliOperations.js";
+} from "../../../../../contracts/types/shared/cli/cliOperations.js";
 import type { OperatorLaunchContext } from "../runtime/StandaloneTrialRuntime.js";
 import type { AgentAdapter, AgentProfile, AgentTurnResult, TrialPhase } from "../types.js";
 

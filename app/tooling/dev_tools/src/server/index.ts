@@ -28,7 +28,7 @@ import { acceptSourceBaseline } from "../../../../shared_code/shared_dev/sourceS
 import { appPlacePath, parseAppPlace, type PlaceArrival } from "../../../../contracts/places/index.js";
 import { getRuntimePaths } from "../../../../runtime/supervisor/src/runtimePaths.js";
 import { readRuntimeSessionDescriptor } from "../../../../runtime/supervisor/src/sessionDescriptor.js";
-import type { SourcingReview } from "../../../../contracts/types/sourcing.js";
+import type { SourcingReview } from "../../../../contracts/types/shared/sourcing/sourcing.js";
 import { getDefaultConfigDirectory } from "../../../../shared_code/utils/appConfigUtils.js";
 import { findProjectRoot } from "../../../../shared_code/shared_dev/testBundlesConfig.js";
 import { homeFixtureDisplayName, listHomeFixtures } from "../../../../shared_code/shared_dev/savedStates.js";

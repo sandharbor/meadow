@@ -1,13 +1,16 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
-import { AREA_CALLERS, INTERFACE_GUIDANCE, WIDTH_MESSAGE, canonical, inside, ownership, publicName, resolveLocal, isAppAlias } from './area_boundary_policy.js';
+import { AREA_CALLERS, RESTRICTED_AREA_CONSUMERS, mayConsumeAreaContract, INTERFACE_GUIDANCE, WIDTH_MESSAGE, canonical, inside, ownership, publicName, resolveLocal, isAppAlias } from './area_boundary_policy.js';
 
 const extensions = /\.(?:[cm]?js|jsx|[cm]?ts|tsx)$/;
-const excludedFolders = new Set(['node_modules', 'dist', 'build', '.git']);
+const excludedFolders = new Set([
+  'node_modules', 'dist', 'build', 'target', 'coverage', '.cache', '.vite', '.git',
+  '.linkrange-cache', 'linkrange-source', 'config_workspace', 'scratch_config_folder', 'expected_results',
+]);
 const isTest = file => /(?:^|\/)(?:test|tests|__tests__)\/|\.(?:test|spec)\.[^.]+$/.test(file);
-const isSource = file => extensions.test(file) && !file.endsWith('.d.ts') && !file.split(path.sep).some(part => excludedFolders.has(part));
-function walk(directory, seen = new Set()) {
+const isSource = file => extensions.test(file) && !file.split(path.sep).some(part => excludedFolders.has(part));
+export function walkBoundarySources(directory, seen = new Set()) {
   if (!fs.existsSync(directory)) return [];
   const real = canonical(directory);
   if (seen.has(real)) return [];
@@ -15,14 +18,17 @@ function walk(directory, seen = new Set()) {
   return fs.readdirSync(directory).flatMap(name => {
     if (excludedFolders.has(name)) return [];
     const file = path.join(directory, name);
-    return fs.statSync(file).isDirectory() ? walk(file, seen) : isSource(file) ? [canonical(file)] : [];
+    return fs.statSync(file).isDirectory() ? walkBoundarySources(file, seen) : isSource(file) ? [canonical(file)] : [];
   });
 }
 
 /** Check source, configured production consumers, and their local import closure. */
-export function checkAreaBoundaries({ sourceRoot, otherSourceRoots = [], consumerFiles = [], tsconfigPath = path.join(sourceRoot, '../tsconfig.json'), web = sourceRoot.includes('/clients/web/') }) {
+export function checkAreaBoundaries({ sourceRoot, otherSourceRoots = [], contractRoots = [], implementationFamilies = [], contractsOnly = false, consumerFiles = [], tsconfigPath = path.join(sourceRoot, '../tsconfig.json'), web = sourceRoot.includes('/clients/web/') }) {
   sourceRoot = canonical(sourceRoot);
-  const roots = [sourceRoot, ...otherSourceRoots.map(canonical)];
+  const contracts = new Set(contractRoots.map(canonical));
+  const roots = [...new Set([sourceRoot, ...otherSourceRoots.map(canonical), ...contracts])];
+  const families = implementationFamilies.map(family => family.map(canonical));
+  const sameImplementation = (left, right) => left === right || families.some(family => family.includes(left) && family.includes(right));
   const violations = [], parsed = new Map(), interfaces = new Map();
   const report = (file, node, message) => {
     const source = parsed.get(file);
@@ -73,7 +79,7 @@ export function checkAreaBoundaries({ sourceRoot, otherSourceRoots = [], consume
     if (count > 15) report(file, null, `exported.ts exceeds 15 named exports (${count}). ${WIDTH_MESSAGE}`);
     return entries;
   }
-  const queue = [...walk(sourceRoot), ...configFiles, ...consumerFiles].filter(file => isSource(file) && (inside(sourceRoot, file) || !isTest(file)));
+  const queue = [...walkBoundarySources(sourceRoot), ...configFiles, ...consumerFiles].filter(file => isSource(file) && (contractsOnly || inside(sourceRoot, file) || !isTest(file)));
   const visited = new Set();
   for (let file of queue) {
     file = canonical(file);
@@ -81,7 +87,14 @@ export function checkAreaBoundaries({ sourceRoot, otherSourceRoots = [], consume
     visited.add(file);
     const owner = ownership(file, roots), source = parse(file);
     if (owner.area && !AREA_CALLERS.has(owner.area)) report(file, null, `Unknown app area '${owner.area}'; callers require an explicit entry in the closed area registry.`);
-    if (file === owner.interface) interfaceExports(file, owner);
+    if (contracts.has(owner.root) && !owner.area && !inside(path.join(owner.root, 'shared'), file)) {
+      report(file, null, 'Contract declarations must live under areas/<app-area>/ or shared/<owner>/; flat contract files are forbidden.');
+    }
+    if (contracts.has(owner.root) && inside(path.join(owner.root, 'shared'), file)
+      && path.dirname(file) === path.join(owner.root, 'shared')) {
+      report(file, null, 'Shared contracts require a named owner folder; shared must not become a flat catch-all.');
+    }
+    if (!contractsOnly && !contracts.has(owner.root) && file === owner.interface) interfaceExports(file, owner);
     const foreignBindings = new Set();
     function reference(node, specifier) {
       if (isAppAlias(specifier)) report(file, node, `App-local imports must be relative, not '${specifier}'.`);
@@ -89,11 +102,18 @@ export function checkAreaBoundaries({ sourceRoot, otherSourceRoots = [], consume
       if (!target) return;
       if (isSource(target)) queue.push(target);
       const destination = ownership(target, roots);
-      if (!destination.area || (owner.area === destination.area && owner.root === destination.root)) return;
+      if (contracts.has(destination.root)) {
+        if (destination.area && !mayConsumeAreaContract(owner.area, destination.area)) {
+          report(file, node, `Private ${destination.area} contract: only its owning area or explicitly registered restricted-area consumers may import it; shared and unowned code must use shared contracts.`);
+        }
+        return;
+      }
+      if (contractsOnly) return;
+      if (!destination.area || (owner.area === destination.area && sameImplementation(owner.root, destination.root))) return;
       if (owner.area === 'bundle/shared-sourcing-curation') {
         report(file, node, 'Shared Sourcing and Curation cannot import area implementations or facades; mode-specific actions must be explicit inputs.'); return;
       }
-      if (destination.area === 'bundle/shared-sourcing-curation' && !['bundle/sourcing', 'bundle/curation'].includes(owner.area)) {
+      if (destination.area === 'bundle/shared-sourcing-curation' && !RESTRICTED_AREA_CONSUMERS.get(destination.area).has(owner.area)) {
         report(file, node, 'Only sourcing and curation may consume the shared editor interface.'); return;
       }
       if (target !== destination.interface) { report(file, node, `Private ${destination.area} import: callers must use that area's exported.ts.`); return; }
@@ -116,24 +136,31 @@ export function checkAreaBoundaries({ sourceRoot, otherSourceRoots = [], consume
     function visit(node) {
       if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) reference(node, node.moduleSpecifier.text);
       else if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument) && ts.isStringLiteral(node.argument.literal)) reference(node, node.argument.literal.text);
-      else if (ts.isImportEqualsDeclaration(node)) report(file, node, 'Use named ES module imports instead of import = require().');
+      else if (ts.isImportEqualsDeclaration(node)) {
+        const specifier = node.moduleReference.expression;
+        if (specifier && ts.isStringLiteral(specifier)) reference(node, specifier.text);
+        if (!contractsOnly) report(file, node, 'Use named ES module imports instead of import = require().');
+      }
       else if (ts.isCallExpression(node)) {
-        if (ts.isPropertyAccessExpression(node.expression) && node.expression.expression.getText(source) === 'import.meta'
+        if (!contractsOnly && ts.isPropertyAccessExpression(node.expression) && node.expression.expression.getText(source) === 'import.meta'
           && node.expression.name.text.startsWith('glob')) {
           const pattern = node.arguments[0];
-          // The sole reviewed glob discovers providers; their source files are
-          // checked through tsconfig. It cannot be widened to include areas.
-          if (!(file === path.join(sourceRoot, 'shared/publishing-provider-host/providerRegistry.ts')
+          // Sharing discovers only Sharing-owned provider entry points on the
+          // web surface. Their source is included in the same boundary check.
+          if (!(file === path.join(sourceRoot, 'areas/bundle/sharing/providers/providerRegistry.ts')
             && node.expression.name.text === 'glob' && pattern && ts.isStringLiteral(pattern)
-            && pattern.text === '../../../../../publishing_providers/*/frontend/index.tsx')) {
+            && pattern.text === '../../../../../../../publishing_providers/*/frontend/areas/bundle/sharing/index.tsx')) {
             report(file, node, 'Glob imports are reserved for provider discovery; app areas require named static imports.');
           }
         }
         if (node.expression.kind === ts.SyntaxKind.ImportKeyword) {
           const argument = node.arguments[0];
           if (argument && ts.isStringLiteral(argument)) reference(node, argument.text);
-          else if (!(file === path.join(sourceRoot, 'shared/module-loading/importExtensionModule.ts') && node.getText(source) === 'import(moduleUrl.href)')) report(file, node, 'Dynamic import() must use a string literal so its boundary can be checked.');
-        } else if (ts.isIdentifier(node.expression) && node.expression.text === 'require') report(file, node, 'Use ES module imports instead of require().');
+          else if (!contractsOnly && !(file === path.join(sourceRoot, 'shared/module-loading/importExtensionModule.ts') && node.getText(source) === 'import(moduleUrl.href)')) report(file, node, 'Dynamic import() must use a string literal so its boundary can be checked.');
+        } else if (ts.isIdentifier(node.expression) && node.expression.text === 'require') {
+          if (node.arguments[0] && ts.isStringLiteral(node.arguments[0])) reference(node, node.arguments[0].text);
+          if (!contractsOnly) report(file, node, 'Use ES module imports instead of require().');
+        }
       }
       ts.forEachChild(node, visit);
     }

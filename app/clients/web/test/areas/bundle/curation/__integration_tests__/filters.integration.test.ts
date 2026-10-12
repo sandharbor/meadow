@@ -19,7 +19,7 @@ limitations under the License.
  * These tests load fixture configs directly and build a graph from them.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
-import { Graph } from '../../../../../../../contracts/types/graph';
+import { Graph } from '../../../../../../../contracts/types/shared/bundle-graph/graph';
 import { loadFixtureGraph, FixtureLoadResult } from './helpers/fixtureLoader';
 import {
   createTrackedNodeSelector,
@@ -29,7 +29,7 @@ import {
   createSearchByTitleSelector,
   createCustomBundleNodeSelector
 } from '../../../../../src/areas/bundle/shared-sourcing-curation/utils/filterSelectors';
-import type { CustomBundleNodeSelectorConfig } from '../../../../../../../contracts/types/customFilters';
+import type { CustomBundleNodeSelectorConfig } from '../../../../../../../contracts/types/shared/curation/customFilters';
 
 describe('Filter Integration Tests', () => {
   let graph: Graph;

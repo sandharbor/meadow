@@ -14,13 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import type {
-  BundlePublicationSummary,
-  GeneratedBundleVersionId,
-  ProviderDestinationRecord,
-  ProviderPublicationEvent,
-  SelectedVersionPublicationStatus,
-} from '../../../../../../../contracts/types/generatedBundleVersioning.js';
+import type { BundlePublicationSummary, ProviderDestinationRecord, ProviderPublicationEvent, SelectedVersionPublicationStatus } from '../../../../../../../contracts/types/shared/publishing-provider-host/publicationVersioning.js';
+import type { GeneratedBundleVersionId } from '../../../../../../../contracts/types/shared/generated-bundle-versioning/generatedBundleVersioning.js';
 
 const PRESENT_EVENT_TYPES = new Set([
   'imported-publication',

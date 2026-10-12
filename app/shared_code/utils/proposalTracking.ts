@@ -1,7 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import type { ProposalTrackingDecision } from '../../contracts/types/sourcingProposal.js';
-import type { BundleNodeId } from '../../contracts/types/bundleNodeConfig.js';
+import type { ProposalTrackingDecision } from '../../contracts/types/shared/sourcing/sourcingProposal.js';
+import type { BundleNodeId } from '../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 
 export interface ProposalTrackingTarget {
   bundleNodeId?: BundleNodeId;

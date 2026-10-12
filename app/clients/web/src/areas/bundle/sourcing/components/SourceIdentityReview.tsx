@@ -1,8 +1,9 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import { useId, useState, type ReactNode } from 'react';
-import type { SourceMoveCandidate } from '../../../../../../../contracts/types/sourcing.js';
-import { sourceIdentityRecommendations, type SourceIdentityRecommendation } from '../../../../../../../shared_code/utils/sourceMoveResolutions.js';
+import type { SourceMoveCandidate } from '../../../../../../../contracts/types/shared/sourcing/sourcing.js';
+import { sourceIdentityRecommendations } from './sourceIdentityRecommendations.js';
+import { type SourceIdentityRecommendation } from '../../../../../../../contracts/types/areas/bundle/sourcing/sourceIdentity.js';
 import { SourcePathChange } from '../../../../shared/components/SourcePathChange.js';
 import { useSourcePathFormatter } from '../../../../shared/components/SourceNames.js';
 import { MoveSimilarity } from './MoveSimilarity.js';

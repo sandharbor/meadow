@@ -1,7 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import type { BundleNodeKey } from '../../contracts/types/bundleNodeKey.js';
-import type { Graph } from '../../contracts/types/graph.js';
+import type { BundleNodeKey } from '../../contracts/types/shared/bundle-graph/bundleNodeKey.js';
+import type { Graph } from '../../contracts/types/shared/bundle-graph/graph.js';
 import { createFileNodeKey, serializeBundleNodeKey } from './bundleNodeKey.js';
 
 /** Compile-time conformance: paths cannot flow into graph-key APIs. Never invoked. */

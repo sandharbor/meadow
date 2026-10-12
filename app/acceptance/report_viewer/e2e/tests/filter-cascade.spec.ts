@@ -22,12 +22,12 @@ test.beforeEach(async ({ page }) => {
     bundleMode: scenario.mode, executionSurface: scenario.surface ?? 'browser', conceptIds: [...scenario.concepts, 'common'],
     appAreaDocIds: [scenario.area], bundleDocIds: [scenario.bundle], keyFrames: [], hasIssues: false,
   }));
-  await page.route('**/api/concepts', route => route.fulfill({ json: concepts }));
-  await page.route('**/api/bundle-docs', route => route.fulfill({ json: [
+  await page.route(/\/api\/concepts(?:\?.*)?$/,  route => route.fulfill({ json: concepts }));
+  await page.route(/\/api\/bundle-docs(?:\?.*)?$/,  route => route.fulfill({ json: [
     { id: 'big', name: 'Big Bundle', description: 'Big fixture' },
     { id: 'small', name: 'Small Bundle', description: 'Small fixture' },
   ] }));
-  await page.route('**/api/app-areas', route => route.fulfill({ json: [
+  await page.route(/\/api\/app-areas(?:\?.*)?$/,  route => route.fulfill({ json: [
     { id: 'sourcing', name: 'Bundle Sourcing', parentId: 'bundle', description: 'Sourcing area' },
     { id: 'curation', name: 'Bundle Curation', parentId: 'bundle', description: 'Curation area' },
     { id: 'sharing', name: 'Bundle Sharing', parentId: 'bundle', description: 'Sharing area' },
@@ -170,7 +170,7 @@ test('large tag rows preview ten choices and keep selections visible when collap
     name: `${isContribution ? 'Contributed' : 'Base'} preview ${String(index + 1).padStart(2, '0')}`,
     description: '', searchFacet: true, isContribution,
   })));
-  await page.route('**/api/concepts', route => route.fulfill({ json: concepts }));
+  await page.route(/\/api\/concepts(?:\?.*)?$/,  route => route.fulfill({ json: concepts }));
   await page.route('**/api/runs/filter-cascade', route => route.fulfill({ json: {
     runId: 'filter-cascade', scenarios: [{
       slug: 'many-tags', testName: 'Many tags', status: 'passed', duration: 1,

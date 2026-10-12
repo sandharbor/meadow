@@ -16,11 +16,11 @@ limitations under the License.
 
 import path from 'path';
 import fs from 'fs';
-import type { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
+import type { BundleNodeConfig } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import { linkTextToLinkInfo, normalizePageTitle, calculateRelativePath, escapeHtmlAttribute } from './shared.js';
 import type { LinkInfo, PageNameToPage } from './types.js';
-import { BundleConfig } from '../../../../../../../contracts/types/bundleConfig.js';
-import type { LinkResolvedInfo } from '../../../../../../../contracts/types/IBundleNode.js';
+import { BundleConfig } from '../../../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
+import type { LinkResolvedInfo } from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode.js';
 import { encodePathForUrl } from '../../../../../../../shared_code/utils/urlUtils.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
 import { IMAGE_FILE_TYPES } from './constants.js';
@@ -801,4 +801,4 @@ function anchorNameFor(pageName: string): string {
 
 import { makeBundleNodeKey } from '../../../../shared/bundle-node/nodeKeys.js';
 
-import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';

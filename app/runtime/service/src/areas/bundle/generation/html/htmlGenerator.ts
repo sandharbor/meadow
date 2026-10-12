@@ -34,8 +34,8 @@ import {
   BacklinkContext
 } from './types.js';
 import { bundleNodeConfigToKey, makeBundleNodeKey } from './types.js';
-import { BundleConfig } from '../../../../../../../contracts/types/bundleConfig.js';
-import { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
+import { BundleConfig } from '../../../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
+import { BundleNodeConfig } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import {
   normalizePageTitle,
   getMdContent,
@@ -51,7 +51,7 @@ import {
   resolveTrackedLinkHref,
   type MediaEmbedOptions,
 } from './linkModificationService.js';
-import type { LinkResolvedInfo } from '../../../../../../../contracts/types/IBundleNode.js';
+import type { LinkResolvedInfo } from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode.js';
 import { IMAGE_FILE_TYPES, KNOWN_FILE_TYPES } from './constants.js';
 import { encodePathForUrl } from '../../../../../../../shared_code/utils/urlUtils.js';
 import { HooksLoader } from '../utils/hooksLoader.js';
@@ -1285,4 +1285,4 @@ function processMermaidDiagrams(htmlContent: string): string {
   });
 }
 
-import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';

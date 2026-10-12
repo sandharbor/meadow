@@ -14,11 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import {
-  GENERATED_BUNDLE_VERSION_ID_PATTERN,
-  PUBLICATION_REVISION_ID_PATTERN,
-  type ProviderPublicationRevisionState,
-} from '../../contracts/types/generatedBundleVersioning.js';
+import { GENERATED_BUNDLE_VERSION_ID_PATTERN } from '../../contracts/types/shared/generated-bundle-versioning/generatedBundleVersioning.js';
+import { PUBLICATION_REVISION_ID_PATTERN, type ProviderPublicationRevisionState } from '../../contracts/types/shared/publishing-provider-host/publicationVersioning.js';
 import { isPlainObject, yamlDocumentCodec } from './durableDocument.js';
 
 const REMOTE_STATES = new Set(['pending', 'present', 'deleted']);

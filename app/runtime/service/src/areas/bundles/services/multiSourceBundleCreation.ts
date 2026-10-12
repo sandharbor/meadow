@@ -5,8 +5,8 @@ import { discoverSourceSnapshot } from '../../../shared/source-snapshot/sourceSn
 import { forgetLiveSourceLinks } from '../../../shared/source-snapshot/sourceDiscovery.js';
 import { FOLDER_BUNDLE_MAX_RAW_NODES, FOLDER_BUNDLE_MAX_TYPED_EDGES } from '../../../shared/bundle-config/folderBundleSource.js';
 import path from 'node:path';
-import type { BundleSource, BundleConfig } from '../../../../../../contracts/types/bundleConfig.js';
-import type { StartingSelection } from '../../../../../../contracts/types/startingSelection.js';
+import type { BundleSource, BundleConfig } from '../../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
+import type { StartingSelection } from '../../../../../../contracts/types/shared/sourcing/startingSelection.js';
 import { applyStartingSelections } from '../../../../../../shared_code/utils/startingSelectionUtils.js';
 import { validateBundleSources } from '../../../../../../shared_code/utils/bundleSourceUtils.js';
 import { generateBundleGuid } from '../../../../../../shared_code/utils/bundleGuidUtils.js';

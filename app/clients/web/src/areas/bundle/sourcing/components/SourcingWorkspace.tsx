@@ -1,12 +1,13 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import { logger } from '../../../../shared/utils/logger';
-import type { SnapshotTrackingOutcome } from '../../../../../../../contracts/types/curationTracking.js';
+import type { SnapshotTrackingOutcome } from '../../../../../../../contracts/types/shared/curation/curationTracking.js';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SourcingComponentEditor, useSourcingStateFilters } from '../../shared-sourcing-curation/exported.js';
-import { Graph, type IEdge, type IBundleNode } from '../../../../../../../contracts/types/graph.js';
-import type { SourceProposalReview, ProposalConfiguration } from '../../../../../../../contracts/types/sourcingProposal.js';
-import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';
+import { Graph, type IEdge, type IBundleNode } from '../../../../../../../contracts/types/shared/bundle-graph/graph.js';
+import type { SourceProposalReview } from '../../../../../../../contracts/types/areas/bundle/sourcing/sourcingProposal.js';
+import type { ProposalConfiguration } from '../../../../../../../contracts/types/shared/sourcing/sourcingProposal.js';
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';
 import { buildNodeConfigs } from '../../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 import { SourceNamesProvider } from '../../../../shared/components/SourceNames.js';
 import { useEventually, usePlaceSelection } from '../../../../shared/places/placeContext.js';

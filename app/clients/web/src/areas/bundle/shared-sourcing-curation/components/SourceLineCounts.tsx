@@ -1,7 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import { useEffect, useState } from 'react';
-import type { SourceNodeReview } from '../../../../../../../contracts/types/sourcingProposal.js';
+import type { SourceNodeReview } from '../../../../../../../contracts/types/shared/sourcing/sourcingProposal.js';
 import { lineChangeCounts } from '../../../../../../../shared_code/utils/lineChanges.js';
 import type { EditorOperations } from '../types/editorOperations.js';
 

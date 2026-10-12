@@ -14,9 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import type { BundleSource } from '../../../../../../../contracts/types/bundleConfig.js';
+import type { BundleSource } from '../../../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
 import React, { useMemo, useState } from 'react';
-import { IBundleNode } from '../../../../../../../contracts/types/IBundleNode';
+import { IBundleNode } from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode';
 import { IFilter, IFolderFilterState } from '../types/filters';
 import { buildFolderTree, FolderTreeNode, ROOT_FOLDER_LABEL } from '../utils/folderFilterUtils';
 

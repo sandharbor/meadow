@@ -21,9 +21,7 @@ import { fileURLToPath } from 'url';
 import { logger } from '../utils/logging/backendLoggingUtils.js';
 import { commitChangesNative } from '../utils/configDirectory/gitUtils/gitStatusUtils.js';
 import { getConfigDirectory } from '../bundle-config/bundleConfigPaths.js';
-import { PublishingProviderPaths } from '../../../../../shared_code/paths/publishingProviderPaths.js';
-import { getAllBackendProviders } from '../publishing-provider-host/providerRegistry.js';
-import type { Migration, MigrationLedger } from '../../../../../contracts/types/migrations.js';
+import type { Migration, MigrationLedger } from '../../../../../contracts/types/shared/meadow-home/migrations.js';
 import {
   IncompleteMigrationError,
   clearMigrationRecovery,
@@ -157,26 +155,6 @@ function discoverScopes(configDir: string): MigrationScope[] {
       : path.join(__dirname, 'versions'),
     ledgerPath: path.join(configDir, 'migrations.yaml'),
   }];
-  for (const provider of getAllBackendProviders()) {
-    const providerId = provider.manifest.id;
-    const providerMigrationsDir = path.resolve(
-      __dirname,
-      '../../../../../publishing_providers',
-      providerId,
-      'backend/migrations',
-    );
-    const retiredMigrationIds = provider.retiredMigrationIds ?? [];
-    if (!fs.existsSync(providerMigrationsDir) && retiredMigrationIds.length === 0) continue;
-    scopes.push({
-      name: providerId,
-      migrationsDir: providerMigrationsDir,
-      ledgerPath: path.join(
-        PublishingProviderPaths.getGlobalProviderDir(configDir, providerId),
-        'migrations.yaml',
-      ),
-      retiredMigrationIds,
-    });
-  }
   return scopes;
 }
 
@@ -457,9 +435,9 @@ export async function runMigrationsForScopes(
   logger.info('[migrations] ✓ Startup migrations complete');
 }
 
-export async function runMigrationsOnStartup(): Promise<void> {
+export async function runMigrationsOnStartup(providerScopes: readonly MigrationScope[]): Promise<void> {
   const configDir = getConfigDirectory();
   const applicationVersion = process.env.MEADOW_APP_VERSION;
   if (!applicationVersion) throw new Error('MEADOW_APP_VERSION is required for migration safety');
-  await runMigrationsForScopes(discoverScopes(configDir), { configDir, applicationVersion });
+  await runMigrationsForScopes([...discoverScopes(configDir), ...providerScopes], { configDir, applicationVersion });
 }

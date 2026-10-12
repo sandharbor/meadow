@@ -17,7 +17,7 @@ limitations under the License.
 import path from "path";
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, BundleEditorPage, CreateAndEditBundleModal } from "../src/run/pages/index.js";
-import { bundleConfig, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundles, bundleCuration } from "../../../concepts/index.js";
+import { bundleConfig, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundles, bundleCuration, sourceSetupNew, bundleSourcing } from "../../../concepts/index.js";
 import { customBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -28,7 +28,7 @@ const name = linkedScenarioName(conceptText`new bundle uses chosen depths withou
 
 const description = linkedScenarioDescription(conceptText`Create bundles with different traversal depths. Each should use the chosen depths
 without showing the introductory depth callout.`);
-const areas = scenarioAreas([bundles, bundleCuration]);
+const areas = scenarioAreas([bundles, bundleCuration, bundleSourcing], { subAreas: [sourceSetupNew] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: '6296a54a-ba3a-43bf-993d-5925b6b708c5' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
   page,
   testServer,

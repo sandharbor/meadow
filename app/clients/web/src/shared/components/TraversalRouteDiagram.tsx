@@ -1,6 +1,6 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 import React from 'react';
-import type { Graph } from '../../../../../contracts/types/graph.js';
+import type { Graph } from '../../../../../contracts/types/shared/bundle-graph/graph.js';
 import type { ExplainedTraversalRoute } from '../utils/traversalRoutes.js';
 import { traversalSourceName } from '../utils/traversalRoutes.js';
 import { traversalLinkType } from '../utils/traversalLinkType.js';
@@ -131,6 +131,6 @@ export default function TraversalRouteDiagram({ routes, graph, selected, onSelec
   </div>;
 }
 
-import type { EncodedBundleNodeKey } from '../../../../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';
 
 import { parseBundleNodeKey } from '../../../../../shared_code/utils/bundleNodeKey.js';

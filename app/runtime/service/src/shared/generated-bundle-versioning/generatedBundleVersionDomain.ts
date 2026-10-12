@@ -24,7 +24,7 @@ import {
   type GeneratedBundleVersionManifest,
   type PresentGeneratedBundleVersionEntry,
   type ReaderConnectionToPredecessor,
-} from '../../../../../contracts/types/generatedBundleVersioning.js';
+} from '../../../../../contracts/types/shared/generated-bundle-versioning/generatedBundleVersioning.js';
 
 const ROOT_KEYS = new Set(['schemaVersion', 'versions']);
 const BASE_ENTRY_KEYS = new Set([

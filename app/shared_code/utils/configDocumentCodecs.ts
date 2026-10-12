@@ -14,15 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import type { AppConfig } from '../../contracts/types/appConfig.js';
-import type { BootstrapConfig } from '../../contracts/types/bootstrapConfig.js';
+import type { AppConfig } from '../../contracts/types/shared/app-shell/appConfig.js';
+import type { BootstrapConfig } from '../../contracts/types/shared/app-shell/bootstrapConfig.js';
 import type {
   CustomBundleNodeSelectorConfig,
   CustomFilterAction,
   BundleCustomFiltersConfig,
   GlobalCustomFiltersConfig,
-} from '../../contracts/types/customFilters.js';
-import type { ResourcesConfig } from '../../contracts/types/resourcesConfig.js';
+} from '../../contracts/types/shared/curation/customFilters.js';
+import type { ResourcesConfig } from '../../contracts/types/shared/app-shell/resourcesConfig.js';
 import {
   extensibleObjectValidation,
   isPlainObject,

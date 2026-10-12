@@ -18,7 +18,7 @@ limitations under the License.
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useParams, Link, useSearchParams } from 'react-router-dom'
 import { highlight, languages } from 'prismjs'
-import 'prismjs/components/prism-typescript'
+import { highlightTypeScriptLines } from './highlightTypeScript'
 import 'prismjs/components/prism-yaml'
 import 'prismjs/components/prism-json'
 import 'prismjs/themes/prism.css'
@@ -77,6 +77,7 @@ interface Manifest {
   conceptIds?: string[]
   appAreaDocIds?: string[]
   subAreaDocIds?: string[]
+  designPressureIds?: string[]
   keyFrames?: KeyFrame[]
 }
 
@@ -519,6 +520,7 @@ export default function ScenarioViewer() {
   const [stateRepoMeta, setStateRepoMeta] = useState<StateRepoMeta | null>(null)
   const [s3Commits, setS3Commits] = useState<StateCommit[]>([])
   const [checkpointMessages, setCheckpointMessages] = useState<CheckpointMessage[]>([])
+  const [pressures, setPressures] = useState<ConceptView[]>([])
   const [concepts, setConcepts] = useState<ConceptView[]>([])
 
   // Index states
@@ -724,15 +726,19 @@ export default function ScenarioViewer() {
   // --- Acceptance concepts ---
 
   useEffect(() => {
-    fetch('/api/concepts')
+    fetch(`/api/concepts?run=${encodeURIComponent(runId ?? '')}`)
       .then((r) => r.ok ? r.json() : [])
       .then((d) => setConcepts(d))
       .catch(() => {})
-    fetch('/api/app-areas')
+    fetch(`/api/app-areas?run=${encodeURIComponent(runId ?? '')}`)
       .then((r) => r.ok ? r.json() : [])
       .then((d) => setAppAreas(d))
       .catch(() => {})
-  }, [])
+    fetch(`/api/documents?run=${encodeURIComponent(runId ?? '')}`)
+      .then(response => response.ok ? response.json() : null)
+      .then(catalog => setPressures(catalog?.documents.filter((document: { documentKind: string }) => document.documentKind === 'design-pressure') ?? []))
+      .catch(() => {})
+  }, [runId])
 
   const matchingDocs = useMemo(() => {
     const docIds = manifest?.conceptIds || []
@@ -1979,6 +1985,11 @@ export default function ScenarioViewer() {
               ))}
             </div>
           ))}
+          {!!manifest.designPressureIds?.length && <div role="group" aria-label="Design pressures" className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[11px] text-neutral-400">Design pressures:</span>
+            {pressures.filter(pressure => manifest.designPressureIds?.includes(pressure.id)).map(pressure => <button key={pressure.id}
+              className="rounded-full bg-violet-50 px-2 py-0.5 text-[11px] text-violet-800" onClick={() => openConcept(pressure)}>{pressure.name}</button>)}
+          </div>}
           {matchingDocs.length > 0 && (
             <div role="group" aria-label="Concepts" className={`flex items-center gap-1.5 ${expanded ? 'min-w-0 flex-wrap' : 'shrink-0'}`}>
               <span className="text-[11px] text-neutral-400">Concepts:</span>
@@ -2685,8 +2696,7 @@ export default function ScenarioViewer() {
                 {manifest.description && <div className="mt-2 text-neutral-600"><ScenarioText text={manifest.description} linkedText={manifest.descriptionText} runId={runId!} onOpenConcept={openConcept} /></div>}
               </div>}
               {testSource ? (
-                highlight(!showCaptureCode && sourceDisplay ? sourceDisplay.source : testSource, languages.typescript, 'typescript')
-                  .split('\n')
+                highlightTypeScriptLines(!showCaptureCode && sourceDisplay ? sourceDisplay.source : testSource)
                   .map((lineHtml, i) => {
                     if (!showCaptureCode && i + 1 < (sourceLocations.setupLine ?? 1)) return null
                     const prose = displayedProse

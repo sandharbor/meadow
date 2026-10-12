@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import React from 'react';
-import type { FindInBundlesOptions } from '../../../../../../contracts/types/findInBundlesOptions';
+import type { FindInBundlesOptions } from '../../../../../../contracts/types/shared/bundle-management/findInBundlesOptions';
 import type { SourceDirectoryChoices } from './bundleModalViewModel';
 
 export interface CreateBundleForm {
@@ -30,7 +30,7 @@ export interface CreateBundleForm {
 export type BundleModalMode = 'create' | 'edit';
 
 export interface EditBundleDefaults {
-  sources?: import('../../../../../../contracts/types/bundleConfig.js').BundleSource[];
+  sources?: import('../../../../../../contracts/types/shared/bundle-config/bundleConfig.js').BundleSource[];
   slug: string;
   sourceDirectory: string;
   entryBundleNodeName: string;

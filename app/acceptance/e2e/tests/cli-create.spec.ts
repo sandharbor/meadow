@@ -22,14 +22,15 @@ import type {
   GenerateBundleCliResult,
   SaveGenerationCliResult,
   TrackBundleNodesCliResult,
-} from "../../../contracts/types/cliOperations.js";
-import type { GraphDescription } from "../../../contracts/types/graphInspection.js";
+} from "../../../contracts/types/shared/cli/cliOperations.js";
+import type { GraphDescription } from "../../../contracts/types/shared/curation/graphInspection.js";
 import {
   EXPECTED_GENERATED_CONTENT_ASSETS,
   EXPECTED_GENERATED_PAGES,
   materializeCreateSafeBundleSource,
 } from "../src/agent-evals/scenarios/createSafeBundle.js";
 import { bundles, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration, bundleGeneration } from "../../../concepts/index.js";
+import { scenarioDesignPressures, preventAccidentalSharing } from "../../../concepts/index.js";
 import { cli } from "../../../concepts/index.js";
 import { expect, test } from "../src/run/test-fixtures.js";
 
@@ -56,8 +57,9 @@ const name = linkedScenarioName(conceptText`CLI creates a page bundle and safely
 const description = linkedScenarioDescription(conceptText`Create a bundle from a read-only source, track safe pages, and generate and save it
 through the CLI. Check retries, stale saves, sensitive-page protection, and the
 resulting files.`);
+const pressures = scenarioDesignPressures([preventAccidentalSharing]);
 const areas = scenarioAreas([bundles, bundleCuration, bundleGeneration]);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '5d8ab79c-23c5-4af5-8d25-7dcde499ddfe' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
+test(name.name, { annotation: [{ type: 'scenario-id', description: '5d8ab79c-23c5-4af5-8d25-7dcde499ddfe' }, name.annotation, description.annotation, areas.annotation, pressures.annotation] }, async ({ sourceCommand,
   assertMeadowHomeState,
   meadowCli,
   page,

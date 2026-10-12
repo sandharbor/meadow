@@ -30,15 +30,9 @@ import { describeTestSourceChanges } from '../../../e2e/src/artifacts/testSource
 import { sourceChangeCategoriesOf, type SourceChangeCategory } from '../../../../shared_code/shared_dev/sourceChangesTypes.ts';
 import { expandManifest } from '../../../e2e/src/artifacts/manifestEncoding.ts';
 import { FINAL_WORKTREE_REF } from '../../../e2e/src/run/stateRepoCompaction.ts';
-import {
-  acceptanceConcepts,
-  allCoreConcepts,
-  relatedConceptIds,
-  acceptanceConceptView,
-  acceptanceAppAreaConcepts as appAreaConcepts,
-  renderConceptText,
-} from "../../../../concepts/index.ts";
-import { allBundleDocs } from "../../../e2e/src/bundle-docs/index.ts";
+import { acceptanceDocumentView, documentBacklinks, relatedDocumentIds } from '../../../../concepts/index.ts';
+import { loadDocumentRegistry } from '../../../../concepts/loadRegistry.js';
+import { readDocumentSnapshot } from '../../../e2e/src/artifacts/documentSnapshot.js';
 import {
   extractReferencedCliFixtureNames,
   extractReferencedCliFixtureReferences,
@@ -57,21 +51,7 @@ import {
   FIXTURE_TEST_SLUG,
 } from "./fixture-scenario/index.ts";
 
-// Optionally load contributed concepts. When none are mounted, the import
-// no-ops.
-// Runtime-computed path so tsc doesn't require the module to exist.
-type ConceptLike = Parameters<typeof acceptanceConceptView>[0];
-let contributedConcepts: ConceptLike[] = [];
-{
-  const extIndex = path.join(
-    import.meta.dirname, "..", "..", "..", "..", "concepts", "meadow-extension", "index.ts"
-  );
-  if (existsSync(extIndex)) {
-    const extPath = "../../../../concepts/meadow-extension/index.ts";
-    const mod = await import(extPath) as { meadowExtensionConcepts?: ConceptLike[] };
-    contributedConcepts = mod.meadowExtensionConcepts ?? [];
-  }
-}
+const documentRegistry = await loadDocumentRegistry();
 
 const ARTIFACTS_ROOT = path.join(os.homedir(), "meadow-e2e-artifacts");
 const CURRENT_ARTIFACTS_ROOT = path.join(ARTIFACTS_ROOT, "current");
@@ -367,33 +347,50 @@ app.use(
   }
 );
 
-// --- Concept API ---
+// Document APIs retain the established concept URLs for saved links.
+function reportDocuments(runId: unknown) {
+  const directory = typeof runId === 'string' ? safeRunDir(runId) : null;
+  const snapshot = directory ? readDocumentSnapshot(directory) : undefined;
+  return {
+    documents: snapshot?.documents ?? documentRegistry.documents,
+    acceptanceIds: snapshot?.acceptanceIds ?? documentRegistry.acceptanceConcepts.map(concept => concept.id),
+    contributedIds: snapshot?.contributedIds ?? documentRegistry.contributedIds,
+    appAreaIds: snapshot?.appAreaIds ?? documentRegistry.appAreas.map(area => area.id),
+    scenarios: snapshot?.scenarios,
+    provenance: snapshot ? 'captured' : runId ? 'current-fallback' : 'current',
+    capturedAt: snapshot?.capturedAt,
+  };
+}
 
-// Return the acceptance projection of canonical concepts. Each contribution is
-// tagged so the client can group it without owning another prose registry.
-app.get("/api/concepts", (req, res) => {
-  const core = (req.query.all === 'true' ? allCoreConcepts : acceptanceConcepts).map(concept => ({
-    ...acceptanceConceptView(concept),
-    isContribution: false,
-  }));
-  const contributions = contributedConcepts.map(concept => ({
-    ...acceptanceConceptView(concept),
-    isContribution: true,
-  }));
-  res.json([...core, ...contributions]);
+app.get('/api/documents', (req, res) => {
+  try {
+    const catalog = reportDocuments(req.query.run);
+    res.json({ ...catalog, documents: catalog.documents.map(document => ({ ...acceptanceDocumentView(document), isContribution: catalog.contributedIds.includes(document.id) })) });
+  } catch (error) { res.status(500).json({ error: String(error) }); }
+});
+app.get('/api/concepts', (req, res) => {
+  try {
+    const catalog = reportDocuments(req.query.run);
+    res.json(catalog.documents.filter(document => document.documentKind === 'concept'
+      && (req.query.all === 'true' || catalog.acceptanceIds.includes(document.id)))
+      .map(document => ({ ...acceptanceDocumentView(document), isContribution: catalog.contributedIds.includes(document.id) })));
+  } catch (error) { res.status(500).json({ error: String(error) }); }
 });
 
 const conceptAppRoot = path.resolve(import.meta.dirname, '../../../..');
 app.get('/api/concepts/:conceptId', (req, res) => {
-  const concepts = [...allCoreConcepts, ...contributedConcepts];
-  const concept = concepts.find(value => value.id === req.params.conceptId);
-  if (!concept) return res.status(404).json({ error: 'Concept not found' });
-  const implementations = readConceptImplementations(conceptAppRoot);
-  if (implementations.errors.length) return res.status(500).json({ error: implementations.errors.join('\n') });
-  return res.json({ ...acceptanceConceptView(concept), mechanics: concept.mechanics.map(text => renderConceptText(text)),
-    interplay: renderConceptText(concept.interplay),
-    related: relatedConceptIds(concept, concepts).map(id => ({ id, name: concepts.find(value => value.id === id)?.name ?? id })),
-    implementations: implementations.entries.filter(entry => entry.conceptId === concept.id) });
+  try {
+    const catalog = reportDocuments(req.query.run);
+    const document = catalog.documents.find(value => value.id === req.params.conceptId);
+    if (!document) return res.status(404).json({ error: 'Document not found' });
+    const reference = (id: string) => ({ id, name: catalog.documents.find(value => value.id === id)?.name ?? id });
+    const implementations = readConceptImplementations(conceptAppRoot);
+    if (implementations.errors.length) return res.status(500).json({ error: implementations.errors.join('\n') });
+    return res.json({ ...acceptanceDocumentView(document), provenance: catalog.provenance, capturedAt: catalog.capturedAt,
+      areas: (document.appAreaIds ?? []).map(reference), backlinks: documentBacklinks(document.id, catalog.documents),
+      related: relatedDocumentIds(document, catalog.documents).map(reference),
+      implementations: implementations.entries.filter(entry => entry.conceptId === document.id) });
+  } catch (error) { return res.status(500).json({ error: String(error) }); }
 });
 app.get('/api/concepts/:conceptId/implementation', (req, res) => {
   const entry = readConceptImplementations(conceptAppRoot).entries.find(value => value.conceptId === req.params.conceptId
@@ -401,20 +398,15 @@ app.get('/api/concepts/:conceptId/implementation', (req, res) => {
   if (!entry) return res.status(404).json({ error: 'Implementation not found in current code' });
   return res.json({ ...entry, content: readFileSync(path.join(conceptAppRoot, entry.file), 'utf8') });
 });
-
-// GET /api/bundle-docs — return all bundle doc definitions
-app.get("/api/bundle-docs", (_req, res) => {
-  res.json(allBundleDocs);
+app.get('/api/bundle-docs', (req, res) => {
+  try { res.json(reportDocuments(req.query.run).documents.filter(document => document.documentKind === 'fixture').map(acceptanceDocumentView)); }
+  catch (error) { res.status(500).json({ error: String(error) }); }
 });
-
-// Return app areas as a concept projection.
-app.get("/api/app-areas", (_req, res) => {
-  res.json(appAreaConcepts.map(area => ({
-    id: area.id,
-    name: area.name,
-    description: renderConceptText(area.definition),
-    parentId: area.parentId,
-  })));
+app.get('/api/app-areas', (req, res) => {
+  try {
+    const catalog = reportDocuments(req.query.run);
+    res.json(catalog.documents.filter(document => catalog.appAreaIds.includes(document.id)).map(acceptanceDocumentView));
+  } catch (error) { res.status(500).json({ error: String(error) }); }
 });
 
 // --- Agent evaluation APIs ---
@@ -698,6 +690,7 @@ app.get("/api/runs/:runId", (req, res) => {
       let bundleDocIds: string[] = [];
       let appAreaDocIds: string[] = [];
       let subAreaDocIds: string[] = [];
+      let designPressureIds: string[] | undefined;
       let sourceChangeCategories: SourceChangeCategory[] = [];
       let keyFrames: { docId: string; filename: string }[] = [];
       let failureReason: string | undefined;
@@ -731,6 +724,7 @@ app.get("/api/runs/:runId", (req, res) => {
             bundleDocIds = meta.scenarioInfo.bundleDocIds || [];
             appAreaDocIds = meta.scenarioInfo.appAreaDocIds || [];
             subAreaDocIds = meta.scenarioInfo.subAreaDocIds || [];
+            designPressureIds = meta.scenarioInfo.designPressureIds;
             sourceChangeCategories = meta.scenarioInfo.sourceChangeCategories || [];
             keyFrames = meta.scenarioInfo.keyFrames || [];
             failureReason = meta.scenarioInfo.failureReason;
@@ -762,6 +756,7 @@ app.get("/api/runs/:runId", (req, res) => {
             bundleDocIds = manifest.bundleDocIds || [];
             appAreaDocIds = manifest.appAreaDocIds || [];
             subAreaDocIds = manifest.subAreaDocIds || [];
+            designPressureIds = manifest.designPressureIds;
             sourceChangeCategories = manifest.sourceChangeCategories ?? sourceChangeCategoriesOf(manifest.testSourceChanges ?? []);
             keyFrames = manifest.keyFrames || [];
             if (manifest.startTime && manifest.endTime) {
@@ -799,7 +794,7 @@ app.get("/api/runs/:runId", (req, res) => {
         }
       }
 
-      return { scenarioId, slug, testName, description, nameText, descriptionText, testBasename, status, duration, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, subAreaDocIds, sourceChangeCategories, keyFrames, failureReason, hasIssues };
+      return { scenarioId, slug, testName, description, nameText, descriptionText, testBasename, status, duration, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, subAreaDocIds, designPressureIds, sourceChangeCategories, keyFrames, failureReason, hasIssues };
     });
 
   // Read concept targeting metadata, with a fallback for historical runs.

@@ -15,45 +15,21 @@ limitations under the License.
 */
 
 import {
-  conceptLinks,
-  renderConceptText,
   type AnyMeadowConcept,
-  type ConceptText,
 } from "./types.js";
-
-function textsFor(concept: AnyMeadowConcept): ConceptText[] {
-  return [concept.definition, ...concept.mechanics, concept.interplay];
-}
+import { conceptDocument, relatedDocumentIds, validateDocuments } from './documents.js';
+import { designPressures } from './designPressures.js';
 
 export function validateConceptRegistry(concepts: readonly AnyMeadowConcept[]): string[] {
-  const errors: string[] = [];
+  const errors = validateDocuments([...concepts.map(conceptDocument), ...designPressures]);
   const byId = new Map<string, AnyMeadowConcept>();
-  const names = new Map<string, string>();
 
   for (const concept of concepts) {
-    if (byId.has(concept.id)) errors.push(`concept id "${concept.id}" is declared more than once`);
     byId.set(concept.id, concept);
-
-    if (!concept.name.trim()) errors.push(`concept "${concept.id}" has no name`);
-    if (!renderConceptText(concept.definition)) errors.push(`concept "${concept.id}" has no definition`);
-    if (concept.mechanics.length === 0 || concept.mechanics.some(item => !renderConceptText(item))) {
-      errors.push(`concept "${concept.id}" must have non-empty mechanics`);
-    }
-    if (!renderConceptText(concept.interplay)) errors.push(`concept "${concept.id}" has no interplay`);
-
-    for (const alias of [concept.name, ...(concept.aliases ?? [])]) {
-      const normalized = alias.trim().toLocaleLowerCase();
-      const owner = names.get(normalized);
-      if (!normalized) errors.push(`concept "${concept.id}" has an empty name or alias`);
-      else if (owner && owner !== concept.id) {
-        errors.push(`concept alias "${alias}" belongs to both "${owner}" and "${concept.id}"`);
-      } else names.set(normalized, concept.id);
-    }
   }
 
   for (const concept of concepts) {
     const referencedIds = [
-      ...textsFor(concept).flatMap(text => conceptLinks(text).map(link => link.conceptId)),
       ...(concept.appAreaIds ?? []),
       ...(concept.subAreas ?? []).map(subArea => subArea.areaId),
       ...(concept.parentId ? [concept.parentId] : []),
@@ -97,22 +73,5 @@ export function relatedConceptIds(
   concept: AnyMeadowConcept,
   concepts: readonly AnyMeadowConcept[],
 ): string[] {
-  const related = new Set<string>();
-  for (const text of textsFor(concept)) {
-    for (const link of conceptLinks(text)) related.add(link.conceptId);
-  }
-  for (const id of concept.appAreaIds ?? []) related.add(id);
-  if (concept.parentId) related.add(concept.parentId);
-
-  for (const candidate of concepts) {
-    if (candidate.id === concept.id) continue;
-    const candidateReferences = [
-      ...textsFor(candidate).flatMap(text => conceptLinks(text).map(link => link.conceptId)),
-      ...(candidate.appAreaIds ?? []),
-      ...(candidate.parentId ? [candidate.parentId] : []),
-    ];
-    if (candidateReferences.includes(concept.id)) related.add(candidate.id);
-  }
-
-  return [...related];
+  return relatedDocumentIds(conceptDocument(concept), [...concepts.map(conceptDocument), ...designPressures]);
 }

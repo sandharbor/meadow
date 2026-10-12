@@ -9,8 +9,8 @@ test.beforeEach(async ({ page }) => {
     { id: 'other', name: 'Other Sourcing' },
   ].map(concept => ({ ...concept, description: concept.name, searchFacet: true }));
   await page.route('**/api/concepts*', route => route.fulfill({ json: concepts }));
-  await page.route('**/api/bundle-docs', route => route.fulfill({ json: [] }));
-  await page.route('**/api/app-areas', route => route.fulfill({ json: [
+  await page.route(/\/api\/bundle-docs(?:\?.*)?$/,  route => route.fulfill({ json: [] }));
+  await page.route(/\/api\/app-areas(?:\?.*)?$/,  route => route.fulfill({ json: [
     { id: 'sourcing', name: 'Bundle Sourcing', parentId: 'bundle' },
     { id: 'sharing', name: 'Bundle Sharing', parentId: 'bundle' },
     { id: 'curation', name: 'Bundle Curation', parentId: 'bundle' },

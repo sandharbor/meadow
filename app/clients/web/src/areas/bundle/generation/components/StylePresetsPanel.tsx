@@ -16,7 +16,7 @@ limitations under the License.
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiRequest } from '../../../../shared/utils/apiClient';
-import { StylePreset } from '../../../../../../../contracts/types/stylePresets';
+import { StylePreset } from '../../../../../../../contracts/types/areas/bundle/generation/stylePresets';
 import { logger } from '../../../../shared/utils/logger';
 import { ConfigSection } from './configSection';
 

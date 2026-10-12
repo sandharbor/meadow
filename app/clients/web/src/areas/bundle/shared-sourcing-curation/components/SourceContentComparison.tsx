@@ -1,7 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import { useEffect, useState } from 'react';
-import type { SourceNodeReview } from '../../../../../../../contracts/types/sourcingProposal.js';
+import type { SourceNodeReview } from '../../../../../../../contracts/types/shared/sourcing/sourcingProposal.js';
 import Modal from '../../../../shared/components/Modal.js';
 import DiffView from '../../../../../shared_components/ConfigFileExplorer/DiffView.js';
 import type { EditorOperations } from '../types/editorOperations.js';

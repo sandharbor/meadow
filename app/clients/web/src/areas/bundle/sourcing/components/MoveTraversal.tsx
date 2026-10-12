@@ -1,8 +1,8 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import type { SourceMoveCandidate } from '../../../../../../../contracts/types/sourcing.js';
+import type { SourceMoveCandidate } from '../../../../../../../contracts/types/shared/sourcing/sourcing.js';
 import { FileRoute } from './SourceFileRoute.js';
-import type { Graph } from '../../../../../../../contracts/types/graph.js';
+import type { Graph } from '../../../../../../../contracts/types/shared/bundle-graph/graph.js';
 import { traversalLinkType } from '../../../../shared/utils/traversalLinkType.js';
 
 function leadingRoute(route: EncodedBundleNodeKey[], target: string): EncodedBundleNodeKey[] {
@@ -34,6 +34,6 @@ export function MoveTraversal({ move, graphs, onDetails }: { move: SourceMoveCan
   </details>;
 }
 
-import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';
 
 import { serializeBundleNodeKey, fileNodeKeyFromSourceFilePath } from '../../../../../../../shared_code/utils/bundleNodeKey.js';

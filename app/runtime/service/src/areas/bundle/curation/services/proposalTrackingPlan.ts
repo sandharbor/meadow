@@ -1,9 +1,9 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import type { ProposalConfiguration, ProposalTrackingDecision } from '../../../../../../../contracts/types/sourcingProposal.js';
-import type { BundleNodeId } from '../../../../../../../contracts/types/bundleNodeConfig.js';
-import { Graph } from '../../../../../../../contracts/types/graph.js';
-import { isUntrackableFrontierNode } from '../../../../../../../contracts/types/IBundleNode.js';
+import type { ProposalConfiguration, ProposalTrackingDecision } from '../../../../../../../contracts/types/shared/sourcing/sourcingProposal.js';
+import type { BundleNodeId } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
+import { Graph } from '../../../../../../../contracts/types/shared/bundle-graph/graph.js';
+import { isUntrackableFrontierNode } from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode.js';
 import { applyNodeConfigsToNodes, applySensitiveFromApiData, generateBundleNodeId } from '../../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 import { revalidateProposalTracking, type ProposalTrackingTarget } from '../../../../../../../shared_code/utils/proposalTracking.js';
 import { serializeWorkingGraphOutput } from '../../../../shared/bundle-graph/workingGraphService.js';

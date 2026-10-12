@@ -3,6 +3,32 @@
 import { coreConceptIds as id } from '../../ids.js';
 import { conceptLink as link, conceptText as text, defineMeadowConcept as define } from '../../language.js';
 
+export const sourceSetupNew = define({
+  id: id.sourceSetupNew, name: 'Source Setup - New', kind: 'process', searchFacet: true,
+  parentId: id.bundleSourcing, appAreaIds: [id.bundleSourcing, id.bundles],
+  subAreas: [{ areaId: id.bundleSourcing, order: 1 }],
+  definition: text`Choosing a new bundle's source directories and starting pages or folders in Create New Bundle.`,
+  mechanics: [
+    text`The page, folder, and Sources and mixed starts creation paths all establish sources and starting selections. Sources admit directories to the graph; starting selections determine where traversal begins. A bundle can start from one page, one folder, or an ordered collection of pages and folders across sources.`,
+    text`Creation validates the source locations and starting selections, captures the initial material, and opens the bundle without a separate source-acceptance step.`,
+  ],
+  interplay: text`${link(id.source, 'Sources')} and ${link(id.startingSelection, 'Starting Selections')} establish the initial ${link(id.sourceSnapshot, 'Source Snapshot')}. Later changes use ${link(id.sourceSetupEdit, 'Source Setup - Edit')}.`,
+  implementationRoles: ['render-creation'] as const,
+});
+
+export const sourceSetupEdit = define({
+  id: id.sourceSetupEdit, name: 'Source Setup - Edit', kind: 'process', searchFacet: true,
+  parentId: id.bundleSourcing, appAreaIds: [id.bundleSourcing],
+  subAreas: [{ areaId: id.bundleSourcing, order: 2 }],
+  definition: text`Changing an existing bundle's source directories and starting pages or folders in Manage sources.`,
+  mechanics: [
+    text`Manage sources registers, renames, relocates, reconnects, or removes sources and edits ordered starting selections. Review sources opens the same setup for unresolved source references, including registration, ignoring, and reconsideration. Source setup does not edit the source files themselves.`,
+    text`Saving applies settings immediately when the captured material needs no review. Otherwise the proposed sources and starting selections stay pending together until source review accepts them. Reopening setup restores the pending choices; discarding the proposal restores the accepted settings.`,
+  ],
+  interplay: text`${link(id.sourceSetupNew, 'Source Setup - New')} establishes the initial settings. Changes that affect captured material enter a ${link(id.pendingSourceProposal, 'Pending Source Proposal')}, with ${link(id.sourceReviewIdentity, 'Source Review Identity')} and ${link(id.sourceReviewWorkspace, 'Source Review Workspace')} handling review and acceptance.`,
+  implementationRoles: ['render-editor'] as const,
+});
+
 export const bundleSource = define({
   id: id.source, name: 'Multi-source', aliases: ['Source', 'Multi-source Support'], kind: 'entity', searchFacet: true,
   appAreaIds: [id.bundleSourcing, id.bundles],
@@ -69,4 +95,4 @@ export const sourceChangesDuringReview = define({
   interplay: text`A ${link(id.sourceSnapshot, 'Source Snapshot')} supplies the immutable reviewed material. ${link(id.pendingProposalRevalidation, 'Pending Proposal Revalidation')} also covers newer accepted curation decisions and filter policy. ${link(id.sensitive, 'Node Sensitivity')} and ${link(id.filterSensitivity, 'Filter Sensitivity')} govern refreshed tracking choices. ${link(id.checkpoint, 'Checkpoints')} preserve review interactions for manual testing.`,
 });
 
-export const sourcingConcepts = [bundleSource, sourceSnapshot, sourceMove, sourceChange, orphan, sourceChangesDuringReview] as const;
+export const sourcingConcepts = [sourceSetupNew, sourceSetupEdit, bundleSource, sourceSnapshot, sourceMove, sourceChange, orphan, sourceChangesDuringReview] as const;

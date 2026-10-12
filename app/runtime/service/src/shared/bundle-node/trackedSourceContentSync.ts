@@ -18,7 +18,7 @@ import { sourceGraphPath } from '../../../../../shared_code/utils/bundleSourceUt
 import fs from 'fs';
 import path from 'path';
 import { BundleConfigPaths } from '../../../../../shared_code/paths/bundleConfigPaths.js';
-import type { BundleNodeConfig, FileBundleNodeConfig } from '../../../../../contracts/types/bundleNodeConfig.js';
+import type { BundleNodeConfig, FileBundleNodeConfig } from '../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import {
   canonicalPageFilename,
   sourceFileCandidateFilenames,

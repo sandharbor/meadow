@@ -2,7 +2,7 @@
 
 import type {
   ProposalConfiguration, ProposalConfigurationConflict, ProposalConflictResolution, ProposalValue,
-} from '../../contracts/types/sourcingProposal.js';
+} from '../../contracts/types/shared/sourcing/sourcingProposal.js';
 
 /** Compare data rather than JSON property insertion order. Missing is distinct from null. */
 export function sameProposalValue(left: unknown, right: unknown): boolean {

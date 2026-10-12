@@ -18,9 +18,9 @@ import { renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { useDisplayFilters } from '../../../../../src/areas/bundle/shared-sourcing-curation/utils/useDisplayFilters';
 import type { IFilter } from '../../../../../src/areas/bundle/shared-sourcing-curation/types/filters';
-import { Graph } from '../../../../../../../contracts/types/graph';
-import type { IBundleNode } from '../../../../../../../contracts/types/IBundleNode';
-import type { FileType } from '../../../../../../../contracts/types/FileType';
+import { Graph } from '../../../../../../../contracts/types/shared/bundle-graph/graph';
+import type { IBundleNode } from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode';
+import type { FileType } from '../../../../../../../contracts/types/shared/bundle-graph/FileType';
 
 const fileNode = (key: string, fileType: FileType): IBundleNode => ({
   bundleNodeKey: testKey(key),

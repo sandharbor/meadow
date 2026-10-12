@@ -48,11 +48,12 @@ import { createHealthRoutes } from '../routes/healthRoutes.js';
 import { createPlaceRoutes } from '../routes/placeRoutes.js';
 import { appShellRouterReviewRoutes as reviewRoutes } from '../../areas/bundle/review/exported.js';
 import { getConfigDirectory } from '../bundle-config/bundleConfigPaths.js';
-import { ResourcesConfig } from '../../../../../contracts/types/resourcesConfig.js';
+import { ResourcesConfig } from '../../../../../contracts/types/shared/app-shell/resourcesConfig.js';
 import {
-  ensureAllProviderResourcesInitialized,
-  registerAllProviderRoutes,
-} from '../publishing-provider-host/providerRegistry.js';
+  appShellCommandInitializeProviderResources as ensureAllProviderResourcesInitialized,
+  appShellCommandRegisterProviderRoutes as registerAllProviderRoutes,
+  appShellQueryProviderMigrationScopes,
+} from '../../areas/bundle/sharing/exported.js';
 import {
   ensureAppConfigInitialized,
   loadAppConfig as loadAppConfigFromDisk,
@@ -210,7 +211,7 @@ export async function startRuntimeService(): Promise<void> {
     await startupGit.commitDirs(['.'], 'initial Meadow Home commit');
   }
 
-  await runMigrationsOnStartup();
+  await runMigrationsOnStartup(appShellQueryProviderMigrationScopes(configDir));
   // Ensure app/app_config.yaml exists and contains defaults for new settings.
   // Commit any changes (either newly created OR patched with new defaults)
   // so git history reflects the real config state.

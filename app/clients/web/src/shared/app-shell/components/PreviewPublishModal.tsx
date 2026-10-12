@@ -18,7 +18,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { AppShellComponentGenerationProgress as GenerationProgress } from '../../../areas/bundle/generation/exported.js';
 import { AppShellComponentSaveLocallyTab as SaveLocallyTab } from '../../../areas/bundle/sharing/exported.js';
 import { AppShellComponentAdvancedTab as AdvancedTab } from '../../../areas/bundle/sharing/exported.js';
-import { useActivePublishingProvider } from '../../publishing-provider-host/useActivePublishingProvider';
+import { useAppShellStatePublishingTab } from '../../../areas/bundle/sharing/exported.js';
 import { AppShellComponentCustomizeSidebar as CustomizeSidebar } from '../../../areas/bundle/generation/exported.js';
 import { AppShellComponentUntrackedPagesButton as UntrackedPagesButton } from '../../../areas/bundle/review/exported.js';
 import { AppShellComponentPreviewChangesTab as PreviewChangesTab } from '../../../areas/bundle/review/exported.js';
@@ -809,11 +809,10 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
         setSaveChangesMessage({ type: 'error', text: data.error || 'Failed to save changes' });
       } else if (data.skipped) {
         setSaveChangesMessage({ type: 'success', text: 'Git auto-management is disabled' });
-      } else if (data.noChanges) {
-        setSaveChangesMessage({ type: 'success', text: 'No changes to save' });
       } else {
-        setSaveChangesMessage({ type: 'success', text: 'Changes saved' });
-        // Refresh the changed files count after successful save
+        setSaveChangesMessage({ type: 'success', text: data.noChanges ? 'No changes to save' : 'Changes saved' });
+        // A successful save can reuse an existing commit. Refresh saved state
+        // in either case so Share does not remain blocked by stale changes.
         await previewFileExplorerApi.fetchTree({ changedOnly: true }).catch((err) => logger.error('Failed to refresh changed files:', err));
         // Increment refresh key to force changes tab remount and refresh
         setChangesTabRefreshKey((prev) => prev + 1);
@@ -1094,8 +1093,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
     </svg>
   );
 
-  const activeProvider = useActivePublishingProvider();
-  const PublishTabComponent = activeProvider?.PublishTabComponent ?? null;
+  const { PublishTabComponent, publishTabLabel } = useAppShellStatePublishingTab();
 
   // The provider's publication history is a linkable place within Preview.
   const [publicationHistoryOpen, setPublicationHistoryOpen] = useState(false);
@@ -1109,7 +1107,6 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
     },
     close: () => setPublicationHistoryOpen(false),
   }, { parameters: ['history'] });
-  const publishTabLabel = activeProvider?.manifest.publishTabLabel ?? 'Publish';
   const hasOkfRenameCollisions = openKnowledgeFormatRenames.some(
     rename => rename.originalOutputPath !== rename.finalOutputPath
   );

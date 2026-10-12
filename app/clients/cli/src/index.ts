@@ -22,7 +22,7 @@ import {
   MEADOW_RUNTIME_PROTOCOL,
   MEADOW_RUNTIME_SESSION_ENV,
   type RuntimeSessionDescriptor,
-} from "../../../contracts/types/runtime.js";
+} from "../../../contracts/types/shared/runtime/runtime.js";
 import {
   ensureRuntime,
   createBrowserLaunchUrl,

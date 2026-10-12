@@ -28,13 +28,8 @@ import os from "os";
 import path from "path";
 import { performance } from "perf_hooks";
 import { sourceChangeCategoriesOf, type SourceChangeCategory, type SourceChangeDefinition } from "../../../../shared_code/shared_dev/sourceChangesTypes.js";
-import {
-  acceptanceConcepts as baseConcepts,
-  allCoreConcepts,
-  assertConceptRegistry,
-  type AnyMeadowConcept,
-} from "../../../../concepts/index.ts";
-import * as coreConceptExports from "../../../../concepts/index.ts";
+import { loadDocumentRegistry } from '../../../../concepts/loadRegistry.js';
+import { readScenarioDocuments } from './documentSnapshot.js';
 import * as bundleDocExports from "../bundle-docs/index.ts";
 import { isBundleMode, type BundleMode } from "../run/bundleMode.ts";
 import {
@@ -57,36 +52,9 @@ import {
   type TestSourceFixture,
 } from "./testSourceFixtures.ts";
 
-// Build a map from export name (e.g. "htmlGeneration") to canonical concept ID.
-const exportNameToConceptId = new Map<string, string>();
-for (const [key, value] of Object.entries(coreConceptExports)) {
-  if (value && typeof value === "object" && "id" in value && typeof value.id === "string") {
-    exportNameToConceptId.set(key, value.id);
-  }
-}
-
-type ConceptLike = AnyMeadowConcept;
-let contributedConcepts: ConceptLike[] = [];
-
-// Merge in contributed concept exports when a contribution is mounted.
-{
-  const extIndex = path.join(import.meta.dirname, "..", "..", "..", "..", "concepts", "meadow-extension", "index.ts");
-  if (existsSync(extIndex)) {
-    const extPath = "../../../../concepts/meadow-extension/index.ts";
-    const mod = await import(extPath) as { meadowExtensionConcepts?: ConceptLike[] } & Record<string, unknown>;
-    contributedConcepts = mod.meadowExtensionConcepts ?? [];
-    for (const [key, value] of Object.entries(mod)) {
-      if (value && typeof value === "object" && "id" in value && typeof (value as { id: unknown }).id === "string") {
-        exportNameToConceptId.set(key, (value as { id: string }).id);
-      }
-    }
-  }
-}
-
-const allAcceptanceConcepts = [...baseConcepts, ...contributedConcepts];
-const allConcepts = [...allCoreConcepts, ...contributedConcepts];
-assertConceptRegistry(allConcepts);
-const acceptanceIds = new Set(allAcceptanceConcepts.map(concept => concept.id));
+const registry = await loadDocumentRegistry();
+const exportNameToConceptId = registry.exportNameToId;
+const acceptanceIds = new Set(registry.acceptanceConcepts.map(concept => concept.id));
 
 // Build a parallel map for bundle doc exports
 const bundleExportNameToDocId = new Map<string, string>();
@@ -270,6 +238,7 @@ interface Manifest {
   bundleDocIds: string[];
   appAreaDocIds: string[];
   subAreaDocIds: string[];
+  designPressureIds?: string[];
   sourceChangeCategories: SourceChangeCategory[];
   keyFrames: KeyFrame[];
   ticks: ProcessedTick[];
@@ -359,6 +328,7 @@ interface ScenarioReportMeta {
     bundleDocIds: string[];
     appAreaDocIds: string[];
     subAreaDocIds: string[];
+  designPressureIds?: string[];
     sourceChangeCategories: SourceChangeCategory[];
     keyFrames: { docId: string; filename: string; timestamp?: string }[];
     failureReason?: string;
@@ -1033,7 +1003,7 @@ function computeScenarioReportMeta(
   testDir: string,
   manifest: Manifest
 ): ScenarioReportMeta {
-  const { testName, description, nameText, descriptionText, startTime, endTime, logs, uncommittedEntries, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, subAreaDocIds, sourceChangeCategories, keyFrames } = manifest;
+  const { testName, description, nameText, descriptionText, startTime, endTime, logs, uncommittedEntries, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, subAreaDocIds, designPressureIds, sourceChangeCategories, keyFrames } = manifest;
 
   // Compute duration
   const duration = (startTime && endTime)
@@ -1046,7 +1016,7 @@ function computeScenarioReportMeta(
     ? readFileSync(failureReasonPath, "utf8").trim()
     : undefined;
 
-  const scenarioInfo = { scenarioId: manifest.scenarioId, testName, description, nameText, descriptionText, duration, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, subAreaDocIds, sourceChangeCategories, keyFrames, ...(failureReason && { failureReason }) };
+  const scenarioInfo = { scenarioId: manifest.scenarioId, testName, description, nameText, descriptionText, duration, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, subAreaDocIds, designPressureIds, sourceChangeCategories, keyFrames, ...(failureReason && { failureReason }) };
 
   // Load expected error windows (written by the expectLogErrors fixture)
   const expectedWindowsPath = path.join(testDir, "expected-error-windows.json");
@@ -1338,13 +1308,16 @@ export function assembleTestArtifacts(testDir: string, options: { dropTickLog?: 
 
   // Concepts and bundle docs come from test source imports; app areas and
   // sub-areas only from the scenario's own scenarioAreas declaration.
-  const { conceptIds, bundleDocIds, appAreaDocIds, subAreaDocIds } = measured(assemblySteps, "extract doc ids", () => {
+  const { conceptIds, bundleDocIds, appAreaDocIds, subAreaDocIds, designPressureIds } = measured(assemblySteps, "extract doc ids", () => {
+    const captured = readScenarioDocuments(testDir);
+    if (captured) return captured;
     const { appAreaIds, subAreaIds } = declaredScenarioAreaIds(testSource, exportNameToConceptId);
     return {
       conceptIds: extractAcceptanceConceptIds(testSource),
       bundleDocIds: extractBundleDocIds(testSource),
       appAreaDocIds: appAreaIds,
       subAreaDocIds: subAreaIds,
+      designPressureIds: undefined,
     };
   });
 
@@ -1364,7 +1337,7 @@ export function assembleTestArtifacts(testDir: string, options: { dropTickLog?: 
   // Write manifest
   const identityPath = path.join(testDir, 'scenario-identity.json');
   const identity = existsSync(identityPath) ? JSON.parse(readFileSync(identityPath, 'utf8')) : {};
-  const manifest: Manifest = { ...identity, testName, description, nameText, descriptionText, status, startTime, endTime, homeCommits, homeCommitMeta, minioCommitMeta, extensionCommitMeta, uncommittedEntries, logs, testSourceFile, testSource, testSourceFixtures, testSourceChanges, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, subAreaDocIds, sourceChangeCategories, keyFrames, ...tickData };
+  const manifest: Manifest = { ...identity, testName, description, nameText, descriptionText, status, startTime, endTime, homeCommits, homeCommitMeta, minioCommitMeta, extensionCommitMeta, uncommittedEntries, logs, testSourceFile, testSource, testSourceFixtures, testSourceChanges, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, subAreaDocIds, designPressureIds, sourceChangeCategories, keyFrames, ...tickData };
   // On disk the manifest leaves out what the report viewer rebuilds, and
   // skips indentation; see manifestEncoding.ts.
   const blobGitDir = contentBlobGitDir(testDir);

@@ -15,8 +15,8 @@ limitations under the License.
 */
 
 import { describe, expect, it } from 'vitest';
-import type { FolderScopeGraphSnapshot } from '../../../../../contracts/types/folderScopeChanges.js';
-import type { BundleNodeConfig } from '../../../../../contracts/types/bundleNodeConfig.js';
+import type { FolderScopeGraphSnapshot } from '../../../../../contracts/types/shared/bundle-config/folderScopeChanges.js';
+import type { BundleNodeConfig } from '../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import { explainFolderScopeChanges } from '../../../src/shared/bundle-config/folderScopeChanges.js';
 
 const folder: BundleNodeConfig = {

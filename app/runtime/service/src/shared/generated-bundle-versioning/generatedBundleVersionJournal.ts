@@ -1,7 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import path from 'path';
-import type { GeneratedBundleVersionId } from '../../../../../contracts/types/generatedBundleVersioning.js';
+import type { GeneratedBundleVersionId } from '../../../../../contracts/types/shared/generated-bundle-versioning/generatedBundleVersioning.js';
 import {
   isPlainObject,
   jsonDocumentCodec,

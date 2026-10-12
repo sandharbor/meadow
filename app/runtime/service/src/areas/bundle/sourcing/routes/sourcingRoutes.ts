@@ -1,14 +1,15 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import express from 'express';
-import type { StartingSelection } from '../../../../../../../contracts/types/startingSelection.js';
+import type { StartingSelection } from '../../../../../../../contracts/types/shared/sourcing/startingSelection.js';
 import { cancelSourceCandidate, setIgnoredSource, sourceRegistryStatus } from '../services/sourceRegistryReview.js';
 import { saveProposalSourceRegistry } from '../services/proposalSources.js';
-import type { BundleSource } from '../../../../../../../contracts/types/bundleConfig.js';
+import type { BundleSource } from '../../../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
 import { reviewWithTrackingAssessment, scanWithTrackingAssessment } from '../services/reviewWithTrackingAssessment.js';
 import { sourceComparison, sourceSnapshotImage, sourceSnapshotContent, sourceSnapshotHistory } from '../services/sourceReview.js';
 import { SourcingError } from '../../../../shared/source-snapshot/sourceSnapshots.js';
-import type { SourceSnapshotAcceptance, SourceSnapshotAcceptanceResult } from '../../../../../../../contracts/types/sourcing.js';
+import type { SourceSnapshotAcceptance } from '../../../../../../../contracts/types/shared/sourcing/sourcing.js';
+import type { SourceSnapshotAcceptanceResult } from '../../../../../../../contracts/types/areas/bundle/sourcing/sourcing.js';
 import { directory, handle } from './routeUtils.js';
 import { createProposalRoutes } from './proposalRoutes.js';
 

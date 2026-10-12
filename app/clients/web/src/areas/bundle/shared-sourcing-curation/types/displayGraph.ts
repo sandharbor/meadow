@@ -14,10 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { Graph } from '../../../../../../../contracts/types/graph';
-import { IBundleNode } from '../../../../../../../contracts/types/IBundleNode.js';
-import { FileType } from '../../../../../../../contracts/types/FileType.js';
-import type { BundleNodeKind } from '../../../../../../../contracts/types/bundleNodeConfig.js';
+import { Graph } from '../../../../../../../contracts/types/shared/bundle-graph/graph';
+import { IBundleNode } from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode.js';
+import { FileType } from '../../../../../../../contracts/types/shared/bundle-graph/FileType.js';
+import type { BundleNodeKind } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import { IFilter, IBundleNodeSelector } from './filters';
 import { logger } from '../../../../shared/utils/logger';
 import { calculateHighlightDetail } from '../utils/highlightDetailCalculators';
@@ -350,7 +350,7 @@ export class DisplayGraph {
   }
 }
 
-import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';
 
 import type { ParticipatesIn, graphFade } from '../../../../../../../concepts/index.js';
 export type DisplayGraphMeadowConceptParticipations = [

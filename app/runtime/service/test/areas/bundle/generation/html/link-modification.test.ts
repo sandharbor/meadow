@@ -16,7 +16,7 @@ limitations under the License.
 
 import { describe, it, expect } from 'vitest';
 import { buildExcalidrawClientEmbeddedFileData, linkOrImageHtml } from '../../../../../src/areas/bundle/generation/html/linkModificationService.js';
-import { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
+import { BundleNodeConfig } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import { makeBundleNodeConfig } from '../../../../shared/support/bundleNodeConfigTestUtils.js';
 
 describe('html link modification', () => {

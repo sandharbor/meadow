@@ -21,7 +21,7 @@ import type {
   FolderBundleNodeConfig,
   BundleNodeConfig,
   BundleNodeId,
-} from '../../../../../contracts/types/bundleNodeConfig.js';
+} from '../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import {
   generateBundleNodeId,
   normalizeFolderSourceGraphSubdirectory,
@@ -32,7 +32,7 @@ import {
   nodeConfigMatchesNode,
 } from '../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 import { assignLegacySourceIdentity, bundleSources, sourceGraphPath, sourceOutputDirectory, splitSourceGraphPath } from '../../../../../shared_code/utils/bundleSourceUtils.js';
-import type { BundleConfig } from '../../../../../contracts/types/bundleConfig.js';
+import type { BundleConfig } from '../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
 
 const id = (value: string) => value as BundleNodeId;
 const node = (overrides: Partial<FileBundleNodeConfig> = {}): FileBundleNodeConfig => ({

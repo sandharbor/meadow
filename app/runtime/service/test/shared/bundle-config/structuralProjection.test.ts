@@ -15,9 +15,9 @@ limitations under the License.
 */
 
 import { describe, expect, it } from 'vitest';
-import type { IEdge } from '../../../../../contracts/types/graph.js';
-import type { IBundleNode } from '../../../../../contracts/types/IBundleNode.js';
-import type { BundleNodeConfig, BundleNodeId, EncodedBundleNodeKey } from '../../../../../contracts/types/bundleNodeConfig.js';
+import type { IEdge } from '../../../../../contracts/types/shared/bundle-graph/graph.js';
+import type { IBundleNode } from '../../../../../contracts/types/shared/bundle-graph/IBundleNode.js';
+import type { BundleNodeConfig, BundleNodeId, EncodedBundleNodeKey } from '../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import { buildVisibleStructuralProjection } from '../../../../../shared_code/utils/structuralProjection.js';
 
 const id = (value: string) => value as BundleNodeId;

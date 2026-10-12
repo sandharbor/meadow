@@ -18,8 +18,8 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { BundleConfig } from '../../../../../contracts/types/bundleConfig.js';
-import type { BundleNodeConfig, BundleNodeId } from '../../../../../contracts/types/bundleNodeConfig.js';
+import type { BundleConfig } from '../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
+import type { BundleNodeConfig, BundleNodeId } from '../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import { persistFolderBundleAtomically } from '../../../src/areas/bundles/services/folderBundlePersistence.js';
 
 const temporaryDirectories: string[] = [];

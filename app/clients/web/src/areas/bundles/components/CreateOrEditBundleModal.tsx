@@ -16,8 +16,8 @@ limitations under the License.
 
 /* global alert */
 import { MultiSourceBundleFields } from './MultiSourceBundleFields.js';
-import type { BundleSource } from '../../../../../../contracts/types/bundleConfig.js';
-import type { StartingSelection } from '../../../../../../contracts/types/startingSelection.js';
+import type { BundleSource } from '../../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
+import type { StartingSelection } from '../../../../../../contracts/types/shared/sourcing/startingSelection.js';
 import React, { useState, useEffect, useRef } from 'react';
 import Modal from '../../../shared/components/Modal';
 import { Spinner } from '../../../shared/components/Spinner';
@@ -25,7 +25,7 @@ import { DisabledTooltip } from '../../../shared/components/DisabledTooltip';
 import { useFolderSelectionValidation } from './useFolderSelectionValidation';
 import { createBundleModalViewModel, findUniqueSlug, normalizeDirectory, slugFromTitle, sourcePageFallbackPath } from './bundleModalViewModel';
 import { apiRequest } from '../../../shared/utils/apiClient';
-import type { SourcePageFileInfo } from '../../../../../../contracts/types/sourcePageFileInfo';
+import type { SourcePageFileInfo } from '../../../../../../contracts/types/shared/bundle-graph/sourcePageFileInfo';
 import { logger } from '../../../shared/utils/logger';
 import FolderBundleFields from './FolderBundleFields';
 import PagePickerButton from './PagePickerButton';
@@ -854,3 +854,8 @@ const CreateOrEditBundleModal: React.FC<CreateOrEditBundleModalProps> = props =>
   props.isOpen ? <BundleModalSession {...props} /> : null;
 
 export default CreateOrEditBundleModal;
+
+import type { ParticipatesIn, sourceSetupNew } from '../../../../../../concepts/index.js';
+export type CreateBundleSourceSetupMeadowConceptParticipations = [
+  ParticipatesIn<typeof sourceSetupNew, 'render-creation', typeof BundleModalSession>,
+];

@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import { designPressureIds } from "../../documentIds.js";
 import { coreConceptIds } from "../../ids.js";
 import { conceptLink, conceptText, defineMeadowConcept } from "../../language.js";
 
@@ -103,7 +104,7 @@ export const filterSensitivity = defineMeadowConcept({
   definition: conceptText`An enabled custom filter's Mark Sensitive action makes matching nodes effectively sensitive, even when their source does not mark them sensitive.`,
   mechanics: [
     conceptText`Effective sensitivity combines direct source sensitivity with matches from enabled bundle and global filters that have a Mark Sensitive action. Filter matches follow each filter's selector criteria and do not rewrite source sensitivity markings.`,
-    conceptText`Source review identifies these pages as Sensitive via filter. Acceptance includes them in the source snapshot, while curation excludes them from bulk tracking and reports exactly which requested pages were skipped.`,
+    conceptText`Source review identifies these pages as Sensitive via filter. Its automatic tracking skips them and lists the exact skipped pages in the Tracking changes panel before acceptance. Acceptance includes their source material in the snapshot without automatically tracking it.`,
     conceptText`For example, a filter matching titles containing confidential can protect newly discovered notes and planning pages while allowing a public update from the same source change to be tracked.`,
   ],
   interplay: conceptText`${conceptLink(coreConceptIds.filters, "Custom Filters")} supply the matching rules and action; their matches become ${conceptLink(coreConceptIds.sensitive, "Sensitive Bundle Pages")}. The assessment applies to ${conceptLink(coreConceptIds.sourceSnapshot, "Source Snapshots")} and constrains ${conceptLink(coreConceptIds.tracking, "Bundle Page Tracking")}.`,
@@ -281,9 +282,9 @@ export const sensitive = defineMeadowConcept({
   appAreaIds: curationArea,
   definition: conceptText`A page marked as requiring protection from casual inclusion in a bundle.`,
   mechanics: [
-    conceptText`Sensitive pages are excluded from bulk tracking and remain available for deliberate, page-specific review. This includes requests handed to curation after source acceptance and pages protected by ${conceptLink(coreConceptIds.filterSensitivity, "Filter-Derived Sensitivity")}. Curation tracks the safe requested subset, reports skipped pages, and can select and solo exactly that skipped set without including unrelated untracked pages.`,
+    conceptText`Sensitive pages are excluded from bulk tracking and remain available for deliberate, page-specific review. This includes pages protected by ${conceptLink(coreConceptIds.filterSensitivity, "Filter-Derived Sensitivity")}. Source review automatically tracks safe additions by default, lists sensitive skipped additions in its Tracking changes panel, and lets the user select an individual skipped page for review. Acceptance leaves skipped pages untracked in ordinary curation.`,
   ],
-  interplay: conceptText`Sensitivity constrains ${conceptLink(coreConceptIds.tracking, "Bundle Page Tracking")} and is surfaced through ${conceptLink(coreConceptIds.filters, "Custom Filters")} and ${conceptLink(coreConceptIds.callout, "Curation Callouts")}.`,
+  interplay: conceptText`The design pressure to ${conceptLink(designPressureIds.preventAccidentalSharing, "prevent accidental sharing of sensitive material")} motivates this protection. Sensitivity constrains ${conceptLink(coreConceptIds.tracking, "Bundle Page Tracking")} and is surfaced through ${conceptLink(coreConceptIds.filters, "Custom Filters")} and ${conceptLink(coreConceptIds.callout, "Curation Callouts")}.`,
 });
 
 export const sourceGraphSearch = defineMeadowConcept({

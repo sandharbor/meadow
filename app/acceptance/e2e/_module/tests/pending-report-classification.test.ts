@@ -28,12 +28,18 @@ test("pending report classification uses captured declarations and respects fixt
   writeFileSync(path.join(directory, "test-file.txt"), liveFile);
   writeFileSync(path.join(directory, "test-source.ts"), captured);
   writeFileSync(path.join(directory, "status.txt"), "skipped");
+  writeFileSync(path.join(directory, "start-time.txt"), "2026-10-12T00:00:00.000Z");
+  writeFileSync(path.join(directory, "end-time.txt"), "2026-10-12T00:00:01.000Z");
   assemble();
   const manifest = () => JSON.parse(readFileSync(path.join(directory, "manifest.json"), "utf8"));
   assert.equal(manifest().bundleMode, "single-folder");
   assert.deepEqual(manifest().executionSurfaces, ["dev-tools", "browser"]);
   assert.equal(manifest().status, "skipped");
   assert.deepEqual(manifest().keyFrames, []);
+  assert.equal(manifest().designPressureIds, undefined, 'legacy absence is not an explicit empty association');
+  const capturedDocuments = { conceptIds: ['historical-concept-id'], appAreaDocIds: ['historical-area-id'],
+    subAreaDocIds: ['historical-sub-area-id'], bundleDocIds: ['historical-fixture-id'], designPressureIds: [] };
+  writeFileSync(path.join(directory, 'scenario-documents.json'), JSON.stringify(capturedDocuments));
 
   writeFileSync(path.join(directory, "bundle-mode.txt"), "mixed-starts");
   writeFileSync(path.join(directory, "execution-surface.txt"), "cli");
@@ -41,6 +47,10 @@ test("pending report classification uses captured declarations and respects fixt
   assemble();
   assert.equal(manifest().bundleMode, "mixed-starts");
   assert.deepEqual(manifest().executionSurfaces, ["cli"]);
+  for (const [key, ids] of Object.entries(capturedDocuments)) assert.deepEqual(manifest()[key], ids,
+    'reassembly keeps captured IDs even when current exports cannot resolve them');
+  const meta = JSON.parse(readFileSync(path.join(directory, 'report-meta.json'), 'utf8'));
+  assert.deepEqual(meta.scenarioInfo.designPressureIds, []);
 });
 
 test("declaration fallback does not invent classification from comments, nested calls, or dynamic values", () => {

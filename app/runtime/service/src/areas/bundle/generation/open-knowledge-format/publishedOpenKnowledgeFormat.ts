@@ -16,8 +16,8 @@ limitations under the License.
 
 import fs from 'fs';
 import path from 'path';
-import type { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
-import type { LinkResolvedInfo } from '../../../../../../../contracts/types/IBundleNode.js';
+import type { BundleNodeConfig } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
+import type { LinkResolvedInfo } from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode.js';
 import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundleConfigPaths.js';
 import {
   prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory,
@@ -130,4 +130,4 @@ export function cleanupPublishedOpenKnowledgeFormatArtifacts(options: {
   removeOpenKnowledgeFormatGenerationManifest(options.bundleDirectory);
 }
 
-import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';

@@ -21,9 +21,9 @@ import { EditorOperationsContext } from '../../../../../src/areas/bundle/shared-
 import { apiRequest } from '../../../../../src/shared/utils/apiClient';
 import type React from 'react';
 import { IFilter } from '../../../../../src/areas/bundle/shared-sourcing-curation/types/filters';
-import { Graph } from '../../../../../../../contracts/types/graph';
-import type { IBundleNode } from '../../../../../../../contracts/types/IBundleNode';
-import type { FileType } from '../../../../../../../contracts/types/FileType';
+import { Graph } from '../../../../../../../contracts/types/shared/bundle-graph/graph';
+import type { IBundleNode } from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode';
+import type { FileType } from '../../../../../../../contracts/types/shared/bundle-graph/FileType';
 
 function FilterPanel(props: React.ComponentProps<typeof SharedFilterPanel>) {
   return <EditorOperationsContext.Provider value={{ mode: 'curation', request: (operation, options) => apiRequest(`bundles/${props.bundleSlug}/curation/${operation}`, options) }}>

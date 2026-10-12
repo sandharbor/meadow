@@ -1,5 +1,6 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
+import { designPressureIds } from '../../documentIds.js';
 import { coreConceptIds as id } from '../../ids.js';
 import { conceptLink as link, conceptText as text, defineMeadowConcept as define } from '../../language.js';
 
@@ -76,7 +77,7 @@ export const sourceReviewTrigger = define({
 export const sourceReviewIdentity = define({
   implementationRoles: ['choose-identities'],
   id: id.sourceReviewIdentity, name: 'Source Review Identity', kind: 'process', searchFacet: true,
-  subAreas: [{ areaId: id.bundleSourcing, order: 1 }],
+  subAreas: [{ areaId: id.bundleSourcing, order: 3 }],
   parentId: id.pendingSourceProposal, appAreaIds: [id.bundleSourcing],
   definition: text`resolve whether proposed source matches preserve file identity before entering the sourcing comparison graph.`,
   mechanics: [
@@ -143,7 +144,7 @@ export const sourceReviewCleanup = define({
 export const sourceReviewWorkspace = define({
   implementationRoles: ['render-workspace', 'compare-captures'],
   id: id.sourceReviewWorkspace, name: 'Source Review Workspace', kind: 'capability', searchFacet: true,
-  subAreas: [{ areaId: id.bundleSourcing, order: 2 }],
+  subAreas: [{ areaId: id.bundleSourcing, order: 4 }],
   parentId: id.pendingSourceProposal, appAreaIds: [id.bundleSourcing, id.bundleCuration],
   definition: text`sourcing is an explicitly marked mode of the full graph editor, combining candidate exploration and accepted-versus-proposed comparison.`,
   mechanics: [
@@ -201,11 +202,11 @@ export const sourceReviewSensitivity = define({
   implementationRoles: ['revalidate-tracking'],
   definition: text`provisional tracking uses effective sensitivity and requires renewed approval when an explicit tracking choice becomes sensitive.`,
   mechanics: [
-    text`Added pages start untracked. Use the ordinary Untracked filter and selection tracking controls to inspect and track them; no separate automatic tracking preference is shown. Effective sensitivity includes source markings and enabled bundle or global Mark Sensitive filters. Sensitive additions are admitted to candidate material but are not automatically tracked.`,
-    text`Refreshing source material or reopening after accepted policy changes reassesses provisional tracking. Additions without an explicit tracking choice remain untracked. Explicit choices that became sensitive must be confirmed again or untracked before acceptance.`,
+    text`Track added pages is enabled by default and provisionally tracks safe additions. Sensitive additions are skipped, with their exact identities available from the sensitive-skipped chip in the Tracking changes panel before acceptance. Turning the preference off leaves additions untracked. Effective sensitivity includes source markings and enabled bundle or global Mark Sensitive filters. Sensitive additions are admitted to candidate material but are not automatically tracked.`,
+    text`Refreshing source material or reopening after accepted policy changes reassesses provisional tracking. Automatic choices that become sensitive are removed; safe additions can still follow the tracking preference. Explicit choices that became sensitive must be confirmed again or untracked before acceptance.`,
     text`The filesystem-change and deferred-policy-change scenarios both reference Pending Proposal Revalidation and sensitivity concepts; only the filesystem scenario additionally references Source Changes During Review. Checkpoints preserve the unresolved review, not merely a screenshot.`,
   ],
-  interplay: text`${link(id.sensitive, 'Sensitive Bundle Pages')} and ${link(id.filterSensitivity, 'Filter-Derived Sensitivity')} determine effective sensitivity. ${link(id.pendingProposalRevalidation, 'Pending Proposal Revalidation')} guards carried-forward decisions.`,
+  interplay: text`The pressure to ${link(designPressureIds.preventAccidentalSharing, 'prevent accidental sharing of sensitive material')} guides these decisions. ${link(id.sensitive, 'Sensitive Bundle Pages')} and ${link(id.filterSensitivity, 'Filter-Derived Sensitivity')} determine effective sensitivity. ${link(id.pendingProposalRevalidation, 'Pending Proposal Revalidation')} guards carried-forward decisions.`,
 });
 
 export const proposedSourceReviewConcepts = [

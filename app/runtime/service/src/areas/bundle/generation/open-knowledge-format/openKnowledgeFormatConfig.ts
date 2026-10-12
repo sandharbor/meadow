@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import type { BundleConfig } from '../../../../../../../contracts/types/bundleConfig.js';
+import type { BundleConfig } from '../../../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
 import { sourceOutputGraphPath } from '../source-material/sourceOutputProjection.js';
 import type {
   OpenKnowledgeFormatIndexSource,

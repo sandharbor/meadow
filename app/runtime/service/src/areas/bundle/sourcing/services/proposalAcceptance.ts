@@ -1,7 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import fs from 'node:fs';
-import type { SnapshotTrackingOutcome } from '../../../../../../../contracts/types/curationTracking.js';
+import type { SnapshotTrackingOutcome } from '../../../../../../../contracts/types/shared/curation/curationTracking.js';
 import path from 'node:path';
 import YAML from 'yaml';
 import { applySourcingTransaction } from '../../../../../../../shared_code/utils/sourcingTransaction.js';

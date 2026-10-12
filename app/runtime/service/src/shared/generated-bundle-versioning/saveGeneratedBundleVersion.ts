@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { loadAppConfig } from '../../../../../shared_code/utils/appConfigUtils.js';
-import type { GeneratedBundleVersionId } from '../../../../../contracts/types/generatedBundleVersioning.js';
+import type { GeneratedBundleVersionId } from '../../../../../contracts/types/shared/generated-bundle-versioning/generatedBundleVersioning.js';
 import { commitBundleChanges } from '../utils/configDirectory/gitUtils/generatedHtmlGitService.js';
 import {
   assertFrozenGeneratedVersionsIntegrity,
@@ -27,7 +27,7 @@ import {
   withGeneratedBundleVersionOperation,
 } from './generatedBundleVersionOperationLock.js';
 import { inspectGeneratedVersionGitState } from './generatedBundleVersionGitService.js';
-import { resolveWorkingEndpoint } from './generatedOutputComparison.js';
+import { resolveWorkingEndpoint } from './generatedOutputEndpoint.js';
 
 export interface SaveGeneratedBundleVersionResult {
   versionId: GeneratedBundleVersionId;

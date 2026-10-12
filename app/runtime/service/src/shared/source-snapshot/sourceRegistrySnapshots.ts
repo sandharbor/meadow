@@ -2,8 +2,8 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import type { BundleConfig, BundleSource } from '../../../../../contracts/types/bundleConfig.js';
-import type { BundleNodeConfig } from '../../../../../contracts/types/bundleNodeConfig.js';
+import type { BundleConfig, BundleSource } from '../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
+import type { BundleNodeConfig } from '../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import { LEGACY_SOURCE_ID, sourceGraphPath, splitSourceGraphPath } from '../../../../../shared_code/utils/bundleSourceUtils.js';
 import type { SourceSnapshot } from './sourceSnapshots.js';
 import { sourcePath, SourcingError } from './sourceSnapshots.js';

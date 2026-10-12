@@ -1,15 +1,16 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import type { Graph } from '../../../../../../../contracts/types/graph.js';
-import type { IBundleNode } from '../../../../../../../contracts/types/IBundleNode.js';
-import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';
-import type { SourceProposalReview, SourceNodeReview } from '../../../../../../../contracts/types/sourcingProposal.js';
+import type { Graph } from '../../../../../../../contracts/types/shared/bundle-graph/graph.js';
+import type { IBundleNode } from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode.js';
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';
+import type { SourceProposalReview } from '../../../../../../../contracts/types/areas/bundle/sourcing/sourcingProposal.js';
+import type { SourceNodeReview } from '../../../../../../../contracts/types/shared/sourcing/sourcingProposal.js';
 import { readEditorView, writeEditorView } from '../../../../shared/utils/editorViewStorage.js';
 import { sourceReviewAppearance } from '../../../../shared/utils/sourceReviewAppearance.js';
 import { proposalSettingsEntries, ProposalEntriesTable, TrackingChangesTable } from './ProposalSettingsSummary.js';
 import type { ProposalDialog } from './ProposalDialogs.js';
-import type { SourceOrphanExplanation } from '../../../../../../../contracts/types/sourcing.js';
+import type { SourceOrphanExplanation } from '../../../../../../../contracts/types/shared/sourcing/sourcing.js';
 import { SourcingComponentContentComparison, SourcingComponentOrphanDiagnosis, useSourcingStateLineCounts, type SourcingTypeEditorOperations } from '../../shared-sourcing-curation/exported.js';
 import { SourcePath } from './SourceReviewPresentation.js';
 import { ChipPanel } from './ChipPanel.js';

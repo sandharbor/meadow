@@ -18,8 +18,8 @@ import React from 'react';
 import Modal from './Modal.js';
 import TraversalRouteDiagram from './TraversalRouteDiagram.js';
 import { explainedTraversalRoutes, defaultTraversalRoute, traversalSourceName } from '../utils/traversalRoutes.js';
-import { IBundleNode } from '../../../../../contracts/types/IBundleNode';
-import { Graph } from '../../../../../contracts/types/graph';
+import { IBundleNode } from '../../../../../contracts/types/shared/bundle-graph/IBundleNode';
+import { Graph } from '../../../../../contracts/types/shared/bundle-graph/graph';
 import { traversalLinkType, type TraversalLinkType } from '../utils/traversalLinkType.js';
 import { isImageFileType } from '../../../../../shared_code/utils/fileTypeUtils.js';
 
@@ -329,6 +329,6 @@ const TraversalPathDetailsModal: React.FC<TraversalPathDetailsModalProps> = ({
 
 export default TraversalPathDetailsModal;
 
-import type { EncodedBundleNodeKey } from '../../../../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';
 
 import { parseBundleNodeKey } from '../../../../../shared_code/utils/bundleNodeKey.js';

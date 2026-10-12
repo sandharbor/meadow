@@ -19,6 +19,9 @@ export * from "./ids.js";
 export * from "./language.js";
 export * from "./registry.js";
 export * from "./acceptance.js";
+export * from "./documents.js";
+export * from "./documentIds.js";
+export * from "./designPressures.js";
 
 export * from "./bundle/appAreas.js";
 export * from "./bundle/nodeIdentity.js";

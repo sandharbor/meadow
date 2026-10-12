@@ -17,12 +17,12 @@ limitations under the License.
 /* global alert */
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { apiRequest } from '../../../shared/utils/apiClient';
-import { getActiveFrontendProvider } from '../../../shared/publishing-provider-host/providerRegistry';
+import { bundlesQueryPublishedUrl } from '../../bundle/sharing/exported.js';
 import { fetchBundles, fetchDirectories, BundleConfigWithSlug } from '../../../shared/utils/bundleApi';
-import { FindInBundlesOptions } from '../../../../../../contracts/types/findInBundlesOptions';
+import { FindInBundlesOptions } from '../../../../../../contracts/types/shared/bundle-management/findInBundlesOptions';
 import Modal from '../../../shared/components/Modal';
 import CreateOrEditBundleModal from './CreateOrEditBundleModal';
-import DeleteBundleModal from '../../../shared/bundle-management/DeleteBundleModal';
+import DeleteBundleModal from './DeleteBundleModal.js';
 import RenameBundleModal from '../../../shared/bundle-management/RenameBundleModal';
 import { logger } from '../../../shared/utils/logger';
 import { openExternal } from '../../../shared/utils/openExternal';
@@ -549,10 +549,9 @@ const BundleList: React.FC = () => {
   };
 
   const handleOpenWebsite = async (slug: string) => {
-    const provider = await getActiveFrontendProvider();
-    if (!provider?.fetchPublishedUrl) return;
     try {
-      const url = await provider.fetchPublishedUrl(slug);
+      const url = await bundlesQueryPublishedUrl(slug);
+      if (!url) return;
       await openExternal(url, 'bundleList');
     } catch (err) {
       logger.error('Failed to get website URL:', err);

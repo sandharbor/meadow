@@ -1,10 +1,11 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import { apiRequest } from '../../../../shared/utils/apiClient.js';
-import type { SourceProposalReview, ProposalConfiguration } from '../../../../../../../contracts/types/sourcingProposal.js';
-import type { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
-import type { CustomFilterConfig } from '../../../../../../../contracts/types/customFilters.js';
-import { Graph } from '../../../../../../../contracts/types/graph.js';
+import type { SourceProposalReview } from '../../../../../../../contracts/types/areas/bundle/sourcing/sourcingProposal.js';
+import type { ProposalConfiguration } from '../../../../../../../contracts/types/shared/sourcing/sourcingProposal.js';
+import type { BundleNodeConfig } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
+import type { CustomFilterConfig } from '../../../../../../../contracts/types/shared/curation/customFilters.js';
+import { Graph } from '../../../../../../../contracts/types/shared/bundle-graph/graph.js';
 import type { SourcingTypeEditorOperations } from '../../shared-sourcing-curation/exported.js';
 
 export class ProposalRequestError extends Error {

@@ -14,15 +14,16 @@ import { isPlainObject } from '../../../../../../../shared_code/utils/durableDoc
 import { bundleStartingSelections } from '../../../../../../../shared_code/utils/startingSelectionUtils.js';
 import { registryProposal } from './sourceRegistryReview.js';
 import { bundleSources, splitSourceGraphPath, sourceForNode } from '../../../../../../../shared_code/utils/bundleSourceUtils.js';
-import type { BundleSource } from '../../../../../../../contracts/types/bundleConfig.js';
+import type { BundleSource } from '../../../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
 import { equivalentSnapshotPath, sourceProposalContext } from '../../../../shared/source-snapshot/sourceRegistrySnapshots.js';
 import fs from 'node:fs';
 import { lineChangeCounts } from '../../../../../../../shared_code/utils/lineChanges.js';
 import { readSourceBlob, retainCandidateSourceTree, SourceCaptureChangedError } from '../../../../shared/source-snapshot/sourceGit.js';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
-import type { BundleNodeConfig, FileBundleNodeConfig, FolderBundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
-import type { SourceMoveCandidate, SourceOrphanExplanation, SourceSnapshotAcceptance, SourceSnapshotAcceptanceResult, SourceSnapshotHistory, SourcingReview } from '../../../../../../../contracts/types/sourcing.js';
+import type { BundleNodeConfig, FileBundleNodeConfig, FolderBundleNodeConfig } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
+import type { SourceMoveCandidate, SourceOrphanExplanation, SourceSnapshotAcceptance, SourcingReview } from '../../../../../../../contracts/types/shared/sourcing/sourcing.js';
+import type { SourceSnapshotAcceptanceResult, SourceSnapshotHistory } from '../../../../../../../contracts/types/areas/bundle/sourcing/sourcing.js';
 import { commitChangesNative } from '../../../../shared/utils/configDirectory/gitUtils/gitStatusUtils.js';
 import { getConfigDirectory } from '../../../../shared/bundle-config/bundleConfigPaths.js';
 import {

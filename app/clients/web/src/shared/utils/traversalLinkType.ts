@@ -1,7 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import type { Graph } from '../../../../../contracts/types/graph.js';
-import type { BundleNodeTraversalDetails } from '../../../../../contracts/types/bundleNodeGraph.js';
+import type { Graph } from '../../../../../contracts/types/shared/bundle-graph/graph.js';
+import type { BundleNodeTraversalDetails } from '../../../../../contracts/types/shared/bundle-graph/bundleNodeGraph.js';
 
 export type TraversalLinkType = NonNullable<BundleNodeTraversalDetails['link_type']> | 'unknown';
 
@@ -20,4 +20,4 @@ export function traversalLinkType(graph: Graph, previousKey: EncodedBundleNodeKe
   return 'unknown';
 }
 
-import type { EncodedBundleNodeKey } from '../../../../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';

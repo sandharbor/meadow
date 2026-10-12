@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import type { RuntimeLeaseSnapshot } from "../../../contracts/types/runtime.js";
+import type { RuntimeLeaseSnapshot } from "../../../contracts/types/shared/runtime/runtime.js";
 import type { lease, ParticipatesIn } from "../../../concepts/index.js";
 
 export type RuntimeLeaseKind = "client" | "operation";

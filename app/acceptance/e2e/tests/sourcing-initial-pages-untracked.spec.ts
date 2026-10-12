@@ -4,7 +4,7 @@ import path from 'node:path';
 import { test, expect } from '../src/run/test-fixtures.js';
 import { Fixture } from '../src/run/workflows.js';
 import { BundleListPage, BundleEditorPage, CreateAndEditBundleModal, Pill, SelectedPageDetailComponent } from '../src/run/pages/index.js';
-import { sourcingReviewRedesign, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceSetupNew } from '../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.Minimal });
@@ -13,7 +13,7 @@ const name = linkedScenarioName(conceptText`Sourcing initial capture leaves cand
 
 const description = linkedScenarioDescription(conceptText`Capture a source for the first time. Candidate pages should be visible without being
 automatically tracked.`);
-const areas = scenarioAreas([bundleSourcing]);
+const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceSetupNew] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: '04728f44-2598-4428-8e09-ea18f8e8e390' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);

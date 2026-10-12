@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { describe, expect, it } from 'vitest';
-import { s3PublishAction } from '../../../../../../publishing_providers/S3PublishingProvider/frontend/internal/PublishToS3Tab';
+import { s3PublishAction } from '../../../../../../publishing_providers/S3PublishingProvider/frontend/areas/bundle/sharing/internal/PublishToS3Tab';
 
 describe('P02 P07 minimal S3 historical publication actions', () => {
   it('uses explicit first, same-generation, changed-generation, and imported-freshness copy', () => {

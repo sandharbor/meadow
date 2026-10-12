@@ -17,8 +17,8 @@ limitations under the License.
 import fs from 'fs';
 import path from 'path';
 import { createHash } from 'crypto';
-import type { BundleNodeId } from '../../../../../../../contracts/types/bundleNodeConfig.js';
-import type { GeneratedBundleReaderRouteIndex } from '../../../../../../../contracts/types/generatedBundleVersioning.js';
+import type { BundleNodeId } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
+import type { GeneratedBundleReaderRouteIndex } from '../../../../../../../contracts/types/shared/generated-bundle-versioning/generatedBundleVersioning.js';
 
 const VERSIONING_ASSET_DIRECTORY = path.posix.join('_mw_assets', 'versioning');
 

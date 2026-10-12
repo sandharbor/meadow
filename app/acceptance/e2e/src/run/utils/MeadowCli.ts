@@ -17,7 +17,7 @@ limitations under the License.
 import { execFile, type ExecFileException } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import path from "node:path";
-import { MEADOW_RUNTIME_SESSION_ENV } from "../../../../../contracts/types/runtime.js";
+import { MEADOW_RUNTIME_SESSION_ENV } from "../../../../../contracts/types/shared/runtime/runtime.js";
 import { readRuntimeSessionDescriptor } from "../../../../../runtime/supervisor/src/sessionDescriptor.js";
 
 const CLI_EXECUTABLE = path.resolve(

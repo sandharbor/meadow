@@ -71,13 +71,22 @@ export function scenarioMetadataIssues(source: ts.SourceFile): { line: number; m
       metadata('name', 'linkedScenarioName', node);
       metadata('description', 'linkedScenarioDescription', node);
       areas(node);
+      if (declarations.has('pressures') || [...imports.values()].includes('scenarioDesignPressures')) {
+        const declaration = declarations.get('pressures');
+        const call = declaration?.initializer;
+        if (!declaration || !call || !ts.isCallExpression(call) || !ts.isIdentifier(call.expression)
+          || imports.get(call.expression.text) !== 'scenarioDesignPressures' || call.arguments.length !== 1
+          || !importedIdentifiers(call.arguments[0]) || declaration.getStart(source) > node.getStart(source)) {
+          report(node, 'Declare const pressures = scenarioDesignPressures([...imported design pressures]) before the test.');
+        }
+      }
       const name = declarations.get('name'), description = declarations.get('description');
       if (name && description && name.getStart(source) > description.getStart(source)) report(description, 'Declare the scenario name before its description.');
       if (!property(node.arguments[0], 'name', 'name')) report(node, 'Use name.name as the test title.');
       const options = node.arguments[1];
       const annotation = ts.isObjectLiteralExpression(options)
         ? options.properties.find((entry): entry is ts.PropertyAssignment => ts.isPropertyAssignment(entry) && entry.name.getText(source) === 'annotation')?.initializer : undefined;
-      for (const variable of ['name', 'description', 'areas']) {
+      for (const variable of ['name', 'description', 'areas', ...(declarations.has('pressures') ? ['pressures'] : [])]) {
         if (!annotation || !ts.isArrayLiteralExpression(annotation) || !annotation.elements.some(entry => property(entry, variable, 'annotation'))) {
           report(node, `Include ${variable}.annotation in the test's annotation array.`);
         }

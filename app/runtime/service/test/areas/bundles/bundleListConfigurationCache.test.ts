@@ -19,8 +19,8 @@ import os from 'os';
 import path from 'path';
 import YAML from 'yaml';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { BundleConfig } from '../../../../../contracts/types/bundleConfig.js';
-import type { BundleNodeConfig, BundleNodeId } from '../../../../../contracts/types/bundleNodeConfig.js';
+import type { BundleConfig } from '../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
+import type { BundleNodeConfig, BundleNodeId } from '../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import { stringifyBundleNodeConfig } from '../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 import { BundleListConfigurationCache } from '../../../src/areas/bundles/services/bundleListConfigurationCache.js';
 

@@ -2,11 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { SourceIdentityReview, identityConfirmation } from './SourceIdentityReview.js';
-import { sourceIdentityRecommendations } from '../../../../../../../shared_code/utils/sourceMoveResolutions.js';
+import { sourceIdentityRecommendations } from './sourceIdentityRecommendations.js';
 import { SourcingComponentContentComparison } from '../../shared-sourcing-curation/exported.js';
 import type { SourcingTypeEditorOperations } from '../../shared-sourcing-curation/exported.js';
 import Modal from '../../../../shared/components/Modal.js';
-import type { SourceProposalReview } from '../../../../../../../contracts/types/sourcingProposal.js';
+import type { SourceProposalReview } from '../../../../../../../contracts/types/areas/bundle/sourcing/sourcingProposal.js';
 import { SourcePath } from './SourceReviewPresentation.js';
 import { ChipPanel } from './ChipPanel.js';
 import { proposalSettingLabels } from './ProposalSettingsSummary.js';

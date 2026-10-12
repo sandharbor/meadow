@@ -1,9 +1,9 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import { useEffect, useState } from 'react';
-import type { BundleSource } from '../../../../../contracts/types/bundleConfig.js';
-import type { SourcePageFileInfo } from '../../../../../contracts/types/sourcePageFileInfo.js';
-import type { StartingSelection } from '../../../../../contracts/types/startingSelection.js';
+import type { BundleSource } from '../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
+import type { SourcePageFileInfo } from '../../../../../contracts/types/shared/bundle-graph/sourcePageFileInfo.js';
+import type { StartingSelection } from '../../../../../contracts/types/shared/sourcing/startingSelection.js';
 import { apiRequest } from '../utils/apiClient';
 
 type PathSuggestion = { path: string; title: string; detail: string };

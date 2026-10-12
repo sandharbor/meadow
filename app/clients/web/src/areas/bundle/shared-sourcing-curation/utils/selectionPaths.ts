@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { Graph, IBundleNode } from '../../../../../../../contracts/types/graph';
+import { Graph, IBundleNode } from '../../../../../../../contracts/types/shared/bundle-graph/graph';
 
 /**
  * Returns an ordered list of node IDs representing the selection for "path to here".
@@ -171,4 +171,4 @@ export function getSelectionPathFromHereOrdered(graph: Graph, startNodeKey: Enco
 }
 
 
-import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';

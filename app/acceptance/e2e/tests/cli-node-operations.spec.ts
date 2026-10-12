@@ -19,7 +19,7 @@ import type {
   DescribeBundleNodeCliResult,
   FindBundleNodeCliResult,
   MutateBundleNodeCliResult,
-} from "../../../contracts/types/cliOperations.js";
+} from "../../../contracts/types/shared/cli/cliOperations.js";
 import { materializeCreateSafeBundleSource } from "../src/agent-evals/scenarios/createSafeBundle.js";
 import { sourcingReviewRedesign, bundles, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
 import { cli } from "../../../concepts/index.js";

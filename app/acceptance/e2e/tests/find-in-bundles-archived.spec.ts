@@ -42,7 +42,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '2d70b840-01c
   // find-in-bundles filtering more visually obvious.
   await sourceCommand(() => bundleList.goto());
   await sourceCommand(() => bundleList.addExampleBundleFromMenu());
-  await sourceCommand(() => page.waitForTimeout(2000));
+  await sourceCommand(() => editor.waitForLoad(Bundle.Example));
   await sourceCommand(() => bundleList.goto());
   await sourceCommand(() => bundleList.expectBundleVisible(Bundle.Example));
   await sourceCommand(() => checkpoint("bundle list with example bundle added"));

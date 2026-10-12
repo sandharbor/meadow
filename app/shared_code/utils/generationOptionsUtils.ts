@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { AppConfig } from '../../contracts/types/appConfig.js';
-import { BundleConfig } from '../../contracts/types/bundleConfig.js';
+import { AppConfig } from '../../contracts/types/shared/app-shell/appConfig.js';
+import { BundleConfig } from '../../contracts/types/shared/bundle-config/bundleConfig.js';
 
 export interface EffectiveGenerationOptions {
   breadcrumbsEnabled: boolean;

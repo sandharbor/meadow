@@ -2,7 +2,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import type { BundleNodeConfig, TrackingEvidence } from '../../../../../contracts/types/bundleNodeConfig.js';
+import type { BundleNodeConfig, TrackingEvidence } from '../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import { textDocumentCodec, writeDurableDocument } from '../../../../../shared_code/utils/durableDocument.js';
 
 export interface TrackingRecord {
@@ -58,7 +58,7 @@ export function separateTrackingEvidence(bundleDirectory: string, configs: Bundl
   return result;
 }
 
-import type { EncodedBundleNodeKey } from '../../../../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';
 
 import { encodedBundleNodeKey } from '../../../../../shared_code/utils/bundleNodeKey.js';
 

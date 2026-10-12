@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import type { SourcePageFileInfo } from '../../../../../../contracts/types/sourcePageFileInfo';
+import type { SourcePageFileInfo } from '../../../../../../contracts/types/shared/bundle-graph/sourcePageFileInfo';
 import type { CreateBundleForm, CreateOrEditBundleModalProps, EntryStrategy } from './BundleCreationBasics';
 
 export interface SourceDirectoryChoices {

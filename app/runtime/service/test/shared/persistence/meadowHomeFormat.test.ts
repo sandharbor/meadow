@@ -29,7 +29,7 @@ import {
   preflightMeadowHome,
 } from '../../../../../shared_code/utils/meadowHomeFormat.js';
 import { readDurableDocument, writeDurableDocument } from '../../../../../shared_code/utils/durableDocument.js';
-import type { MeadowHomeManifest } from '../../../../../contracts/types/meadowHome.js';
+import type { MeadowHomeManifest } from '../../../../../contracts/types/shared/meadow-home/meadowHome.js';
 
 function manifest(overrides: Partial<MeadowHomeManifest> = {}): MeadowHomeManifest {
   return {

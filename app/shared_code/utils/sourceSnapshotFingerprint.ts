@@ -3,7 +3,7 @@
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import type { BundleSource } from '../../contracts/types/bundleConfig.js';
+import type { BundleSource } from '../../contracts/types/shared/bundle-config/bundleConfig.js';
 
 /** Stable checksum of the captured files, directories, and source registry. */
 export function sourceInventory(files: Record<string, { digest: string; size: number }>, directories: string[], sources?: BundleSource[]) {

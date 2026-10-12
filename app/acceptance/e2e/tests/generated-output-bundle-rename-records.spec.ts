@@ -5,7 +5,7 @@ import path from 'path';
 import { test, expect } from '../src/run/test-fixtures.js';
 import { BundleEditorPage, BundleListPage, ChangesTab, PreviewPublishModal } from '../src/run/pages/index.js';
 import { acceptSourceBaseline } from '../../../shared_code/shared_dev/sourceScenario.js';
-import type { GenerateBundleCliResult } from '../../../contracts/types/cliOperations.js';
+import type { GenerateBundleCliResult } from '../../../contracts/types/shared/cli/cliOperations.js';
 import { generationRecord, conceptLink, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundles, bundleGeneration, bundleReview } from '../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });

@@ -16,7 +16,7 @@ limitations under the License.
 
 import { describe, expect, it } from 'vitest';
 import { stringifyBundleNodeConfig } from '../../../../../shared_code/utils/bundleNodeConfigUtils.js';
-import type { BundleNodeConfig } from '../../../../../contracts/types/bundleNodeConfig.js';
+import type { BundleNodeConfig } from '../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import { workingGraphTopologyFingerprint } from '../../../src/shared/utils/workingGraphUtils.js';
 
 const entryId = 'entry0000001';

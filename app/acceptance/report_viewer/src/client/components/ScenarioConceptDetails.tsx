@@ -1,10 +1,11 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import { useEffect, useState } from 'react';
+import { scenarioDocumentMembership, type DocumentScenario } from '../../../../../concepts/scenarioMembership.js';
 import ConceptExplorer from './ConceptExplorer.tsx';
 
 export type ScenarioConceptReference = { id: string; name: string };
-type ScenarioReference = { conceptIds?: string[]; appAreaDocIds?: string[] };
+type ScenarioReference = DocumentScenario;
 
 /** Shared concept window for a scenario's chips and linked prose. */
 export function useScenarioConceptDetails(runId: string | undefined) {
@@ -14,12 +15,13 @@ export function useScenarioConceptDetails(runId: string | undefined) {
   useEffect(() => {
     if (!selected || !runId) return;
     const controller = new window.AbortController();
-    void fetch(`/api/runs/${encodeURIComponent(runId)}`, { signal: controller.signal })
-      .then(response => response.ok ? response.json() as Promise<{ scenarios: ScenarioReference[] }> : Promise.reject(new Error('Could not load related scenarios')))
-      .then(run => {
+    void Promise.all([
+      fetch(`/api/runs/${encodeURIComponent(runId)}`, { signal: controller.signal }).then(response => response.ok ? response.json() as Promise<{ scenarios: ScenarioReference[] }> : Promise.reject(new Error('Could not load related scenarios'))),
+      fetch(`/api/app-areas?run=${encodeURIComponent(runId)}`, { signal: controller.signal }).then(response => response.ok ? response.json() as Promise<{ id: string; parentId?: string }[]> : []),
+    ]).then(([run, areas]) => {
         if (controller.signal.aborted) return;
         const next: Record<string, number> = {};
-        run.scenarios.forEach(scenario => new Set([...(scenario.conceptIds ?? []), ...(scenario.appAreaDocIds ?? [])])
+        run.scenarios.forEach(scenario => scenarioDocumentMembership(scenario, areas)
           .forEach(id => { next[id] = (next[id] ?? 0) + 1; }));
         setCounts(next);
       }).catch(() => {});

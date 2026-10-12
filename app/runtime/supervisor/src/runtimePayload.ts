@@ -22,7 +22,7 @@ import {
   type RuntimePayloadFile,
   type RuntimePayloadManifest,
   type RuntimeSupervisorLaunchSpec,
-} from "../../../contracts/types/runtime.js";
+} from "../../../contracts/types/shared/runtime/runtime.js";
 import type {
   ParticipatesIn,
   runtimePayload,

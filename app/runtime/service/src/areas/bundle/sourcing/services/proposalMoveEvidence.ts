@@ -1,7 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import type { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
-import type { SourceMoveCandidate } from '../../../../../../../contracts/types/sourcing.js';
+import type { BundleNodeConfig } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
+import type { SourceMoveCandidate } from '../../../../../../../contracts/types/shared/sourcing/sourcing.js';
 import { sha256, type SourceSnapshot } from '../../../../shared/source-snapshot/sourceSnapshots.js';
 import { findSourceMoves } from './sourceReview.js';
 

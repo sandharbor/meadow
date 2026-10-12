@@ -2,8 +2,8 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import type { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
-import type { SourceMoveCandidate } from '../../../../../../../contracts/types/sourcing.js';
+import type { BundleNodeConfig } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
+import type { SourceMoveCandidate } from '../../../../../../../contracts/types/shared/sourcing/sourcing.js';
 import { snapshotFilePath, snapshotSourceRoot, sourcePath, type SourceSnapshot } from '../../../../shared/source-snapshot/sourceSnapshots.js';
 
 import { sourceMoveSimilarity, sourceTextProfile } from './sourceMoveSimilarity.js';

@@ -6,6 +6,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { AREA_CALLERS } from './area_boundary_policy.js';
 
 const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const placesRoot = path.join(appRoot, 'contracts/places');
@@ -32,13 +33,14 @@ function imports(file) {
 function expectedOwner(file) {
   const relative = path.relative(placesRoot, file).replace(/\.ts$/, '').split(path.sep);
   if (relative[0] === 'shared') return relative[1] === 'app-shell' ? 'appShell' : relative[1];
-  return relative[1] === 'bundle' ? relative[2] : relative[1];
+  return AREA_CALLERS.get(relative.slice(1).join('/'));
 }
 
 for (const directory of ownerDirectories) {
   walk(directory, file => {
     const owner = /owner:\s*'([^']+)'/.exec(fs.readFileSync(file, 'utf8'))?.[1];
-    if (owner !== expectedOwner(file)) violations.push(`${path.relative(appRoot, file)}: owner must be '${expectedOwner(file)}'`);
+    const expected = expectedOwner(file);
+    if (!expected || owner !== expected) violations.push(`${path.relative(appRoot, file)}: owner must be a registered app area or the matching shared owner ('${expected}')`);
     for (const target of imports(file)) {
       if (target !== path.join(placesRoot, 'types.ts')) violations.push(`${path.relative(appRoot, file)}: place owners import only ../types.js`);
     }

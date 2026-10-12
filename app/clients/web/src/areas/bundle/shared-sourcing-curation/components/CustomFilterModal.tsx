@@ -17,7 +17,7 @@ limitations under the License.
 /* global alert, confirm */
 import React, { useState, useEffect } from 'react';
 import Modal from '../../../../shared/components/Modal';
-import { CustomFilterConfig, CustomBundleNodeSelectorConfig, CustomFilterAction, SelectorField, SelectorMatchType } from '../../../../../../../contracts/types/customFilters';
+import { CustomFilterConfig, CustomBundleNodeSelectorConfig, CustomFilterAction, SelectorField, SelectorMatchType } from '../../../../../../../contracts/types/shared/curation/customFilters';
 import { useEditorOperations } from '../types/editorOperations.js';
 import { logger } from '../../../../shared/utils/logger';
 

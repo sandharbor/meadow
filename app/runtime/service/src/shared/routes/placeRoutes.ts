@@ -4,7 +4,7 @@ import express from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
 import { getConfigDirectory } from '../bundle-config/bundleConfigPaths.js';
-import { isEditorViewCheckpoint } from '../../../../../contracts/types/editorViewCheckpoint.js';
+import { isEditorViewCheckpoint } from '../../../../../contracts/types/shared/curation/editorViewCheckpoint.js';
 import type { PlaceArrival } from '../../../../../contracts/places/index.js';
 import { parseAppPlace } from '../../../../../contracts/places/index.js';
 

@@ -10,8 +10,8 @@ import {
   MEADOW_HOME_MANIFEST_FILENAME,
   OLDEST_UPGRADABLE_MEADOW_HOME_FORMAT_VERSION,
 } from "../../../shared_code/utils/meadowHomeFormat.js";
-import type { BundleSource } from "../../../contracts/types/bundleConfig.js";
-import { editorViewSessionPrefix, isEditorViewCheckpoint, type EditorViewCheckpoint } from "../../../contracts/types/editorViewCheckpoint.js";
+import type { BundleSource } from "../../../contracts/types/shared/bundle-config/bundleConfig.js";
+import { editorViewSessionPrefix, isEditorViewCheckpoint, type EditorViewCheckpoint } from "../../../contracts/types/shared/curation/editorViewCheckpoint.js";
 import { sourceConfigFingerprint, sourceInventory } from "../../../shared_code/utils/sourceSnapshotFingerprint.js";
 import type { LocalServiceContainer, LocalServicePart } from "./parts.js";
 import { hostedServiceReferences } from "./providerSeeding.js";

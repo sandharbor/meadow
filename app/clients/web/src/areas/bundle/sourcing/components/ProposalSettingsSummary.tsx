@@ -1,11 +1,12 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import type { SourceProposalReview, ProposalConfiguration } from '../../../../../../../contracts/types/sourcingProposal.js';
-import type { CustomFilterConfig } from '../../../../../../../contracts/types/customFilters.js';
+import type { SourceProposalReview } from '../../../../../../../contracts/types/areas/bundle/sourcing/sourcingProposal.js';
+import type { ProposalConfiguration } from '../../../../../../../contracts/types/shared/sourcing/sourcingProposal.js';
+import type { CustomFilterConfig } from '../../../../../../../contracts/types/shared/curation/customFilters.js';
 import { sameProposalValue } from '../../../../../../../shared_code/utils/proposalConfigurationMerge.js';
 import { bundleNodeKeySourceGraphPath } from '../../../../../../../shared_code/utils/bundleNodeKey.js';
 import { useState, type ReactNode } from 'react';
-import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';
 import { TrackingStatePills, type TrackingState } from '../../../../shared/components/TrackingStatePills.js';
 
 /** `page` identifies the page a row describes, so the row can select it. */

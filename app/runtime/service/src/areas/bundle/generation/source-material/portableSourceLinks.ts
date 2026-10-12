@@ -1,7 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import path from 'node:path';
-import type { LinkResolvedInfo } from '../../../../../../../contracts/types/IBundleNode.js';
+import type { LinkResolvedInfo } from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode.js';
 import { encodePathForUrl } from '../../../../../../../shared_code/utils/urlUtils.js';
 import { replaceOutsideCode } from '../html/markdown.js';
 

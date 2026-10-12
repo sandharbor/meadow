@@ -14,30 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { existsSync } from "fs";
-import path from "path";
-import { pathToFileURL } from "url";
-import {
-  allCoreConcepts,
-  appAreaConcepts,
-  assertConceptRegistry,
-  type AnyMeadowConcept,
-} from "../../../../concepts/index.js";
+import { loadDocumentRegistry } from '../../../../concepts/loadRegistry.js';
 
-let contributedConcepts: AnyMeadowConcept[] = [];
-const contributionPath = path.resolve(
-  import.meta.dirname,
-  "../../../../concepts/meadow-extension/index.ts",
-);
-if (existsSync(contributionPath)) {
-  const contribution = await import(pathToFileURL(contributionPath).href) as {
-    meadowExtensionConcepts?: AnyMeadowConcept[];
-  };
-  contributedConcepts = contribution.meadowExtensionConcepts ?? [];
-}
-
-assertConceptRegistry([...allCoreConcepts, ...contributedConcepts]);
-
-console.log(
-  `Concept registry passed: ${allCoreConcepts.length} core, ${contributedConcepts.length} contributed, ${appAreaConcepts.length} app areas.`,
-);
+const registry = await loadDocumentRegistry();
+console.log(`Document registry passed: ${registry.documents.length} documents, ${registry.appAreas.length} app areas.`);

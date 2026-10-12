@@ -4,7 +4,7 @@ import { logger } from '../../../../shared/utils/logger';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useEditorMode, useIsSurfaceRequested, useLinkedSurface } from '../../../../shared/places/placeContext.js';
-import type { SnapshotTrackingOutcome } from '../../../../../../../contracts/types/curationTracking.js';
+import type { SnapshotTrackingOutcome } from '../../../../../../../contracts/types/shared/curation/curationTracking.js';
 import { SourceSnapshotsModal } from './SourceSnapshotsModal.js';
 import { RefreshSourcesButton } from './RefreshSourcesButton.js';
 import { SourcingWorkspace } from './SourcingWorkspace.js';

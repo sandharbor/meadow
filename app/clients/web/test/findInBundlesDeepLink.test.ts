@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { describe, expect, it } from 'vitest';
-import { parseFindInBundlesDeepLink } from '../../../contracts/types/findInBundlesOptions';
+import { parseFindInBundlesDeepLink } from '../../../contracts/types/shared/bundle-management/findInBundlesOptions';
 
 describe('parseFindInBundlesDeepLink', () => {
   it('decodes a complete Find in Bundles target', () => {

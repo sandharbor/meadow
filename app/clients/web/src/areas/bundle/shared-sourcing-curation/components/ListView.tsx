@@ -394,4 +394,4 @@ const ListView: React.FC<ListViewProps> = ({
 
 export default ListView;
 
-import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';

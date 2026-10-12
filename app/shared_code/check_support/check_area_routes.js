@@ -11,6 +11,7 @@
 import fs from 'fs';
 import path from 'path';
 import ts from 'typescript';
+import { ownership } from './area_boundary_policy.js';
 
 const sourceRoot = path.resolve(process.argv[2] ?? 'src');
 const areasRoot = path.join(sourceRoot, 'areas');
@@ -37,19 +38,8 @@ function walkFiles(directory) {
   return results;
 }
 
-function areaForRelativePath(relativePath) {
-  const parts = relativePath.split(path.sep);
-  if (parts[0] === 'bundles') return 'bundles';
-  if (parts[0] === 'bundle' && parts[1]) return `bundle/${parts[1]}`;
-  return parts[0] || null;
-}
-
 function getAreaForPath(filePath) {
-  const relativePath = path.relative(areasRoot, filePath);
-  if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
-    return null;
-  }
-  return areaForRelativePath(relativePath);
+  return ownership(filePath, [sourceRoot]).area ?? null;
 }
 
 function scriptKindForPath(filePath) {

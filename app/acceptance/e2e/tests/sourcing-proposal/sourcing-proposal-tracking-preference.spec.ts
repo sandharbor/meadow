@@ -8,6 +8,7 @@ import { BundleListPage, BundleEditorPage, FilterPanelComponent, PreviewPublishM
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
 import { sourcingReviewRedesign, pendingSourceProposal, sourceReviewSensitivity, tracking, sensitive, filterSensitivity, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../../concepts/index.js';
+import { scenarioDesignPressures, preventAccidentalSharing } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });
@@ -17,8 +18,9 @@ const name = linkedScenarioName(conceptText`Sourcing tracks safe additions by de
 const description = linkedScenarioDescription(conceptText`Track added pages starts on: safe additions are tracked and sensitive ones are skipped.
 An explicit untrack through the ordinary selection controls overrides the default and survives refresh. All source
 material is accepted, the ordinary Untracked filter finds the remaining choices, and preview warns about them.`);
+const pressures = scenarioDesignPressures([preventAccidentalSharing]);
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '33353032-44bd-4d0e-a8e8-e43617f5628f' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '33353032-44bd-4d0e-a8e8-e43617f5628f' }, name.annotation, description.annotation, areas.annotation, pressures.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);

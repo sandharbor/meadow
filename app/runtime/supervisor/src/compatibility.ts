@@ -20,7 +20,7 @@ import type {
   RuntimeBusyLeaseSnapshot,
   RuntimeLeaseSnapshot,
   RuntimeSessionDescriptor,
-} from "../../../contracts/types/runtime.js";
+} from "../../../contracts/types/shared/runtime/runtime.js";
 import type {
   compatibilityNegotiation,
   cooperativeHandoff,

@@ -48,16 +48,10 @@ import {
   inspectGeneratedVersionGitState,
   readGitBlobs,
 } from '../../../../shared/generated-bundle-versioning/generatedBundleVersionGitService.js';
-import {
-  compareCurrentGeneratedOutput,
-  compareSelectedGeneratedVersions,
-  GeneratedComparisonUnavailableError,
-  readComparedGeneratedFile,
-  StaleGeneratedComparisonError,
-  type ResolvedGeneratedComparison,
-} from '../../../../shared/generated-bundle-versioning/generatedOutputComparison.js';
-import type { GeneratedBundleVersionId } from '../../../../../../../contracts/types/generatedBundleVersioning.js';
-import type { GeneratedChangeEntry } from '../../../../../../../contracts/types/generatedOutputIdentity.js';
+import { compareCurrentGeneratedOutput, compareSelectedGeneratedVersions, readComparedGeneratedFile, StaleGeneratedComparisonError, type ResolvedGeneratedComparison } from '../services/generatedOutputComparison.js';
+import { GeneratedComparisonUnavailableError } from '../../../../shared/generated-bundle-versioning/generatedOutputEndpoint.js';
+import type { GeneratedBundleVersionId } from '../../../../../../../contracts/types/shared/generated-bundle-versioning/generatedBundleVersioning.js';
+import type { GeneratedChangeEntry } from '../../../../../../../contracts/types/areas/bundle/review/generatedOutputComparison.js';
 import {
   changedEntriesTree,
   changeNodeDetails,
@@ -73,7 +67,7 @@ import {
 import {
   CLI_MUTATION_BEHAVIORS,
   CLI_OPERATION_SCHEMA_VERSION,
-} from '../../../../../../../contracts/types/cliOperations.js';
+} from '../../../../../../../contracts/types/shared/cli/cliOperations.js';
 import { findBundleBoundaryReviewRequest } from '../../../../shared/bundle-boundary-review/bundleBoundaryReviewService.js';
 import { requireBundleRenameWorkflowOperations } from '../../../../shared/bundle-management/bundleRenameWorkflowHost.js';
 

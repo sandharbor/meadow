@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import YAML from 'yaml';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { BundleNodeId } from '../../../../../../contracts/types/bundleNodeConfig.js';
+import type { BundleNodeId } from '../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import { initializeSourcing, loadSourceBundleConfig, loadSourceNodeConfigs, loadSourceSnapshot, loadSourcingState,
   snapshotSourceRoot } from '../../../../src/shared/source-snapshot/sourceSnapshots.js';
 import { sourceProposalComparison } from '../../../../src/areas/bundle/sourcing/services/proposalComparison.js';

@@ -175,4 +175,4 @@ const StructuralTreeRows: React.FC<StructuralTreeRowsProps> = ({
 
 export default StructuralTreeRows;
 
-import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';

@@ -303,7 +303,7 @@ export function checkNodespecLinks(
   };
 }
 
-import type { EncodedBundleNodeKey } from '../../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';
 import { bundleNodeKeySourceGraphPath } from '../../../shared_code/utils/bundleNodeKey.js';
 
 /** Convert a graph address explicitly before comparing it with nodespec paths. */

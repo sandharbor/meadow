@@ -2,7 +2,7 @@
 
 import path from 'node:path';
 import fs from 'node:fs';
-import type { BundleConfig } from '../../../../../contracts/types/bundleConfig.js';
+import type { BundleConfig } from '../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
 import type { SourceSnapshot } from './sourceSnapshots.js';
 import type { WorkingGraphRustOutput } from '../bundle-graph/workingGraphService.js';
 import { sourceInventory } from '../../../../../shared_code/utils/sourceSnapshotFingerprint.js';
@@ -69,4 +69,4 @@ export function scopeSourceSnapshot(snapshot: SourceSnapshot, graph: WorkingGrap
 
 import { encodedBundleNodeKey, bundleNodeKeySourceGraphPath, fileNodeKeyFromSourceFilePath, serializeBundleNodeKey } from '../../../../../shared_code/utils/bundleNodeKey.js';
 
-import type { EncodedBundleNodeKey } from '../../../../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';

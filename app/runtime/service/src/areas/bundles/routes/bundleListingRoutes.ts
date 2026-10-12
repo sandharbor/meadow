@@ -26,14 +26,14 @@ import { randomUUID } from 'crypto';
 import {
   CLI_MUTATION_BEHAVIORS,
   CLI_OPERATION_SCHEMA_VERSION,
-} from '../../../../../../contracts/types/cliOperations.js';
+} from '../../../../../../contracts/types/shared/cli/cliOperations.js';
 import { parseBundleNodeConfig } from '../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
-import { BundleConfig } from '../../../../../../contracts/types/bundleConfig.js';
+import { BundleConfig } from '../../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
 import { AppConfigPaths } from '../../../../../../shared_code/paths/appConfigPaths.js';
 import { AppConfigGitUtils, GIT_AUTHORS } from '../../../../../../shared_code/utils/appConfigGitUtils.js';
 import { rankSourceFolderCandidatesWithCount, rankSourcePageCandidatesWithCount, recentSourcePageCandidatesWithCount } from '../../../../../../shared_code/utils/sourcePageSearchUtils.js';
 import { generateBundleGuid } from '../../../../../../shared_code/utils/bundleGuidUtils.js';
-import { getAllBackendProviders } from '../../../shared/publishing-provider-host/providerRegistry.js';
+import { bundlesQueryPublicationSummaries, bundlesCommandDeleteAfterPublicationCleanup } from '../../bundle/sharing/exported.js';
 import { getConfigDirectory, getBundlesDirectory, getBundleDirectory, getBundleConfigPath } from '../../../shared/bundle-config/bundleConfigPaths.js';
 import {
   loadBundleConfig,
@@ -60,7 +60,6 @@ import selectedFolderRepairRoutes from './selectedFolderRepairRoutes.js';
 import bundleSettingsRoutes from './bundleSettingsRoutes.js';
 import { createMultiSourceBundle, type CreateMultiSourceBundleInput } from '../services/multiSourceBundleCreation.js';
 import { sourceDirectorySuggestions } from '../services/sourceDirectorySuggestions.js';
-import { deleteLocalBundleOnlyAfterProviderCleanup } from '../services/bundleDeletion.js';
 import {
   createPageBundle,
   PageBundleOperationError,
@@ -222,9 +221,7 @@ router.get('/bundles/detailed', (req, res, next) => {
           nodes,
         );
         const generatedVersionCount = loadGeneratedBundleVersionManifest(bundleDirectory).versions.length;
-        const publicationSummaries = getAllBackendProviders().flatMap(provider =>
-          provider.getBundlePublicationSummaries?.(slug) ?? []
-        );
+        const publicationSummaries = bundlesQueryPublicationSummaries(slug);
         const publicationTimes = publicationSummaries
           .map(summary => summary.mostRecentSuccessfulEventAt)
           .filter((timestamp): timestamp is string => Boolean(timestamp));
@@ -641,10 +638,9 @@ router.get('/bundles/:slug/delete-bundle-stream', (req, res, _next) => {
 
       logBundleInfo(slug, `${operation} Started authoritative cleanup with all publishing providers before local deletion`);
 
-      await deleteLocalBundleOnlyAfterProviderCleanup({
+      await bundlesCommandDeleteAfterPublicationCleanup({
         bundleSlug: slug,
         operationId,
-        providers: getAllBackendProviders(),
         onProviderProgress: (progress) => {
           sendProgress({ stage: progress.stage, message: progress.message });
         },

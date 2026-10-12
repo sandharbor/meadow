@@ -5,7 +5,7 @@ import path from 'node:path';
 import { test, expect } from '../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage } from '../src/run/pages/index.js';
 import { SourcesControl } from '../src/run/pages/areas/bundle/sourcing/SourcesControl.js';
-import { sourcingReviewRedesign, bundleSource, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, bundleSource, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace, sourceSetupEdit } from '../../../concepts/index.js';
 import { MeadowHomeBundleConfig } from '../src/run/utils/index.js';
 
 test.use({ bundleMode: 'single-file' });
@@ -15,7 +15,7 @@ const name = linkedScenarioName(conceptText`Multi-source removal reviews orphans
 
 const description = linkedScenarioDescription(conceptText`Remove a registered source and review its orphaned pages. Ignored source names should
 stay quiet until the user chooses to reconsider them.`);
-const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
+const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceSetupEdit, sourceReviewWorkspace] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: '94c8b2ba-c324-4d76-ac2e-c6923fcb3356' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);

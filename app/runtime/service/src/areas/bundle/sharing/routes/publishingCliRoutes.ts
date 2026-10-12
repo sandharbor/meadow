@@ -22,11 +22,11 @@ import {
   type CliMutationBehavior,
   type CliUserAction,
   type PublishBundleCliResult,
-} from '../../../../../../../contracts/types/cliOperations.js';
+} from '../../../../../../../contracts/types/shared/cli/cliOperations.js';
 import {
   PublishingProviderOperationError,
-} from '../../../../shared/publishing-provider-host/IPublishingProviderBackend.js';
-import { getActiveBackendProviders, getAllBackendProviders } from '../../../../shared/publishing-provider-host/providerRegistry.js';
+} from '../providers/IPublishingProviderBackend.js';
+import { getActiveBackendProviders, getAllBackendProviders } from '../providers/providerRegistry.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
 
 const router = express.Router();

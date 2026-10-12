@@ -20,12 +20,12 @@ import { hydrateTrackingEvidence } from '../bundle-node/trackingRecords.js';
 import fs from 'fs';
 import path from 'path';
 import YAML from 'yaml';
-import type { BundleConfig } from '../../../../../contracts/types/bundleConfig.js';
-import type { BundleNodeConfig, EncodedBundleNodeKey } from '../../../../../contracts/types/bundleNodeConfig.js';
-import type { BundleNodeTraversalDetails, BundleNodeTraversalPathStep } from '../../../../../contracts/types/bundleNodeGraph.js';
-import type { FileType } from '../../../../../contracts/types/FileType.js';
-import type { FolderScopeGraphSnapshot } from '../../../../../contracts/types/folderScopeChanges.js';
-import type { IBundleNode } from '../../../../../contracts/types/IBundleNode.js';
+import type { BundleConfig } from '../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
+import type { BundleNodeConfig, EncodedBundleNodeKey } from '../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
+import type { BundleNodeTraversalDetails, BundleNodeTraversalPathStep } from '../../../../../contracts/types/shared/bundle-graph/bundleNodeGraph.js';
+import type { FileType } from '../../../../../contracts/types/shared/bundle-graph/FileType.js';
+import type { FolderScopeGraphSnapshot } from '../../../../../contracts/types/shared/bundle-config/folderScopeChanges.js';
+import type { IBundleNode } from '../../../../../contracts/types/shared/bundle-graph/IBundleNode.js';
 import {
   parseBundleNodeConfig,
   validateCanonicalBundleConfiguration,
@@ -91,7 +91,7 @@ interface RustEdge {
 
 export interface WorkingGraphRustOutput {
   keyEncodingVersion?: 1;
-  sourceDiagnostics?: import('../../../../../contracts/types/sourcing.js').SourceReferenceDiagnostic[];
+  sourceDiagnostics?: import('../../../../../contracts/types/shared/sourcing/sourcing.js').SourceReferenceDiagnostic[];
   nodes: RustNode[];
   edges: (RustEdge & { link_original_text: string })[];
   allLinkResolutionMaps: Record<string, Record<string, RustLinkResolvedInfo>>;
@@ -102,7 +102,7 @@ export interface WorkingGraphRustOutput {
 
 export interface LoadedWorkingGraph {
   sourceContentView?: 'accepted' | 'live';
-  sourceDiagnostics?: import('../../../../../contracts/types/sourcing.js').SourceReferenceDiagnostic[];
+  sourceDiagnostics?: import('../../../../../contracts/types/shared/sourcing/sourcing.js').SourceReferenceDiagnostic[];
   frontierUnavailable?: string;
   bundleConfig: BundleConfig;
   committedNodes: BundleNodeConfig[];

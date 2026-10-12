@@ -22,7 +22,7 @@ import { logger } from './logging/backendLoggingUtils.js';
 import { resolveNativeRustBinaryPath } from '../../../../../shared_code/utils/nativeRustBinaryPath.js';
 import { getConfigDirectory } from '../bundle-config/bundleConfigPaths.js';
 import { parseBundleNodeConfig } from '../../../../../shared_code/utils/bundleNodeConfigUtils.js';
-import type { BundleSource } from '../../../../../contracts/types/bundleConfig.js';
+import type { BundleSource } from '../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
 
 function execWorkingGraph(binaryPath: string, args: string[]): Promise<string> {
   return new Promise<string>((resolve, reject) => {

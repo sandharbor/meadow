@@ -18,6 +18,9 @@ import type { Reporter, TestCase, TestResult } from "@playwright/test/reporter";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { loadDocumentRegistry, type DocumentRegistry } from '../../../../concepts/loadRegistry.js';
+import { captureDocumentSnapshot, SCENARIO_DOCUMENTS_FILE, type DocumentSnapshot } from '../artifacts/documentSnapshot.js';
+import { resolveScenarioDocuments } from '../artifacts/scenarioDocuments.js';
 import { extractScenarioDescription } from "../artifacts/scenarioDescription.js";
 import { collectReferencedSourceChanges } from "../artifacts/testSourceChanges.js";
 import { renderConceptText, type ConceptText } from '../../../../concepts/types.js';
@@ -34,9 +37,31 @@ export function getTestArtifactDirectory(title: string, outputDir = path.join(
 export default class ArtifactReporter implements Reporter {
   constructor(private readonly options: { outputDir?: string } = {}) {}
 
+  private registry?: DocumentRegistry;
+  private snapshot?: DocumentSnapshot;
+
+  async onBegin(): Promise<void> {
+    this.registry = await loadDocumentRegistry();
+    const root = path.dirname(getTestArtifactDirectory('scenario', this.options.outputDir));
+    this.snapshot = captureDocumentSnapshot(root, this.registry, path.resolve(import.meta.dirname, '../../tests'));
+  }
+
+  private captureDocuments(test: TestCase, directory: string): void {
+    if (!this.registry) throw new Error('Document registry was not captured before the scenario.');
+    const source = readFileSync(test.location.file, 'utf8');
+    const id = test.annotations.find(annotation => annotation.type === 'scenario-id')?.description;
+    const relativeFile = path.relative(path.resolve(import.meta.dirname, '../../tests'), test.location.file);
+    const declared = this.snapshot?.scenarios.find(scenario => id ? scenario.scenarioId === id : scenario.testFile === relativeFile);
+    const documents = declared ? { conceptIds: declared.conceptIds, bundleDocIds: declared.bundleDocIds,
+      appAreaDocIds: declared.appAreaDocIds, subAreaDocIds: declared.subAreaDocIds, designPressureIds: declared.designPressureIds }
+      : resolveScenarioDocuments(source, this.registry);
+    writeFileSync(path.join(directory, SCENARIO_DOCUMENTS_FILE), JSON.stringify(documents));
+  }
+
   onTestBegin(test: TestCase, result: TestResult): void {
     const directory = getTestArtifactDirectory(test.title, this.options.outputDir);
     mkdirSync(directory, { recursive: true });
+    this.captureDocuments(test, directory);
     // Clear only a scenario that is actually executing. Reassembly of other
     // scenarios must retain their recordings after temporary output is cleaned.
     rmSync(path.join(directory, 'video.webm'), { force: true });
@@ -58,6 +83,11 @@ export default class ArtifactReporter implements Reporter {
   onTestEnd(test: TestCase, result: TestResult): void {
     const directory = getTestArtifactDirectory(test.title, this.options.outputDir);
     mkdirSync(directory, { recursive: true });
+    if (!existsSync(path.join(directory, SCENARIO_DOCUMENTS_FILE))) {
+      this.captureDocuments(test, directory);
+      writeFileSync(path.join(directory, 'test-file.txt'), test.location.file);
+      writeFileSync(path.join(directory, 'test-source.ts'), readFileSync(test.location.file, 'utf8'));
+    }
     writeFileSync(path.join(directory, "status.txt"), result.status);
     const endTimePath = path.join(directory, "end-time.txt");
     if (!existsSync(endTimePath)) writeFileSync(endTimePath, new Date().toISOString());

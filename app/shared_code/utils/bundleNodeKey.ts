@@ -1,7 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import type { BundleNodeConfig, BundleNodeId } from '../../contracts/types/bundleNodeConfig.js';
-import type { BundleNodeKey, EncodedBundleNodeKey, SourceId, SourceRelativePath } from '../../contracts/types/bundleNodeKey.js';
+import type { BundleNodeConfig, BundleNodeId } from '../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
+import type { BundleNodeKey, EncodedBundleNodeKey, SourceId, SourceRelativePath } from '../../contracts/types/shared/bundle-graph/bundleNodeKey.js';
 import { normalizeSourceRelativePath, sourceGraphPath, validateSourceId } from './bundleSourceUtils.js';
 
 const SOURCE_PREFIX = '_mw_sources/';

@@ -17,8 +17,8 @@ limitations under the License.
 import React from 'react';
 import { Highlight } from '../types/displayGraph';
 import { isImageFileType } from '../../../../../../../shared_code/utils/fileTypeUtils';
-import { FileType } from '../../../../../../../contracts/types/FileType';
-import type { BundleNodeKind } from '../../../../../../../contracts/types/bundleNodeConfig';
+import { FileType } from '../../../../../../../contracts/types/shared/bundle-graph/FileType';
+import type { BundleNodeKind } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig';
 
 export const BUNDLE_NODE_RADIUS = 3;
 

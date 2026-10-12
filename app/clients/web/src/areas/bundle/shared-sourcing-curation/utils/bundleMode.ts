@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { useMemo } from 'react';
-import type { Graph, IBundleNode } from '../../../../../../../contracts/types/graph';
+import type { Graph, IBundleNode } from '../../../../../../../contracts/types/shared/bundle-graph/graph';
 
 interface BundleModeNode {
   bundleNodeId?: string;

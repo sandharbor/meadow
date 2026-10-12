@@ -17,7 +17,7 @@ limitations under the License.
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import type { FolderBundleSelectionValidation } from '../../../../../contracts/types/folderBundleSelection.js';
+import type { FolderBundleSelectionValidation } from '../../../../../contracts/types/shared/bundle-config/folderBundleSelection.js';
 import { normalizeFolderSourceGraphSubdirectory } from '../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 
 export const FOLDER_BUNDLE_HIGH_IMPACT_SEED_FILES = 1_000;

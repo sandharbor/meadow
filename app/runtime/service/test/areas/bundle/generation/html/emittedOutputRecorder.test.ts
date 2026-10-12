@@ -4,7 +4,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { BundleNodeId } from '../../../../../../../contracts/types/bundleNodeConfig.js';
+import type { BundleNodeId } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import { EmittedOutputRecorder } from '../../../../../src/areas/bundle/generation/html/emittedOutputRecorder.js';
 
 const id = (value: string) => value as BundleNodeId;

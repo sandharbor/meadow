@@ -1,6 +1,6 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import type { IBundleNode } from '../../../../../../../contracts/types/graph.js';
+import type { IBundleNode } from '../../../../../../../contracts/types/shared/bundle-graph/graph.js';
 
 /** Thumbnails and hover previews use the same captured side as the comparison node. */
 export function editorSourcePath(bundleSlug: string, node: IBundleNode, filename: string, live: boolean): string {

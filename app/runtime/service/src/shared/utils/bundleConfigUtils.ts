@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { BundleConfig } from '../../../../../contracts/types/bundleConfig.js';
+import { BundleConfig } from '../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
 import { BundleConfigPaths } from '../../../../../shared_code/paths/bundleConfigPaths.js';
 import {
   extensibleObjectValidation,

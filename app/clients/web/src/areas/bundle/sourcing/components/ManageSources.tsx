@@ -1,16 +1,17 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import type { StartingSelection } from '../../../../../../../contracts/types/startingSelection.js';
+import type { StartingSelection } from '../../../../../../../contracts/types/shared/sourcing/startingSelection.js';
 import { DirectoryPathInput } from '../../../../shared/components/DirectoryPathInput.js';
 import { StartingSelectionsFields } from '../../../../shared/components/StartingSelectionsFields.js';
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { BundleSource } from '../../../../../../../contracts/types/bundleConfig.js';
-import type { Graph } from '../../../../../../../contracts/types/graph.js';
+import type { BundleSource } from '../../../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
+import type { Graph } from '../../../../../../../contracts/types/shared/bundle-graph/graph.js';
 import { sourceLocationLabel } from '../../../../../../../shared_code/utils/bundleSourceUtils.js';
 import Modal from '../../../../shared/components/Modal.js';
 import { apiRequest } from '../../../../shared/utils/apiClient.js';
-import type { SourceRegistryStatus, SourcingReview } from '../../../../../../../contracts/types/sourcing.js';
+import type { SourceRegistryStatus } from '../../../../../../../contracts/types/areas/bundle/sourcing/sourcing.js';
+import type { SourcingReview } from '../../../../../../../contracts/types/shared/sourcing/sourcing.js';
 import { SourceOutputPathsNotice } from './SourceRegistryChanges.js';
 import { useLinkedSurface } from '../../../../shared/places/placeContext.js';
 
@@ -158,3 +159,8 @@ export function ManageSources({ bundleSlug, graph, isOpen, onClose, onOpen, onSt
 }
 
 import { serializeBundleNodeKey, fileNodeKeyFromSourceFilePath } from '../../../../../../../shared_code/utils/bundleNodeKey.js';
+
+import type { ParticipatesIn, sourceSetupEdit } from '../../../../../../../concepts/index.js';
+export type ManageSourcesMeadowConceptParticipations = [
+  ParticipatesIn<typeof sourceSetupEdit, 'render-editor', typeof ManageSources>,
+];

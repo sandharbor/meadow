@@ -3,7 +3,7 @@
 import fs from 'fs';
 import path from 'path';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { GeneratedBundleReaderRouteIndex } from '../../../../../../../contracts/types/generatedBundleVersioning.js';
+import type { GeneratedBundleReaderRouteIndex } from '../../../../../../../contracts/types/shared/generated-bundle-versioning/generatedBundleVersioning.js';
 import { generateHtmlForBundle } from '../../../../../src/areas/bundle/generation/html/htmlService.js';
 import { TestBundleSetup } from '../../../../shared/support/testBundleSetup.js';
 import { getGeneratedBundleTestOutputDirectory } from '../../../../shared/support/generatedBundleTestOutput.js';

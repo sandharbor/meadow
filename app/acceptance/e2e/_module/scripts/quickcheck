@@ -1,5 +1,6 @@
 #!/bin/bash
 set -euo pipefail
+export NODE_OPTIONS="${NODE_OPTIONS:-} --preserve-symlinks"
 cd "$(dirname "$0")/../.."
 
 stamp="node_modules/.quickcheck_install_stamp"

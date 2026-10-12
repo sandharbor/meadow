@@ -15,12 +15,12 @@ limitations under the License.
 */
 
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Graph } from '../../../../../../../contracts/types/graph';
+import { Graph } from '../../../../../../../contracts/types/shared/bundle-graph/graph';
 import { isImageFileType } from '../../../../../../../shared_code/utils/fileTypeUtils.js';
 import {
   isUntrackableFrontierNode,
   type IBundleNode,
-} from '../../../../../../../contracts/types/IBundleNode';
+} from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode';
 import { inheritedTraversalDepths, remainingTraversalDepths } from '../../../../shared/utils/traversalRoutes.js';
 import BundleNodeContextMenu, { ObsidianInfo } from './BundleNodeContextMenu';
 import { DisabledTooltip } from '../../../../shared/components/DisabledTooltip';
@@ -1037,4 +1037,4 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
 
 export default BundleNodeSelectionSidebar;
 
-import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';

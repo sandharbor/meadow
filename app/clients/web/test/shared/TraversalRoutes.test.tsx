@@ -1,9 +1,9 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { Graph } from '../../../../contracts/types/graph.js';
-import type { IBundleNode } from '../../../../contracts/types/IBundleNode.js';
-import type { BundleNodeTraversalPathStep } from '../../../../contracts/types/bundleNodeGraph.js';
+import { Graph } from '../../../../contracts/types/shared/bundle-graph/graph.js';
+import type { IBundleNode } from '../../../../contracts/types/shared/bundle-graph/IBundleNode.js';
+import type { BundleNodeTraversalPathStep } from '../../../../contracts/types/shared/bundle-graph/bundleNodeGraph.js';
 import TraversalPathDetailsModal from '../../src/shared/components/TraversalPathDetailsModal.js';
 import BundleNodeSelectionSidebar from '../../src/areas/bundle/shared-sourcing-curation/components/BundleNodeSelectionSidebar.js';
 import { explainedTraversalRoutes, remainingTraversalDepths } from '../../src/shared/utils/traversalRoutes.js';

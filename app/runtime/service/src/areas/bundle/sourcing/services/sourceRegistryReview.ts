@@ -1,16 +1,16 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import fs from 'node:fs';
-import type { StartingSelection } from '../../../../../../../contracts/types/startingSelection.js';
+import type { StartingSelection } from '../../../../../../../contracts/types/shared/sourcing/startingSelection.js';
 import { applyStartingSelections, bundleStartingSelections } from '../../../../../../../shared_code/utils/startingSelectionUtils.js';
 import path from 'node:path';
 import YAML from 'yaml';
-import type { BundleConfig, BundleSource } from '../../../../../../../contracts/types/bundleConfig.js';
-import type { SourceRegistryStatus } from '../../../../../../../contracts/types/sourcing.js';
+import type { BundleConfig, BundleSource } from '../../../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
+import type { SourceRegistryStatus } from '../../../../../../../contracts/types/areas/bundle/sourcing/sourcing.js';
 import { assignLegacySourceIdentity, bundleSources, validateBundleSources, validateSourceName } from '../../../../../../../shared_code/utils/bundleSourceUtils.js';
 import { textDocumentCodec, writeDurableDocument } from '../../../../../../../shared_code/utils/durableDocument.js';
 import { loadPendingSourceProposal, sourceProposalConfigurationReview } from './proposalStore.js';
-import type { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
+import type { BundleNodeConfig } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import { sourceProposalContext } from '../../../../shared/source-snapshot/sourceRegistrySnapshots.js';
 import { retainCandidateSourceTree } from '../../../../shared/source-snapshot/sourceGit.js';
 import { captureSourceSnapshot, initializeSourcing, loadSourceBundleConfig, loadSourceNodeConfigs, loadSourceSnapshot, loadSourcingState, sourceConfigFingerprint, snapshotDirectory, sourcingStatePath, SourcingError, withSourcingLock, writeSourcingJson, type SourceSnapshot } from '../../../../shared/source-snapshot/sourceSnapshots.js';

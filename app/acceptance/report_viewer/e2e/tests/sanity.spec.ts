@@ -79,7 +79,7 @@ test("cached publish-flow artifact has multiple ticks and multiple home commits"
   //    "Tick: --"). Future specs that exercise tick navigation will
   //    assert on the counter directly.
   await page.goto(`/${runId}/${testSlug}`);
-  await expect(page.getByText(testSlug.replace(/-/g, ' '), { exact: true })).toBeVisible();
+  await expect(page.getByRole('banner').getByText(testSlug.replace(/-/g, ' '), { exact: true }).and(page.locator(':visible'))).toBeVisible();
   await expect(page.getByRole("link", { name: "Single file" })).toHaveAttribute(
     "href",
     `/${runId}?mode=single-file`

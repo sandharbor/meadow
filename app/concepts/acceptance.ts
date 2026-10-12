@@ -16,6 +16,7 @@ limitations under the License.
 
 import { renderConceptText, type ConceptText, type AnyMeadowConcept } from "./types.js";
 import type { acceptanceAppAreaConcepts } from "./bundle/appAreas.js";
+import { conceptDocument, type DesignPressure, type MeadowDocument } from './documents.js';
 
 /** The acceptance/report projection of a canonical concept. */
 export interface AcceptanceConceptView {
@@ -40,6 +41,22 @@ export function acceptanceConceptView(concept: AnyMeadowConcept): AcceptanceConc
     description: [concept.definition, ...(concept.kind === "behavioral-rule" ? concept.mechanics : [])].map(text => renderConceptText(text)).join("\n\n"),
     appAreaIds: concept.appAreaIds ?? null,
   };
+}
+
+/** Shared document projection, retaining plain summaries for existing report readers. */
+export function acceptanceDocumentView(document: MeadowDocument) {
+  return { ...document, descriptionText: document.description, description: renderConceptText(document.description), searchFacet: document.searchFacet === true };
+}
+
+export function conceptDocumentView(concept: AnyMeadowConcept) {
+  return acceptanceDocumentView(conceptDocument(concept));
+}
+
+/** Explicit examples of a design pressure; imports alone never declare this relation. */
+export function scenarioDesignPressures(pressures: readonly DesignPressure[]) {
+  const ids = pressures.map(pressure => pressure.id);
+  if (new Set(ids).size !== ids.length) throw new Error('A scenario lists a design pressure more than once.');
+  return { ids, annotation: { type: 'scenario-design-pressures', description: JSON.stringify(ids) } };
 }
 
 type ScenarioAppArea = { readonly id: (typeof acceptanceAppAreaConcepts)[number]["id"] };

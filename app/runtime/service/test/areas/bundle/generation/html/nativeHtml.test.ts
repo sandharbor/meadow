@@ -15,8 +15,8 @@ limitations under the License.
 */
 
 import { describe, expect, it } from 'vitest';
-import type { BundleConfig } from '../../../../../../../contracts/types/bundleConfig.js';
-import type { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
+import type { BundleConfig } from '../../../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
+import type { BundleNodeConfig } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import { rewriteNativeHtmlUrls } from '../../../../../src/areas/bundle/generation/html/nativeHtml.js';
 
 const configs: BundleNodeConfig[] = [

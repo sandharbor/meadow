@@ -1,6 +1,6 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import type { SourceTraversalGraph } from '../../../../../../../contracts/types/sourcing.js';
+import type { SourceTraversalGraph } from '../../../../../../../contracts/types/shared/sourcing/sourcing.js';
 import { serializeWorkingGraphOutput, type WorkingGraphRustOutput } from '../../../../shared/bundle-graph/workingGraphService.js';
 
 /** Reuse the exact graph used to build the review; do not rediscover live sources for details. */
@@ -23,4 +23,4 @@ export function sourceTraversalGraph(snapshotId: string, output: WorkingGraphRus
   return { snapshotId, ...(sources && { sources }), nodes: graph.nodes, edges: graph.edges };
 }
 
-import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';

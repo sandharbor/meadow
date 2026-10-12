@@ -1,9 +1,9 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import type { BundleConfig, BundleSource } from '../../contracts/types/bundleConfig.js';
-import type { BundleNodeConfig, BundleNodeId } from '../../contracts/types/bundleNodeConfig.js';
-import type { StartingSelection } from '../../contracts/types/startingSelection.js';
-import { FILE_TYPES, type FileType } from '../../contracts/types/FileType.js';
+import type { BundleConfig, BundleSource } from '../../contracts/types/shared/bundle-config/bundleConfig.js';
+import type { BundleNodeConfig, BundleNodeId } from '../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
+import type { StartingSelection } from '../../contracts/types/shared/sourcing/startingSelection.js';
+import { FILE_TYPES, type FileType } from '../../contracts/types/shared/bundle-graph/FileType.js';
 import { assignLegacySourceIdentity, LEGACY_SOURCE_ID, normalizeSourceRelativePath } from './bundleSourceUtils.js';
 import { generateBundleNodeId } from './bundleNodeConfigUtils.js';
 import { canonicalPageFilename } from './fileTypeUtils.js';

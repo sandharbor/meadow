@@ -21,8 +21,8 @@ import { sourceGraphPath } from '../../../../../../../shared_code/utils/bundleSo
 import { projectTrackedSourceOutput } from './sourceOutputProjection.js';
 import { parseBundleNodeConfig } from '../../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 import { canonicalPageFilename, sourceFileCandidateFilenames } from '../../../../../../../shared_code/utils/fileTypeUtils.js';
-import { FileBundleNodeConfig, BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
-import type { BundleNodeId } from '../../../../../../../contracts/types/bundleNodeConfig.js';
+import { FileBundleNodeConfig, BundleNodeConfig } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
+import type { BundleNodeId } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import {
   projectBundleNodeConfigsForGeneration,
   stringifyBundleNodeConfig,

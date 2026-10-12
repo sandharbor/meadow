@@ -15,11 +15,8 @@ limitations under the License.
 */
 
 import { describe, expect, it } from 'vitest';
-import type {
-  GeneratedBundleVersionId,
-  GeneratedBundleVersionManifest,
-  ProviderDestinationRecord,
-} from '../../../../../../../contracts/types/generatedBundleVersioning.js';
+import type { GeneratedBundleVersionId, GeneratedBundleVersionManifest } from '../../../../../../../contracts/types/shared/generated-bundle-versioning/generatedBundleVersioning.js';
+import type { ProviderDestinationRecord } from '../../../../../../../contracts/types/shared/publishing-provider-host/publicationVersioning.js';
 import {
   appendGeneratedBundleVersion,
   cancelUnsavedCurrentVersion,

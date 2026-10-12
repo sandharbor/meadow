@@ -1,7 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import path from 'node:path';
-import type { SourceSnapshotAcceptance } from '../../../../../../../contracts/types/sourcing.js';
+import type { SourceSnapshotAcceptance } from '../../../../../../../contracts/types/shared/sourcing/sourcing.js';
 import { runSerializedBundleNodeMutation } from '../../../../shared/bundle-node/bundleNodeMutationQueue.js';
 import { acceptSourceSnapshot } from './sourceReview.js';
 

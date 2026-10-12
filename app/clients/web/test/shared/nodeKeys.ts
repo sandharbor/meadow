@@ -1,7 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import { fileNodeKeyFromSourceGraphPath, encodedBundleNodeKey, serializeBundleNodeKey } from '../../../../shared_code/utils/bundleNodeKey.js';
-import type { EncodedBundleNodeKey } from '../../../../contracts/types/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';
 
 /** Construct graph addresses for test nodes and graph assertions. */
 export function testKey(path: string): EncodedBundleNodeKey {

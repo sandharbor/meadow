@@ -18,8 +18,8 @@ import fs from 'fs';
 import { initializeSourcing } from '../../../shared/source-snapshot/sourceSnapshots.js';
 import path from 'path';
 import YAML from 'yaml';
-import type { BundleConfig } from '../../../../../../contracts/types/bundleConfig.js';
-import type { BundleNodeConfig } from '../../../../../../contracts/types/bundleNodeConfig.js';
+import type { BundleConfig } from '../../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
+import type { BundleNodeConfig } from '../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import {
   stringifyBundleNodeConfig,
   validateCanonicalBundleConfiguration,
