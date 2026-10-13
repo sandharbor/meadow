@@ -55,6 +55,7 @@ afterEach(({ task }) => {
 });
 
 describe('captured proposal lifecycle', () => {
+  // This scenario performs many durable captures and reviews while other suites run in parallel.
   it('revalidates tracking when identity choices change and restores the original identity when reconfirmed', async () => {
     let review = await reviewSourceProposal(directory);
     fs.renameSync(path.join(source, 'Bridge.md'), path.join(source, 'Renamed.md'));
@@ -87,7 +88,7 @@ describe('captured proposal lifecycle', () => {
     await acceptSourceProposal(directory, review.reviewToken);
     expect(loadSourceNodeConfigs(directory).some(node => node.bundleNodeId === separateId)).toBe(false);
     expect(loadSourceNodeConfigs(directory).find(node => node.bundleNodeId === bridgeId)?.bundleNodeName).toBe('Renamed');
-  });
+  }, 20000);
 
   it('leaves a rejected rename untracked until its existing identity is confirmed', async () => {
     let review = await reviewSourceProposal(directory);
