@@ -165,6 +165,7 @@ describe('PreviewChangesTab', () => {
         isActive={true}
         isRegeneratingPreview={false}
         publishSuccess={true}
+        generatedVersionLabels={{}}
         baseApi={{
           fetchTree,
           fetchContent: vi.fn(),
@@ -211,6 +212,7 @@ describe('PreviewChangesTab', () => {
         isActive={true}
         isRegeneratingPreview={false}
         publishSuccess={true}
+        generatedVersionLabels={{}}
         baseApi={{
           fetchTree,
           fetchContent: vi.fn(),

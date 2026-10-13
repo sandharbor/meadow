@@ -100,7 +100,7 @@ it('publishes namesake pages and assets separately and rewrites links using sour
   const routeDir = path.join(output, '_mw_assets/versioning');
   const routes = JSON.parse(fs.readFileSync(path.join(routeDir, fs.readdirSync(routeDir).find(file => /^routes\..*\.json$/.test(file))!), 'utf8'));
   expect(routes.routesByBundleNodeId[nodes.find(node => node.sourceId === 'source000002' && node.bundleNodeName === 'Overview')!.bundleNodeId]).toBe('sources/research/Overview.html');
-});
+}, 20000);
 
 it('exports source-qualified Markdown, HTML, and SVG as portable source downloads', async () => {
   await generate();

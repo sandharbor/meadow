@@ -65,10 +65,11 @@ export const passesChangeFilters = (
   return sectionsPass;
 };
 
-function baselineDescription(summary: GeneratedComparisonSummary): string {
+function baselineDescription(summary: GeneratedComparisonSummary, generatedVersionLabels: Record<string, string>): string {
   if (summary.baseline === 'empty') return 'Compared with an empty site: this is the first generation.';
   if (summary.baseline === 'saved-predecessor') {
-    return `Compared with the saved generation of the previous version${summary.left.versionId ? ` (${summary.left.versionId})` : ''}. This new version is unsaved until you save it.`;
+    const versionLabel = summary.left.versionId ? generatedVersionLabels[summary.left.versionId] : undefined;
+    return `Compared with the saved generation of the previous version${versionLabel ? ` (${versionLabel})` : ''}. This new version is unsaved until you save it.`;
   }
   return 'Compared with the last saved generation of this version.';
 }
@@ -109,6 +110,7 @@ interface PreviewChangesTabProps {
   isRegeneratingPreview: boolean;
   publishSuccess: boolean;
   baseApi: ConfigFileExplorerApi;
+  generatedVersionLabels: Record<string, string>;
   initialFile?: string;
   onPreviewFile?: (path: string) => void;
   /** Increment to force tree refresh (e.g. after save) */
@@ -168,6 +170,7 @@ const PreviewChangesTab: React.FC<PreviewChangesTabProps> = ({
   isRegeneratingPreview,
   publishSuccess,
   baseApi,
+  generatedVersionLabels,
   initialFile,
   onPreviewFile,
   refreshKey,
@@ -409,7 +412,7 @@ const PreviewChangesTab: React.FC<PreviewChangesTabProps> = ({
       <div className="flex h-full flex-col">
         {comparisonSummary && (
           <div className="border-b border-neutral-200 px-2 py-1.5 text-xs text-neutral-600" data-testid="changes-comparison-baseline">
-            <span>{baselineDescription(comparisonSummary)}</span>
+            <span>{baselineDescription(comparisonSummary, generatedVersionLabels)}</span>
             {comparisonSummary.counts.total === 0 && <span> No generated-file differences.</span>}
             {notice && (
               <div role="status" className="mt-1 rounded border border-warning-200 bg-warning-50 px-2 py-1 text-warning-800" data-testid="changes-identity-notice">

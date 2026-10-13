@@ -1406,6 +1406,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
                       isRegeneratingPreview={isRegeneratingPreview}
                       publishSuccess={!!previewResult?.success}
                       baseApi={previewFileExplorerApi}
+                      generatedVersionLabels={generatedVersionLabels}
                       initialFile={changesInitialFile}
                       onPreviewFile={handlePreviewFromChanges}
                       refreshKey={changesTabRefreshKey}
