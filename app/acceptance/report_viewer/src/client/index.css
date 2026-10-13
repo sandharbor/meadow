@@ -39,6 +39,21 @@ html, body {
   background-color: var(--filter-background);
 }
 
+/* Document membership repeats the workflow palette without implying a filter selection. */
+.document-area-pill[data-applicable="true"] {
+  background-color: color-mix(in srgb, var(--filter-background) 80%, var(--filter-accent));
+  color: theme(colors.neutral.600);
+}
+
+.document-area-pill[data-applicable="true"]:hover {
+  background-color: color-mix(in srgb, var(--filter-background) 70%, var(--filter-accent));
+}
+
+.document-area-pill[data-applicable="false"] {
+  background-color: theme(colors.neutral.100);
+  color: theme(colors.neutral.400);
+}
+
 /* Repeat the parent label and inset its children on both report surfaces. */
 .area-subareas {
   margin-left: 1rem;

@@ -57,6 +57,11 @@ test('captured documents connect pressure, area, prose, backlinks and explicit s
     await expect(panel.getByRole('heading', { name: pressureName, exact: true })).toBeVisible();
     await expect(panel.getByLabel('Document metadata')).toContainText('design pressure');
     await expect(panel.getByLabel('Document metadata').getByRole('link')).toHaveCount(4);
+    const areaStrip = panel.getByRole('group', { name: 'Document app areas', exact: true });
+    await expect(areaStrip.locator('[data-area-id]')).toHaveText(['Bundles', 'Sourcing', 'Curation', 'Generation', 'Review', 'Sharing']);
+    await expect(areaStrip.locator('[data-area-id="bundles"]')).toHaveAttribute('aria-disabled', 'true');
+    await expect(areaStrip.locator('[data-area-id="bundle/review"]')).toHaveAttribute('data-applicable', 'false');
+    await expect(areaStrip.getByRole('link', { name: 'Generation', exact: true })).toHaveAttribute('href', `/concepts/bundle%2Fgeneration?run=${runId}`);
     await expect(panel).toContainText('Documentation captured with this run.');
     await expect(panel.getByLabel('3 related scenarios')).toBeVisible();
     await page.screenshot({ path: testInfo.outputPath('design-pressure.png'), fullPage: true });

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import DocumentText, { documentUrl } from './DocumentText';
 import DocumentScenarios from './DocumentScenarios';
+import DocumentAreas from './DocumentAreas';
 import type { DocumentSection, DocumentBacklink, DocumentKind, DocumentText as Text } from '../../../../../concepts/index.js';
 import type { BoundaryEntry } from '../../server/boundaryMap';
 import { highlightTypeScriptLines } from './highlightTypeScript';
@@ -51,9 +52,9 @@ export function ConceptDetails({ conceptId, selected = '', onNavigate, showTitle
     {!concept && !error && <p role="status">Loading concept…</p>}
     {concept && <>
       {showTitle && <h1 className="text-2xl font-semibold">{concept.name}</h1>}
-      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-500" aria-label="Document metadata">
+      <div className="mt-2 text-xs text-neutral-500" aria-label="Document metadata">
         <span>{concept.documentKind === 'concept' ? (concept.kind ?? 'concept').replaceAll('-', ' ') : concept.documentKind.replaceAll('-', ' ')}</span>
-        <span>App areas: {concept.areas.length ? concept.areas.map((area, index) => <span key={area.id}>{index ? ', ' : ''}{conceptLink(area.id, area.name)}</span>) : 'General'}</span>
+        <DocumentAreas areas={concept.kind === 'app-area' ? [{ id: concept.id, name: concept.name }] : concept.areas} runId={runId} onNavigate={onNavigate} />
       </div>
       {concept.provenance === 'current-fallback' && <p className="mt-2 text-xs text-amber-700">Current documentation · this older run has no captured document catalog.</p>}
       {concept.provenance === 'current-code' && <p className="mt-2 text-xs text-amber-700">Current checkout code · refreshed independently of this run’s captured documentation.</p>}
