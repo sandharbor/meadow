@@ -10,14 +10,20 @@ QUICKCHECK_TIMEOUT="${QUICKCHECK_TIMEOUT:-120}"
 if [ -z "$QUICKCHECK_WATCHDOG" ]; then
     export QUICKCHECK_WATCHDOG=$$
     (
-        sleep "$QUICKCHECK_TIMEOUT"
+        # Wait on a child so TERM can interrupt the wait and clean up the timer.
+        # Killing a shell blocked in a foreground sleep leaves that sleep alive,
+        # keeping captured stdout/stderr open after quickcheck has already exited.
+        sleep "$QUICKCHECK_TIMEOUT" &
+        TIMER_PID=$!
+        trap 'kill "$TIMER_PID" 2>/dev/null; wait "$TIMER_PID" 2>/dev/null; exit 0' TERM INT
+        wait "$TIMER_PID" || exit 0
         echo ""
         echo "❌ quickcheck exceeded ${QUICKCHECK_TIMEOUT}s timeout — killing."
-        kill -TERM -- -$QUICKCHECK_WATCHDOG 2>/dev/null
+        kill -TERM -- -"$QUICKCHECK_WATCHDOG" 2>/dev/null
     ) &
     WATCHDOG_PID=$!
-    # Kill the watchdog when we exit (success or failure)
-    trap "kill $WATCHDOG_PID 2>/dev/null" EXIT
+    # Reap both the watchdog and its timer on success or failure.
+    trap 'kill "$WATCHDOG_PID" 2>/dev/null; wait "$WATCHDOG_PID" 2>/dev/null' EXIT
 fi
 
 # Parse flags
@@ -95,6 +101,7 @@ fi
 
 echo "🔍 Checking for unexpected dist directories..."
 node --test "$REPO_ROOT/_module/tests/check-dist-directories.test.mjs" \
+    "$REPO_ROOT/_module/tests/quickcheck-watchdog.test.mjs" \
     || echo_and_exit "❌ Dist-directory policy tests failed."
 check_dist_directories \
     || echo_and_exit "❌ Dist-directory policy failed."
