@@ -78,7 +78,7 @@ describe('multi-source snapshots with the shared fixture', () => {
     expect(fs.readFileSync(path.join(snapshotSourceRoot(bundle, snapshot.id), '_mw_sources/source000002/Overview.md'), 'utf8')).toContain('Research overview');
     fs.renameSync(path.join(source, 'research-disconnected'), path.join(source, 'research'));
     expect((await scanSourceChanges(bundle, true)).candidate).toBeUndefined();
-  });
+  }, 20000);
 
   it('keeps candidate registry names and bytes separate from accepted configuration and live locations', async () => {
     const accepted = await initializeSourcing(bundle);

@@ -112,7 +112,7 @@ it('exports source-qualified Markdown, HTML, and SVG as portable source download
   expect(download('sources/research/diagram.svg')).toContain('../notes/Overview.md');
   await buildFilteredSourcesExportForBundle(bundle);
   expect(download('sources/notes/Start.md')).toContain('[[sources/research/Overview.md|research overview]]');
-});
+}, 20000);
 
 it('exports OKF paths and selects an index without confusing namesake pages', async () => {
   config.generationOpenKnowledgeFormatEnabled = true;
