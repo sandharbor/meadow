@@ -44,7 +44,7 @@ export const bundleSource = define({
 });
 
 export const sourceSnapshot = define({
-  id: id.sourceSnapshot, name: 'Source Snapshot', kind: 'artifact', searchFacet: true, appAreaIds: [id.bundleSourcing],
+  id: id.sourceSnapshot, name: 'Source Snapshot', kind: 'artifact', searchFacet: true, appAreaIds: [id.bundleSourcing, id.bundleCuration, id.bundleGeneration],
   definition: text`An immutable capture of source files, assets, and graph context that a bundle can accept as its source material.`,
   mechanics: [
     text`Initial capture records available source material without tracking candidate pages beyond the bundle’s required starting configuration. Later admitted additions also start untracked. Users inspect them with the Untracked filter and track selected pages through the same controls as curation; acceptance commits only explicit tracking choices with the snapshot. Source acceptance includes sensitive pages; curation owns the decision to track them. Source review can show curation’s assessment of direct and filter-derived sensitivity. Existing untracked or blacklisted pages retain their separate curation decisions. Rejected rename destinations are new pages and start untracked.`,

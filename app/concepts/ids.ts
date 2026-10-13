@@ -15,6 +15,7 @@ limitations under the License.
 */
 
 export const coreConceptIds = {
+  areaBoundaryMap: "area-boundary-map",
   bundleNodeKey: "bundle-node-key",
   bundleNodeId: "bundle-node-id",
   frontierPendingSources: "frontier-pending-sources",

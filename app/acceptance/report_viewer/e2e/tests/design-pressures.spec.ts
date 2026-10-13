@@ -37,10 +37,13 @@ test('captured documents connect pressure, area, prose, backlinks and explicit s
   try {
     await page.goto(`/${runId}?view=details&surface=browser`);
     const row = page.getByRole('region', { name: 'Design pressures', exact: true });
+    await expect(row).toBeHidden();
+    await page.getByText('Browse docs', { exact: true }).click();
+    await page.getByRole('tab', { name: 'Design pressures', exact: true }).click();
     for (const status of ['passed', 'failed', 'skipped']) await expect(row).toContainText(`1 ${status}`);
     await expect(row).toContainText('1 declared, not run');
     const originalUrl = page.url();
-    await page.getByText('Browse documents by app area', { exact: true }).click();
+    await page.getByRole('tab', { name: 'App areas', exact: true }).click();
     const sourcing = page.getByRole('region', { name: 'Bundle Sourcing documents', exact: true });
     const curation = page.getByRole('region', { name: 'Bundle Curation documents', exact: true });
     await expect(sourcing.getByRole('button', { name: 'Proposal Tracking Sensitivity', exact: true })).toBeVisible();
@@ -48,7 +51,7 @@ test('captured documents connect pressure, area, prose, backlinks and explicit s
     await expect(curation.getByRole('button', { name: 'Captured sensitive page', exact: true })).toBeVisible();
     await expect(sourcing.getByRole('button', { name: 'Captured sensitive page', exact: true })).toHaveCount(0);
     await expect(sourcing.getByRole('button', { name: 'Source Review Workspace', exact: true }).locator('..')).toContainText('(workflow sub-area)');
-    await page.getByText('Browse documents by app area', { exact: true }).click();
+    await page.getByRole('tab', { name: 'Design pressures', exact: true }).click();
     await row.getByRole('button', { name: pressureName, exact: true }).click();
     const panel = page.getByRole('dialog', { name: 'Floating concept details', exact: true });
     await expect(panel.getByRole('heading', { name: pressureName, exact: true })).toBeVisible();
@@ -77,6 +80,8 @@ test('captured documents connect pressure, area, prose, backlinks and explicit s
     await expect(page.getByRole('article', { name: 'Example incidental', exact: true })).toHaveCount(0);
     await expect(page.getByRole('article', { name: 'Example passed', exact: true })).toBeVisible();
     await page.reload();
+    await page.getByText('Browse docs', { exact: true }).click();
+    await page.getByRole('tab', { name: 'Design pressures', exact: true }).click();
     await expect(row.getByRole('button', { name: 'Select scenarios (3)', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await row.getByRole('button', { name: pressureName, exact: true }).click();
     await panel.getByRole('link', { name: /Select related scenarios/ }).click();

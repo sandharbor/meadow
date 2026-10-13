@@ -46,7 +46,7 @@ export function extractConceptImplementations(sources: ImplementationSource[], a
     }
     const declarations = new Map<string, ts.Node>();
     for (const statement of ast.statements) {
-      if ((ts.isFunctionDeclaration(statement) || ts.isClassDeclaration(statement) || ts.isInterfaceDeclaration(statement)) && statement.name) declarations.set(statement.name.text, statement);
+      if ((ts.isFunctionDeclaration(statement) || ts.isClassDeclaration(statement) || ts.isInterfaceDeclaration(statement) || ts.isTypeAliasDeclaration(statement)) && statement.name) declarations.set(statement.name.text, statement);
       if (ts.isVariableStatement(statement)) for (const item of statement.declarationList.declarations) if (ts.isIdentifier(item.name)) declarations.set(item.name.text, item);
     }
     const visit = (node: ts.Node, inline = false) => {

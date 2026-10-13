@@ -100,7 +100,7 @@ export default function ConceptExplorer({ concept: selected, selectedConceptIds,
     const parsed = parseScenarioFilterExpression(mix);
     if (parsed.expression) relatedParams.set('mix', formatScenarioFilterExpression(addScenarioFilterTerm(parsed.expression, section, location.id)));
   } else if (!relatedParams.getAll(section).includes(location.id)) relatedParams.append(section, location.id);
-  const selectRelated = scenario && <Link to={`/${scenario.runId}?${relatedParams}`} className="inline-flex cursor-pointer items-center gap-2 rounded border border-brand-200 px-2 py-1 text-xs font-medium text-brand-600 hover:bg-brand-50">
+  const selectRelated = scenario && documentKind !== 'code-boundary' && <Link to={`/${scenario.runId}?${relatedParams}`} className="inline-flex cursor-pointer items-center gap-2 rounded border border-brand-200 px-2 py-1 text-xs font-medium text-brand-600 hover:bg-brand-50">
     Select related scenarios <span className="rounded-full bg-brand-100 px-1.5 py-0.5 tabular-nums" aria-label={relatedCount === null ? 'Loading related scenarios' : `${relatedCount} related scenarios`}>{relatedCount ?? '…'}</span>
   </Link>;
   const openPage = <Link to={documentUrl(location.id, runId, location.implementation)}

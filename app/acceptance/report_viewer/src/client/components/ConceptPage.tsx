@@ -5,12 +5,13 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import DocumentText, { documentUrl } from './DocumentText';
 import DocumentScenarios from './DocumentScenarios';
 import type { DocumentSection, DocumentBacklink, DocumentKind, DocumentText as Text } from '../../../../../concepts/index.js';
+import type { BoundaryEntry } from '../../server/boundaryMap';
 import { highlightTypeScriptLines } from './highlightTypeScript';
 import type { ConceptImplementation } from '../../../../e2e/src/artifacts/conceptImplementations.js';
 import type { AcceptanceConceptView, conceptImplementationNavigation, ParticipatesIn } from '../../../../../concepts/index.js';
 
 type ConceptDetail = AcceptanceConceptView & {
-  documentKind: DocumentKind; descriptionText: Text; sections: DocumentSection[]; areas: { id: string; name: string }[];
+  code?: BoundaryEntry; documentKind: DocumentKind; descriptionText: Text; sections: DocumentSection[]; areas: { id: string; name: string }[];
   backlinks: DocumentBacklink[]; provenance: string; capturedAt?: string; related: { id: string; name: string }[]; implementations: ConceptImplementation[];
 };
 
@@ -55,6 +56,7 @@ export function ConceptDetails({ conceptId, selected = '', onNavigate, showTitle
         <span>App areas: {concept.areas.length ? concept.areas.map((area, index) => <span key={area.id}>{index ? ', ' : ''}{conceptLink(area.id, area.name)}</span>) : 'General'}</span>
       </div>
       {concept.provenance === 'current-fallback' && <p className="mt-2 text-xs text-amber-700">Current documentation · this older run has no captured document catalog.</p>}
+      {concept.provenance === 'current-code' && <p className="mt-2 text-xs text-amber-700">Current checkout code · refreshed independently of this run’s captured documentation.</p>}
       {concept.provenance === 'captured' && <p className="mt-2 text-xs text-neutral-500">Documentation captured with this run.</p>}
       <p className="mt-3 max-w-4xl whitespace-pre-line"><DocumentText text={concept.descriptionText} runId={runId} onNavigate={onNavigate} /></p>
       {concept.sections.map(section => <section key={section.id} aria-label={section.heading} className="my-4 max-w-4xl">
@@ -63,7 +65,16 @@ export function ConceptDetails({ conceptId, selected = '', onNavigate, showTitle
           ? <p key={index} className="whitespace-pre-line"><DocumentText text={block.text} runId={runId} onNavigate={onNavigate} /></p>
           : <ul key={index} className="list-disc space-y-2 pl-5">{block.items.map((item, itemIndex) => <li key={itemIndex}><DocumentText text={item} runId={runId} onNavigate={onNavigate} /></li>)}</ul>)}
       </section>)}
-      {runId && <DocumentScenarios runId={runId} documentId={concept.id} />}
+      {concept.code && <>
+        <section aria-label="Declaration" className="my-4"><h2 className="mb-2 font-semibold">Declaration</h2>
+          <pre className="max-h-80 overflow-auto rounded border bg-neutral-50 p-3 text-xs">{highlightTypeScriptLines(concept.code.declaration, concept.code.file).map((html, index) => <span key={index} className="block" dangerouslySetInnerHTML={{ __html: html || ' ' }} />)}</pre>
+        </section>
+        <section aria-label="Code consumers" className="my-4"><h2 className="mb-2 font-semibold">Current consumers ({concept.code.consumers.length})</h2>
+          <p className="mb-2 text-xs text-neutral-500">Shared dependencies include indirect references through other shared declarations. Runtime values are declarations, not a trace of persisted data reads and writes.</p>
+          {concept.code.consumers.length ? <ul className="space-y-1 text-xs">{concept.code.consumers.map(use => <li key={`${use.file}:${use.line}`}>{use.area} · {use.file}:{use.line}</li>)}</ul> : <p className="text-xs">No current consumers found; the public API remains available to its named caller.</p>}
+        </section>
+      </>}
+      {runId && !concept.code && <DocumentScenarios runId={runId} documentId={concept.id} />}
       {concept.backlinks.length > 0 && <section aria-label="Referenced by" className="my-4 border-t pt-3">
         <h2 className="font-semibold">Referenced by</h2>
         <ul className="space-y-3">{concept.backlinks.map((link, index) => <li key={index}>
@@ -80,7 +91,7 @@ export function ConceptDetails({ conceptId, selected = '', onNavigate, showTitle
           const query = new window.URLSearchParams({ file: entry.file, line: String(entry.line), role: entry.role });
           return <li className="break-words" key={`${entry.file}:${entry.line}:${entry.role}`}>{conceptLink(concept.id, `${entry.role} · ${entry.symbol} · ${entry.file}:${entry.line}`, query.toString())}</li>;
         })}</ul>
-      </section> : <p className="my-3 text-xs text-neutral-500">No implementation declared.</p>}
+      </section> : !concept.code && <p className="my-3 text-xs text-neutral-500">No implementation declared.</p>}
       {implementation && <section aria-label="Implementation source" className="my-5">
         <h2 className="font-semibold">{implementation.symbol}</h2>
         <p className="mb-3 text-sm">{implementation.file}:{implementation.line} · {implementation.role}</p>

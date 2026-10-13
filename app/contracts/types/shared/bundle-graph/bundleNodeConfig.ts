@@ -78,3 +78,8 @@ export type BundleNodeKind = BundleNodeConfig['bundleNodeKind'];
 export interface BundleNodeConfigDocument {
   nodes: BundleNodeConfig[];
 }
+
+import type { bundleNodeId, ParticipatesIn } from '../../../../concepts/index.js';
+export type BundleNodeIdentityMeadowConceptParticipations = [
+  ParticipatesIn<typeof bundleNodeId, 'declare-identity', BundleNodeId>,
+];

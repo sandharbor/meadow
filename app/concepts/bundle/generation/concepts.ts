@@ -112,7 +112,7 @@ export const versioning = define({
 export const generationRecord = define({
   id: id.generationRecord, name: "Generation Record", aliases: ["Generated Output Identity"], kind: "artifact", searchFacet: false,
   appAreaIds: [id.bundleGeneration, id.bundleReview],
-  implementationRoles: ["record", "classify", "pair"] as const,
+  implementationRoles: ["record", "classify", "pair", "declare-input", "declare-output"] as const,
   definition: text`Local metadata pairing one generated result with the accepted inputs it captured and the logical identity of each file it emitted.`,
   mechanics: [
     text`Every generation entry point captures the accepted source snapshot and generation-affecting configuration, records the actual final writer of each source-backed output, and binds the record to a fingerprint of the generated files' relative paths and bytes. A content-addressed generation ID distinguishes identical output generated from different inputs.`,

@@ -24,6 +24,7 @@ export const bundleNodeKey = defineMeadowConcept({
 export const bundleNodeId = defineMeadowConcept({
   id: coreConceptIds.bundleNodeId,
   name: 'Bundle Node ID',
+  implementationRoles: ['declare-identity'] as const,
   kind: 'entity',
   searchFacet: false,
   appAreaIds: [coreConceptIds.bundleSourcing, coreConceptIds.bundleCuration, coreConceptIds.bundleGeneration],

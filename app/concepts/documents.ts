@@ -12,7 +12,7 @@ export interface DocumentSection<Id extends string = string> {
   readonly heading: string;
   readonly blocks: readonly DocumentBlock<Id>[];
 }
-export type DocumentKind = 'concept' | 'design-pressure' | 'fixture' | 'scenario';
+export type DocumentKind = 'concept' | 'design-pressure' | 'fixture' | 'scenario' | 'code-boundary';
 
 /** Common reading surface. Each authoring schema keeps its own required fields. */
 export interface MeadowDocument<Id extends string = string, KnownId extends string = string> {
@@ -86,7 +86,7 @@ export function relatedDocumentIds(document: MeadowDocument, documents: readonly
 }
 
 const requiredSections: Record<DocumentKind, readonly string[]> = {
-  concept: ['mechanics', 'interplay'], 'design-pressure': ['motivation', 'response', 'tradeoffs'], fixture: [], scenario: [],
+  concept: ['mechanics', 'interplay'], 'design-pressure': ['motivation', 'response', 'tradeoffs'], fixture: [], scenario: [], 'code-boundary': [],
 };
 
 export function validateDocuments(documents: readonly MeadowDocument[]): string[] {

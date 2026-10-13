@@ -51,4 +51,18 @@ export const conceptRoleValidation = define({
   interplay: text`${link(id.conceptImplementationNavigation, 'Concept Implementation Navigation')} uses validated pairings for reverse links, completing the concept-to-code and code-to-concept connection.`,
 });
 
-export const proposedReviewToolingConcepts = [sourcingReviewRedesign, checkpointViewRestoration, conceptImplementationNavigation, conceptRoleValidation] as const;
+export const areaBoundaryMap = define({
+  id: id.areaBoundaryMap, name: 'Area Boundary Map', kind: 'capability', searchFacet: false,
+  implementationRoles: ['read-boundaries', 'describe-code', 'render-map'] as const,
+  definition: text`A documentation view of the public interfaces and shared declarations connecting Sourcing, Curation, Generation, Review, and Sharing.`,
+  mechanics: [
+    text`Public API entries come from explicit exported.ts declarations and identify both the providing area and the permitted caller. Bundles and App Shell remain named participants outside the five lifecycle lanes.`,
+    text`Shared types, runtime values, and capabilities appear only when resolved symbol references connect multiple lifecycle areas. Import aliases and dependencies between shared declarations retain their original symbol identity. Shared Sourcing and Curation participates in both editor areas.`,
+    text`Data and artifact lanes link to canonical concept documents, whose declared area associations explain the durable information flowing between areas. Runtime value declarations do not claim to trace persisted reads and writes.`,
+    text`Code reference pages expose current declarations and consumer locations. Higher-level explanations link to stable concept identities through checked, inline participation declarations. Concepts can have several implementing symbols across files; moving those symbols does not change the concept link.`,
+    text`The map reads the current checkout independently of captured run documentation. Refresh rereads the checkout; reference pages briefly reuse that index; historical prose stays associated with its original recording.`,
+  ],
+  interplay: text`${link(id.bundle, 'Bundle areas')} define the narrow-interface policy. ${link(id.conceptImplementationNavigation, 'Concept Implementation Navigation')} connects stable ideas to current code; ${link(id.sourceSnapshot, 'Source Snapshots')} and ${link(id.generationRecord, 'Generation Records')} illustrate durable data boundaries.`,
+});
+
+export const proposedReviewToolingConcepts = [sourcingReviewRedesign, checkpointViewRestoration, conceptImplementationNavigation, conceptRoleValidation, areaBoundaryMap] as const;

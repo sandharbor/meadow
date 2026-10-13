@@ -29,6 +29,8 @@ import HealthGraph from './HealthGraph.tsx'
 import { scenarioDocumentMembership } from '../../../../../concepts/scenarioMembership.ts';
 import { useScenarioConceptDetails } from './ScenarioConceptDetails.tsx';
 import type { DeclaredScenarioDocuments } from '../../../../e2e/src/artifacts/documentSnapshot.ts';
+import BoundaryMap from './BoundaryMap.tsx'
+import DocumentBrowser, { type BrowseDocument } from './DocumentBrowser.tsx'
 import ConceptExplorer from './ConceptExplorer.tsx'
 import { ScenarioText } from './ScenarioText.tsx'
 import type { ConceptText } from '../../../../../concepts/types.js'
@@ -305,6 +307,7 @@ export default function RunDetail() {
   }
   const [healthMap, setHealthMap] = useState<Record<string, HealthSummary>>({})
   const { openConcept, details: documentDetails } = useScenarioConceptDetails(runId)
+  const [documentCatalog, setDocumentCatalog] = useState<BrowseDocument[]>([])
   const [pressures, setPressures] = useState<ConceptView[]>([])
   const [declaredScenarios, setDeclaredScenarios] = useState<DeclaredScenarioDocuments[] | undefined>()
   const [documentProvenance, setDocumentProvenance] = useState('')
@@ -510,7 +513,7 @@ export default function RunDetail() {
     setDocumentError('')
     fetch(`/api/documents?run=${encodeURIComponent(runId ?? '')}`)
       .then(async response => { if (!response.ok) throw new Error('Could not read the document catalog for this run.'); return response.json() })
-      .then(catalog => { setPressures(catalog.documents.filter((document: ConceptView) => document.documentKind === 'design-pressure')); setDeclaredScenarios(catalog.scenarios); setDocumentProvenance(catalog.provenance) })
+      .then(catalog => { setDocumentCatalog(catalog.documents); setPressures(catalog.documents.filter((document: ConceptView) => document.documentKind === 'design-pressure')); setDeclaredScenarios(catalog.scenarios); setDocumentProvenance(catalog.provenance) })
       .catch(error => setDocumentError(String(error)))
   }, [runId])
 
@@ -690,7 +693,8 @@ export default function RunDetail() {
     <div className="mx-auto px-6 py-3 max-w-[90vw]" style={conceptSidebarWidth ? { marginRight: conceptSidebarWidth, maxWidth: 'none' } : undefined}>
       {documentDetails}
       {documentError && <p role="alert" className="mb-2 text-sm text-red-700">{documentError}</p>}
-      {pressures.length > 0 && <section aria-label="Design pressures" className="mb-3 rounded-md border border-violet-200 bg-violet-50 px-3 py-2">
+      <DocumentBrowser documents={documentCatalog} areas={appAreas} openDocument={openConcept} pressures={
+        pressures.length > 0 && <section aria-label="Design pressures" className="mb-3 rounded-md border border-violet-200 bg-violet-50 px-3 py-2">
         <div className="flex flex-wrap items-center gap-2"><span className="text-xs font-semibold text-violet-800">Design pressures:</span>
           {pressures.map(pressure => {
             const related = data.scenarios.filter(scenario => scenario.designPressureIds?.includes(pressure.id))
@@ -706,15 +710,9 @@ export default function RunDetail() {
           })}
         </div>
         {documentProvenance === 'current-fallback' && <p className="mt-1 text-xs text-neutral-500">Current documentation · this older run did not capture design-pressure associations.</p>}
-      </section>}
-      <details className="mb-3 rounded border border-neutral-200 px-3 py-2 text-sm">
-        <summary className="cursor-pointer font-medium">Browse documents by app area</summary>
-        {[...appAreas, { id: '', name: 'General and cross-cutting' }].map(area => <section key={area.id} className="mt-3" aria-label={`${area.name} documents`}>
-          <h3 className="font-medium">{area.id ? <button className="text-brand-600 underline" onClick={() => openConcept(area)}>{area.name}</button> : area.name}</h3>
-          <div className="mt-1 flex flex-wrap gap-x-4 gap-y-2">{allDocs.filter(doc => doc.kind !== 'app-area' && (area.id ? doc.appAreaIds?.includes(area.id) : !doc.appAreaIds?.length || doc.appAreaIds.length > 1))
-            .map(doc => <span key={doc.id} className="text-xs"><button className="text-brand-600 underline" onClick={() => openConcept(doc)}>{doc.name}</button>{doc.subAreas?.some(entry => entry.areaId === area.id) && <span className="ml-1 text-neutral-500">(workflow sub-area)</span>}</span>)}</div>
-        </section>)}
-      </details>
+      </section>
+      } />
+      <BoundaryMap documents={documentCatalog} openDocument={openConcept} />
       {(reviews.data.reviews.length > 0 || reviewMode) && <section aria-label="To review" className="mb-2 flex flex-wrap items-center gap-2 rounded-md bg-violet-50 px-3 py-2 text-xs">
         <span className="font-semibold text-neutral-600">To review:</span>
         {(['', 'incomplete', 'completed', 'logs'] as const).map(mode => <button key={mode} aria-pressed={(reviewMode ?? '') === mode}

@@ -51,6 +51,8 @@ import {
   FIXTURE_TEST_SLUG,
 } from "./fixture-scenario/index.ts";
 
+import { readBoundaryMap, boundaryDocument } from './boundaryMap.ts';
+
 const documentRegistry = await loadDocumentRegistry();
 
 const ARTIFACTS_ROOT = path.join(os.homedir(), "meadow-e2e-artifacts");
@@ -378,15 +380,31 @@ app.get('/api/concepts', (req, res) => {
 });
 
 const conceptAppRoot = path.resolve(import.meta.dirname, '../../../..');
+let boundaryCache: ReturnType<typeof readBoundaryMap> | undefined;
+let boundaryCacheTime = 0;
+function currentBoundaries(refresh = false) {
+  if (refresh || !boundaryCache || Date.now() - boundaryCacheTime > 30_000) {
+    boundaryCache = readBoundaryMap(conceptAppRoot);
+    boundaryCacheTime = Date.now();
+  }
+  return boundaryCache;
+}
+app.get('/api/boundaries', (_req, res) => {
+  try { res.json(currentBoundaries(true)); }
+  catch (error) { res.status(500).json({ error: String(error) }); }
+});
 app.get('/api/concepts/:conceptId', (req, res) => {
   try {
     const catalog = reportDocuments(req.query.run);
-    const document = catalog.documents.find(value => value.id === req.params.conceptId);
+    const code = req.params.conceptId.startsWith('code-boundary/') ? currentBoundaries().entries.find(entry => entry.id === req.params.conceptId) : undefined;
+    const implementations = readConceptImplementations(conceptAppRoot);
+    const linkedIds = code ? new Set(implementations.entries.filter(entry => entry.file === code.implementationFile && (entry.symbol === code.implementationSymbol || entry.symbol.startsWith(`${code.implementationSymbol}.`))).map(entry => entry.conceptId)) : new Set<string>();
+    const explanations = catalog.documents.filter(doc => linkedIds.has(doc.id)).map(doc => ({ id: doc.id, name: doc.name }));
+    const document = code ? boundaryDocument(code, explanations) : catalog.documents.find(value => value.id === req.params.conceptId);
     if (!document) return res.status(404).json({ error: 'Document not found' });
     const reference = (id: string) => ({ id, name: catalog.documents.find(value => value.id === id)?.name ?? id });
-    const implementations = readConceptImplementations(conceptAppRoot);
     if (implementations.errors.length) return res.status(500).json({ error: implementations.errors.join('\n') });
-    return res.json({ ...acceptanceDocumentView(document), provenance: catalog.provenance, capturedAt: catalog.capturedAt,
+    return res.json({ ...acceptanceDocumentView(document), provenance: code ? 'current-code' : catalog.provenance, capturedAt: code ? undefined : catalog.capturedAt, code,
       areas: (document.appAreaIds ?? []).map(reference), backlinks: documentBacklinks(document.id, catalog.documents),
       related: relatedDocumentIds(document, catalog.documents).map(reference),
       implementations: implementations.entries.filter(entry => entry.conceptId === document.id) });

@@ -200,3 +200,23 @@ legacy pressure associations stay distinct from explicit empty associations.
 Older runs without a catalog use a visibly identified current-documentation
 fallback. Corrupt captures report an error. Implementation navigation is labelled
 Current code and always checks the current inline participation locations.
+
+## Area boundary map
+
+The report viewer's closed Area boundaries disclosure reads current public exports
+and shared symbol usage through the same ownership policy as the boundary checks.
+It presents five lifecycle lanes, with separate groups for APIs, types, documented
+data and artifacts, runtime values, and shared capabilities. Shared declarations
+appear only when used across multiple lifecycle areas; aliases and transitive
+shared declaration dependencies resolve to their original symbols. Bundles and
+App Shell are shown as additional named participants. Category disclosures keep
+large shared directories manageable, and search narrows the map.
+
+Code reference documents are generated current-code details, not canonical ideas
+or captured run metadata. Their path-based identities may change when code moves.
+Use the linked concept document's stable ID to discuss and link a higher-level
+idea. Inline participations connect concepts to several implementation locations,
+including contract interfaces and type aliases. Current reference pages show
+those higher-level explanations alongside declarations and consumer locations.
+The document browser nests Design pressures beside App areas and All documents;
+its compact search includes descriptions, aliases, and complete section text.

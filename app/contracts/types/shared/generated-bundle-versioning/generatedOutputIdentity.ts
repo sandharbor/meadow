@@ -66,3 +66,9 @@ export type GenerationRecordState =
   | { kind: 'legacy' }
   | { kind: 'unsupported'; diagnostic: string }
   | { kind: 'corrupt'; diagnostic: string };
+
+import type { generationRecord, ParticipatesIn } from '../../../../concepts/index.js';
+export type GenerationRecordContractsMeadowConceptParticipations = [
+  ParticipatesIn<typeof generationRecord, 'declare-input', GenerationInputRecord>,
+  ParticipatesIn<typeof generationRecord, 'declare-output', GenerationOutputRecord>,
+];

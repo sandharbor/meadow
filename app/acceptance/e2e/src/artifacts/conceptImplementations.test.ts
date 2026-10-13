@@ -36,3 +36,11 @@ test('rejects participation outside the named inline declaration', () => {
   files[0].text = files[0].text.replace('RealMeadowConceptParticipations', 'Unrelated');
   assert.match(read(files).errors.join('\n'), /inline MeadowConceptParticipations/);
 });
+
+test('type aliases link a stable concept to an exact contract declaration', () => {
+  const files = source('P<typeof idea, "capture", ImplementedContract>');
+  files[0].text = files[0].text.replace('export function implement() { return <div />; }', 'export type ImplementedContract = string & { readonly brand: true };');
+  const result = read(files);
+  assert.deepEqual(result.errors, []);
+  assert.deepEqual(result.entries, [{ conceptId: 'first', role: 'capture', symbol: 'ImplementedContract', file: 'service/implementation.tsx', line: 2, column: 1 }]);
+});
