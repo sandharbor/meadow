@@ -986,8 +986,9 @@ fn main() -> anyhow::Result<()> {
             ..diagnostic.clone()
         })
         .collect();
+    let mut output = std::io::BufWriter::with_capacity(1 << 20, std::io::stdout().lock());
     serde_json::to_writer(
-        std::io::stdout().lock(),
+        &mut output,
         &OutputGraph {
             keyEncodingVersion: 1,
             sourceDiagnostics: source_diagnostics,
@@ -999,5 +1000,7 @@ fn main() -> anyhow::Result<()> {
             folderScope: folder_scope,
         },
     )?;
-    Ok(())
+    std::io::Write::flush(&mut output)?;
+    // The output is complete; freeing the large source index adds measurable time to every run.
+    std::process::exit(0)
 }
