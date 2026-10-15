@@ -275,16 +275,34 @@ export function bundleNodeLocatorKey(node: BundleNodeLocatorInput): string {
   return 'collection';
 }
 
+// Large bundles parse the same document many times per request. Parsing depends
+// on the content alone; callers receive their own copy of the cached result.
+const parsedDocuments = new Map<string, BundleNodeConfig[]>();
+
 export function parseBundleNodeConfig(
   content: string,
   filePath = 'bundle_node_config.yaml',
 ): BundleNodeConfig[] {
+  const cached = parsedDocuments.get(content);
+  if (cached) return globalThis.structuredClone(cached);
   let parsed: unknown;
   try {
     parsed = YAML.parse(content);
   } catch (error) {
     fail(filePath, null, 'yaml', `must be valid YAML (${error instanceof Error ? error.message : String(error)})`);
   }
+  const nodes = parseBundleNodeConfigDocument(parsed, filePath);
+  parsedDocuments.set(content, globalThis.structuredClone(nodes));
+  while (parsedDocuments.size > 4) parsedDocuments.delete(parsedDocuments.keys().next().value!);
+  return nodes;
+}
+
+/** Validate in-memory node records exactly as their serialized JSON document would be parsed. */
+export function parseBundleNodeConfigRecords(nodes: unknown, filePath = 'bundle_node_config.yaml'): BundleNodeConfig[] {
+  return parseBundleNodeConfigDocument(JSON.parse(JSON.stringify({ nodes })) as unknown, filePath);
+}
+
+function parseBundleNodeConfigDocument(parsed: unknown, filePath: string): BundleNodeConfig[] {
   if (!isRecord(parsed)) fail(filePath, null, 'document', 'must be a mapping with a nodes array');
   for (const field of Object.keys(parsed)) {
     if (!canonicalDocumentFields.has(field)) {

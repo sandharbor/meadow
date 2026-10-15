@@ -549,6 +549,17 @@ fn main() -> anyhow::Result<()> {
             _ => {}
         }
     }
+    // Each lookup below runs once per traversed node; index configuration keys once.
+    // The first configuration for a key wins, as a linear search would choose.
+    let mut configs_by_key: HashMap<String, &BundleNodeConfig> = HashMap::new();
+    let mut file_configs_by_key: HashMap<String, &BundleNodeConfig> = HashMap::new();
+    for config in &configs {
+        let key = config.bundle_node_key();
+        if matches!(config, BundleNodeConfig::File { .. }) {
+            file_configs_by_key.entry(key.clone()).or_insert(config);
+        }
+        configs_by_key.entry(key).or_insert(config);
+    }
     let mut structural_nodes = Vec::new();
     let mut structural_edges = Vec::new();
     let mut seed_paths = HashMap::new();
@@ -745,9 +756,7 @@ fn main() -> anyhow::Result<()> {
             {
                 continue;
             }
-            let config = configs
-                .iter()
-                .find(|config| config.bundle_node_key() == logical_path(&node.file.path));
+            let config = configs_by_key.get(&logical_path(&node.file.path)).copied();
             if node.inclusion == Inclusion::EmbeddedAsset
                 || config.is_some_and(|config| config.list_type() == "blacklist")
             {
@@ -780,9 +789,7 @@ fn main() -> anyhow::Result<()> {
         let file = &by_physical[&node.file.path];
         let key = logical(file);
         let source_parts = registry.parts(&file.directory);
-        let config = configs.iter().find(|config| {
-            matches!(config, BundleNodeConfig::File { .. }) && config.bundle_node_key() == key
-        });
+        let config = file_configs_by_key.get(&key).copied();
         let adapt_route =
             |route: &[linkrange::RouteStep]| -> anyhow::Result<Vec<OutputTraversalStep>> {
                 let mut steps = Vec::new();

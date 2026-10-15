@@ -5,7 +5,7 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
 import type { PendingSourceProposal, ProposalConfiguration } from '../../../../../../../contracts/types/shared/sourcing/sourcingProposal.js';
-import { parseBundleNodeConfig, validateCanonicalBundleConfiguration } from '../../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
+import { parseBundleNodeConfigRecords, validateCanonicalBundleConfiguration } from '../../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 import { bundleCustomFiltersCodec, globalCustomFiltersCodec } from '../../../../../../../shared_code/utils/configDocumentCodecs.js';
 import { loadGlobalCustomFilters } from '../../../../../../../shared_code/utils/globalCustomFiltersUtils.js';
 import { loadAppConfig } from '../../../../../../../shared_code/utils/appConfigUtils.js';
@@ -37,7 +37,7 @@ export function validateProposalConfiguration(value: unknown): asserts value is 
     || !Array.isArray(value.deletedDefaultFilterIds) || value.deletedDefaultFilterIds.some(id => typeof id !== 'string')) {
     throw new SourcingError('Invalid proposal configuration', 400);
   }
-  const nodes = parseBundleNodeConfig(JSON.stringify({ nodes: value.nodes }));
+  const nodes = parseBundleNodeConfigRecords(value.nodes);
   validateCanonicalBundleConfiguration({ bundleConfig: value.bundle, committedNodes: nodes });
   for (const [scope, codec] of [['bundle', bundleCustomFiltersCodec], ['global', globalCustomFiltersCodec]] as const) {
     const filters = value[`${scope}Filters`];

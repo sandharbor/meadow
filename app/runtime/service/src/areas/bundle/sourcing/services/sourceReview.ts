@@ -35,6 +35,11 @@ import {
   type SourceSnapshot,
 } from '../../../../shared/source-snapshot/sourceSnapshots.js';
 
+function lazy<T>(compute: () => T): () => T {
+  let value: { result: T } | undefined;
+  return () => (value ??= { result: compute() }).result;
+}
+
 export function findSourceMoves(bundleDirectory: string, previous: SourceSnapshot, current: SourceSnapshot, configs: BundleNodeConfig[]): SourceMoveCandidate[] {
   const configuredPaths = new Set(configs.map(node => snapshotFilePath(current, node)));
   // Existing unconfigured files also matter when importing a legacy tracked copy after a move.
@@ -68,21 +73,37 @@ export function findSourceMoves(bundleDirectory: string, previous: SourceSnapsho
     if (!prior || current.files[snapshotFilePath(current, node)]) continue;
     missingFiles.push({ node, oldPath, prior });
   }
-  // Parse each candidate once, then compare it with the missing pages. Keeping only
-  // the current candidate's blocks avoids retaining the entire source library.
+  const previousRoot = lazy(() => snapshotSourceRoot(bundleDirectory, previous.id, previous));
+  const currentRoot = lazy(() => snapshotSourceRoot(bundleDirectory, current.id, current));
+  const isText = (filename: string) => /\.(md|html|txt)$/i.test(filename);
+  // Content is the gating criterion: a pair is scored only when its files are identical
+  // or share a substantial block. Index the missing pages by both so each candidate
+  // is compared with those pages alone, in the order a full comparison would visit them.
+  const candidateExtensions = new Set(newPaths.filter(filename => current.files[filename].size > 0).map(filename => path.extname(filename).toLowerCase()));
+  const missingExtensions = new Set<string>();
+  const byDigest = new Map<string, number[]>();
+  const byBlock = new Map<string, number[]>();
+  missingFiles.forEach((missing, index) => {
+    // Empty contents provide no evidence that two pages share an identity.
+    if (missing.prior.size === 0 || !candidateExtensions.has(path.extname(missing.oldPath).toLowerCase())) return;
+    missingExtensions.add(path.extname(missing.oldPath).toLowerCase());
+    byDigest.set(missing.prior.digest, [...(byDigest.get(missing.prior.digest) ?? []), index]);
+    if (!isText(missing.oldPath)) return;
+    missing.profile = sourceTextProfile(fs.readFileSync(sourcePath(previousRoot(), missing.oldPath), 'utf8'));
+    for (const block of missing.profile.blocks.keys()) byBlock.set(block, [...byBlock.get(block) ?? [], index]);
+  });
   for (const newPath of newPaths) {
-    let candidateProfile: ReturnType<typeof sourceTextProfile> | undefined;
-    for (const missing of missingFiles) {
+    const file = current.files[newPath];
+    if (file.size === 0 || !missingExtensions.has(path.extname(newPath).toLowerCase())) continue;
+    const candidateProfile = isText(newPath) ? sourceTextProfile(fs.readFileSync(sourcePath(currentRoot(), newPath), 'utf8')) : undefined;
+    const related = new Set(byDigest.get(file.digest));
+    for (const block of candidateProfile?.blocks.keys() ?? []) for (const index of byBlock.get(block) ?? []) related.add(index);
+    for (const index of [...related].sort((a, b) => a - b)) {
+      const missing = missingFiles[index];
       const { node, oldPath, prior } = missing;
-      // Empty contents provide no evidence that two pages share an identity.
-      if (prior.size === 0 || current.files[newPath].size === 0) continue;
       if (path.extname(oldPath).toLowerCase() !== path.extname(newPath).toLowerCase()) continue;
-      const exact = prior.digest === current.files[newPath].digest;
-      if (/\.(md|html|txt)$/i.test(oldPath)) {
-        missing.profile ??= sourceTextProfile(fs.readFileSync(sourcePath(snapshotSourceRoot(bundleDirectory, previous.id, previous), oldPath), 'utf8'));
-        candidateProfile ??= sourceTextProfile(fs.readFileSync(sourcePath(snapshotSourceRoot(bundleDirectory, current.id, current), newPath), 'utf8'));
-        if (!missing.profile.length || !candidateProfile.length) continue;
-      }
+      const exact = prior.digest === file.digest;
+      if (isText(oldPath) && (!missing.profile!.length || !candidateProfile?.length)) continue;
       const similarity = sourceMoveSimilarity({ oldPath, newPath, exact, before: missing.profile, after: candidateProfile, previous, current });
       const content = similarity.criteria.find(criterion => criterion.id === (exact ? 'contents' : 'blocks'))!;
       if ((content.score ?? 0) < 0.45 || similarity.score < 0.5) continue;

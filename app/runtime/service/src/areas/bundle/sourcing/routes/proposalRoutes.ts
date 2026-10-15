@@ -13,11 +13,11 @@ import { chooseProposalAdditionTracking, chooseProposalIdentities, chooseProposa
 import { directory, handle } from './routeUtils.js';
 import { sourceProposalComparison } from '../services/proposalComparison.js';
 import { applyBlacklistEdit, undoBlacklistEdit } from '../services/blacklistReview.js';
-import { parseBundleNodeConfig } from '../../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
+import { parseBundleNodeConfigRecords } from '../../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 
 function nodes(value: unknown) {
   if (!Array.isArray(value)) throw new SourcingError('Expected page settings', 400);
-  try { return parseBundleNodeConfig(JSON.stringify({ nodes: value })); }
+  try { return parseBundleNodeConfigRecords(value); }
   catch { throw new SourcingError('Invalid page settings', 400); }
 }
 
