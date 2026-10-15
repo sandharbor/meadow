@@ -60,9 +60,17 @@ export function parseBundleNodeKey(value: string): BundleNodeKey {
   return key;
 }
 
+// A canonical key validates to itself, so a key already seen needs no further parsing.
+// Large graphs repeat each key across nodes, routes, and link maps.
+const canonicalKeys = new Set<string>();
+
 /** Parse untrusted text once, retaining a primitive suitable for Map and Set. */
 export function encodedBundleNodeKey(value: string): EncodedBundleNodeKey {
-  return serializeBundleNodeKey(parseBundleNodeKey(value));
+  if (canonicalKeys.has(value)) return value as EncodedBundleNodeKey;
+  const key = serializeBundleNodeKey(parseBundleNodeKey(value));
+  canonicalKeys.add(key);
+  if (canonicalKeys.size > 100_000) canonicalKeys.delete(canonicalKeys.values().next().value!);
+  return key;
 }
 
 export function bundleNodeKeysEqual(left: BundleNodeKey, right: BundleNodeKey): boolean {
