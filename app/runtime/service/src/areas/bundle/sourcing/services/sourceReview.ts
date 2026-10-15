@@ -27,8 +27,8 @@ import type { SourceSnapshotAcceptanceResult, SourceSnapshotHistory } from '../.
 import { commitChangesNative } from '../../../../shared/utils/configDirectory/gitUtils/gitStatusUtils.js';
 import { getConfigDirectory } from '../../../../shared/bundle-config/bundleConfigPaths.js';
 import {
-  availableSnapshotGraph, missingSnapshotRoles, discoverSourceSnapshot, rememberReachableProvenance, captureSourceSnapshot, initializeSourcing, installAcceptedSnapshot, loadSourceBundleConfig,
-  loadSourceNodeConfigs, loadSourceSnapshot, loadSourceSnapshotGraph, loadSourceSnapshotManifest, loadSourcingState, prefetchSnapshotGraph, graphNodeByKey, sha256,
+  missingSnapshotRoles, discoverSourceSnapshot, rememberReachableProvenance, captureSourceSnapshot, initializeSourcing, installAcceptedSnapshot, loadSourceBundleConfig,
+  loadSourceNodeConfigs, loadSourceSnapshot, loadSourceSnapshotGraph, loadSourceSnapshotManifest, loadSourcingState, prefetchSnapshotGraph, graphNodeByKey, reviewSnapshotGraph, withSnapshotBodies, sha256,
   snapshotDirectory, snapshotFilePath, snapshotGraph, snapshotSourceRoot, snapshotSummary,
   sourceConfigFingerprint, sourcePath, sourcingRoot, sourcingStatePath, SourcingError,
   verifySourceSnapshot, withSourcingLock, writeSourcingJson,
@@ -221,8 +221,8 @@ async function buildSourceReview(bundleDirectory: string, attempt = 0): Promise<
   const fingerprint = sourceConfigFingerprint(bundleDirectory);
   const { accepted, configs, candidate, context } = reviewSnapshots(bundleDirectory, state);
   // The two traversals are independent; run them together and report failures in order.
-  const [acceptedResult, candidateResult] = await Promise.allSettled([availableSnapshotGraph(bundleDirectory, accepted, 0),
-    candidate ? availableSnapshotGraph(bundleDirectory, candidate, 0, context) : Promise.resolve(undefined)]);
+  const [acceptedResult, candidateResult] = await Promise.allSettled([reviewSnapshotGraph(bundleDirectory, accepted),
+    candidate ? reviewSnapshotGraph(bundleDirectory, candidate, context) : Promise.resolve(undefined)]);
   if (acceptedResult.status === 'rejected') throw acceptedResult.reason;
   const graph = acceptedResult.value;
   if (graph) rememberReachableProvenance(bundleDirectory, accepted, graph, configs);
@@ -257,9 +257,9 @@ async function buildSourceReview(bundleDirectory: string, attempt = 0): Promise<
   const distinctChanges = changes.filter(change => change.kind !== 'missing' || !orphanPaths.has(change.path));
   return {
     traversalGraphs: {
-      accepted: sourceTraversalGraph(accepted.id, graph, moves.map(move => move.previousRoute), accepted.sources),
+      accepted: sourceTraversalGraph(accepted.id, graph, moves.map(move => move.previousRoute), accepted.sources, nodes => withSnapshotBodies(bundleDirectory, accepted, nodes)),
       ...(candidate && { candidate: sourceTraversalGraph(candidate.id, candidateGraph,
-        [...moves.map(move => move.currentRoute), ...distinctChanges.map(change => change.route ?? [])], candidate.sources) }),
+        [...moves.map(move => move.currentRoute), ...distinctChanges.map(change => change.route ?? [])], candidate.sources, nodes => withSnapshotBodies(bundleDirectory, candidate, nodes)) }),
     },
     ...(candidate?.sourceProposal && { sourceChanges: {
       before: bundleSources(loadSourceBundleConfig(bundleDirectory)), after: candidate.sourceProposal.sources,

@@ -512,6 +512,41 @@ export function installAcceptedSnapshot(bundleDirectory: string, previous: Sourc
 import type { ParticipatesIn, sourceSnapshot } from '../../../../../concepts/index.js';
 export type SourceCaptureMeadowConceptParticipations = [ParticipatesIn<typeof sourceSnapshot, "capture", typeof captureSourceSnapshot>];
 
+// Keyed by the cached native result, so an entry lives exactly as long as that result.
+const reviewGraphs = new WeakMap<WorkingGraphRustOutput, WorkingGraphRustOutput>();
+
+function freezeGraphRecords(graph: WorkingGraphRustOutput): WorkingGraphRustOutput {
+  graph.nodes.forEach(node => Object.freeze(node));
+  graph.edges.forEach(edge => Object.freeze(edge));
+  for (const value of Object.values(graph)) if (value && typeof value === 'object') Object.freeze(value);
+  return Object.freeze(graph);
+}
+
+/**
+ * A retained snapshot's traversal for read-only review. Reviews of the same inputs share
+ * it, so its records are frozen, and it carries no page bodies: add them with
+ * withSnapshotBodies to the nodes a review returns.
+ */
+export async function reviewSnapshotGraph(bundleDirectory: string, snapshot: SourceSnapshot, context?: { config: BundleConfig; nodes: BundleNodeConfig[] }): Promise<WorkingGraphRustOutput | undefined> {
+  const config = context?.config ?? loadSourceBundleConfig(bundleDirectory);
+  const nodes = context?.nodes ?? loadSourceNodeConfigs(bundleDirectory);
+  if (missingSnapshotRoles(snapshot, config, nodes).length) return undefined;
+  const { graph } = await traverseSnapshot(bundleDirectory, snapshot, nodes, 0, false, config);
+  let decoded = reviewGraphs.get(graph);
+  if (!decoded) {
+    decoded = freezeGraphRecords(decodeWorkingGraphKeys(graph));
+    reviewGraphs.set(graph, decoded);
+  }
+  return decoded;
+}
+
+/** Copies of review graph nodes with the captured page bodies a full traversal includes. */
+export function withSnapshotBodies(bundleDirectory: string, snapshot: SourceSnapshot, nodes: WorkingGraphRustOutput['nodes']): WorkingGraphRustOutput['nodes'] {
+  const copies = nodes.map(node => ({ ...node }));
+  if (!snapshot.transientSourceRoot) hydrateSnapshotNodeContents(snapshotSourceRoot(bundleDirectory, snapshot.id, snapshot), snapshot, copies);
+  return copies;
+}
+
 /** Missing role sources remain reviewable; all other traversal failures are surfaced. */
 export async function availableSnapshotGraph(bundleDirectory: string, snapshot: SourceSnapshot, frontierDepth = 1, context?: { config: BundleConfig; nodes: BundleNodeConfig[] }): Promise<WorkingGraphRustOutput | undefined> {
   const config = context?.config ?? loadSourceBundleConfig(bundleDirectory);
