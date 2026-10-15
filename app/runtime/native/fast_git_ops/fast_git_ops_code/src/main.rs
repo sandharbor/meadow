@@ -81,6 +81,16 @@ enum Commands {
         #[clap(required = true)]
         path: String,
     },
+    /// Read several files as stored at one commit. Paths are a JSON array on
+    /// standard input; results are a JSON array in the same order.
+    CatFiles {
+        /// Any directory within the git repository (used for repo discovery)
+        #[clap(required = true, value_parser = clap::value_parser!(PathBuf))]
+        directory: PathBuf,
+        /// Commit SHA
+        #[clap(required = true)]
+        sha: String,
+    },
     /// List commits that changed a single file (newest-first, no merges)
     FileLog {
         /// Any directory within the git repository (used for repo discovery)
@@ -266,6 +276,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             sha,
             path,
         } => run_cat_file(directory, sha, path)?,
+        Commands::CatFiles { directory, sha } => run_cat_files(directory, sha)?,
         Commands::FileLog {
             directory,
             path,
@@ -1060,22 +1071,30 @@ fn run_commit_files(directory: PathBuf, sha: String) -> Result<(), Box<dyn std::
     Ok(())
 }
 
-fn run_cat_file(
-    directory: PathBuf,
-    sha: String,
-    path: String,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let target_dir = directory.canonicalize()?;
-    let repo = gix::discover(&target_dir)?;
+fn cat_file_commit_tree<'repo>(
+    repo: &'repo gix::Repository,
+    sha: &str,
+) -> Result<gix::Tree<'repo>, Box<dyn std::error::Error>> {
     // Support symbolic references like "HEAD" in addition to hex SHAs.
     let oid = if sha == "HEAD" {
         repo.head()?.id().ok_or("Unborn HEAD")?.detach()
     } else {
-        parse_hex_oid(&sha)?
+        parse_hex_oid(sha)?
     };
     let commit = repo.find_object(oid)?.into_commit();
-    let tree = commit.tree()?;
+    Ok(commit.tree()?)
+}
 
+fn cat_file_at(
+    repo: &gix::Repository,
+    tree: gix::Tree<'_>,
+    path: &str,
+) -> Result<CatFileResult, Box<dyn std::error::Error>> {
+    let missing = || CatFileResult {
+        found: false,
+        kind: None,
+        data_base64: None,
+    };
     let mut current_tree = tree;
     let mut entry_oid: Option<gix_hash::ObjectId> = None;
     let mut entry_kind: Option<gix_object::tree::EntryKind> = None;
@@ -1088,15 +1107,7 @@ fn run_cat_file(
             .iter()
             .find(|e| e.filename.to_string() == *comp);
         let Some(e) = found else {
-            println!(
-                "{}",
-                serde_json::to_string(&CatFileResult {
-                    found: false,
-                    kind: None,
-                    data_base64: None
-                })?
-            );
-            return Ok(());
+            return Ok(missing());
         };
         let kind = e.mode.kind();
         let oid = e.oid.to_owned();
@@ -1106,58 +1117,26 @@ fn run_cat_file(
             break;
         }
         if kind != gix_object::tree::EntryKind::Tree {
-            println!(
-                "{}",
-                serde_json::to_string(&CatFileResult {
-                    found: false,
-                    kind: None,
-                    data_base64: None
-                })?
-            );
-            return Ok(());
+            return Ok(missing());
         }
         current_tree = repo.find_object(oid)?.into_tree();
     }
 
-    let Some(kind) = entry_kind else {
-        println!(
-            "{}",
-            serde_json::to_string(&CatFileResult {
-                found: false,
-                kind: None,
-                data_base64: None
-            })?
-        );
-        return Ok(());
-    };
-    let Some(oid) = entry_oid else {
-        println!(
-            "{}",
-            serde_json::to_string(&CatFileResult {
-                found: false,
-                kind: None,
-                data_base64: None
-            })?
-        );
-        return Ok(());
+    let (Some(kind), Some(oid)) = (entry_kind, entry_oid) else {
+        return Ok(missing());
     };
 
     if kind == gix_object::tree::EntryKind::Tree {
-        println!(
-            "{}",
-            serde_json::to_string(&CatFileResult {
-                found: true,
-                kind: Some("tree".to_string()),
-                data_base64: None
-            })?
-        );
-        return Ok(());
+        return Ok(CatFileResult {
+            found: true,
+            kind: Some("tree".to_string()),
+            data_base64: None,
+        });
     }
 
     use base64::Engine;
     let obj = repo.find_object(oid)?;
-    let bytes = obj.data.to_vec();
-    let encoded = base64::engine::general_purpose::STANDARD.encode(bytes);
+    let encoded = base64::engine::general_purpose::STANDARD.encode(&obj.data);
     let kind_str = match kind {
         gix_object::tree::EntryKind::Blob => "blob",
         gix_object::tree::EntryKind::BlobExecutable => "blob-exec",
@@ -1167,14 +1146,41 @@ fn run_cat_file(
     }
     .to_string();
 
+    Ok(CatFileResult {
+        found: true,
+        kind: Some(kind_str),
+        data_base64: Some(encoded),
+    })
+}
+
+fn run_cat_file(
+    directory: PathBuf,
+    sha: String,
+    path: String,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let target_dir = directory.canonicalize()?;
+    let repo = gix::discover(&target_dir)?;
+    let tree = cat_file_commit_tree(&repo, &sha)?;
     println!(
         "{}",
-        serde_json::to_string(&CatFileResult {
-            found: true,
-            kind: Some(kind_str),
-            data_base64: Some(encoded),
-        })?
+        serde_json::to_string(&cat_file_at(&repo, tree, &path)?)?
     );
+    Ok(())
+}
+
+/// Many reads share one repository and commit lookup instead of a process each.
+fn run_cat_files(directory: PathBuf, sha: String) -> Result<(), Box<dyn std::error::Error>> {
+    let mut input = String::new();
+    std::io::stdin().read_to_string(&mut input)?;
+    let paths: Vec<String> = serde_json::from_str(&input)?;
+    let target_dir = directory.canonicalize()?;
+    let repo = gix::discover(&target_dir)?;
+    let tree = cat_file_commit_tree(&repo, &sha)?;
+    let results = paths
+        .iter()
+        .map(|path| cat_file_at(&repo, tree.clone(), path))
+        .collect::<Result<Vec<_>, _>>()?;
+    println!("{}", serde_json::to_string(&results)?);
     Ok(())
 }
 

@@ -6,11 +6,11 @@ import type { BundleNodeConfig } from '../../../../../../../contracts/types/shar
 import { applyNodeConfigsToNodes, applySensitiveFromApiData } from '../../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 import { bundleNodeKeySourceGraphPath } from '../../../../../../../shared_code/utils/bundleNodeKey.js';
 import { serializeWorkingGraphOutput } from '../../../../shared/bundle-graph/workingGraphService.js';
-import { availableSnapshotGraph, discoverSourceSnapshot, loadSourceSnapshot, snapshotGraph, SourcingError } from '../../../../shared/source-snapshot/sourceSnapshots.js';
+import { availableSnapshotGraph, discoverSourceSnapshot, graphNodeByKey, loadSourceSnapshot, snapshotGraph, SourcingError } from '../../../../shared/source-snapshot/sourceSnapshots.js';
 import { loadProposalConfiguration } from './proposalStore.js';
 import { reviewSourceProposal } from './proposalReview.js';
 import { liveSourceLinks } from '../../../../shared/source-snapshot/sourceDiscovery.js';
-import { snapshotLineCounts } from './sourceReview.js';
+import { snapshotLineCountsBatch } from './sourceReview.js';
 
 /**
  * Saved settings that shape the graph. Gaining or losing a record is tracking, which is reviewed
@@ -70,24 +70,35 @@ export async function sourceProposalComparison(directory: string, frontierDepth 
   const oldNodes = before.nodes.map(node => ({ ...node }));
   applySensitiveFromApiData(oldNodes);
   applyNodeConfigsToNodes(oldNodes, saved.nodes);
+  // Each lookup keeps the first match, as a search in node order would.
+  const firstBy = <T, K>(items: T[], key: (item: T) => K | undefined) => {
+    const index = new Map<K, T>();
+    for (const item of items) { const value = key(item); if (value !== undefined && !index.has(value)) index.set(value, item); }
+    return index;
+  };
+  const nodesById = firstBy(nodes, node => node.bundleNodeId);
+  const nodesByKey = firstBy(nodes, node => node.bundleNodeKey);
   const correspondence = new Map(oldNodes.map(old => {
     const destination = old.bundleNodeId && review.proposal.identities[old.bundleNodeId];
-    const match = nodes.find(node => old.bundleNodeId && node.bundleNodeId === old.bundleNodeId)
+    const match = (old.bundleNodeId ? nodesById.get(old.bundleNodeId) : undefined)
       ?? nodes.find(node => destination && node.bundleNodeKind === old.bundleNodeKind && node.bundleNodeKind !== 'collection'
-        && (afterRaw.nodes.find(raw => raw.bundleNodeKey === node.bundleNodeKey)?.sourceFile?.path ?? bundleNodeKeySourceGraphPath(node.bundleNodeKey)) === destination)
-      ?? nodes.find(node => node.bundleNodeKey === old.bundleNodeKey);
+        && (graphNodeByKey(afterRaw, node.bundleNodeKey)?.sourceFile?.path ?? bundleNodeKeySourceGraphPath(node.bundleNodeKey)) === destination)
+      ?? nodesByKey.get(old.bundleNodeKey);
     return [old.bundleNodeKey, match?.bundleNodeKey ?? old.bundleNodeKey];
   }));
   const previousByKey = new Map(oldNodes.map(node => [correspondence.get(node.bundleNodeKey)!, node]));
   const newKeys = new Set(nodes.map(node => node.bundleNodeKey));
   for (const old of oldNodes) if (!newKeys.has(correspondence.get(old.bundleNodeKey)!)) nodes.push(old);
+  const blacklistControls = firstBy(review.configuration.nodes.filter(config => config.listType === 'blacklist'), config => config.bundleNodeId);
+  const orphansById = firstBy(review.orphans, orphan => orphan.bundleNodeId);
+  const lineCountRequests: Array<{ review: NonNullable<IBundleNode['sourceReview']>; beforePath: string; afterPath: string; departing: boolean }> = [];
   for (const node of nodes) {
     const previous = previousByKey.get(node.bundleNodeKey);
     const departing = !newKeys.has(node.bundleNodeKey);
-    const proposedControl = review.configuration.nodes.find(config => config.bundleNodeId === node.bundleNodeId && config.listType === 'blacklist');
+    const proposedControl = node.bundleNodeId ? blacklistControls.get(node.bundleNodeId) : undefined;
     if (departing && proposedControl) applyNodeConfigsToNodes([node], [proposedControl]);
-    const oldRaw = previous && beforeRaw?.nodes.find(item => item.bundleNodeKey === previous.bundleNodeKey);
-    const newRaw = afterRaw.nodes.find(item => item.bundleNodeKey === node.bundleNodeKey);
+    const oldRaw = previous && graphNodeByKey(beforeRaw, previous.bundleNodeKey);
+    const newRaw = graphNodeByKey(afterRaw, node.bundleNodeKey);
     const previousPath = previous && previous.bundleNodeKind !== 'collection' ? oldRaw?.sourceFile?.path ?? bundleNodeKeySourceGraphPath(previous.bundleNodeKey) : undefined;
     const proposedPath = departing || node.bundleNodeKind === 'collection' ? undefined : newRaw?.sourceFile?.path ?? bundleNodeKeySourceGraphPath(node.bundleNodeKey);
     const changedIdentity = previous && previousPath !== proposedPath && !departing;
@@ -104,17 +115,23 @@ export async function sourceProposalComparison(directory: string, frontierDepth 
       : removalReason === 'source-missing' ? 'The source was missing when this proposal was captured.'
       : removalReason === 'source-disconnected' ? 'Its source is no longer connected to this proposed scope. Its files are untouched.'
       : proposedControl ? 'Excluded by the proposed blacklist. Remove the blacklist to restore its captured route.' : kind === 'departing' ? 'No longer reachable through the proposed links and traversal settings.' : 'Unchanged source material.';
-    const orphan = review.orphans.find(item => item.bundleNodeId === node.bundleNodeId);
+    const orphan = node.bundleNodeId ? orphansById.get(node.bundleNodeId) : undefined;
     // Counted here so lists of changes show their line counts without a request per page.
     const comparedPath = previousPath ?? proposedPath;
-    const counts = kind !== 'unchanged' && comparedPath ? snapshotLineCounts(directory, accepted, candidate, comparedPath, proposedPath ?? comparedPath, departing) : undefined;
+    // Read together after the loop; the placeholders keep each review's field order.
+    const counted = kind !== 'unchanged' && comparedPath ? { beforePath: comparedPath, afterPath: proposedPath ?? comparedPath, departing } : undefined;
     node.sourceReview = { kind, removalReason, orphanedConfiguration: departing && Boolean(previous?.conf) && !proposedControl && previous?.conf?.listType !== 'blacklist',
       ...(orphan && { orphan }), explanation: [explanation, orphan?.reason].filter(Boolean).join(' '), previousPath, proposedPath, previousRoute: previous?.path ?? [], proposedRoute: departing ? [] : node.path ?? [],
       ...((kind === 'modified' || kind === 'moved') && { modification: { source: Boolean(modified), settings } }),
-      ...(counts && { lineCounts: counts.lineCounts, hasPreviousContent: counts.hasPreviousContent }),
+      ...(counted && { lineCounts: null, hasPreviousContent: false }),
       sensitivityReasons: review.trackingTargets[node.bundleNodeKey]?.sensitivityReasons,
       beforeSnapshotId: accepted.id, afterSnapshotId: candidate.id };
+    if (counted) lineCountRequests.push({ review: node.sourceReview, ...counted });
   }
+  snapshotLineCountsBatch(directory, accepted, candidate, lineCountRequests).forEach((counts, index) => {
+    lineCountRequests[index].review.lineCounts = counts.lineCounts;
+    lineCountRequests[index].review.hasPreviousContent = counts.hasPreviousContent;
+  });
   const remap = (key: IBundleNode['bundleNodeKey']) => correspondence.get(key) ?? key;
   const byKey = new Map(nodes.map(node => [node.bundleNodeKey, node]));
   for (const node of nodes) if (node.sourceReview?.removalReason === 'unreachable') {

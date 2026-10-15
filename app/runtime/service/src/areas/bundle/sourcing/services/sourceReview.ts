@@ -18,7 +18,7 @@ import type { BundleSource } from '../../../../../../../contracts/types/shared/b
 import { equivalentSnapshotPath, sourceProposalContext } from '../../../../shared/source-snapshot/sourceRegistrySnapshots.js';
 import fs from 'node:fs';
 import { lineChangeCounts } from '../../../../../../../shared_code/utils/lineChanges.js';
-import { readSourceBlob, retainCandidateSourceTree, SourceCaptureChangedError } from '../../../../shared/source-snapshot/sourceGit.js';
+import { readSourceBlob, readSourceBlobs, retainCandidateSourceTree, SourceCaptureChangedError } from '../../../../shared/source-snapshot/sourceGit.js';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import type { BundleNodeConfig, FileBundleNodeConfig, FolderBundleNodeConfig } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
@@ -401,12 +401,19 @@ export function sourceComparison(bundleDirectory: string, beforeId: string, afte
 
 const tooLargeForComparison = '[File is too large for the inline comparison]';
 
+type CapturedTextReader = (snapshot: SourceSnapshot, relative: string) => string;
+
+function capturedText(bundleDirectory: string): CapturedTextReader {
+  return (snapshot, relative) => snapshot.git ? readSourceBlob(snapshot.git, relative).toString('utf8') : fs.readFileSync(sourcePath(snapshotSourceRoot(bundleDirectory, snapshot.id), relative), 'utf8');
+}
+
 /** Captured content of one file in two loaded snapshots; images and other binary files carry no text. */
-export function snapshotComparison(bundleDirectory: string, before: SourceSnapshot, after: SourceSnapshot, beforePath: string, afterPath: string): ReturnType<typeof sourceComparison> {
+export function snapshotComparison(bundleDirectory: string, before: SourceSnapshot, after: SourceSnapshot, beforePath: string, afterPath: string,
+  readText: CapturedTextReader = capturedText(bundleDirectory)): ReturnType<typeof sourceComparison> {
   const read = (snapshot: SourceSnapshot, relative: string) => {
     if (!snapshot.files[relative]) return null;
     if (snapshot.files[relative].size > 1024 * 1024) return tooLargeForComparison;
-    return snapshot.git ? readSourceBlob(snapshot.git, relative).toString('utf8') : fs.readFileSync(sourcePath(snapshotSourceRoot(bundleDirectory, snapshot.id), relative), 'utf8');
+    return readText(snapshot, relative);
   };
   if (sourceImageType(afterPath || beforePath)) return {
     before: null, after: null, binary: true,
@@ -422,12 +429,40 @@ export function snapshotComparison(bundleDirectory: string, before: SourceSnapsh
  * A departing page counts only its previous content as removed. `hasPreviousContent` says whether
  * there is anything to show for it.
  */
-export function snapshotLineCounts(bundleDirectory: string, before: SourceSnapshot, after: SourceSnapshot, beforePath: string, afterPath: string, departing: boolean) {
-  const content = snapshotComparison(bundleDirectory, before, after, beforePath, afterPath);
+export function snapshotLineCounts(bundleDirectory: string, before: SourceSnapshot, after: SourceSnapshot, beforePath: string, afterPath: string, departing: boolean,
+  readText: CapturedTextReader = capturedText(bundleDirectory)) {
+  const content = snapshotComparison(bundleDirectory, before, after, beforePath, afterPath, readText);
   const next = departing ? null : content.after;
   const lineCounts = content.binary || [content.before, next].includes(tooLargeForComparison) ? null : lineChangeCounts(content.before, next);
   const hasPreviousContent = content.binary ? content.beforeImage ?? Boolean(before.files[beforePath]) : Boolean(content.before?.trim());
   return { lineCounts, hasPreviousContent };
+}
+
+/** Line counts for many comparisons, reading each snapshot's captured files in one batch. */
+export function snapshotLineCountsBatch(bundleDirectory: string, before: SourceSnapshot, after: SourceSnapshot,
+  requests: Array<{ beforePath: string; afterPath: string; departing: boolean }>): Array<ReturnType<typeof snapshotLineCounts>> {
+  // The comparison reads the same files whatever their contents, so a first pass names them.
+  const wanted = new Map<SourceSnapshot, Set<string>>([[before, new Set()], [after, new Set()]]);
+  for (const request of requests) snapshotComparison(bundleDirectory, before, after, request.beforePath, request.afterPath, (snapshot, relative) => {
+    wanted.get(snapshot)!.add(relative);
+    return '';
+  });
+  const texts = new Map<SourceSnapshot, Map<string, string>>();
+  for (const [snapshot, filenames] of wanted) {
+    const names = [...filenames];
+    if (!snapshot.git) {
+      texts.set(snapshot, new Map(names.map(name => [name, capturedText(bundleDirectory)(snapshot, name)])));
+      continue;
+    }
+    const blobs = readSourceBlobs(snapshot.git, names);
+    texts.set(snapshot, new Map(names.flatMap((name, index) => blobs[index] ? [[name, blobs[index].toString('utf8')] as const] : [])));
+  }
+  const readText: CapturedTextReader = (snapshot, relative) => {
+    const text = texts.get(snapshot)?.get(relative);
+    if (text === undefined) throw new Error('Captured source file is unavailable');
+    return text;
+  };
+  return requests.map(request => snapshotLineCounts(bundleDirectory, before, after, request.beforePath, request.afterPath, request.departing, readText));
 }
 
 import type { ParticipatesIn, sourceSnapshot } from '../../../../../../../concepts/index.js';

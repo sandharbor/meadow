@@ -103,6 +103,11 @@ function runCatFile(directory: string, sha: string, repoRelPath: string): CatFil
   return JSON.parse(result) as CatFileResult;
 }
 
+function runCatFiles(directory: string, sha: string, repoRelPaths: string[]): CatFileResult[] {
+  const result = execSync(`"${FAST_GIT_OPS_BINARY}" cat-files "${directory}" "${sha}"`, { encoding: "utf8", input: JSON.stringify(repoRelPaths) });
+  return JSON.parse(result) as CatFileResult[];
+}
+
 function runFileLog(directory: string, repoRelPath: string, limit = 50): FileLogResult {
   const result = execSync(`"${FAST_GIT_OPS_BINARY}" file-log "${directory}" "${repoRelPath}" --limit "${limit}"`, { encoding: "utf8" });
   return JSON.parse(result) as FileLogResult;
@@ -515,6 +520,16 @@ test('fast_git_ops cat-file: can read file content at HEAD', async (t) => {
   t.ok(cat.data_base64, "Has base64 data");
   const content = Buffer.from(cat.data_base64 || "", "base64").toString("utf-8");
   t.equal(content, "root committed content", "Content matches");
+  t.end();
+});
+
+test('fast_git_ops cat-files: reads several paths at one commit in request order', async (t) => {
+  const headSha = await git.resolveRef({ fs, dir: TEST_REPO_DIR, ref: "HEAD" });
+  const paths = ["root_committed.txt", "missing.txt", "subdir_a", "root_committed.txt"];
+  const results = runCatFiles(TEST_REPO_DIR, headSha, paths);
+  t.deepEqual(results, paths.map(repoRelPath => runCatFile(TEST_REPO_DIR, headSha, repoRelPath)), "Each result matches cat-file for the same path");
+  t.equal(Buffer.from(results[0].data_base64 || "", "base64").toString("utf-8"), "root committed content", "Content matches");
+  t.deepEqual(runCatFiles(TEST_REPO_DIR, headSha, []), [], "No paths read nothing");
   t.end();
 });
 

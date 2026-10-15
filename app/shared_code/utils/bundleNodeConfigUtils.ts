@@ -563,6 +563,12 @@ export function applySensitiveFromApiData(nodes: IBundleNode[]): IBundleNode[] {
   return nodes;
 }
 
+/** The fields nodeConfigMatchesNode compares for a file or folder, with absent values kept distinct. */
+function nodeMatchKey(kind: 'file' | 'folder', name: string, sourceId: string | undefined, directory: string | undefined, fileType: FileType | undefined): string {
+  const optional = (value: string | undefined) => value === undefined ? '' : `=${value}`;
+  return [kind, name, optional(sourceId), directory ?? '', kind === 'file' ? optional(fileType) : ''].join('\0');
+}
+
 /** Apply persisted configuration; record presence is the sole tracking signal. */
 export function applyNodeConfigsToNodes(
   nodes: IBundleNode[],
@@ -574,16 +580,34 @@ export function applyNodeConfigsToNodes(
     delete node.conf;
     delete node.bundleNodeId;
   }
+  // Each configuration applies to the first node it matches. Except for collections, which
+  // also compare identities assigned earlier in this pass, matching reads only fields this
+  // pass never changes, so those nodes are indexed once by exactly the fields compared.
+  let located: Map<string, IBundleNode> | undefined;
   for (const config of configs) {
-    const node = nodes.find(candidate => nodeConfigMatchesNode(
-      config,
-      candidate.bundleNodeName,
-      candidate.sourceGraphSubdirectory,
-      candidate.fileType,
-      candidate.bundleNodeKind,
-      candidate.bundleNodeId,
-      candidate.sourceId,
-    ));
+    let node: IBundleNode | undefined;
+    if (config.bundleNodeKind === 'collection') {
+      node = nodes.find(candidate => nodeConfigMatchesNode(
+        config,
+        candidate.bundleNodeName,
+        candidate.sourceGraphSubdirectory,
+        candidate.fileType,
+        candidate.bundleNodeKind,
+        candidate.bundleNodeId,
+        candidate.sourceId,
+      ));
+    } else {
+      if (!located) {
+        located = new Map();
+        for (const candidate of nodes) {
+          const kind = candidate.bundleNodeKind ?? 'file';
+          if (kind === 'collection' || typeof candidate.bundleNodeName !== 'string') continue;
+          const key = nodeMatchKey(kind, candidate.bundleNodeName, candidate.sourceId, candidate.sourceGraphSubdirectory, candidate.fileType);
+          if (!located.has(key)) located.set(key, candidate);
+        }
+      }
+      node = located.get(nodeMatchKey(config.bundleNodeKind, config.bundleNodeName, config.sourceId, config.sourceGraphSubdirectory, config.fileType));
+    }
     if (!node) continue;
     node.conf = config;
     node.bundleNodeId = config.bundleNodeId;

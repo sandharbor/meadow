@@ -93,3 +93,11 @@ export function readSourceBlob(snapshot: SourceGitTree, filename: string): Buffe
   if (!result.found || result.data_base64 === undefined) throw new Error('Captured source file is unavailable');
   return Buffer.from(result.data_base64, 'base64');
 }
+
+/** Read several captured files with one process. Each result is undefined when the file is unavailable. */
+export function readSourceBlobs(snapshot: SourceGitTree, filenames: string[]): Array<Buffer | undefined> {
+  if (!filenames.length) return [];
+  const results = JSON.parse(execFileSync(getFastGitOpsPath(), ['cat-files', getConfigDirectory(), snapshot.commit], { encoding: 'utf8', input: JSON.stringify(filenames), maxBuffer: 1024 * 1024 * 1024 })) as Array<{ found: boolean; data_base64?: string | null }>;
+  if (results.length !== filenames.length) throw new Error('Captured source files are unavailable');
+  return results.map(result => result.found && typeof result.data_base64 === 'string' ? Buffer.from(result.data_base64, 'base64') : undefined);
+}
