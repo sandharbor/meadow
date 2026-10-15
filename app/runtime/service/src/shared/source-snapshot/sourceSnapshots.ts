@@ -77,7 +77,7 @@ export async function withSourcingLock<T>(bundleDirectory: string, action: () =>
     if (locks.get(bundleDirectory) === pending) {
       locks.delete(bundleDirectory);
       const state = loadSourcingState(bundleDirectory);
-      if (state) pruneMaterializedSourceTrees([state.acceptedId, ...(state.candidateId ? [state.candidateId] : [])].map(id => loadSourceSnapshot(bundleDirectory, id).git).filter((git): git is SourceGitTree => Boolean(git)));
+      if (state) pruneMaterializedSourceTrees([state.acceptedId, ...(state.candidateId ? [state.candidateId] : [])].map(id => loadSourceSnapshotManifest(bundleDirectory, id).git).filter((git): git is SourceGitTree => Boolean(git)));
     }
   }
 }
@@ -93,10 +93,11 @@ export function snapshotDirectory(bundleDirectory: string, id: string): string {
 export function snapshotSourceRoot(bundleDirectory: string, id: string, snapshot?: SourceSnapshot): string {
   if (snapshot?.transientSourceRoot) return snapshot.transientSourceRoot;
   const manifest = path.join(snapshotDirectory(bundleDirectory, id), 'snapshot.json');
-  const git = snapshot?.git ?? (fs.existsSync(manifest) ? (JSON.parse(fs.readFileSync(manifest, 'utf8')) as SourceSnapshot).git : undefined);
+  const stored = () => loadSourceSnapshotManifest(bundleDirectory, id);
+  const git = snapshot?.git ?? (fs.existsSync(manifest) ? stored().git : undefined);
   if (git) {
     const root = materializedSourceTree(git);
-    const directories = snapshot?.directories ?? (JSON.parse(fs.readFileSync(manifest, 'utf8')) as SourceSnapshot).directories;
+    const directories = snapshot?.directories ?? stored().directories;
     for (const directory of directories) fs.mkdirSync(sourcePath(root, directory), { recursive: true });
     return root;
   }
@@ -123,10 +124,68 @@ export function loadSourcingState(bundleDirectory: string): SourcingState | null
 }
 
 export function loadSourceSnapshot(bundleDirectory: string, id: string): SourceSnapshot {
-  const snapshot = JSON.parse(fs.readFileSync(path.join(snapshotDirectory(bundleDirectory, id), 'snapshot.json'), 'utf8')) as SourceSnapshot;
-  if (snapshot.id !== id || !snapshot.files || !Array.isArray(snapshot.directories)) throw new SourcingError('Invalid source snapshot');
+  const snapshot = readSourceSnapshot(bundleDirectory, id);
   if (snapshot.graph) snapshot.graph = decodeWorkingGraphKeys(snapshot.graph, true);
   return snapshot;
+}
+
+// Snapshot documents are replaced atomically, so a file stamp identifies one version.
+// Large captured graphs make repeated parsing the dominant cost of reading metadata.
+type SnapshotManifest = Omit<SourceSnapshot, 'graph'>;
+const snapshotManifests = new Map<string, { stamp: string; manifest: SnapshotManifest }>();
+const snapshotGraphs = new Map<string, { stamp: string; graph: SourceSnapshot['graph'] }>();
+
+function snapshotFileStamp(filename: string): string {
+  const stat = fs.statSync(filename, { bigint: true });
+  return `${stat.dev}:${stat.ino}:${stat.size}:${stat.mtimeNs}:${stat.ctimeNs}`;
+}
+
+function remember<T>(cache: Map<string, T>, key: string, value: T, limit: number): void {
+  cache.delete(key);
+  cache.set(key, value);
+  while (cache.size > limit) cache.delete(cache.keys().next().value!);
+}
+
+function withoutGraph(snapshot: SourceSnapshot): SnapshotManifest {
+  const manifest: SourceSnapshot = { ...snapshot };
+  delete manifest.graph;
+  return manifest;
+}
+
+function readSourceSnapshot(bundleDirectory: string, id: string): SourceSnapshot {
+  const filename = path.join(snapshotDirectory(bundleDirectory, id), 'snapshot.json');
+  const stamp = snapshotFileStamp(filename);
+  const snapshot = JSON.parse(fs.readFileSync(filename, 'utf8')) as SourceSnapshot;
+  if (snapshot.id !== id || !snapshot.files || !Array.isArray(snapshot.directories)) throw new SourcingError('Invalid source snapshot');
+  remember(snapshotManifests, filename, { stamp, manifest: globalThis.structuredClone(withoutGraph(snapshot)) }, 16);
+  return snapshot;
+}
+
+/** A snapshot without its captured graph, for readers that use only its files, sources, and storage. */
+export function loadSourceSnapshotManifest(bundleDirectory: string, id: string): SourceSnapshot {
+  const filename = path.join(snapshotDirectory(bundleDirectory, id), 'snapshot.json');
+  const cached = snapshotManifests.get(filename);
+  if (cached && cached.stamp === snapshotFileStamp(filename)) return globalThis.structuredClone(cached.manifest);
+  return withoutGraph(readSourceSnapshot(bundleDirectory, id));
+}
+
+function deepFreeze<T>(value: T): T {
+  if (value && typeof value === 'object' && !Object.isFrozen(value)) {
+    Object.freeze(value);
+    for (const child of Object.values(value)) deepFreeze(child);
+  }
+  return value;
+}
+
+/** The captured graph of a retained snapshot, shared between readers and therefore immutable. */
+export function loadSourceSnapshotGraph(bundleDirectory: string, id: string): Readonly<SourceSnapshot['graph']> {
+  const filename = path.join(snapshotDirectory(bundleDirectory, id), 'snapshot.json');
+  const stamp = snapshotFileStamp(filename);
+  const cached = snapshotGraphs.get(filename);
+  if (cached?.stamp === stamp) return cached.graph;
+  const graph = deepFreeze(loadSourceSnapshot(bundleDirectory, id).graph);
+  remember(snapshotGraphs, filename, { stamp, graph }, 2);
+  return graph;
 }
 
 export function acceptedSourceRoot(bundleDirectory: string): string {
@@ -213,12 +272,13 @@ export async function snapshotGraph(bundleDirectory: string, snapshot: SourceSna
   const scratchDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'meadow-snapshot-graph-'));
   const temporary = path.join(scratchDirectory, 'nodes.yaml');
   try {
-    fs.writeFileSync(temporary, stringifyBundleNodeConfig(nodes));
+    const configuration = stringifyBundleNodeConfig(nodes);
+    fs.writeFileSync(temporary, configuration);
     const graphRoot = snapshotSourceRoot(bundleDirectory, snapshot.id, snapshot);
     const graph = await runWorkingGraphJson<WorkingGraphRustOutput>({
       graphRoot, sources: snapshotSourceRegistry(snapshot, graphRoot), bundleNodeConfigPath: temporary,
       rebuildIndex, immutableSource: !snapshot.transientSourceRoot,
-      cacheConfigIdentity: path.join(sourcingRoot(bundleDirectory), `graph-${sha256(stringifyBundleNodeConfig(nodes))}`),
+      cacheConfigIdentity: path.join(sourcingRoot(bundleDirectory), `graph-${sha256(configuration)}`),
       entryBundleNodeId: config.entryBundleNodeId!, defaultTraversalBundleNodeId: config.defaultTraversalBundleNodeId!,
       defaultOutlinksDepth: config.defaultOutlinksDepth, defaultInlinksDepth: config.defaultInlinksDepth,
       frontierDepth, allowImagesToExtendToFrontier: config.allowImagesToExtendToFrontier ?? appConfig.allowImagesToExtendToFrontier ?? true, allowLowerDepths: false,
@@ -297,7 +357,7 @@ export async function captureSourceSnapshot(bundleDirectory: string, options: { 
     if (path.resolve(bundleDirectory) === canonicalSource || path.resolve(bundleDirectory).startsWith(`${canonicalSource}${path.sep}`)) throw new SourcingError('The source directory contains this bundle’s storage. Choose a source directory outside bundle storage.');
   }
   const state = loadSourcingState(bundleDirectory);
-  const previous = state ? loadSourceSnapshot(bundleDirectory, state.acceptedId) : undefined;
+  const previous = state ? loadSourceSnapshotManifest(bundleDirectory, state.acceptedId) : undefined;
   const temporary = snapshot.sources && !transientComposed ? fs.mkdtempSync(path.join(os.tmpdir(), 'meadow-source-capture-')) : undefined;
   let stored: Awaited<ReturnType<typeof storeSourceTree>>;
   try {
@@ -310,7 +370,7 @@ export async function captureSourceSnapshot(bundleDirectory: string, options: { 
   if (previous) snapshot.sourceAvailability = captureSourceAvailability(previous, config);
   try { writeSourcingJson(path.join(snapshotDirectory(bundleDirectory, snapshot.id), 'snapshot.json'), snapshot); }
   catch (error) {
-    const retained = state?.candidateId ? loadSourceSnapshot(bundleDirectory, state.candidateId).git : previous?.git;
+    const retained = state?.candidateId ? loadSourceSnapshotManifest(bundleDirectory, state.candidateId).git : previous?.git;
     if (retained) retainCandidateSourceTree(retained);
     throw error;
   }
@@ -390,7 +450,7 @@ function recoverSourcingAcceptance(bundleDirectory: string): void {
   if (!fs.existsSync(filename)) return;
   const journal = JSON.parse(fs.readFileSync(filename, 'utf8')) as AcceptanceJournal;
   if (!journal.state || typeof journal.nodeConfig !== 'string') throw new SourcingError('Invalid source acceptance recovery record');
-  const accepted = loadSourceSnapshot(bundleDirectory, journal.state.acceptedId);
+  const accepted = loadSourceSnapshotManifest(bundleDirectory, journal.state.acceptedId);
   if (accepted.git) retainAcceptedSourceTree(accepted.git);
   writeSourcingJson(sourcingStatePath(bundleDirectory), journal.state);
   writeDurableDocument({ path: path.join(bundleDirectory, 'config/bundle_node_config.yaml'), value: journal.nodeConfig, codec: textDocumentCodec });
@@ -423,7 +483,7 @@ export function installAcceptedSnapshot(bundleDirectory: string, previous: Sourc
       }
       writeDurableDocument({ path: bundleConfigPath, value: document.toString(), codec: textDocumentCodec });
     }
-    const accepted = loadSourceSnapshot(bundleDirectory, next.acceptedId);
+    const accepted = loadSourceSnapshotManifest(bundleDirectory, next.acceptedId);
     if (accepted.git) retainAcceptedSourceTree(accepted.git);
     writeSourcingJson(sourcingStatePath(bundleDirectory), next);
     fs.rmSync(acceptanceJournalPath(bundleDirectory));
@@ -455,8 +515,11 @@ export function missingSnapshotRoles(snapshot: SourceSnapshot, config: BundleCon
 
 export function rememberReachableProvenance(bundleDirectory: string, snapshot: SourceSnapshot, graph: NonNullable<SourceSnapshot['graph']>, configs: BundleNodeConfig[]): void {
   const records = loadTrackingRecords(bundleDirectory);
+  const nodes = new Map<string, (typeof graph.nodes)[number]>();
+  // Keep the first node for each identity, as a search in graph order would.
+  for (const node of graph.nodes) if (node.bundleNodeId && !nodes.has(node.bundleNodeId)) nodes.set(node.bundleNodeId, node);
   for (const config of configs) {
-    const node = graph.nodes.find(candidate => candidate.bundleNodeId === config.bundleNodeId);
+    const node = nodes.get(config.bundleNodeId);
     if (!node || node.isFrontierNode) continue;
     const route = [...node.path];
     if (route.at(-1) !== node.bundleNodeKey) route.push(node.bundleNodeKey);

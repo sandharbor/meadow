@@ -28,7 +28,7 @@ import { commitChangesNative } from '../../../../shared/utils/configDirectory/gi
 import { getConfigDirectory } from '../../../../shared/bundle-config/bundleConfigPaths.js';
 import {
   availableSnapshotGraph, missingSnapshotRoles, discoverSourceSnapshot, rememberReachableProvenance, captureSourceSnapshot, initializeSourcing, installAcceptedSnapshot, loadSourceBundleConfig,
-  loadSourceNodeConfigs, loadSourceSnapshot, loadSourcingState, sha256,
+  loadSourceNodeConfigs, loadSourceSnapshot, loadSourceSnapshotGraph, loadSourceSnapshotManifest, loadSourcingState, sha256,
   snapshotDirectory, snapshotFilePath, snapshotGraph, snapshotSourceRoot, snapshotSummary,
   sourceConfigFingerprint, sourcePath, sourcingRoot, sourcingStatePath, SourcingError,
   verifySourceSnapshot, withSourcingLock, writeSourcingJson,
@@ -153,9 +153,11 @@ export function explainSourceOrphans(bundleDirectory: string, snapshot: SourceSn
   const protectedIds = new Set([bundle.entryBundleNodeId, bundle.defaultTraversalBundleNodeId,
     ...configs.flatMap(node => node.bundleNodeKind === 'collection' ? node.memberBundleNodeIds : [])]);
   const results: SourceOrphanExplanation[] = [];
-  const priorGraphs = new Map<string, SourceSnapshot['graph']>();
+  const priorGraphs = new Map<string, Readonly<SourceSnapshot['graph']>>();
+  const reachableIds = new Set(graph.nodes.map(node => node.bundleNodeId));
+  const edges = lazy(() => new Set(graph.edges.map(edge => `${edge.source}\0${edge.target}`)));
   for (const config of configs) {
-    if (graph.nodes.some(node => node.bundleNodeId === config.bundleNodeId)) continue;
+    if (reachableIds.has(config.bundleNodeId)) continue;
     const previous = records[config.bundleNodeId]?.lastReachable;
     const filename = snapshotFilePath(snapshot, config);
     let reason = 'This configuration is not reachable in the snapshot’s working graph.';
@@ -166,11 +168,11 @@ export function explainSourceOrphans(bundleDirectory: string, snapshot: SourceSn
       const from = route[index - 1];
       const to = route[index];
       const linked = graph.allOutlinkTargets[from]?.includes(to) || graph.allInlinkSources[from]?.includes(to)
-        || graph.edges.some(edge => edge.source === from && edge.target === to);
+        || edges().has(`${from}\0${to}`);
       if (!linked) {
         brokenConnection = { from, to };
         if (previous && !priorGraphs.has(previous.snapshotId)) {
-          priorGraphs.set(previous.snapshotId, loadSourceSnapshot(bundleDirectory, previous.snapshotId).graph);
+          priorGraphs.set(previous.snapshotId, loadSourceSnapshotGraph(bundleDirectory, previous.snapshotId));
         }
         diagnosis = diagnoseOrphanConnection(bundle.sourceDirectory,  previous ? priorGraphs.get(previous.snapshotId) : undefined, graph, from, to, bundle.sources, capturedOnly ? snapshot.sourceAvailability ?? {} : undefined);
         if (diagnosis?.kind === 'missing-file') reason = diagnosis.from
@@ -198,11 +200,11 @@ export async function sourcingReview(bundleDirectory: string): Promise<SourcingR
 async function buildSourceReview(bundleDirectory: string, attempt = 0): Promise<SourcingReview> {
   const state = loadSourcingState(bundleDirectory)!;
   const fingerprint = sourceConfigFingerprint(bundleDirectory);
-  const accepted = loadSourceSnapshot(bundleDirectory, state.acceptedId);
+  const accepted = loadSourceSnapshotManifest(bundleDirectory, state.acceptedId);
   const configs = loadSourceNodeConfigs(bundleDirectory);
   const graph = await availableSnapshotGraph(bundleDirectory, accepted, 0);
   if (graph) rememberReachableProvenance(bundleDirectory, accepted, graph, configs);
-  const candidate = state.candidateId ? loadSourceSnapshot(bundleDirectory, state.candidateId) : undefined;
+  const candidate = state.candidateId ? loadSourceSnapshotManifest(bundleDirectory, state.candidateId) : undefined;
   const context = sourceProposalContext(loadSourceBundleConfig(bundleDirectory), configs, candidate);
   const candidateGraph = candidate ? await availableSnapshotGraph(bundleDirectory, candidate, 0, context) : graph;
   const moves = candidate ? findSourceMoves(bundleDirectory, { ...accepted, graph }, { ...candidate, graph: candidateGraph }, configs).map(move => ({
@@ -262,12 +264,12 @@ export async function scanSourceChanges(bundleDirectory: string, replaceCandidat
   await withSourcingLock(bundleDirectory, async () => {
     const state = loadSourcingState(bundleDirectory)!;
     if (state.candidateId && !replaceCandidate && !rebuildIndex) return;
-    const pending = state.candidateId ? loadSourceSnapshot(bundleDirectory, state.candidateId) : undefined;
+    const pending = state.candidateId ? loadSourceSnapshotManifest(bundleDirectory, state.candidateId) : undefined;
     const proposal = pending?.sourceProposal ? registryProposal(bundleDirectory, pending.sourceProposal.sources, pending.sourceProposal.startingSelectionsChanged ? bundleStartingSelections(pending.sourceProposal, pending.sourceProposal.nodes) : undefined, pending.sourceProposal.startingSelectionsChanged ? pending.sourceProposal : undefined) : undefined;
     const context = sourceProposalContext(loadSourceBundleConfig(bundleDirectory), loadSourceNodeConfigs(bundleDirectory), proposal ? { sourceProposal: proposal } as SourceSnapshot : undefined);
     let discovery = await discoverSourceSnapshot(bundleDirectory, rebuildIndex, context);
     const comparisonId = state.candidateId ?? state.acceptedId;
-    if (discovery.digest === loadSourceSnapshot(bundleDirectory, comparisonId).digest && (!proposal || pending?.sourceProposal?.baseConfigFingerprint === proposal.baseConfigFingerprint)) return;
+    if (discovery.digest === loadSourceSnapshotManifest(bundleDirectory, comparisonId).digest && (!proposal || pending?.sourceProposal?.baseConfigFingerprint === proposal.baseConfigFingerprint)) return;
     let captured: SourceSnapshot | undefined;
     for (let attempt = 0; attempt < 3; attempt += 1) {
       try { captured = await captureSourceSnapshot(bundleDirectory, { discovery, context }); break; }
@@ -283,9 +285,9 @@ export async function scanSourceChanges(bundleDirectory: string, replaceCandidat
       writeSourcingJson(path.join(snapshotDirectory(bundleDirectory, captured.id), 'snapshot.json'), captured);
     }
     const previousCandidate = state.candidateId;
-    if (!proposal && captured.digest === loadSourceSnapshot(bundleDirectory, state.acceptedId).digest) {
+    if (!proposal && captured.digest === loadSourceSnapshotManifest(bundleDirectory, state.acceptedId).digest) {
       delete state.candidateId;
-      const accepted = loadSourceSnapshot(bundleDirectory, state.acceptedId);
+      const accepted = loadSourceSnapshotManifest(bundleDirectory, state.acceptedId);
       if (accepted.git) retainCandidateSourceTree(accepted.git);
       fs.rmSync(snapshotDirectory(bundleDirectory, captured.id), { recursive: true });
     } else state.candidateId = captured.id;

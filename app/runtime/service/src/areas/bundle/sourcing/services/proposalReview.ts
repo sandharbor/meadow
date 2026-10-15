@@ -8,7 +8,7 @@ import { sourcingQueryPrepareProposalTracking } from '../../curation/exported.js
 import { relinkSourceNode, explainSourceOrphans } from './sourceReview.js';
 import { proposalMoveEvidence } from './proposalMoveEvidence.js';
 import { beginSourceProposal, loadProposalConfiguration, sourceProposalConfigurationReview, saveSourceProposal } from './proposalStore.js';
-import { availableSnapshotGraph, loadSourceSnapshot, missingSnapshotRoles, sha256, snapshotSummary, SourcingError,
+import { availableSnapshotGraph, loadSourceSnapshotManifest, missingSnapshotRoles, sha256, snapshotSummary, SourcingError,
   withSourcingLock } from '../../../../shared/source-snapshot/sourceSnapshots.js';
 
 /** The token includes saved policy and the durable draft, never newer filesystem bytes. */
@@ -32,8 +32,8 @@ export async function reviewSourceProposal(directory: string): Promise<SourcePro
     }
     const saved = loadProposalConfiguration(directory);
     const { configuration, conflicts } = sourceProposalConfigurationReview(directory, proposal);
-    const accepted = loadSourceSnapshot(directory, proposal.acceptedSnapshotId);
-    const candidate = loadSourceSnapshot(directory, proposal.candidateSnapshotId);
+    const accepted = loadSourceSnapshotManifest(directory, proposal.acceptedSnapshotId);
+    const candidate = loadSourceSnapshotManifest(directory, proposal.candidateSnapshotId);
     const beforeGraph = await availableSnapshotGraph(directory, accepted, 0, { config: saved.bundle, nodes: saved.nodes });
     const beforeIdentity = await availableSnapshotGraph(directory, candidate, 0, { config: configuration.bundle, nodes: configuration.nodes });
     // Identity evidence survives explicit untracking and edits made after a confirmed move.

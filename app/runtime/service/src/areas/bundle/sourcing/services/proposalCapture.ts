@@ -5,7 +5,7 @@ import path from 'node:path';
 import { sourceForNode } from '../../../../../../../shared_code/utils/bundleSourceUtils.js';
 import type { PendingSourceProposal, ProposalConfiguration } from '../../../../../../../contracts/types/shared/sourcing/sourcingProposal.js';
 import { sameProposalValue, mergeProposalConfiguration } from '../../../../../../../shared_code/utils/proposalConfigurationMerge.js';
-import { captureSourceSnapshot, discoverSourceSnapshot, loadSourceSnapshot, snapshotDirectory, SourcingError,
+import { captureSourceSnapshot, discoverSourceSnapshot, loadSourceSnapshotManifest, snapshotDirectory, SourcingError,
   withSourcingLock } from '../../../../shared/source-snapshot/sourceSnapshots.js';
 import { retainCandidateSourceTree } from '../../../../shared/source-snapshot/sourceGit.js';
 import { editSourceProposal, loadPendingSourceProposal, loadProposalConfiguration, sourceProposalConfigurationReview, validateProposalConfiguration } from './proposalStore.js';
@@ -56,10 +56,10 @@ export async function checkSourceProposalUpdates(directory: string, rebuildIndex
     const proposal = loadPendingSourceProposal(directory);
     if (!proposal) return;
     const configuration = withIdentityLocations(sourceProposalConfigurationReview(directory, proposal).configuration, proposal.identities,
-      loadSourceSnapshot(directory, proposal.candidateSnapshotId).sources);
+      loadSourceSnapshotManifest(directory, proposal.candidateSnapshotId).sources);
     const missing = missingLiveRequiredEntries(configuration);
     const discovered = missing.length ? undefined : await discoverSourceSnapshot(directory, rebuildIndex, { config: configuration.bundle, nodes: configuration.nodes });
-    const available = !discovered || discovered.digest !== loadSourceSnapshot(directory, proposal.candidateSnapshotId).digest;
+    const available = !discovered || discovered.digest !== loadSourceSnapshotManifest(directory, proposal.candidateSnapshotId).digest;
     if (available !== proposal.newerSourcesAvailable) await editSourceProposal(directory, proposal.revision,
       draft => ({ ...draft, newerSourcesAvailable: available }));
   });
@@ -76,7 +76,7 @@ export async function captureProposalEdit(directory: string, proposal: PendingSo
     const saved = loadProposalConfiguration(directory);
     const old = mergeProposalConfiguration(proposal.original, saved, proposal.proposed, proposal.resolutions);
     const next = mergeProposalConfiguration(proposal.original, saved, proposed, proposal.resolutions);
-    const sources = loadSourceSnapshot(directory, proposal.candidateSnapshotId).sources;
+    const sources = loadSourceSnapshotManifest(directory, proposal.candidateSnapshotId).sources;
     old.configuration = withIdentityLocations(old.configuration, proposal.identities, sources);
     next.configuration = withIdentityLocations(next.configuration, proposal.identities, sources);
     if (next.conflicts.length) throw new SourcingError('Resolve competing configuration before rebuilding the proposal.');
@@ -84,7 +84,7 @@ export async function captureProposalEdit(directory: string, proposal: PendingSo
     if (requiredEntryRepair.length) return { ...proposal, proposed, requiredEntryRepair, newerSourcesAvailable: true };
     if (changedBoundary && !options.incorporateNewerSources) {
       const discovery = await discoverSourceSnapshot(directory, false, { config: old.configuration.bundle, nodes: old.configuration.nodes });
-      if (discovery.digest !== loadSourceSnapshot(directory, proposal.candidateSnapshotId).digest) {
+      if (discovery.digest !== loadSourceSnapshotManifest(directory, proposal.candidateSnapshotId).digest) {
         throw new SourcingError('This boundary change needs newer source material. Confirm updating sources to apply the change together.', 409, 'source-refresh-consent');
       }
     }
@@ -94,7 +94,7 @@ export async function captureProposalEdit(directory: string, proposal: PendingSo
       if (!sameProposalValue(saved, loadProposalConfiguration(directory))) throw new SourcingError('Saved configuration changed during capture. The previous proposal has been kept.');
       return { ...proposal, proposed, candidateSnapshotId: captured.id, newerSourcesAvailable: false, requiredEntryRepair: undefined };
     } catch (error) {
-      const previous = loadSourceSnapshot(directory, proposal.candidateSnapshotId);
+      const previous = loadSourceSnapshotManifest(directory, proposal.candidateSnapshotId);
       if (previous.git) retainCandidateSourceTree(previous.git);
       if (captured) fs.rmSync(snapshotDirectory(directory, captured.id), { recursive: true, force: true });
       throw error;

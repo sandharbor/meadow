@@ -16,7 +16,7 @@ import { retainCandidateSourceTree } from '../../../../shared/source-snapshot/so
 import { getConfigDirectory } from '../../../../shared/bundle-config/bundleConfigPaths.js';
 import { sourceProposalContext } from '../../../../shared/source-snapshot/sourceRegistrySnapshots.js';
 import {
-  initializeSourcing, loadSourceBundleConfig, loadSourceNodeConfigs, loadSourceSnapshot,
+  initializeSourcing, loadSourceBundleConfig, loadSourceNodeConfigs, loadSourceSnapshotManifest,
   loadSourcingState, sourcingRoot, SourcingError, withSourcingLock,
 } from '../../../../shared/source-snapshot/sourceSnapshots.js';
 
@@ -98,7 +98,7 @@ export function saveSourceProposal(directory: string, proposal: PendingSourcePro
   validateSourceProposal(next);
   const state = loadSourcingState(directory);
   if (!state || state.acceptedId !== next.acceptedSnapshotId) throw new SourcingError('Accepted sources changed while this proposal was pending.');
-  const candidate = loadSourceSnapshot(directory, next.candidateSnapshotId);
+  const candidate = loadSourceSnapshotManifest(directory, next.candidateSnapshotId);
   const nextState = { ...state, candidateId: next.candidateSnapshotId === state.acceptedId ? undefined : next.candidateSnapshotId };
   if (candidate.git) retainCandidateSourceTree(candidate.git);
   try {
@@ -106,7 +106,7 @@ export function saveSourceProposal(directory: string, proposal: PendingSourcePro
       proposal: `${JSON.stringify(next, null, 2)}\n`, state: `${JSON.stringify(nextState, null, 2)}\n`,
     });
   } catch (error) {
-    const previous = loadSourceSnapshot(directory, current?.candidateSnapshotId ?? state.acceptedId);
+    const previous = loadSourceSnapshotManifest(directory, current?.candidateSnapshotId ?? state.acceptedId);
     if (previous.git) retainCandidateSourceTree(previous.git);
     throw error;
   }
@@ -123,7 +123,7 @@ export async function beginSourceProposal(directory: string): Promise<PendingSou
     if (pending) return Promise.resolve(pending);
     const state = loadSourcingState(directory)!;
     const original = loadProposalConfiguration(directory);
-    const candidate = loadSourceSnapshot(directory, state.candidateId ?? state.acceptedId);
+    const candidate = loadSourceSnapshotManifest(directory, state.candidateId ?? state.acceptedId);
     const context = sourceProposalContext(original.bundle, original.nodes, state.candidateId ? candidate : undefined);
     return Promise.resolve(saveSourceProposal(directory, { version: 1, id: randomUUID(), revision: 1,
       acceptedSnapshotId: state.acceptedId, candidateSnapshotId: candidate.id,
@@ -145,7 +145,7 @@ export async function discardSourceProposal(directory: string, revision: number)
     const state = loadSourcingState(directory)!;
     const next = { ...state };
     delete next.candidateId;
-    const accepted = loadSourceSnapshot(directory, state.acceptedId);
+    const accepted = loadSourceSnapshotManifest(directory, state.acceptedId);
     applySourcingTransaction(getConfigDirectory(), path.basename(directory), {
       proposal: null, state: `${JSON.stringify(next, null, 2)}\n`,
     });
