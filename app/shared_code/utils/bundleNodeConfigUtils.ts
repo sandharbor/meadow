@@ -349,7 +349,20 @@ function validateNodeSet(nodes: BundleNodeConfig[], filePath: string): void {
   }
 }
 
+const stringifiedDocuments = new Map<string, string>();
+
 export function stringifyBundleNodeConfig(nodes: BundleNodeConfig[]): string {
+  // Validation distinguishes a field set to undefined from an absent one, so the key keeps it.
+  const key = JSON.stringify(nodes, (_name, value: unknown) => value === undefined ? '\u0000undefined' : value);
+  const cached = stringifiedDocuments.get(key);
+  if (cached !== undefined) return cached;
+  const document = stringifyCanonicalBundleNodeConfig(nodes);
+  stringifiedDocuments.set(key, document);
+  while (stringifiedDocuments.size > 4) stringifiedDocuments.delete(stringifiedDocuments.keys().next().value!);
+  return document;
+}
+
+function stringifyCanonicalBundleNodeConfig(nodes: BundleNodeConfig[]): string {
   const canonicalNodes = nodes.map((node, index) => parseNodeRecord(node, index, 'bundle_node_config.yaml'));
   validateNodeSet(canonicalNodes, 'bundle_node_config.yaml');
   const sorted = canonicalNodes.sort((a, b) =>

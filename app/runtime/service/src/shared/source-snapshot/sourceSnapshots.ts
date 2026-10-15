@@ -267,6 +267,13 @@ export function hydrateSnapshotNodeContents(root: string, snapshot: SourceSnapsh
 import { bundleNodeKeySourceGraphPath } from '../../../../../shared_code/utils/bundleNodeKey.js';
 
 export async function snapshotGraph(bundleDirectory: string, snapshot: SourceSnapshot, nodes = loadSourceNodeConfigs(bundleDirectory), frontierDepth = 1, rebuildIndex = false, config = loadSourceBundleConfig(bundleDirectory)): Promise<WorkingGraphRustOutput> {
+  const { graph, graphRoot } = await traverseSnapshot(bundleDirectory, snapshot, nodes, frontierDepth, rebuildIndex, config);
+  const decoded = decodeWorkingGraphKeys(graph);
+  if (!snapshot.transientSourceRoot) hydrateSnapshotNodeContents(graphRoot, snapshot, decoded.nodes);
+  return decoded;
+}
+
+async function traverseSnapshot(bundleDirectory: string, snapshot: SourceSnapshot, nodes: BundleNodeConfig[], frontierDepth: number, rebuildIndex: boolean, config: BundleConfig): Promise<{ graph: WorkingGraphRustOutput; graphRoot: string }> {
   nodes = nodesInSnapshot(snapshot, nodes);
   const appConfig = loadAppConfig(getConfigDirectory());
   const scratchDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'meadow-snapshot-graph-'));
@@ -283,10 +290,22 @@ export async function snapshotGraph(bundleDirectory: string, snapshot: SourceSna
       defaultOutlinksDepth: config.defaultOutlinksDepth, defaultInlinksDepth: config.defaultInlinksDepth,
       frontierDepth, allowImagesToExtendToFrontier: config.allowImagesToExtendToFrontier ?? appConfig.allowImagesToExtendToFrontier ?? true, allowLowerDepths: false,
     });
-    const decoded = decodeWorkingGraphKeys(graph);
-    if (!snapshot.transientSourceRoot) hydrateSnapshotNodeContents(graphRoot, snapshot, decoded.nodes);
-    return decoded;
+    return { graph, graphRoot };
   } finally { fs.rmSync(scratchDirectory, { recursive: true, force: true }); }
+}
+
+/**
+ * Run a retained snapshot's traversal ahead of the review that will request it, so
+ * native work overlaps live discovery. Results are reused only for identical inputs.
+ * The returned promise settles when the traversal ends and never rejects.
+ */
+export async function prefetchSnapshotGraph(bundleDirectory: string, snapshot: SourceSnapshot, frontierDepth: number, context?: { config: BundleConfig; nodes: BundleNodeConfig[] }): Promise<void> {
+  try {
+    const config = context?.config ?? loadSourceBundleConfig(bundleDirectory);
+    const nodes = context?.nodes ?? loadSourceNodeConfigs(bundleDirectory);
+    if (snapshot.transientSourceRoot || missingSnapshotRoles(snapshot, config, nodes).length) return;
+    await traverseSnapshot(bundleDirectory, snapshot, nodes, frontierDepth, false, config);
+  } catch { /* The review reports any failure when it requests this graph. */ }
 }
 
 export async function discoverSourceSnapshot(bundleDirectory: string, rebuildIndex = false, context?: { config: BundleConfig; nodes: BundleNodeConfig[]; frontierDepth?: number }): Promise<SourceSnapshot> {
@@ -511,6 +530,20 @@ export function missingSnapshotRoles(snapshot: SourceSnapshot, config: BundleCon
     node.bundleNodeKind === 'file' ? !snapshot.files[snapshotFilePath(snapshot, node)]
       : node.bundleNodeKind === 'folder' && Boolean(snapshotFilePath(snapshot, node)) && !snapshot.directories.includes(snapshotFilePath(snapshot, node))
   ));
+}
+
+const graphNodeIndexes = new WeakMap<WorkingGraphRustOutput['nodes'], Map<string, WorkingGraphRustOutput['nodes'][number]>>();
+
+/** The first graph node with a key, as a search in graph order finds it, through an index built once per graph. */
+export function graphNodeByKey(graph: Pick<WorkingGraphRustOutput, 'nodes'> | undefined, key: string): WorkingGraphRustOutput['nodes'][number] | undefined {
+  if (!graph) return undefined;
+  let index = graphNodeIndexes.get(graph.nodes);
+  if (!index) {
+    index = new Map();
+    for (const node of graph.nodes) if (!index.has(node.bundleNodeKey)) index.set(node.bundleNodeKey, node);
+    graphNodeIndexes.set(graph.nodes, index);
+  }
+  return index.get(key);
 }
 
 export function rememberReachableProvenance(bundleDirectory: string, snapshot: SourceSnapshot, graph: NonNullable<SourceSnapshot['graph']>, configs: BundleNodeConfig[]): void {

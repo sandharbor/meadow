@@ -28,7 +28,7 @@ import { commitChangesNative } from '../../../../shared/utils/configDirectory/gi
 import { getConfigDirectory } from '../../../../shared/bundle-config/bundleConfigPaths.js';
 import {
   availableSnapshotGraph, missingSnapshotRoles, discoverSourceSnapshot, rememberReachableProvenance, captureSourceSnapshot, initializeSourcing, installAcceptedSnapshot, loadSourceBundleConfig,
-  loadSourceNodeConfigs, loadSourceSnapshot, loadSourceSnapshotGraph, loadSourceSnapshotManifest, loadSourcingState, sha256,
+  loadSourceNodeConfigs, loadSourceSnapshot, loadSourceSnapshotGraph, loadSourceSnapshotManifest, loadSourcingState, prefetchSnapshotGraph, graphNodeByKey, sha256,
   snapshotDirectory, snapshotFilePath, snapshotGraph, snapshotSourceRoot, snapshotSummary,
   sourceConfigFingerprint, sourcePath, sourcingRoot, sourcingStatePath, SourcingError,
   verifySourceSnapshot, withSourcingLock, writeSourcingJson,
@@ -112,8 +112,8 @@ export function findSourceMoves(bundleDirectory: string, previous: SourceSnapsho
       const results = resultsByNode.get(node.bundleNodeId) ?? [];
       results.push({ bundleNodeId: node.bundleNodeId, oldPath, newPath, evidence, similarity,
         confidence: exact && content.score === 1 ? 'strong' : 'possible', competing: false, score,
-        previousRoute: previous.graph?.nodes.find(item => item.bundleNodeKey === sourceFilePathToBundleNodeKey(oldPath))?.path ?? [],
-        currentRoute: current.graph?.nodes.find(item => item.bundleNodeKey === sourceFilePathToBundleNodeKey(newPath))?.path ?? [] });
+        previousRoute: graphNodeByKey(previous.graph, sourceFilePathToBundleNodeKey(oldPath))?.path ?? [],
+        currentRoute: graphNodeByKey(current.graph, sourceFilePathToBundleNodeKey(newPath))?.path ?? [] });
       resultsByNode.set(node.bundleNodeId, results);
     }
   }
@@ -197,16 +197,37 @@ export async function sourcingReview(bundleDirectory: string): Promise<SourcingR
   return await withSourcingLock(bundleDirectory, () => buildSourceReview(bundleDirectory));
 }
 
+function reviewSnapshots(bundleDirectory: string, state: NonNullable<ReturnType<typeof loadSourcingState>>) {
+  const accepted = loadSourceSnapshotManifest(bundleDirectory, state.acceptedId);
+  const configs = loadSourceNodeConfigs(bundleDirectory);
+  const candidate = state.candidateId ? loadSourceSnapshotManifest(bundleDirectory, state.candidateId) : undefined;
+  const context = sourceProposalContext(loadSourceBundleConfig(bundleDirectory), configs, candidate);
+  return { accepted, configs, candidate, context };
+}
+
+/** Begin the review's retained traversals while live discovery runs; settles when both end. */
+async function prefetchReviewGraphs(bundleDirectory: string): Promise<void> {
+  try {
+    const state = loadSourcingState(bundleDirectory);
+    if (!state) return;
+    const { accepted, candidate, context } = reviewSnapshots(bundleDirectory, state);
+    await Promise.all([prefetchSnapshotGraph(bundleDirectory, accepted, 0),
+      candidate && prefetchSnapshotGraph(bundleDirectory, candidate, 0, context)]);
+  } catch { /* The review itself reports unreadable state. */ }
+}
+
 async function buildSourceReview(bundleDirectory: string, attempt = 0): Promise<SourcingReview> {
   const state = loadSourcingState(bundleDirectory)!;
   const fingerprint = sourceConfigFingerprint(bundleDirectory);
-  const accepted = loadSourceSnapshotManifest(bundleDirectory, state.acceptedId);
-  const configs = loadSourceNodeConfigs(bundleDirectory);
-  const graph = await availableSnapshotGraph(bundleDirectory, accepted, 0);
+  const { accepted, configs, candidate, context } = reviewSnapshots(bundleDirectory, state);
+  // The two traversals are independent; run them together and report failures in order.
+  const [acceptedResult, candidateResult] = await Promise.allSettled([availableSnapshotGraph(bundleDirectory, accepted, 0),
+    candidate ? availableSnapshotGraph(bundleDirectory, candidate, 0, context) : Promise.resolve(undefined)]);
+  if (acceptedResult.status === 'rejected') throw acceptedResult.reason;
+  const graph = acceptedResult.value;
   if (graph) rememberReachableProvenance(bundleDirectory, accepted, graph, configs);
-  const candidate = state.candidateId ? loadSourceSnapshotManifest(bundleDirectory, state.candidateId) : undefined;
-  const context = sourceProposalContext(loadSourceBundleConfig(bundleDirectory), configs, candidate);
-  const candidateGraph = candidate ? await availableSnapshotGraph(bundleDirectory, candidate, 0, context) : graph;
+  if (candidateResult.status === 'rejected') throw candidateResult.reason;
+  const candidateGraph = candidate ? candidateResult.value : graph;
   const moves = candidate ? findSourceMoves(bundleDirectory, { ...accepted, graph }, { ...candidate, graph: candidateGraph }, configs).map(move => ({
     ...move, contentChanged: Boolean(accepted.files[move.oldPath] && candidate.files[move.newPath]
       && accepted.files[move.oldPath].digest !== candidate.files[move.newPath].digest),
@@ -224,7 +245,7 @@ async function buildSourceReview(bundleDirectory: string, attempt = 0): Promise<
       else if (file.digest !== candidate.files[currentPath].digest) changes.push({ kind: 'modified', path: currentPath, ...(currentPath !== filename && { previousPath: filename }), bundleNodeId: byPath.get(filename) });
     }
     for (const filename of Object.keys(candidate.files)) {
-      if (!accepted.files[equivalentSnapshotPath(candidate, accepted, filename)] && !pairedNew.has(filename)) changes.push({ kind: 'added', path: filename, route: candidateGraph?.nodes.find(node => node.bundleNodeKey === sourceFilePathToBundleNodeKey(filename))?.path ?? [] });
+      if (!accepted.files[equivalentSnapshotPath(candidate, accepted, filename)] && !pairedNew.has(filename)) changes.push({ kind: 'added', path: filename, route: graphNodeByKey(candidateGraph, sourceFilePathToBundleNodeKey(filename))?.path ?? [] });
     }
   }
   if (sourceConfigFingerprint(bundleDirectory) !== fingerprint && attempt < 2) return await buildSourceReview(bundleDirectory, attempt + 1);
@@ -257,6 +278,13 @@ async function buildSourceReview(bundleDirectory: string, attempt = 0): Promise<
 
 export async function scanSourceChanges(bundleDirectory: string, replaceCandidate = false, rebuildIndex = false): Promise<SourcingReview> {
   await initializeSourcing(bundleDirectory);
+  // Native traversals must not outlive the request, including when it fails.
+  const prefetched = prefetchReviewGraphs(bundleDirectory);
+  try { return await scanInitializedSourceChanges(bundleDirectory, replaceCandidate, rebuildIndex); }
+  finally { await prefetched; }
+}
+
+async function scanInitializedSourceChanges(bundleDirectory: string, replaceCandidate: boolean, rebuildIndex: boolean): Promise<SourcingReview> {
   if (loadPendingSourceProposal(bundleDirectory)) {
     await checkSourceProposalUpdates(bundleDirectory, rebuildIndex);
     return sourcingReview(bundleDirectory);

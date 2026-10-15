@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { BundleNodeConfig } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import type { SourceMoveCandidate } from '../../../../../../../contracts/types/shared/sourcing/sourcing.js';
-import { snapshotFilePath, snapshotSourceRoot, sourcePath, type SourceSnapshot } from '../../../../shared/source-snapshot/sourceSnapshots.js';
+import { graphNodeByKey, snapshotFilePath, snapshotSourceRoot, sourcePath, type SourceSnapshot } from '../../../../shared/source-snapshot/sourceSnapshots.js';
 
 import { sourceMoveSimilarity, sourceTextProfile } from './sourceMoveSimilarity.js';
 
@@ -89,8 +89,8 @@ export function findGroupedSourceMoves(bundleDirectory: string, previous: Source
       result.push({ bundleNodeId: config.bundleNodeId, oldPath, newPath, confidence: 'possible', competing: false,
         similarity: sourceMoveSimilarity({ oldPath, newPath, exact, before: before === undefined ? undefined : sourceTextProfile(before), after: after === undefined ? undefined : sourceTextProfile(after), previous, current, group: { anchors: group.anchors.length, overlap: similarity } }),
         evidence: [`Follows the folder move shared by ${group.anchors.length} matched pages`, exact ? 'Identical non-blank file contents' : `${Math.round(similarity * 100)}% word overlap after the shared rename`],
-        previousRoute: previous.graph?.nodes.find(node => node.bundleNodeKey === sourceFilePathToBundleNodeKey(oldPath))?.path ?? [],
-        currentRoute: current.graph?.nodes.find(node => node.bundleNodeKey === sourceFilePathToBundleNodeKey(newPath))?.path ?? [],
+        previousRoute: graphNodeByKey(previous.graph, sourceFilePathToBundleNodeKey(oldPath))?.path ?? [],
+        currentRoute: graphNodeByKey(current.graph, sourceFilePathToBundleNodeKey(newPath))?.path ?? [],
       });
     }
   }
