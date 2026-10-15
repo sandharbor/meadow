@@ -71,7 +71,10 @@ export type WorkingGraphRunArgs = {
   rebuildIndex?: boolean;
   immutableSource?: boolean;
   bundleNodeConfigPath: string;
-  /** Stable identity for equivalent temporary configuration files. */
+  /**
+   * Stable identity for equivalent temporary configuration files, derived from their full
+   * contents. It distinguishes every configuration change, so no topology fingerprint is needed.
+   */
   cacheConfigIdentity?: string;
   entryBundleNodeId: string;
   defaultTraversalBundleNodeId: string;
@@ -169,16 +172,15 @@ export function workingGraphTopologyFingerprint(
 }
 
 function cacheKey(runArgs: WorkingGraphRunArgs, revision: number[]): string {
-  const configContents = fs.readFileSync(runArgs.bundleNodeConfigPath, 'utf8');
   return JSON.stringify({
     ...runArgs,
     graphRoot: path.resolve(runArgs.graphRoot),
     bundleNodeConfigPath: runArgs.cacheConfigIdentity ?? path.resolve(runArgs.bundleNodeConfigPath),
-    topologyFingerprint: workingGraphTopologyFingerprint(
-      configContents,
+    ...(!runArgs.cacheConfigIdentity && { topologyFingerprint: workingGraphTopologyFingerprint(
+      fs.readFileSync(runArgs.bundleNodeConfigPath, 'utf8'),
       runArgs.entryBundleNodeId,
       runArgs.defaultTraversalBundleNodeId,
-    ),
+    ) }),
     sourceRevision: revision,
   });
 }

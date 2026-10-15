@@ -8,12 +8,12 @@ import { applyNodeConfigsToNodes, applySensitiveFromApiData, generateBundleNodeI
 import { revalidateProposalTracking, type ProposalTrackingTarget } from '../../../../../../../shared_code/utils/proposalTracking.js';
 import { serializeWorkingGraphOutput } from '../../../../shared/bundle-graph/workingGraphService.js';
 import { selectEffectivelySensitiveNodeKeys } from '../../../../shared/bundle-graph/graphFilterService.js';
-import { loadSourceSnapshot, snapshotGraph, sha256, SourcingError } from '../../../../shared/source-snapshot/sourceSnapshots.js';
+import { graphNodeByKey, loadSourceSnapshotManifest, snapshotGraph, sha256, SourcingError } from '../../../../shared/source-snapshot/sourceSnapshots.js';
 
 /** Curation prepares tracking decisions without writing accepted policy or rereading live sources. */
 export async function prepareProposalTracking(directory: string, snapshotId: string, configuration: ProposalConfiguration,
   decisions: Record<string, ProposalTrackingDecision>, identities: Record<string, BundleNodeId> = {}) {
-  const snapshot = loadSourceSnapshot(directory, snapshotId);
+  const snapshot = loadSourceSnapshotManifest(directory, snapshotId);
   const raw = await snapshotGraph(directory, snapshot, configuration.nodes, 0, false, configuration.bundle);
   const output = serializeWorkingGraphOutput(raw);
   const nodes = output.nodes.map(node => ({ ...node }));
@@ -43,7 +43,7 @@ export async function prepareProposalTracking(directory: string, snapshotId: str
       const policy = node.sensitive ? 'source' : sensitiveByFilter.filter(item => item.keys.has(key)).map(({ filter }) => ({
         id: filter.id, selectors: filter.selectors, criterion: filter.selectorApplicationCriteria,
       })).sort((a, b) => a.id.localeCompare(b.id));
-      targets[key].sensitivity = sha256(JSON.stringify({ policy, digest: raw.nodes.find(item => item.bundleNodeKey === key)?.sourceFile?.digest }));
+      targets[key].sensitivity = sha256(JSON.stringify({ policy, digest: graphNodeByKey(raw, key)?.sourceFile?.digest }));
     }
     if (proposed[key] && !proposed[key].bundleNodeId) {
       const id = targets[key].bundleNodeId ?? generateBundleNodeId(ids);
@@ -55,8 +55,10 @@ export async function prepareProposalTracking(directory: string, snapshotId: str
   const configs = globalThis.structuredClone(configuration.nodes);
   const required = new Set([configuration.bundle.entryBundleNodeId, configuration.bundle.defaultTraversalBundleNodeId,
     ...configs.flatMap(node => node.bundleNodeKind === 'collection' ? node.memberBundleNodeIds : [])]);
+  const nodesByKey = new Map<string, (typeof nodes)[number]>();
+  for (const node of nodes) if (!nodesByKey.has(node.bundleNodeKey)) nodesByKey.set(node.bundleNodeKey, node);
   for (const [key, decision] of Object.entries(tracking)) {
-    const node = nodes.find(item => item.bundleNodeKey === key);
+    const node = nodesByKey.get(key);
     if (!node || decision.invalidated) continue;
     const index = configs.findIndex(config => config.bundleNodeId === decision.bundleNodeId);
     if (!decision.track) {
