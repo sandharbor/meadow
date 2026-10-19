@@ -86,6 +86,10 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'b6df7a57-471
 
   // Accept and inspect the sensitive pages.
   await sourceCommand(() => editor.sourceReview.open());
+  await sourceCommand(() => editor.sourceReview.reviewTrackingChoices(2));
+  for (const name of markedNames) {
+    await sourceCommand(() => editor.sourceReview.resolveSensitiveTracking(name, true));
+  }
   await sourceCommand(() => editor.sourceReview.accept());
 
   // Solo the sensitive pages

@@ -45,7 +45,17 @@ export function proposalEditorOperations(context: Context): SourcingTypeEditorOp
     if (operation === 'custom-filters' && (!options?.method || options.method === 'GET')) return response({
       filters: [...review.configuration.globalFilters.map(filter => ({ ...filter, enabled: filter.enabled && !review.configuration.bundle.disabledGlobalFilters?.includes(filter.id) })), ...review.configuration.bundleFilters],
     });
-    if (operation === 'bundle-config' && body.configs) {
+    const id = operation.startsWith('disabled-global-filters/') || operation.startsWith('custom-filters/') ? operation.split('/')[1].split('?')[0] : body.filter?.id;
+    const previousFilter = [...review.configuration.globalFilters, ...review.configuration.bundleFilters].find(filter => filter.id === id);
+    const changesSensitivity = [previousFilter, body.filter].some(filter => filter?.actions.some(action => action.type === 'mark_sensitive'));
+    if (changesSensitivity && (options?.method === 'POST' || options?.method === 'DELETE')) {
+      const saved = await apiRequest(`bundles/${encodeURIComponent(context.bundleSlug)}/curation/${operation}`, options);
+      if (!saved.ok) return saved;
+      await context.mutate('rebase-policy', {});
+      window.dispatchEvent(new CustomEvent('meadow-filter-policy-changed', { detail: context.bundleSlug }));
+      return saved;
+    }
+    if (operation === 'bundle-config'  && body.configs) {
       // A comparison includes departing nodes. Preserve their configuration until acceptance.
       const controls = new Set(review.proposal.proposed.nodes.filter(node => node.listType === 'blacklist').map(node => node.bundleNodeId));
       const represented = new Set(context.graph()?.getAllNodes().filter(node => node.sourceReview?.kind !== 'departing' || (node.bundleNodeId && controls.has(node.bundleNodeId))).flatMap(node => node.bundleNodeId ? [node.bundleNodeId] : []));

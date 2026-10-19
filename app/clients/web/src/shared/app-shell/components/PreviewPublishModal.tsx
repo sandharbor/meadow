@@ -183,6 +183,8 @@ interface PreviewPublishModalProps {
 
   // Untracked pages integration
   untrackedNodeCount: number;
+  sensitivityCount?: number;
+  onReviewSensitivity?: () => void;
   onShowUntrackedNodes: () => void;
 
   // URL param syncing
@@ -216,6 +218,8 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
   retryPublishTrigger,
   untrackedNodeCount,
   onShowUntrackedNodes,
+  sensitivityCount = 0,
+  onReviewSensitivity,
   onTabChange,
   initialTab,
   initialCustomize,
@@ -595,7 +599,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
             if (data.stage === 'complete' || data.stage === 'error' || data.stage === 'cancelled') {
               eventSource.close();
               if (data.stage === 'error') {
-                setPreviewResult({ success: false, error: data.result?.error || data.message || 'Failed to generate preview' });
+                setPreviewResult({ success: false, error: data.message || data.result?.error || 'Failed to generate preview' });
               }
               resolve();
             }
@@ -1155,6 +1159,10 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
           </div>
         </div>
 
+        {previewResult?.success && sensitivityCount > 0 && <div role="status" data-testid="sensitivity-warning" className="mx-auto mb-3 flex max-w-3xl flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-center text-sm text-amber-900">
+          <span>{sensitivityCount} tracked {sensitivityCount === 1 ? 'node is' : 'nodes are'} now marked sensitive. {sensitivityCount === 1 ? 'It remains' : 'They remain'} tracked in your bundle.</span>
+          <button className="shrink-0 font-semibold underline" onClick={onReviewSensitivity}>Review pages</button>
+        </div>}
         {/* Untracked Pages Alert - shown above the process steps */}
         {previewResult?.success && untrackedNodeCount > 0 && (
           <div className="flex justify-center mb-3">

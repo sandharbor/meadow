@@ -98,7 +98,7 @@ export function AcceptedChangesTray({ changes, graph, bundleSlug, request, busy 
   return <div ref={row} className="relative -mr-1 flex min-w-0 items-center" onKeyDown={event => { if (event.key === 'Escape' && visible && !compared) { event.stopPropagation(); close(); } }}>
     <div role="region" aria-label="Changes to accept" data-testid="accepted-changes"
       className="relative flex min-w-0 flex-nowrap items-center gap-1.5 overflow-x-auto rounded-lg border border-blue-700/40 bg-blue-50 px-[7px] py-[5px] text-xs">
-      {!items.length && <span className="px-1 py-0.5 text-xs font-medium text-blue-900/60">No changes yet</span>}
+      {!items.length && <span className="px-1 py-0.5 text-xs font-medium text-blue-900/60">No changes to review</span>}
       {items.map(item => {
         const expanded = 'detail' in item ? visible === item.detail : item.id === 'identities' ? openDialog === 'identities' : undefined;
         return <button key={item.id} type="button" data-change-item={item.id} aria-expanded={expanded} aria-haspopup={'dialog' in item ? 'dialog' : undefined}

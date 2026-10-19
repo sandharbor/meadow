@@ -14,7 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import type { DocumentText } from '../../../../concepts/documents.js';
+
 export interface BundleDoc {
+  semanticTitle?: DocumentText
   id: string           // URL-safe key, e.g. 'example-bundle'
   name: string         // Display name, e.g. 'Example Bundle'
   description: string  // Prose describing the bundle and what it's used for

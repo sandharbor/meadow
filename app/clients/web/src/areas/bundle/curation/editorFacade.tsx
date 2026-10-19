@@ -6,8 +6,12 @@ import type { CurationTypeEditorOperations } from '../shared-sourcing-curation/e
 import { apiRequest } from '../../../shared/utils/apiClient.js';
 
 function useCurationOperations(bundleSlug: string): CurationTypeEditorOperations {
-  return useMemo(() => ({ mode: 'curation', request: (operation, options) =>
-    apiRequest(`bundles/${encodeURIComponent(bundleSlug)}/curation/${operation}`, options) }), [bundleSlug]);
+  return useMemo(() => ({ mode: 'curation', request: async (operation, options) => {
+    const response = await apiRequest(`bundles/${encodeURIComponent(bundleSlug)}/curation/${operation}`, options);
+    if (response.ok && (options?.method === 'POST' || options?.method === 'DELETE') && (operation.startsWith('custom-filters') || operation.startsWith('disabled-global-filters/')))
+      window.dispatchEvent(new CustomEvent('meadow-filter-policy-changed', { detail: bundleSlug }));
+    return response;
+  } }), [bundleSlug]);
 }
 
 export function CurationEditor(props: Omit<React.ComponentProps<typeof CurationComponentEditor>, 'operations'>) {

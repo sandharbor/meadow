@@ -15,6 +15,9 @@ limitations under the License.
 */
 
 export const coreConceptIds = {
+  changesSinceTracking: "changes-since-tracking",
+  trackedBundleNode: "tracked-bundle-node",
+  trackedNodeBecomesSensitive: "tracked-node-becomes-sensitive",
   areaBoundaryMap: "area-boundary-map",
   bundleNodeKey: "bundle-node-key",
   bundleNodeId: "bundle-node-id",
@@ -72,6 +75,7 @@ export const coreConceptIds = {
   filters: "filters",
   filterMixing: "filter-mixing",
   filterSensitivity: "filter-sensitivity",
+  sourceSensitivity: "source-sensitivity",
   findInBundles: "find-in-bundles",
   folderBundles: "folder-bundles",
   folderFilter: "folder-filter",

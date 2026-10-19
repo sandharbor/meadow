@@ -141,11 +141,39 @@ export function SourcingWorkspace({ bundleSlug, onClose, onAccepted, requestedPa
       else throw err;
     }
   }, [bundleSlug, mutate, receive]);
+  const blacklistSensitiveNode = async (key: EncodedBundleNodeKey) => {
+    const current = reviewRef.current;
+    const target = current?.trackingTargets[key];
+    if (!current || !target || target.untrackableReason) return;
+    const node = current.configuration.nodes.find(node => node.bundleNodeId === target.bundleNodeId);
+    if (!node || node.bundleNodeKind === 'collection') return;
+    const configuration = globalThis.structuredClone(current.proposal.proposed);
+    const index = configuration.nodes.findIndex(item => item.bundleNodeId === node.bundleNodeId);
+    if (index < 0) configuration.nodes.push({ ...node, listType: 'blacklist' });
+    else configuration.nodes[index].listType = 'blacklist';
+    await configure(configuration).catch(() => {});
+  };
   const operations = useMemo(() => proposalEditorOperations({ bundleSlug, current: () => {
     if (!reviewRef.current) throw new Error('The proposal is still loading.');
     return reviewRef.current;
   }, graph: () => graphRef.current, mutate, configure, report: setNotice }), [bundleSlug, mutate, configure]);
   const [filters, setFilters, reloadFilters] = useSourcingStateFilters(bundleSlug, operations.request, 'sourcing', { ready: Boolean(review), additionalFilters: sourceChangeFilters });
+  const focusedSensitivity = useRef(false);
+  useEffect(() => {
+    if (requestedParameters.review !== 'sensitivity' || !graph) return;
+    const affected = graph.getAllNodes().filter(node => node.sourceReview?.modification?.sensitivity);
+    if (focusedSensitivity.current) {
+      if (!affected.length) setFilters(previous => previous.some(filter => filter.id === 'source-modified-sensitivity' && filter.isSolo)
+        ? previous.map(filter => filter.id === 'source-modified-sensitivity' ? { ...filter, isSolo: false } : filter) : previous);
+      return;
+    }
+    if (!affected.length) return;
+    focusedSensitivity.current = true;
+    setSelected(new Set(affected.map(node => node.bundleNodeKey)));
+    setCollapsed(false);
+    setFilters(previous => previous.map(filter => ({ ...filter, isSolo: filter.id === 'source-modified-sensitivity',
+      ...(filter.id === 'source-modified-sensitivity' && { actions: [...filter.actions, { type: 'show_titles' as const }] }) })));
+  }, [requestedParameters.review, graph, setFilters]);
   const frontierFilter = filters.find(filter => filter.id === 'frontier-filter');
   const frontierDepth = frontierFilter?.enabled ? frontierFilter.thresholdValue ?? 1 : 0;
   frontierDepthRef.current = frontierDepth;
@@ -224,7 +252,7 @@ export function SourcingWorkspace({ bundleSlug, onClose, onAccepted, requestedPa
     <header ref={bar} style={{ height: headerHeight }} className={`source-bar relative flex shrink-0 ${dialog === 'identities' && (identityRequired || unresolvedIdentities) ? 'z-40' : 'z-10'} items-center gap-3 border-b bg-blue-50 px-4 ${leaving === 'bar' ? 'source-bar-leaving' : ''}`}>
       {/* The bar's controls sit with Accept changes; the heading remains for assistive technology. */}
       <h1 className="sr-only">Page changes</h1>
-      <SourceReviewActions busy={busy} blocked={blocked || !settled} loading={!settled && !leaving} acceptButton={acceptButton} onExit={exit} onAccept={() => void finish(false)}
+      <SourceReviewActions empty={Boolean(settled && changes && !changes.items.length)} busy={busy} blocked={blocked || !settled} loading={!settled && !leaving} acceptButton={acceptButton} onExit={exit} onAccept={() => void finish(!changes?.items.length)}
         refresh={settled && <span className="source-bar-contents inline-flex"><RefreshSourcesButton compact refreshing={rescanning} disabled={busy || !review || rescanning}
           onClick={() => { setRescanning(true); void mutate('refresh', {}).catch(() => {}).finally(() => setRescanning(false)); }} /></span>}
         changes={settled && changes && <div className="source-bar-contents flex min-w-0"><AcceptedChangesTray changes={changes} graph={graph} bundleSlug={bundleSlug} request={operations.request}
@@ -248,9 +276,9 @@ export function SourcingWorkspace({ bundleSlug, onClose, onAccepted, requestedPa
       protectedBundleNodeIds={new Set([review.configuration.bundle.entryBundleNodeId, review.configuration.bundle.defaultTraversalBundleNodeId].filter((id): id is NonNullable<typeof id> => Boolean(id)))}
     /> : null}</fieldset>
     </div>
-    {review && <ProposalDialogs identityChoices={identityDecisions.choices} chooseIdentities={choices => { setError(null); identityDecisions.choose(choices); }} identitySaving={identityDecisions.saving} identityBusy={mutating || loadingCount > 0}
+    {review && <ProposalDialogs onSelectNode={key => { setSelected(new Set([key])); setCollapsed(false); }} identityChoices={identityDecisions.choices} chooseIdentities={choices => { setError(null); identityDecisions.choose(choices); }} identitySaving={identityDecisions.saving} identityBusy={mutating || loadingCount > 0}
       identityRequired={identityRequired || unresolvedIdentities > 0} identityComparison={identityComparison} onIdentityComparison={setIdentityComparison} request={operations.request} dialog={dialog} review={review} busy={busy} close={closeDialog} later={() => leave(onClose)} discard={() => void finish(true)}
-      mutate={(operation, body) => mutate(operation, body).catch(() => {})} refresh={() => { if (pendingConfiguration) void ('trackingChange' in pendingConfiguration ? mutate('tracking', { ...pendingConfiguration.trackingChange, incorporateNewerSources: true }) : configure(pendingConfiguration, true)).then(() => { setPendingConfiguration(null); setDialog(null); }).catch(() => {}); }} />}
+      blacklist={blacklistSensitiveNode} mutate={(operation, body) => mutate(operation, body).catch(() => {})} refresh={() => { if (pendingConfiguration) void ('trackingChange' in pendingConfiguration ? mutate('tracking', { ...pendingConfiguration.trackingChange, incorporateNewerSources: true }) : configure(pendingConfiguration, true)).then(() => { setPendingConfiguration(null); setDialog(null); }).catch(() => {}); }} />}
   </section></SourceNamesProvider>;
 }
 

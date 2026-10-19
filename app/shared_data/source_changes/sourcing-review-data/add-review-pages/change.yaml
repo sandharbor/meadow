@@ -1,7 +1,7 @@
 id: add-review-pages
 label: Add pages for tracking review
 action: "Link two safe pages, a directly sensitive page, and a page available for filter-based policy."
-check: "Sourcing shows provisional tracking and accepts selected pages without tracking them."
+check: "Safe additions are tracked automatically; directly sensitive and filter-sensitive additions stay untracked."
 e2e: sourcing-proposal-tracking-preference.spec.ts
 categories: [add]
 sourceGraph: sourcing-review-data

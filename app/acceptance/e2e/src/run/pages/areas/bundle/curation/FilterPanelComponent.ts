@@ -140,7 +140,7 @@ export class FilterPanelComponent {
     await selects.nth(0).selectOption(field);
     await selects.nth(1).selectOption(matchType);
     await selectorBlock
-      .locator('input[placeholder="Enter search text"]')
+      .getByPlaceholder(matchType === 'regex' ? 'Enter regex pattern' : 'Enter search text', { exact: true })
       .fill(value);
 
     if (markSensitive) {
@@ -191,13 +191,15 @@ export class FilterPanelComponent {
 
     const checkbox = this.filterCheckbox(filterName);
     await this.expect(checkbox).toBeVisible();
-    await checkbox.check();
+    if (!await checkbox.isChecked()) await checkbox.click();
+    await this.expect(checkbox).toBeChecked();
   }
 
   async disableFilter(filterName: string) {
     const checkbox = this.filterCheckbox(filterName);
     await this.expect(checkbox).toBeVisible();
-    await checkbox.uncheck();
+    if (await checkbox.isChecked()) await checkbox.click();
+    await this.expect(checkbox).not.toBeChecked();
   }
 
   async getFilterThresholdValue(filterName: string): Promise<number> {

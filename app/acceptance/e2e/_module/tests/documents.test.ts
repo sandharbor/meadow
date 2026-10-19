@@ -87,3 +87,21 @@ test('related counts and document filters share deduplicated direct membership a
   assert.ok(!membership.includes('bundle/curation'));
   assert.ok(!scenarioDocumentMembership({ conceptIds: ['sensitive'] }, []).includes(preventAccidentalSharing.id));
 });
+
+
+test('semantic titles participate in checked passages, backlinks, and immutable run captures', t => {
+  const title = conceptText`${conceptLink(sensitive.id, sensitive.name)} changes.`;
+  const document: MeadowDocument = { id: 'semantic-example', name: 'Readable English title', documentKind: 'fixture',
+    semanticTitle: title, description: conceptText`An example.`, sections: [] };
+  assert.deepEqual(validateDocuments([...registry.documents, document]), []);
+  assert.equal(documentPassages(document)[0].heading, 'AKA');
+  assert.equal(documentBacklinks(sensitive.id, [document])[0].sectionId, 'semantic-title');
+  assert.ok(validateDocuments([...registry.documents, { ...document, semanticTitle: { segments: [
+    { kind: 'concept-link', conceptId: 'missing-document', label: 'Missing' },
+  ] } }]).some(error => error.includes('unknown document')));
+  const root = mkdtempSync(path.join(os.tmpdir(), 'meadow-semantic-title-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const captured = captureDocumentSnapshot(root, { ...registry, documents: [...registry.documents, document] }, root);
+  assert.deepEqual(captured.documents.find(item => item.id === document.id)?.semanticTitle, title);
+  assert.deepEqual(readDocumentSnapshot(root), captured);
+});

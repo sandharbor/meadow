@@ -174,3 +174,23 @@ export type PendingProposalStorageMeadowConceptParticipations = [
   ParticipatesIn<typeof pendingSourceProposal, 'begin-proposal', typeof beginSourceProposal>,
   ParticipatesIn<typeof pendingSourceProposal, 'save-proposal', typeof saveSourceProposal>,
 ];
+
+/** Saved sensitivity policy is immediate; remove only its superseded proposal alternatives. */
+export async function rebaseProposalSensitivityPolicy(directory: string, revision: number) {
+  return editSourceProposal(directory, revision, proposal => {
+    const saved = loadProposalConfiguration(directory);
+    const all = [saved, proposal.original, proposal.proposed];
+    const ids = new Set(all.flatMap(config => [...config.globalFilters, ...config.bundleFilters])
+      .filter(filter => filter.actions.some(action => action.type === 'mark_sensitive')).map(filter => filter.id));
+    const rebase = (configuration: ProposalConfiguration): ProposalConfiguration => ({ ...configuration,
+      globalFilters: [...configuration.globalFilters.filter(filter => !ids.has(filter.id)), ...saved.globalFilters.filter(filter => ids.has(filter.id))],
+      bundleFilters: [...configuration.bundleFilters.filter(filter => !ids.has(filter.id)), ...saved.bundleFilters.filter(filter => ids.has(filter.id))],
+      deletedDefaultFilterIds: [...configuration.deletedDefaultFilterIds.filter(id => !ids.has(id)), ...saved.deletedDefaultFilterIds.filter(id => ids.has(id))],
+      bundle: { ...configuration.bundle, disabledGlobalFilters: [
+        ...(configuration.bundle.disabledGlobalFilters ?? []).filter(id => !ids.has(id)),
+        ...(saved.bundle.disabledGlobalFilters ?? []).filter(id => ids.has(id)),
+      ] },
+    });
+    return { ...proposal, original: rebase(proposal.original), proposed: rebase(proposal.proposed) };
+  });
+}

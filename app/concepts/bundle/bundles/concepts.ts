@@ -74,7 +74,7 @@ export const folderBundles = defineMeadowConcept({
     conceptText`Creation starts with folder selection. One folder supplies its own home-page title; several folders have a collection home-page title that can be customized separately from Bundle Name.`,
     conceptText`Each selected folder must belong to a configured source. Creation checks the selection whenever folders or sources change and remains unavailable until the starting structure is valid.`,
   ],
-  interplay: conceptText`${conceptLink(coreConceptIds.folderFilter, "Source Folder Filter")} controls source-folder visibility, while ordinary ${conceptLink(coreConceptIds.tracking, "Bundle Page Tracking")} rules still determine which discovered pages enter the bundle.`,
+  interplay: conceptText`${conceptLink(coreConceptIds.folderFilter, "Source Folder Filter")} controls source-folder visibility, while ordinary ${conceptLink(coreConceptIds.tracking, "Bundle Node Tracking")} rules still determine which discovered pages enter the bundle.`,
 });
 
 export const startingSelection = defineMeadowConcept({

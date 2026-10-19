@@ -108,9 +108,10 @@ export async function sourceProposalComparison(directory: string, frontierDepth 
     const removalReason = !departing ? undefined : presence === 'missing' ? 'source-missing'
       : presence === 'disconnected' ? 'source-disconnected' : proposedControl ? 'blacklisted' : 'unreachable';
     const settings = previous && !departing ? settingChanges(previous.conf, node.conf) : [];
-    const kind: SourceNodeReview['kind'] = departing ? 'departing' : changedIdentity ? 'moved' : !previous ? 'added' : modified || settings.length ? 'modified' : 'unchanged';
+    const sensitivityChanged = Boolean(review.trackingTargets[node.bundleNodeKey]?.sensitivityChanged);
+    const kind: SourceNodeReview['kind'] = departing ? 'departing' : changedIdentity ? 'moved' : !previous ? 'added' : modified || settings.length || sensitivityChanged ? 'modified' : 'unchanged';
     const explanation = kind === 'added' ? 'Newly included in the proposed material.'
-      : kind === 'modified' ? (modified ? 'Content differs between the accepted and proposed captures.' : 'Saved settings differ between the accepted and proposed configuration.')
+      : kind === 'modified' ? (sensitivityChanged ? 'This tracked node is now sensitive. Review its inclusion.' : modified ? 'Content differs between the accepted and proposed captures.' : 'Saved settings differ between the accepted and proposed configuration.')
       : kind === 'moved' ? 'The confirmed rename or move preserves this page’s identity and configuration.'
       : removalReason === 'source-missing' ? 'The source was missing when this proposal was captured.'
       : removalReason === 'source-disconnected' ? 'Its source is no longer connected to this proposed scope. Its files are untouched.'
@@ -122,7 +123,7 @@ export async function sourceProposalComparison(directory: string, frontierDepth 
     const counted = kind !== 'unchanged' && comparedPath ? { beforePath: comparedPath, afterPath: proposedPath ?? comparedPath, departing } : undefined;
     node.sourceReview = { kind, removalReason, orphanedConfiguration: departing && Boolean(previous?.conf) && !proposedControl && previous?.conf?.listType !== 'blacklist',
       ...(orphan && { orphan }), explanation: [explanation, orphan?.reason].filter(Boolean).join(' '), previousPath, proposedPath, previousRoute: previous?.path ?? [], proposedRoute: departing ? [] : node.path ?? [],
-      ...((kind === 'modified' || kind === 'moved') && { modification: { source: Boolean(modified), settings } }),
+      ...((kind === 'modified' || kind === 'moved') && { modification: { source: Boolean(modified), settings, sensitivity: sensitivityChanged } }),
       ...(counted && { lineCounts: null, hasPreviousContent: false }),
       sensitivityReasons: review.trackingTargets[node.bundleNodeKey]?.sensitivityReasons,
       beforeSnapshotId: accepted.id, afterSnapshotId: candidate.id };

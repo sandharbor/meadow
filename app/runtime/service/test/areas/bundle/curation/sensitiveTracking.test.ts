@@ -97,7 +97,7 @@ describe('single-file sensitive tracking', () => {
     expect(trackingEvidenceMatches(config.trackingEvidence, sourceContentDigest(exactBytes), false)).toBe(false);
   });
 
-  it('derives advisory content findings and a required sensitivity-transition pause deterministically', () => {
+  it('derives advisory content findings and a advisory sensitivity-transition review deterministically', () => {
     const recordedDigest = `sha256:${'a'.repeat(64)}` as `sha256:${string}`;
     const currentDigest = `sha256:${'b'.repeat(64)}` as `sha256:${string}`;
     const config: FileBundleNodeConfig = {
@@ -133,7 +133,7 @@ describe('single-file sensitive tracking', () => {
     expect(second).toEqual(first);
     expect(first.map(finding => [finding.code, finding.policy])).toEqual([
       ['content-changed-since-tracking', 'recommend-review'],
-      ['sensitivity-reaffirmation-required', 'review-required'],
+      ['sensitivity-reaffirmation-required', 'recommend-review'],
     ]);
     expect(deriveTrackingEvidenceFindings({
       config: { ...config, trackingEvidence: undefined },

@@ -28,10 +28,11 @@ export interface BundleBoundaryFinding {
   bundleNodeId: BundleNodeId;
   bundleNodeKey: EncodedBundleNodeKey;
   bundleNodeName: string;
-  sourceContentDigest: `sha256:${string}`;
-  recordedSourceContentDigest: `sha256:${string}`;
+  sourceContentDigest?: `sha256:${string}`;
+  recordedSourceContentDigest?: `sha256:${string}`;
   effectivelySensitive: boolean;
-  recordedEffectivelySensitive: boolean;
+  recordedEffectivelySensitive?: boolean;
+  sensitivityReasons?: string[];
   message: string;
 }
 

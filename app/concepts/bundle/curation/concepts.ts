@@ -22,8 +22,8 @@ const curationArea = [coreConceptIds.bundleCuration] as const;
 
 export const blacklist = defineMeadowConcept({
   id: coreConceptIds.blacklist,
-  name: "Bundle Page Blacklisting",
-  aliases: ["Blacklist"],
+  name: "Bundle Node Blacklisting",
+  aliases: ["Bundle Page Blacklisting", "Blacklist"],
   kind: "mechanism",
   searchFacet: true,
   appAreaIds: curationArea,
@@ -32,17 +32,17 @@ export const blacklist = defineMeadowConcept({
     conceptText`A page blacklist stops traversal through that page; independent routes can retain its descendants. A folder blacklist is a hard subtree boundary.`,
     conceptText`Removing the blacklist restores pages that remain reachable under the bundle's other constraints.`,
   ],
-  interplay: conceptText`Blacklisting constrains ${conceptLink(coreConceptIds.tracking, "Bundle Page Tracking")} and protects the generated graph before ${conceptLink(coreConceptIds.htmlGeneration, "HTML Bundle Generation")}.`,
+  interplay: conceptText`Blacklisting constrains ${conceptLink(coreConceptIds.tracking, "Bundle Node Tracking")} and protects the generated graph before ${conceptLink(coreConceptIds.htmlGeneration, "HTML Bundle Generation")}.`,
 });
 
 export const bundleConfig = defineMeadowConcept({
   id: coreConceptIds.bundleConfig,
-  name: "Bundle Page Configuration",
-  aliases: ["Bundle Config"],
+  name: "Bundle Node Configuration",
+  aliases: ["Bundle Page Configuration", "Bundle Config"],
   kind: "artifact",
   searchFacet: true,
   appAreaIds: curationArea,
-  definition: conceptText`The durable per-page configuration that records a bundle page's tracking and traversal choices.`,
+  definition: conceptText`The durable configuration that records a bundle node's inclusion and applicable traversal or membership choices.`,
   mechanics: [
     conceptText`Curation tracking and simple settings save immediately. Traversal edits and exclusions with wider graph effects are staged in a sourcing proposal; Later preserves the draft and Discard restores accepted configuration. Acceptance commits the reviewed settings with their captured material.`,
   ],
@@ -93,6 +93,23 @@ export const filterMixing = defineMeadowConcept({
   interplay: conceptText`Mixes combine built-in filters, selection, ${conceptLink(coreConceptIds.folderFilter, "Source Folder Filters")}, and rules from ${conceptLink(coreConceptIds.filters, "Custom Filtering")}. Mixing existing filters does not require creating a custom filter.`,
 });
 
+export const sourceSensitivity = defineMeadowConcept({
+  id: coreConceptIds.sourceSensitivity,
+  name: "Source-Marked Sensitivity",
+  aliases: ["Source Sensitivity", "Source-Sensitive"],
+  kind: "mechanism",
+  searchFacet: true,
+  parentId: coreConceptIds.sensitive,
+  appAreaIds: [coreConceptIds.bundleCuration, coreConceptIds.bundleSourcing],
+  definition: conceptText`Sensitivity declared directly in source material, such as meadow-sensitive: true YAML front matter in a Markdown file.`,
+  mechanics: [
+    conceptText`The captured source marking makes that node sensitive independently of custom filters. Source review uses the marking in its reviewed capture; accepting the capture carries it into curation.`,
+    conceptText`Marking or unmarking a Markdown source edits its front matter. Removing that marking does not remove sensitivity supplied by an enabled Mark Sensitive filter. Sensitivity does not propagate to descendants or collection members.`,
+  ],
+  interplay: conceptText`${conceptLink(coreConceptIds.sourceSnapshot, "Source Snapshots")} retain the marking. Source markings and ${conceptLink(coreConceptIds.filterSensitivity, "Filter-Derived Sensitivity")} both contribute to the effective state of a ${conceptLink(coreConceptIds.sensitive, "Sensitive Bundle Node")}.`,
+  implementationRoles: ["apply-source-marking"] as const,
+});
+
 export const filterSensitivity = defineMeadowConcept({
   id: coreConceptIds.filterSensitivity,
   name: "Filter-Derived Sensitivity",
@@ -103,11 +120,11 @@ export const filterSensitivity = defineMeadowConcept({
   appAreaIds: curationArea,
   definition: conceptText`An enabled custom filter's Mark Sensitive action makes matching nodes effectively sensitive, even when their source does not mark them sensitive.`,
   mechanics: [
-    conceptText`Effective sensitivity combines direct source sensitivity with matches from enabled bundle and global filters that have a Mark Sensitive action. Filter matches follow each filter's selector criteria and do not rewrite source sensitivity markings.`,
+    conceptText`Effective sensitivity combines ${conceptLink(coreConceptIds.sourceSensitivity, "Source-Marked Sensitivity")} with matches from enabled bundle and global filters that have a Mark Sensitive action. Filter matches follow each filter's selector criteria and do not rewrite source sensitivity markings.`,
     conceptText`Source review identifies these pages as Sensitive via filter. Its automatic tracking skips them and lists the exact skipped pages in the Tracking changes panel before acceptance. Acceptance includes their source material in the snapshot without automatically tracking it.`,
     conceptText`For example, a filter matching titles containing confidential can protect newly discovered notes and planning pages while allowing a public update from the same source change to be tracked.`,
   ],
-  interplay: conceptText`${conceptLink(coreConceptIds.filters, "Custom Filters")} supply the matching rules and action; their matches become ${conceptLink(coreConceptIds.sensitive, "Sensitive Bundle Pages")}. The assessment applies to ${conceptLink(coreConceptIds.sourceSnapshot, "Source Snapshots")} and constrains ${conceptLink(coreConceptIds.tracking, "Bundle Page Tracking")}.`,
+  interplay: conceptText`${conceptLink(coreConceptIds.filters, "Custom Filters")} supply the matching rules and action; their matches become ${conceptLink(coreConceptIds.sensitive, "Sensitive Bundle Pages")}. The assessment applies to ${conceptLink(coreConceptIds.sourceSnapshot, "Source Snapshots")} and constrains ${conceptLink(coreConceptIds.tracking, "Bundle Node Tracking")}.`,
   implementationRoles: ["derive-sensitivity", "assess-source-sensitivity"] as const,
 });
 
@@ -122,7 +139,7 @@ export const folderFilter = defineMeadowConcept({
   mechanics: [
     conceptText`It presents recursive page counts, nested activity, title filtering, soloing, hiding, and reset behavior. With multiple configured sources it groups folders beneath canonical source names, including zero-count sources; a single source omits that extra grouping. Folder controls identify a source by its stable identity plus the relative directory, so equal folder names stay independent and settings survive source rename and graph refresh within the editor session.`,
   ],
-  interplay: conceptText`It changes the visible source scope without itself changing ${conceptLink(coreConceptIds.tracking, "Bundle Page Tracking")} or the structure of a ${conceptLink(coreConceptIds.folderBundles, "Folder-Derived Bundle")}.`,
+  interplay: conceptText`It changes the visible source scope without itself changing ${conceptLink(coreConceptIds.tracking, "Bundle Node Tracking")} or the structure of a ${conceptLink(coreConceptIds.folderBundles, "Folder-Derived Bundle")}.`,
 });
 
 export const frontier = defineMeadowConcept({
@@ -275,16 +292,16 @@ export const paths = defineMeadowConcept({
 
 export const sensitive = defineMeadowConcept({
   id: coreConceptIds.sensitive,
-  name: "Sensitive Bundle Page",
-  aliases: ["Sensitive", "Sensitive Bundle Pages"],
+  name: "Sensitive Bundle Node",
+  aliases: ["Sensitive Bundle Page", "Sensitive", "Sensitive Bundle Pages"],
   kind: "state",
   searchFacet: true,
   appAreaIds: curationArea,
-  definition: conceptText`A page marked as requiring protection from casual inclusion in a bundle.`,
+  definition: conceptText`A bundle node marked as requiring protection from casual inclusion in a bundle. Sensitivity applies individually to file, folder, and collection nodes; it does not propagate to descendants or members.`,
   mechanics: [
-    conceptText`Sensitive pages are excluded from bulk tracking and remain available for deliberate, page-specific review. This includes pages protected by ${conceptLink(coreConceptIds.filterSensitivity, "Filter-Derived Sensitivity")}. Source review automatically tracks safe additions by default, lists sensitive skipped additions in its Tracking changes panel, and lets the user select an individual skipped page for review. Acceptance leaves skipped pages untracked in ordinary curation.`,
+    conceptText`Sensitive nodes are excluded from bulk tracking and remain available for deliberate, node-specific review. This includes pages protected by ${conceptLink(coreConceptIds.filterSensitivity, "Filter-Derived Sensitivity")}. Source review automatically tracks safe additions by default, lists sensitive skipped additions in its Tracking changes panel, and lets the user select an individual skipped page for review. Acceptance leaves skipped pages untracked in ordinary curation.`,
   ],
-  interplay: conceptText`The design pressure to ${conceptLink(designPressureIds.preventAccidentalSharing, "prevent accidental sharing of sensitive material")} motivates this protection. Sensitivity constrains ${conceptLink(coreConceptIds.tracking, "Bundle Page Tracking")} and is surfaced through ${conceptLink(coreConceptIds.filters, "Custom Filters")} and ${conceptLink(coreConceptIds.callout, "Curation Callouts")}.`,
+  interplay: conceptText`The design pressure to ${conceptLink(designPressureIds.preventAccidentalSharing, "prevent accidental sharing of sensitive material")} motivates this protection. Sensitivity constrains ${conceptLink(coreConceptIds.tracking, "Bundle Node Tracking")} and is surfaced through ${conceptLink(coreConceptIds.filters, "Custom Filters")} and ${conceptLink(coreConceptIds.callout, "Curation Callouts")}.`,
 });
 
 export const sourceGraphSearch = defineMeadowConcept({
@@ -302,26 +319,58 @@ export const sourceGraphSearch = defineMeadowConcept({
 
 export const tracking = defineMeadowConcept({
   id: coreConceptIds.tracking,
-  name: "Bundle Page Tracking",
-  aliases: ["Tracking"],
+  name: "Bundle Node Tracking",
+  aliases: ["Bundle Page Tracking", "Tracking"],
   kind: "mechanism",
   searchFacet: true,
   appAreaIds: [coreConceptIds.bundleCuration, coreConceptIds.bundleReview],
-  definition: conceptText`The explicit decision that a reachable source page belongs in a bundle.`,
+  definition: conceptText`The explicit decision that a reachable bundle node belongs in a bundle.`,
   mechanics: [
     conceptText`Single-page and bounded bulk tracking operations persist immediately when they do not require a compound draft.`,
     conceptText`Tracking retains a local source copy. A safely tracked page can remain absent from generated output when every route to it crosses excluded content; generation applies traversal constraints separately.`,
   ],
-  interplay: conceptText`${conceptLink(coreConceptIds.blacklist, "Bundle Page Blacklisting")}, ${conceptLink(coreConceptIds.sensitive, "Sensitivity")}, and graph reachability constrain which pages can be tracked; review shows the output consequences.`,
+  interplay: conceptText`${conceptLink(coreConceptIds.blacklist, "Bundle Node Blacklisting")}, ${conceptLink(coreConceptIds.sensitive, "Sensitivity")}, and graph reachability constrain which pages can be tracked; review shows the output consequences.`,
+});
+
+export const trackedBundleNode = defineMeadowConcept({
+  id: coreConceptIds.trackedBundleNode, name: "Tracked Bundle Node", kind: "state", searchFacet: false,
+  appAreaIds: curationArea, parentId: coreConceptIds.tracking,
+  definition: conceptText`A file, folder, or collection node whose inclusion is recorded in the bundle's saved configuration.`,
+  mechanics: [conceptText`Tracking and effective sensitivity are independent. A tracked node can become sensitive without being silently untracked. Required starting nodes retain their existing inclusion constraints.`],
+  interplay: conceptText`${conceptLink(coreConceptIds.tracking, "Bundle Node Tracking")} records inclusion. ${conceptLink(coreConceptIds.changesSinceTracking, "Changes Since Tracking")} revisits relevant changes after that decision.`,
+});
+
+export const changesSinceTracking = defineMeadowConcept({
+  id: coreConceptIds.changesSinceTracking, name: "Changes Since Tracking", kind: "process", searchFacet: true,
+  appAreaIds: [coreConceptIds.bundleCuration, coreConceptIds.bundleSourcing, coreConceptIds.bundleGeneration],
+  definition: conceptText`Relevant differences between a tracked bundle node's current state and its recorded inclusion decision.`,
+  mechanics: [conceptText`Changed file content produces an advisory finding. A node becoming effectively sensitive produces a visible review item. Neither finding blocks generation or sharing. Reviewed inclusion decisions update their evidence; simply opening review or generating output does not.`,
+    conceptText`Evidence is node-local. Folder contents and collection members do not inherit sensitivity. Existing records without a reviewed sensitivity baseline must not be presented as a fabricated historical decision.`],
+  interplay: conceptText`${conceptLink(coreConceptIds.trackedBundleNode, "Tracked Bundle Nodes")} retain their inclusion until changed. ${conceptLink(coreConceptIds.trackedNodeBecomesSensitive, "Tracked Bundle Node Becomes Sensitive")} explains the sensitivity-specific review.`,
+  implementationRoles: ["assess-changes"] as const,
+});
+
+export const trackedNodeBecomesSensitive = defineMeadowConcept({
+  id: coreConceptIds.trackedNodeBecomesSensitive, name: "Tracked Bundle Node Becomes Sensitive", kind: "behavioral-rule", searchFacet: false,
+  parentId: coreConceptIds.changesSinceTracking,
+  semanticTitle: conceptText`${conceptLink(coreConceptIds.trackedBundleNode, "Tracked Bundle Node")} has ${conceptLink(coreConceptIds.changesSinceTracking, "Changes Since Tracking")} to its ${conceptLink(coreConceptIds.sensitive, "Sensitivity")}.`,
+  appAreaIds: [coreConceptIds.bundleCuration, coreConceptIds.bundleSourcing, coreConceptIds.bundleGeneration],
+  definition: conceptText`A tracked node now assessed as sensitive is surfaced for review without revoking its existing inclusion or blocking generation.`,
+  mechanics: [conceptText`Sensitivity filter policy saves immediately in sourcing and curation. The existing source review workspace exposes Modified → Sensitivity changed and explains the source marking or named global or bundle filters involved. Keep tracked confirms inclusion, Blacklist deliberately excludes the node, and Untrack for now leaves its inclusion for further curation. These choices are staged until acceptance. Blacklist uses the existing boundary review, including traversal effects, folder subtree exclusion, and consent when newer material is needed. Excluded nodes no longer need sensitivity confirmation; their scope and configuration changes remain reviewable. Discarding review preserves saved filter policy and unresolved findings.`,
+    conceptText`Preview shows a persistent warning with a review action alongside any untracked-node warning. Review uses captured material without an implicit source refresh. Removing the last sensitivity cause removes the issue; an otherwise empty review offers Done.`,
+    conceptText`File, folder, and collection nodes are assessed individually. Required nodes cannot be untracked or blacklisted. Shared filter changes are surfaced when affected bundles are opened. Cause descriptions state only events established by recorded evidence.`],
+  interplay: conceptText`${conceptLink(coreConceptIds.filterSensitivity, "Filter-Derived Sensitivity")} and source markings supply effective sensitivity. ${conceptLink(coreConceptIds.sourceReviewWorkspace, "Source Review Workspace")} hosts decisions.`,
 });
 
 export const curationConcepts = [
+  trackedBundleNode, changesSinceTracking, trackedNodeBecomesSensitive,
   blacklist,
   bundleConfig,
   callout,
   filters,
   filterMixing,
   filterSensitivity,
+  sourceSensitivity,
   folderFilter,
   frontier,
   frontierPendingSources,

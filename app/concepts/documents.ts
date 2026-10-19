@@ -18,6 +18,7 @@ export type DocumentKind = 'concept' | 'design-pressure' | 'fixture' | 'scenario
 export interface MeadowDocument<Id extends string = string, KnownId extends string = string> {
   readonly id: Id;
   readonly name: string;
+  readonly semanticTitle?: DocumentText<KnownId>;
   readonly documentKind: DocumentKind;
   readonly description: DocumentText<KnownId>;
   readonly sections: readonly DocumentSection<KnownId>[];
@@ -43,6 +44,7 @@ export interface DocumentPassage {
 
 export function documentPassages(document: MeadowDocument): DocumentPassage[] {
   return [
+    ...(document.semanticTitle !== undefined ? [{ sectionId: 'semantic-title', heading: 'AKA', blockIndex: 0, text: document.semanticTitle }] : []),
     { sectionId: 'description', heading: 'Description', blockIndex: 0, text: document.description },
     ...document.sections.flatMap(section => section.blocks.flatMap((block, blockIndex): DocumentPassage[] =>
       block.kind === 'paragraph'
@@ -64,8 +66,8 @@ export function conceptDocument(concept: AnyMeadowConcept): MeadowDocument {
   ] };
 }
 
-export function fixtureDocument(fixture: { id: string; name: string; description: string | DocumentText }): MeadowDocument {
-  return { id: fixture.id, name: fixture.name, documentKind: 'fixture',
+export function fixtureDocument(fixture: { id: string; name: string; description: string | DocumentText; semanticTitle?: DocumentText }): MeadowDocument {
+  return { id: fixture.id, name: fixture.name, ...(fixture.semanticTitle !== undefined && { semanticTitle: fixture.semanticTitle }), documentKind: 'fixture',
     description: typeof fixture.description === 'string' ? documentTextFromString(fixture.description) : fixture.description, sections: [] };
 }
 
@@ -116,7 +118,7 @@ export function validateDocuments(documents: readonly MeadowDocument[]): string[
       if (!section || !section.id || !section.heading?.trim() || !Array.isArray(section.blocks)) {
         errors.push(`Document "${document.id}" has an invalid section.`); validBlocks = false; continue;
       }
-      if (sections.has(section.id) || section.id === 'description') errors.push(`Document "${document.id}" repeats section "${section.id}".`);
+      if (sections.has(section.id) || ['description', 'semantic-title'].includes(section.id)) errors.push(`Document "${document.id}" repeats section "${section.id}".`);
       sections.add(section.id);
       if (!section.blocks.length) errors.push(`Document "${document.id}" has empty section "${section.id}".`);
       for (const block of section.blocks) if (!block || (block.kind !== 'paragraph' && block.kind !== 'list')

@@ -33,7 +33,7 @@ export interface SourceNodeReview {
   /** Whether a departing page has previous content to show. */
   hasPreviousContent?: boolean;
   /** What changed for a page that remains: its captured source content, its saved settings, or both. */
-  modification?: { source: boolean; settings: SourceSettingChange[] };
+  modification?: { source: boolean; settings: SourceSettingChange[]; sensitivity?: boolean };
   orphanedConfiguration: boolean;
   /** Why the page's saved configuration became unreachable, when acceptance removes it. */
   orphan?: SourceOrphanExplanation;
@@ -83,6 +83,8 @@ export interface ProposalTrackingDecision {
   needsConfirmation?: boolean;
   /** The page correspondence changed after this explicit choice. */
   identityChanged?: boolean;
+  /** Review of an already accepted inclusion, rather than a new tracking choice. */
+  sensitivityChange?: boolean;
   invalidated?: string;
 }
 

@@ -22,6 +22,7 @@ import { conceptDocument, type DesignPressure, type MeadowDocument } from './doc
 export interface AcceptanceConceptView {
   readonly id: string;
   readonly name: string;
+  readonly semanticTitle?: ConceptText;
   readonly searchFacet: boolean;
   readonly subAreas?: readonly { readonly areaId: string; readonly order: number }[];
   readonly parentId?: string;
@@ -34,6 +35,7 @@ export function acceptanceConceptView(concept: AnyMeadowConcept): AcceptanceConc
   return {
     id: concept.id,
     name: concept.name,
+    semanticTitle: concept.semanticTitle,
     searchFacet: concept.searchFacet === true,
     subAreas: concept.subAreas,
     parentId: concept.parentId,

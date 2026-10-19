@@ -70,7 +70,7 @@ test('captured documents connect pressure, area, prose, backlinks and explicit s
     await expect(evidence.getByRole('link', { name: 'Readable example passed', exact: true })).toBeVisible();
     await expect(evidence).toContainText('Not run (skipped)');
     await expect(evidence).toContainText('Declared, not run (1)');
-    await panel.getByRole('region', { name: 'How the design responds', exact: true }).getByRole('link', { name: 'Sensitive Bundle Page', exact: true }).click();
+    await panel.getByRole('region', { name: 'How the design responds', exact: true }).getByRole('link', { name: 'Sensitive Bundle Node', exact: true }).click();
     await expect(panel.getByRole('heading', { name: 'Captured sensitive page', exact: true })).toBeVisible();
     await expect(panel.getByLabel('Document metadata').getByRole('link')).toHaveCount(1);
     await expect(panel.getByRole('region', { name: 'Referenced by', exact: true })).toContainText(pressureName);

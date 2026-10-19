@@ -84,6 +84,12 @@ const FilterPanel = React.memo<FilterPanelProps>(({
   // Disclosure state is presentation-only: collapsing a group does not disable active child filters.
   const [expandedGroups, setExpandedGroups] = useEditorViewValue<string[]>(bundleSlug, 'expandedFilterGroups', []);
   const expandedFilterGroups = React.useMemo(() => new Set(expandedGroups), [expandedGroups]);
+  const soloParentIds = filters.filter(filter => filter.isSolo && filter.parentFilterId).map(filter => filter.parentFilterId!).sort().join('|');
+  React.useEffect(() => {
+    if (!soloParentIds) return;
+    const parents = soloParentIds.split('|');
+    setExpandedGroups(previous => parents.every(id => previous.includes(id)) ? previous : [...new Set([...previous, ...parents])]);
+  }, [soloParentIds, setExpandedGroups]);
   const setExpandedFilterGroups = React.useCallback<React.Dispatch<React.SetStateAction<Set<string>>>>(change => setExpandedGroups(previous => [...(typeof change === 'function' ? change(new Set(previous)) : change)]), [setExpandedGroups]);
 
   const debouncedSearchInputs = useDebounce(searchInputs, 150);
@@ -268,6 +274,17 @@ const FilterPanel = React.memo<FilterPanelProps>(({
   };
 
   const handleFilterEnabledChange = async (filter: IFilter, newEnabledState: boolean) => {
+    if (filter.scope === 'bundle' && filter.actions.some(action => action.type === 'mark_sensitive')) {
+      const response = await apiRequest('custom-filters');
+      if (!response.ok) return;
+      const data = await response.json() as { filters: CustomFilterConfig[] };
+      const definition = data.filters.find(item => `custom-${item.id}` === filter.id);
+      if (!definition) return;
+      const saved = await apiRequest('custom-filters', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filter: { ...definition, enabled: newEnabledState } }) });
+      if (saved.ok) { onFilterChange(filter.id, { enabled: newEnabledState }); onCustomFiltersChange?.(); }
+      return;
+    }
     // For global filters, persist the disabled state to bundle.yaml
     if (filter.id.startsWith('custom-') && filter.scope === 'global') {
       try {

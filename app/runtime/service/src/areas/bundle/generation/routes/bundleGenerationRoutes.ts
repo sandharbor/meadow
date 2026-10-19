@@ -163,35 +163,7 @@ router.post('/bundles/:bundleSlug/generation/versions', (req, res, next) => {
       }
 
       acceptedSourceRoot(getBundleDirectory(bundleSlug));
-      const boundaryReview = await assessBundleBoundary(bundleSlug);
-      if (boundaryReview.reviewRequired && boundaryReview.reviewRequest) {
-        const request = boundaryReview.reviewRequest;
-        return res.status(202).json({
-          schemaVersion: CLI_OPERATION_SCHEMA_VERSION,
-          operation: 'bundle.generate',
-          slug: bundleSlug,
-          changed: false,
-          mutationBehavior: CLI_MUTATION_BEHAVIORS.generateBundle,
-          paused: true,
-          resolution: {
-            browserRequired: false,
-            mode: 'command',
-            guidance: "Resolve headlessly by running every returned nextAction. 'meadow review open' launches a browser and is optional.",
-          },
-          reviewRequest: request,
-          nextActions: request.findings
-            .filter(finding => finding.code === 'sensitivity-reaffirmation-required')
-            .map(finding => ({
-              operation: 'track-node' as const,
-              args: [
-                'bundle', 'node', 'track', bundleSlug,
-                '--id', finding.bundleNodeId,
-                '--include-sensitive',
-              ],
-              displayCommand: `meadow bundle node track ${bundleSlug} --id ${finding.bundleNodeId} --include-sensitive`,
-            })),
-        });
-      }
+      await assessBundleBoundary(bundleSlug);
       const body = (req.body ?? {}) as {
         notes?: unknown;
         confirmedNoGeneratedChanges?: unknown;
@@ -243,34 +215,6 @@ router.post('/bundles/:bundleSlug/generation/preview', (req, res, next) => {
 
       acceptedSourceRoot(getBundleDirectory(bundleSlug));
       const boundaryReview = await assessBundleBoundary(bundleSlug);
-      if (boundaryReview.reviewRequired && boundaryReview.reviewRequest) {
-        const request = boundaryReview.reviewRequest;
-        return res.status(202).json({
-          schemaVersion: CLI_OPERATION_SCHEMA_VERSION,
-          operation: 'bundle.generate',
-          slug: bundleSlug,
-          changed: false,
-          mutationBehavior: CLI_MUTATION_BEHAVIORS.generateBundle,
-          paused: true,
-          resolution: {
-            browserRequired: false,
-            mode: 'command',
-            guidance: "Resolve headlessly by running every returned nextAction. 'meadow review open' launches a browser and is optional.",
-          },
-          reviewRequest: request,
-          nextActions: request.findings
-            .filter(finding => finding.code === 'sensitivity-reaffirmation-required')
-            .map(finding => ({
-              operation: 'track-node' as const,
-              args: [
-                'bundle', 'node', 'track', bundleSlug,
-                '--id', finding.bundleNodeId,
-                '--include-sensitive',
-              ],
-              displayCommand: `meadow bundle node track ${bundleSlug} --id ${finding.bundleNodeId} --include-sensitive`,
-            })),
-        });
-      }
 
       // Generate HTML using TypeScript implementation
       try {
@@ -454,20 +398,7 @@ router.get('/bundles/:bundleSlug/generation/preview-stream', (req, res, _next) =
       }
 
       acceptedSourceRoot(getBundleDirectory(bundleSlug));
-      const boundaryReview = await assessBundleBoundary(bundleSlug);
-      if (boundaryReview.reviewRequired && boundaryReview.reviewRequest) {
-        sendProgress({
-          stage: 'error',
-          message: 'Bundle Boundary Review requires explicit sensitive-file reaffirmation before generation.',
-          result: {
-            success: false,
-            error: 'bundle-boundary-review-required',
-            reviewRequest: boundaryReview.reviewRequest,
-          },
-        });
-        res.end();
-        return;
-      }
+      await assessBundleBoundary(bundleSlug);
 
       sendProgress({ stage: 'preparing', message: 'Preparing to render preview...' });
 

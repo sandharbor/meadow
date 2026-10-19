@@ -52,6 +52,7 @@ export function ConceptDetails({ conceptId, selected = '', onNavigate, showTitle
     {!concept && !error && <p role="status">Loading concept…</p>}
     {concept && <>
       {showTitle && <h1 className="text-2xl font-semibold">{concept.name}</h1>}
+      {concept.semanticTitle && <p className="mt-1 text-sm text-neutral-600" aria-label="Semantic title">AKA <DocumentText text={concept.semanticTitle} runId={runId} onNavigate={onNavigate} /></p>}
       <div className="mt-2 text-xs text-neutral-500" aria-label="Document metadata">
         <span>{concept.documentKind === 'concept' ? (concept.kind ?? 'concept').replaceAll('-', ' ') : concept.documentKind.replaceAll('-', ' ')}</span>
         <DocumentAreas areas={concept.kind === 'app-area' ? [{ id: concept.id, name: concept.name }] : concept.areas} runId={runId} onNavigate={onNavigate} />

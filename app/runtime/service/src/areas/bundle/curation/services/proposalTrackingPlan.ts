@@ -10,9 +10,13 @@ import { serializeWorkingGraphOutput } from '../../../../shared/bundle-graph/wor
 import { selectEffectivelySensitiveNodeKeys } from '../../../../shared/bundle-graph/graphFilterService.js';
 import { graphNodeByKey, loadSourceSnapshotManifest, snapshotGraph, sha256, SourcingError } from '../../../../shared/source-snapshot/sourceSnapshots.js';
 
+import { describeSensitivityCause } from '../../../../shared/bundle-boundary-review/bundleBoundaryReviewService.js';
+import { loadTrackingRecords } from '../../../../shared/bundle-node/trackingRecords.js';
+
 /** Curation prepares tracking decisions without writing accepted policy or rereading live sources. */
 export async function prepareProposalTracking(directory: string, snapshotId: string, configuration: ProposalConfiguration,
   decisions: Record<string, ProposalTrackingDecision>, identities: Record<string, BundleNodeId> = {}) {
+  const records = loadTrackingRecords(directory);
   const snapshot = loadSourceSnapshotManifest(directory, snapshotId);
   const raw = await snapshotGraph(directory, snapshot, configuration.nodes, 0, false, configuration.bundle);
   const output = serializeWorkingGraphOutput(raw);
@@ -31,25 +35,41 @@ export async function prepareProposalTracking(directory: string, snapshotId: str
   const targets: Record<string, ProposalTrackingTarget> = {};
   const proposed = globalThis.structuredClone(decisions);
   const ids = new Set(configuration.nodes.map(node => String(node.bundleNodeId)));
+  const configsById = new Map(configuration.nodes.map(node => [node.bundleNodeId, node]));
+  const requiredIds = new Set([configuration.bundle.entryBundleNodeId, configuration.bundle.defaultTraversalBundleNodeId,
+    ...configuration.nodes.flatMap(item => item.bundleNodeKind === 'collection' ? item.memberBundleNodeIds : [])]);
   for (const node of nodes) {
-    if (node.bundleNodeKind === 'collection' || node.blacklisted || node.effectiveBlacklistingBundleNodeId || isUntrackableFrontierNode(node)) continue;
+    if (node.blacklisted || node.effectiveBlacklistingBundleNodeId || isUntrackableFrontierNode(node)) continue;
     const key = node.bundleNodeKey;
-    targets[key] = { bundleNodeId: identities[key] ?? node.bundleNodeId };
+    const id = identities[key] ?? node.bundleNodeId;
+    const config = id ? configsById.get(id) : undefined;
+    targets[key] = { bundleNodeId: id,
+      ...(node.bundleNodeKind === 'collection' || (id && requiredIds.has(id)) ? { untrackableReason: 'This node is required by the bundle.' } : {}) };
     if (sensitive.has(key)) {
       targets[key].sensitivityReasons = [
-        ...(node.sensitive ? ['The captured source marks this page sensitive.'] : []),
-        ...sensitiveByFilter.filter(item => item.keys.has(key) && !node.sensitive).map(({ filter }) => `${filter.scope === 'global' ? 'Global' : 'Bundle'} filter “${filter.name}” marks this page sensitive.`),
+        ...(node.sensitive ? ['The captured source marks this node sensitive.'] : []),
+        ...sensitiveByFilter.filter(item => item.keys.has(key)).map(({ filter }) => describeSensitivityCause(filter, id ? records[id]?.sensitivityCause : undefined)),
       ];
       const policy = node.sensitive ? 'source' : sensitiveByFilter.filter(item => item.keys.has(key)).map(({ filter }) => ({
         id: filter.id, selectors: filter.selectors, criterion: filter.selectorApplicationCriteria,
       })).sort((a, b) => a.id.localeCompare(b.id));
+      const recorded = id ? records[id]?.sensitivity?.effectivelySensitive ?? records[id]?.evidence?.effectivelySensitive
+        ?? (config?.bundleNodeKind === 'file' ? config.trackingEvidence?.effectivelySensitive : undefined) : undefined;
+      targets[key].sensitivityChanged = config?.listType === 'whitelist' && recorded !== true;
+      if (targets[key].sensitivityChanged && !proposed[key]) proposed[key] = { track: true, origin: 'explicit', bundleNodeId: id, sensitivityChange: true };
       targets[key].sensitivity = sha256(JSON.stringify({ policy, digest: graphNodeByKey(raw, key)?.sourceFile?.digest }));
     }
+    if (!sensitive.has(key) && proposed[key]?.sensitivityChange && proposed[key].track && !proposed[key].confirmedSensitivity) delete proposed[key];
     if (proposed[key] && !proposed[key].bundleNodeId) {
       const id = targets[key].bundleNodeId ?? generateBundleNodeId(ids);
       ids.add(id);
       proposed[key].bundleNodeId = id;
     }
+  }
+  // Inclusion reminders no longer apply to excluded material. Its boundary effects and
+  // configuration cleanup remain visible through the ordinary source review.
+  for (const [key, decision] of Object.entries(proposed)) {
+    if (decision.sensitivityChange && decision.track && !targets[key]) delete proposed[key];
   }
   const tracking = revalidateProposalTracking(proposed, targets);
   const configs = globalThis.structuredClone(configuration.nodes);

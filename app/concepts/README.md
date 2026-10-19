@@ -173,7 +173,7 @@ annotation. Static declarations also cover skipped scenarios. A link in prose
 does not imply a pressure association. The first pressure explains protection
 against accidental sharing through source markings, filter-derived sensitivity,
 safe automatic tracking, renewed explicit decisions, generation, and publishing.
-Its generation guard has no direct E2E example yet; the document states that gap.
+Its Changes Since Tracking rules distinguish advisory findings and reviewed inclusion decisions.
 
 `documentPassages()` traverses descriptions and every section block. Validation,
 related links, and contextual backlinks use this traversal. `loadDocumentRegistry()`
@@ -220,3 +220,18 @@ including contract interfaces and type aliases. Current reference pages show
 those higher-level explanations alongside declarations and consumer locations.
 The document browser nests Design pressures beside App areas and All documents;
 its compact search includes descriptions, aliases, and complete section text.
+
+
+## Semantic titles
+
+Every document may carry an optional `semanticTitle` using the existing checked
+linked-text representation. Keep `name` as a readable plain title. The document
+viewer shows the semantic phrase underneath as AKA, with each linked term
+navigating to its document. Semantic titles participate in passage validation,
+backlinks, related documents, search, and run captures. Old captures without the
+field remain readable; reassembly never replaces captured title text.
+
+Changes Since Tracking describes relevant differences since a node's recorded
+inclusion decision. Tracked Bundle Node Becomes Sensitive is its node-local
+sensitivity rule, covering files, folders, and collections without inheritance.
+Generation and sharing remain available with a visible review warning.

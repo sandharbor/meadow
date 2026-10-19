@@ -52,6 +52,7 @@ export interface MeadowConcept<
 > {
   readonly id: Id;
   readonly name: string;
+  readonly semanticTitle?: ConceptText<KnownId>;
   readonly kind: MeadowConceptKind;
   /** Opt in to category-level search filters in acceptance reports. */
   readonly searchFacet?: boolean;

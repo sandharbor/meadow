@@ -51,7 +51,7 @@ export function loadCustomFiltersForBundle(bundleSlug: string): CustomFilterConf
     ...globalConfig.filters.map(filter => ({
       ...filter,
       scope: 'global' as const,
-      enabled: !disabledGlobalFilters.includes(filter.id),
+      enabled: filter.enabled && !disabledGlobalFilters.includes(filter.id),
     })),
     ...bundleConfig.filters.map(filter => ({ ...filter, scope: 'bundle' as const })),
   ];

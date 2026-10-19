@@ -30,6 +30,8 @@ import {
 import { getGraphFilterCatalog } from '../../../../shared/bundle-graph/graphFilterService.js';
 import { loadCustomFiltersForBundle } from '../../../../shared/custom-filters/customFilterLoader.js';
 
+import { assessBundleBoundary } from '../../../../shared/bundle-boundary-review/bundleBoundaryReviewService.js';
+
 const router = express.Router();
 
 // Helper functions
@@ -76,7 +78,7 @@ const asyncHandler = (fn: (req: express.Request, res: express.Response, next: ex
 };
 
 // Get all custom filters for a bundle (includes global filters)
-router.get('/bundles/:bundleSlug/curation/custom-filters', validateBundleSlug, asyncHandler((req, res) => {
+router.get('/bundles/:bundleSlug/curation/custom-filters', validateBundleSlug, asyncHandler( (req, res) => {
   const { bundleSlug } = req.params;
 
   res.json({ filters: loadCustomFiltersForBundle(bundleSlug) });
@@ -95,7 +97,7 @@ router.get('/curation/custom-filters/global', asyncHandler((req, res) => {
 }));
 
 // Save custom filter
-router.post('/bundles/:bundleSlug/curation/custom-filters', validateBundleSlug, asyncHandler((req, res) => {
+router.post('/bundles/:bundleSlug/curation/custom-filters', validateBundleSlug, asyncHandler(async (req, res) => {
   const { bundleSlug } = req.params;
   const { filter } = req.body as { filter: CustomFilterConfig };
   
@@ -104,6 +106,8 @@ router.post('/bundles/:bundleSlug/curation/custom-filters', validateBundleSlug, 
     return;
   }
   
+  const previousFilters = loadCustomFiltersForBundle(bundleSlug);
+  const previous = previousFilters.find(item => item.id === filter.id);
   const now = new Date().toISOString();
   filter.updatedAt = now;
   if (!filter.createdAt) {
@@ -135,6 +139,8 @@ router.post('/bundles/:bundleSlug/curation/custom-filters', validateBundleSlug, 
     saveBundleCustomFilters(bundleSlug, config);
   }
   
+  await assessBundleBoundary(bundleSlug, { filterId: filter.id, previousFilters,
+    event: !previous ? 'created' : !previous.enabled && filter.enabled ? 'enabled' : 'edited' });
   res.json({ success: true });
 }));
 
@@ -184,7 +190,7 @@ router.get('/bundles/:bundleSlug/curation/disabled-global-filters', validateBund
 }));
 
 // Toggle a global filter's disabled status for a bundle
-router.post('/bundles/:bundleSlug/curation/disabled-global-filters/:filterId', validateBundleSlug, asyncHandler((req, res) => {
+router.post('/bundles/:bundleSlug/curation/disabled-global-filters/:filterId', validateBundleSlug, asyncHandler(async (req, res) => {
   const { bundleSlug, filterId } = req.params;
   const { disabled } = req.body as { disabled: boolean };
   
@@ -193,6 +199,7 @@ router.post('/bundles/:bundleSlug/curation/disabled-global-filters/:filterId', v
     return;
   }
   
+  const previousFilters = loadCustomFiltersForBundle(bundleSlug);
   const bundleDirectory = getBundleDirectory(bundleSlug);
   const bundleConfig = loadBundleConfig(bundleDirectory);
   const disabledGlobalFilters = bundleConfig.disabledGlobalFilters || [];
@@ -213,7 +220,13 @@ router.post('/bundles/:bundleSlug/curation/disabled-global-filters/:filterId', v
   bundleConfig.disabledGlobalFilters = disabledGlobalFilters;
   saveBundleConfig(bundleDirectory, bundleConfig);
   
+  await assessBundleBoundary(bundleSlug, { filterId, previousFilters, event: disabled ? 'edited' : 'enabled' });
   res.json({ success: true, disabledGlobalFilters });
 }));
+
+router.get('/bundles/:bundleSlug/curation/changes-since-tracking', asyncHandler(async (req, res) => {
+  res.json(await assessBundleBoundary(req.params.bundleSlug));
+}));
+
 
 export default router; 

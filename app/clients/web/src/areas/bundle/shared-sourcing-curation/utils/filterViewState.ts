@@ -18,7 +18,7 @@ export function restoreFilterViews(bundleSlug: string, mode: 'curation' | 'sourc
     const actions = filter.group === 'source-changes'
       ? [...filter.actions.filter(action => action.type !== 'show_titles'), ...presentation.actions.filter(action => action.type === 'show_titles')]
       : [...presentation.actions.filter(action => action.type !== 'mark_sensitive'), ...filter.actions.filter(action => action.type === 'mark_sensitive')];
-    return { ...filter, ...presentation, ...(filter.group === 'source-changes' && { enabled: true }), actions, bundleNodeSelectors: selectors };
+    return { ...filter, ...presentation, ...(filter.group === 'source-changes' ? { enabled: true } : filter.id.startsWith('custom-') && filter.actions.some(action => action.type === 'mark_sensitive') ? { enabled: filter.enabled } : {}), actions, bundleNodeSelectors: selectors };
   });
 }
 

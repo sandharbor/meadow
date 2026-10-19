@@ -47,9 +47,10 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'fe6156b8-57d
   await sourceCommand(() => panel.saveCustomFilterEdits({ enabled: false }));
   await sourceCommand(() => create('Created in proposal'));
   await sourceCommand(() => panel.deleteCustomFilter('Daily Notes (Sensitive)'));
-  expect(fs.readFileSync(globalPath, 'utf8')).toBe(original);
+  // Sensitivity policy saves immediately; ordinary presentation drafts stay isolated.
+  expect(globals()).toEqual(JSON.parse(original).filters.filter((filter: { id: string }) => filter.id !== defaultId));
   await sourceCommand(() => addKeyFrame(proposalConfigurationDraft));
-  await sourceCommand(() => checkpoint('global definition enablement creation and default deletion remain isolated in the proposal'));
+  await sourceCommand(() => checkpoint('presentation drafts stay isolated while sensitivity default deletion saves immediately'));
   await sourceCommand(() => sourcing.later());
   await sourceCommand(() => panel.editCustomFilter('Independent review'));
   await sourceCommand(() => panel.saveCustomFilterEdits({ note: 'Independent accepted description' }));

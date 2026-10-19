@@ -186,7 +186,7 @@ export class SourcingWorkspacePage {
   get exitReview() { return this.page.getByRole('dialog', { name: 'Exit changes review', exact: true }); }
   /** The bar reads refresh, then what Accept changes applies, then Accept changes, then the close button. */
   async expectMainReviewActions() {
-    const accept = this.root.locator('header').getByRole('button', { name: 'Accept changes', exact: true });
+    const accept = this.root.locator('header').getByRole('button', { name: /^(Accept changes|Done)$/ });
     for (const control of [this.refreshSourcesButton, accept, this.exitButton]) await this.expect(control).toBeVisible();
     const [refresh, acceptBox, exit] = await Promise.all([this.refreshSourcesButton, accept, this.exitButton].map(control => control.boundingBox()));
     this.expect(refresh!.x).toBeLessThan(acceptBox!.x);
@@ -411,6 +411,16 @@ export class SourcingWorkspacePage {
   /** Confirm identity review and continue to the graph. */
   async continueToGraph() { await this.confirmIdentities(); }
   get sensitivityReview() { return this.page.getByRole('dialog', { name: 'Review tracking sensitivity', exact: true }); }
+  async expectSensitivityReviewReady() {
+    await this.expect(this.root).toBeVisible();
+    await this.expectLoaded();
+    await this.expect(this.sensitivityReview).toBeVisible();
+    await this.expect(this.sensitivityReview).toHaveCSS('opacity', '1');
+    await this.expect(this.root.getByTestId('source-changes-filter-group')).toHaveCSS('opacity', '1');
+    await this.expect(this.root.locator('header').first()).toHaveCSS('transform', 'none');
+  }
+  get sensitivityReviewNodes() { return this.sensitivityReview.locator('section'); }
+  sensitiveTrackingNode(name: string) { return this.sensitivityReviewNodes.filter({ hasText: name }); }
   get conflictReview() { return this.page.getByRole('dialog', { name: 'Resolve configuration conflicts', exact: true }); }
   /** The tray attached to Accept changes that lists what acceptance applies. */
   get acceptedChanges() { return this.root.getByRole('region', { name: 'Changes to accept', exact: true }); }
@@ -418,12 +428,12 @@ export class SourcingWorkspacePage {
   acceptedChangeDetail(name: 'Page changes' | 'Configuration removals' | 'Setting changes' | 'Tracking changes') { return this.root.getByRole('region', { name, exact: true }); }
   async expectAcceptedChanges(labels: Array<string | RegExp>) {
     if (labels.length) await this.expect(this.acceptedChanges.getByRole('button')).toHaveText(labels);
-    else await this.expect(this.acceptedChanges).toHaveText('No changes yet');
+    else await this.expect(this.acceptedChanges).toHaveText('No changes to review');
     await this.expectTrayPointsAtAccept();
   }
   /** The bubble of changes sits just left of Accept changes, its tail pointing into the button. */
   async expectTrayPointsAtAccept() {
-    const accept = (await this.root.getByRole('button', { name: 'Accept changes', exact: true }).boundingBox())!;
+    const accept = (await this.root.getByRole('button', { name: /^(Accept changes|Done)$/ }).boundingBox())!;
     const tail = (await this.root.getByTestId('accepted-changes-tail').boundingBox())!;
     this.expect(accept.x - (tail.x + tail.width)).toBeGreaterThanOrEqual(0);
     this.expect(accept.x - (tail.x + tail.width)).toBeLessThanOrEqual(6);
@@ -497,13 +507,21 @@ export class SourcingWorkspacePage {
     const section = this.sensitivityReview.locator('section').filter({ hasText: filename });
     await Promise.all([
       this.page.waitForResponse(response => response.url().endsWith('/sourcing/proposal/tracking') && response.ok(), { timeout: 10000 }),
-      section.getByRole('button', { name: track ? 'Confirm tracking sensitive page' : 'Leave untracked', exact: true }).click(),
+      section.getByRole('button', { name: track ? /^(Confirm tracking sensitive page|Keep tracked)$/ : 'Untrack for now' }).click(),
+    ]);
+    await this.expect(section).toHaveCount(0);
+  }
+  async blacklistSensitiveTracking(name: string) {
+    const section = this.sensitiveTrackingNode(name);
+    await Promise.all([
+      this.page.waitForResponse(response => response.url().endsWith('/sourcing/proposal/configuration') && response.ok()),
+      section.getByRole('button', { name: 'Blacklist', exact: true }).click(),
     ]);
     await this.expect(section).toHaveCount(0);
   }
   async accept() {
-    await this.expect(this.root.getByRole('button', { name: 'Accept changes', exact: true })).toBeEnabled();
-    await this.root.getByRole('button', { name: 'Accept changes', exact: true }).click();
+    await this.expect(this.root.getByRole('button', { name: /^(Accept changes|Done)$/ })).toBeEnabled();
+    await this.root.getByRole('button', { name: /^(Accept changes|Done)$/ }).click();
     await this.expect(this.root).toBeHidden();
   }
   /** Exit, keeping any changes in the proposal for later. */

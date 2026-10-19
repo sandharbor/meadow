@@ -1,9 +1,10 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 import { useState, type ReactNode } from 'react';
-import type { DocumentSection } from '../../../../../concepts/documents';
+import type { DocumentSection, DocumentText } from '../../../../../concepts/documents';
 import { renderConceptText } from '../../../../../concepts/types';
 
 export interface BrowseDocument {
+  semanticTitle?: DocumentText;
   id: string; name: string; description: string; documentKind?: string; kind?: string;
   appAreaIds?: readonly string[]; aliases?: readonly string[]; sections?: readonly DocumentSection[];
   subAreas?: readonly { areaId: string; order: number }[];
@@ -15,7 +16,7 @@ export default function DocumentBrowser({ documents, areas, pressures, openDocum
   const [tab, setTab] = useState('areas');
   const [search, setSearch] = useState('');
   const query = search.trim().toLocaleLowerCase();
-  const matching = documents.filter(doc => [doc.name, doc.description, ...(doc.aliases ?? []),
+  const matching = documents.filter(doc => [doc.name, doc.description, ...(doc.semanticTitle ? [renderConceptText(doc.semanticTitle)] : []), ...(doc.aliases ?? []),
     ...(doc.sections ?? []).flatMap(section => [section.heading, ...section.blocks.flatMap(block => block.kind === 'paragraph' ? [renderConceptText(block.text)] : block.items.map(text => renderConceptText(text)))])]
     .join(' ').toLocaleLowerCase().includes(query));
   const item = (doc: BrowseDocument, areaId?: string) => <span key={doc.id} className="text-xs"><button className="text-brand-600 underline" onClick={() => openDocument(doc)}>{doc.name}</button>

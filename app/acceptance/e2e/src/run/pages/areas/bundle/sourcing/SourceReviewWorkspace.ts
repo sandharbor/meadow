@@ -78,7 +78,7 @@ export class SourceReviewWorkspace extends SourcingWorkspacePage {
   async expectSensitivity(path: string, label: 'Sensitive' | 'Sensitive via filter') {
     await this.selectPath(path);
     await this.reviewExpect(this.selectedPage.getByText('Sensitive', { exact: true })).toBeVisible();
-    if (label === 'Sensitive via filter') await this.reviewExpect(this.evidence).toContainText(/filter .* marks this page sensitive/);
+    if (label === 'Sensitive via filter') await this.reviewExpect(this.evidence).toContainText(/filter .* marks this node sensitive/);
   }
   async expectModified(path: string) { await this.selectPath(path); await this.reviewExpect(this.evidence.getByTestId('source-change-kind')).toHaveText('Modify'); }
   async expectAdded(path: string) { await this.selectPath(path); await this.reviewExpect(this.evidence.getByTestId('source-change-kind')).toHaveText('Add'); }

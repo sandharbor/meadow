@@ -5,7 +5,7 @@ import path from 'node:path';
 import { isPlainObject } from '../../../../../../../shared_code/utils/durableDocument.js';
 import { SourcingError } from '../../../../shared/source-snapshot/sourceSnapshots.js';
 import { runSerializedBundleNodeMutation } from '../../../../shared/bundle-node/bundleNodeMutationQueue.js';
-import { discardSourceProposal, validateProposalConfiguration } from '../services/proposalStore.js';
+import { discardSourceProposal, rebaseProposalSensitivityPolicy, validateProposalConfiguration } from '../services/proposalStore.js';
 import { reviewSourceProposal } from '../services/proposalReview.js';
 import { updateSourceProposalCapture, checkSourceProposalUpdates } from '../services/proposalCapture.js';
 import { acceptSourceProposal } from '../services/proposalAcceptance.js';
@@ -56,6 +56,10 @@ export function createProposalRoutes() {
     const value = body(req).configuration;
     validateProposalConfiguration(value);
     await updateSourceProposalCapture(directory(req), revision(req), { configuration: value, incorporateNewerSources: body(req).incorporateNewerSources === true });
+    return reviewSourceProposal(directory(req));
+  }));
+  router.post('/bundles/:bundleSlug/sourcing/proposal/rebase-policy', handle(async req => {
+    await rebaseProposalSensitivityPolicy(directory(req), revision(req));
     return reviewSourceProposal(directory(req));
   }));
   router.post('/bundles/:bundleSlug/sourcing/proposal/refresh', handle(async req => {

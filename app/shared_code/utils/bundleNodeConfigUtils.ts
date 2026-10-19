@@ -563,6 +563,11 @@ export function applySensitiveFromApiData(nodes: IBundleNode[]): IBundleNode[] {
   return nodes;
 }
 
+import type { ParticipatesIn, sourceSensitivity } from '../../concepts/index.js';
+export type SourceSensitivityMeadowConceptParticipations = [
+  ParticipatesIn<typeof sourceSensitivity, 'apply-source-marking', typeof applySensitiveFromApiData>,
+];
+
 /** The fields nodeConfigMatchesNode compares for a file or folder, with absent values kept distinct. */
 function nodeMatchKey(kind: 'file' | 'folder', name: string, sourceId: string | undefined, directory: string | undefined, fileType: FileType | undefined): string {
   const optional = (value: string | undefined) => value === undefined ? '' : `=${value}`;

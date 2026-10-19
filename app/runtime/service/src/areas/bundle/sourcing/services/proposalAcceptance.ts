@@ -54,6 +54,11 @@ export async function acceptSourceProposal(directory: string, token: string) {
         keyEncodingVersion: 1, path: snapshotFilePath(candidate, config), snapshotId: candidate.id, route,
       } };
       const decision = review.proposal.tracking[node.bundleNodeKey];
+      const effectivelySensitive = Boolean(review.trackingTargets[node.bundleNodeKey]?.sensitivity);
+      if (config.listType === 'whitelist' && (decision?.track || !effectivelySensitive)) {
+        records[config.bundleNodeId].sensitivity = { effectivelySensitive, assessedAt: now,
+          ...(decision?.track && { reviewedAt: now }) };
+      }
       if (config.bundleNodeKind === 'file' && node.sourceFile && decision?.track) {
         records[config.bundleNodeId].evidence = { trackedAt: now,
           sourceContentDigest: `sha256:${node.sourceFile.digest.replace(/^sha256:/, '')}`,

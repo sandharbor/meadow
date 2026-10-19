@@ -8,6 +8,8 @@ export interface ProposalTrackingTarget {
   /** Absent when safe; changes whenever the effective sensitive evidence changes. */
   sensitivity?: string;
   sensitivityReasons?: string[];
+  untrackableReason?: string;
+  sensitivityChanged?: boolean;
 }
 
 /** The targets and their assessment must come from the same captured material and policy. */

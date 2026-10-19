@@ -19,7 +19,7 @@ export interface SourceProposalReview {
   orphans: SourceOrphanExplanation[];
   unresolvedIdentities: string[];
   missingRequiredEntries: string[];
-  trackingTargets: Record<string, { bundleNodeId?: BundleNodeId; sensitivity?: string; sensitivityReasons?: string[] }>;
+  trackingTargets: Record<string, { bundleNodeId?: BundleNodeId; sensitivity?: string; sensitivityReasons?: string[]; untrackableReason?: string; sensitivityChanged?: boolean }>;
   additionTracking: ProposalAdditionTracking;
   accepted: SourceSnapshotSummary;
   candidate: SourceSnapshotSummary;

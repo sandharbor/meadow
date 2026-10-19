@@ -7,6 +7,9 @@ import { textDocumentCodec, writeDurableDocument } from '../../../../../shared_c
 
 export interface TrackingRecord {
   evidence?: TrackingEvidence;
+  sensitivityCause?: { filterId: string; event: 'created' | 'enabled' | 'edited'; observedAt: string };
+  /** Node-local assessment; reviewedAt exists only for a deliberate inclusion decision. */
+  sensitivity?: { effectivelySensitive: boolean; assessedAt: string; reviewedAt?: string };
   lastReachable?: { keyEncodingVersion?: 1; path: string; snapshotId: string; route: EncodedBundleNodeKey[] };
 }
 
@@ -48,7 +51,8 @@ export function separateTrackingEvidence(bundleDirectory: string, configs: Bundl
   let changed = false;
   const result = configs.map(config => {
     if (config.bundleNodeKind !== 'file' || !config.trackingEvidence) return config;
-    records[config.bundleNodeId] = { ...records[config.bundleNodeId], evidence: config.trackingEvidence };
+    records[config.bundleNodeId] = { ...records[config.bundleNodeId], evidence: config.trackingEvidence,
+      sensitivity: { effectivelySensitive: config.trackingEvidence.effectivelySensitive, assessedAt: config.trackingEvidence.trackedAt, reviewedAt: config.trackingEvidence.trackedAt } };
     changed = true;
     const clean = { ...config };
     delete clean.trackingEvidence;

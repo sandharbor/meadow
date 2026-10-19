@@ -12,7 +12,8 @@ import { proposalRequest } from './proposalClient.js';
 import './SourcingPanel.css';
 import { useSourceStatus } from './useSourceStatus.js';
 
-export function SourcingPanel({ bundleSlug, onAccepted, sourceChangeTrigger = 0, reviewTrigger = 0, onPendingChanges, snapshotsOpen = false, onCloseSnapshots, onModeChange }: {
+export function SourcingPanel({ bundleSlug, onAccepted, sourceChangeTrigger = 0, reviewTrigger = 0, sensitivityReviewTrigger = 0, sensitivityCount = 0, onPendingChanges, snapshotsOpen = false, onCloseSnapshots, onModeChange }: {
+  sensitivityReviewTrigger?: number; sensitivityCount?: number;
   onModeChange?: (sourcing: boolean) => void; reviewTrigger?: number; snapshotsOpen?: boolean; onCloseSnapshots?: () => void;
   onPendingChanges?: (pending: boolean) => void; sourceChangeTrigger?: number;
   bundleSlug: string; hasDraftChanges: boolean; onAccepted: (result: { trackingOutcome?: SnapshotTrackingOutcome }) => void;
@@ -48,6 +49,7 @@ export function SourcingPanel({ bundleSlug, onAccepted, sourceChangeTrigger = 0,
   }, [scan, requested]);
   useEffect(() => { if (sourceChangeTrigger) void scan(); }, [sourceChangeTrigger, scan]);
   useEffect(() => { if (reviewTrigger) void enter(); }, [reviewTrigger, enter]);
+  useEffect(() => { if (sensitivityReviewTrigger) void enter({ review: 'sensitivity' }); }, [sensitivityReviewTrigger, enter]);
   // The workspace owns detailed place parameters while mounted. This entry
   // handler also makes a source-review link work from a fresh editor.
   useLinkedSurface('source-review', { open, parameters: placeParameters }, {
@@ -60,6 +62,7 @@ export function SourcingPanel({ bundleSlug, onAccepted, sourceChangeTrigger = 0,
   return <>
     <SourceSnapshotsModal isOpen={snapshotsOpen} bundleSlug={bundleSlug} onClose={() => onCloseSnapshots?.()} checking={busy || background} onRecheck={() => { onCloseSnapshots?.(); void scan(false, true); }} />
     <div className="flex items-center gap-2 whitespace-nowrap text-sm" data-testid="sourcing-status" data-orphan-count={review?.orphans.length ?? 0} aria-live="polite">
+      {sensitivityCount > 0 && <button className="rounded bg-amber-100 px-3 py-1 font-medium text-amber-900" onClick={() => void enter({ review: 'sensitivity' })}>{sensitivityCount} tracked {sensitivityCount === 1 ? 'node became' : 'nodes became'} sensitive – Review</button>}
       {pending && <button className="relative overflow-hidden rounded bg-blue-100 px-3 py-1 font-medium text-blue-900" onClick={() => void enter()}>{count ? `${count} source change${count === 1 ? '' : 's'} available` : 'Changes pending'} – Review{progress}</button>}
       <RefreshSourcesButton compact={pending} refreshing={busy} disabled={busy} backgroundBusy={background} noChanges={noChanges} onClick={() => void scan(false, false, true)}>{!pending && progress}</RefreshSourcesButton>
       {error && <span role="alert" className="text-red-700">{error}</span>}

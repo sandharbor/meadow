@@ -62,6 +62,7 @@ export function SourceComparisonEvidence({ evidence, graph, onCompare, onSelectP
           <svg aria-hidden="true" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 10s3-6 8-6 8 6 8 6-3 6-8 6-8-6-8-6z" /><circle cx="10" cy="10" r="2.5" /></svg>View
         </button>}</span></div>
     {evidence.kind === 'modified' && evidence.modification && <div data-testid="source-modification-kinds" className="space-y-0.5 text-neutral-600">
+      {evidence.modification.sensitivity && <p>Sensitivity changed after tracking</p>}
       {evidence.modification.source && <p>{sourceModificationKinds.source.label}</p>}
       {evidence.modification.settings.length > 0 && <p>{sourceModificationKinds.config.label}: {evidence.modification.settings.map(describeSetting).join(', ')}</p>}
     </div>}

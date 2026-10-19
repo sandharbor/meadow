@@ -7,6 +7,7 @@ import { SourcingComponentContentComparison } from '../../shared-sourcing-curati
 import type { SourcingTypeEditorOperations } from '../../shared-sourcing-curation/exported.js';
 import Modal from '../../../../shared/components/Modal.js';
 import type { SourceProposalReview } from '../../../../../../../contracts/types/areas/bundle/sourcing/sourcingProposal.js';
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import { SourcePath } from './SourceReviewPresentation.js';
 import { ChipPanel } from './ChipPanel.js';
 import { proposalSettingLabels } from './ProposalSettingsSummary.js';
@@ -38,7 +39,9 @@ function conflictValue(value: unknown): string {
 
 export type ProposalDialog = 'identities' | 'conflicts' | 'sensitivity' | 'refresh' | 'exit' | null;
 
-export function ProposalDialogs({ dialog, review, busy, close, later, discard, mutate, refresh, request, identityRequired, identityComparison, onIdentityComparison, identityChoices, chooseIdentities, identitySaving, identityBusy }: {
+export function ProposalDialogs({ dialog, review, busy, close, later, discard, mutate, blacklist, refresh, request, identityRequired, identityComparison, onIdentityComparison, identityChoices, chooseIdentities, identitySaving, identityBusy, onSelectNode }: {
+  onSelectNode: (key: EncodedBundleNodeKey) => void;
+  blacklist: (key: EncodedBundleNodeKey) => Promise<void>;
   /** Whether this identity review visit is required; it stays so until the panel closes. */
   identityRequired: boolean;
   identityChoices: Record<string, string | null>; chooseIdentities: (choices: Record<string, string | null>) => void;
@@ -132,15 +135,23 @@ export function ProposalDialogs({ dialog, review, busy, close, later, discard, m
       </section>)}
       {review.conflicts.length === 0 && <p>All conflicts resolved.</p>}
     </Modal>
-    <Modal isOpen={dialog === 'sensitivity'} title="Review tracking sensitivity" onClose={close}>
-      <p className="mb-4">The material, file identity, or sensitivity policy changed after your explicit tracking choice. Review the current evidence before keeping it tracked.</p>
+    {dialog === 'sensitivity' && <ChipPanel anchor='[data-change-item="sensitivity"]' label="Review tracking sensitivity" role="dialog" onDismiss={close} className="w-[min(42rem,calc(100vw-2rem))]">
+      <header className="flex items-center gap-3 border-b px-4 py-3"><h2 className="font-semibold">Review tracking sensitivity</h2><button aria-label="Close" className="ml-auto rounded px-2 text-lg" onClick={close}>×</button></header>
+      <div className="max-h-[65vh] overflow-auto p-4">
+      <p className="mb-4">These tracked nodes are now sensitive. Keep tracked confirms inclusion. Blacklist deliberately excludes a node; Untrack for now leaves it for further curation. Required bundle nodes must remain tracked.</p>
       {pendingTracking.map(([key, decision]) => <section key={key} className="mb-4 rounded border p-3">
-        <SourcePath value={bundleNodeKeySourceGraphPath(parseBundleNodeKey(key))} /><p className="text-sm">{decision.invalidated ?? review.trackingTargets[key]?.sensitivityReasons?.join(' ') ?? 'This page is sensitive under the current policy.'}</p>
-        <div className="mt-3 flex flex-wrap gap-3"><button className={secondaryButtonStyle} disabled={busy} onClick={() => void mutate('tracking', { nodeKeys: [key], track: false })}>Leave untracked</button>
-          {review.trackingTargets[key] && <button className={primaryButtonStyle} disabled={busy} onClick={() => void mutate('tracking', { nodeKeys: [key], track: true, confirmSensitive: true })}>{decision.identityChanged ? 'Confirm tracking current page' : 'Confirm tracking sensitive page'}</button>}</div>
+        <button className="text-left font-semibold text-blue-800 underline" onClick={() => { onSelectNode(key as EncodedBundleNodeKey); close(); }}><SourcePath value={key.startsWith('collection:') ? review.configuration.nodes.find(node => node.bundleNodeId === decision.bundleNodeId)?.bundleNodeName ?? 'Bundle home' : bundleNodeKeySourceGraphPath(parseBundleNodeKey(key))} /></button><p className="text-sm">{decision.invalidated ?? review.trackingTargets[key]?.sensitivityReasons?.join(' ') ?? 'This page is sensitive under the current policy.'}</p>
+        {review.trackingTargets[key]?.untrackableReason && <p className="mt-1 text-xs text-neutral-500">{review.trackingTargets[key].untrackableReason}</p>}
+        {review.trackingTargets[key] && !review.trackingTargets[key].untrackableReason && <p className="mt-1 text-xs text-neutral-500">Blacklisting stops traversal through this node. For a folder, it excludes the entire subtree. Review any resulting source changes before accepting.</p>}
+        <div className="mt-3 flex flex-wrap gap-3">{!review.trackingTargets[key]?.untrackableReason && <>
+          {review.trackingTargets[key] && <button className={secondaryButtonStyle} disabled={busy} onClick={() => void blacklist(key as EncodedBundleNodeKey)}>Blacklist</button>}
+          <button className={secondaryButtonStyle} disabled={busy} onClick={() => void mutate('tracking', { nodeKeys: [key], track: false })}>Untrack for now</button>
+        </>}
+          {review.trackingTargets[key] && <button className={primaryButtonStyle} disabled={busy} onClick={() => void mutate('tracking', { nodeKeys: [key], track: true, confirmSensitive: true })}>{decision.identityChanged ? 'Confirm tracking current page' : decision.sensitivityChange ? 'Keep tracked' : 'Confirm tracking sensitive page'}</button>}</div>
       </section>)}
       {pendingTracking.length === 0 && <p>All tracking choices reviewed.</p>}
-    </Modal>
+      </div>
+    </ChipPanel>}
     <Modal isOpen={dialog === 'exit'} title="Exit changes review" onClose={close} className="h-auto w-full max-w-md" footer={<div className="flex flex-wrap justify-end gap-3">
       <button className={secondaryButtonStyle} disabled={busy} onClick={close}>Cancel</button>
       <button className={secondaryButtonStyle} disabled={busy} onClick={discard}>Discard changes</button>
