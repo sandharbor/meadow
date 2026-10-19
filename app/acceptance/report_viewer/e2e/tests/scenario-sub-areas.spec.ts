@@ -4,7 +4,8 @@ import { URL } from 'node:url';
 import { bundleCuration, bundleSourcing, filters, filterMixing, sensitive, sourceReviewWorkspace } from '../../../../concepts/index.js';
 
 // Use the real registry so feature classification and report rendering are checked together.
-for (const width of [1280, 390]) {
+// Use a narrow desktop as well as mobile so these labels genuinely need expansion.
+for (const width of [1024, 390]) {
   test(`expanded scenario metadata groups declared sub-areas at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 900 });
     const manifest = {

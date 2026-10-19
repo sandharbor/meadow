@@ -1932,7 +1932,6 @@ export default function ScenarioViewer() {
       {hasScenarioMetadata && (
         <ScenarioMetadata
           key={`${runId}/${testSlug}`}
-          isMobile={isMobile}
           indicators={[
             ...(manifest.bundleMode ? [{ key: 'mode', label: `Starts: ${bundleModeLabel(manifest.bundleMode)}`, accent: 'filter-starts-with' }] : []),
             ...matchingAppAreas.map(area => ({ key: `area-${area.id}`, label: `Area: ${area.name}`, accent: 'filter-areas' })),

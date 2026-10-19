@@ -2,8 +2,7 @@
 
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 
-export function ScenarioMetadata({ isMobile, indicators, children }: {
-  isMobile: boolean
+export function ScenarioMetadata({ indicators, children }: {
   indicators: { key: string; label: string; accent: string }[]
   children: (expanded: boolean) => ReactNode
 }) {
@@ -31,7 +30,7 @@ export function ScenarioMetadata({ isMobile, indicators, children }: {
 
   return (
     <div role="region" aria-label="Scenario metadata" className="col-span-2 shrink-0 min-w-0 border-b border-neutral-200 bg-neutral-50 px-4 py-1.5">
-      {(overflows || expanded || !isMobile) && (
+      {(overflows || expanded) && (
         <button
           type="button"
           aria-label={expanded ? 'Collapse scenario metadata' : 'Expand scenario metadata'}
