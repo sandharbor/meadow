@@ -15,11 +15,11 @@ limitations under the License.
 */
 
 import React from 'react';
-import { Highlight } from '../types/displayGraph';
+import type { MatchingFilter } from '../types/displayGraph';
 
 interface BundleNodeHoverCardProps {
   title: string;
-  highlights: Highlight[];
+  matchingFilters: MatchingFilter[];
   style?: React.CSSProperties;
 }
 
@@ -53,11 +53,12 @@ function renderWithStrikethrough(text: string): React.ReactNode {
 
 const BundleNodeHoverCard: React.FC<BundleNodeHoverCardProps> = ({
   title,
-  highlights,
+  matchingFilters,
   style,
 }) => {
   return (
     <div
+      data-testid="bundle-node-hover-card"
       style={{
         pointerEvents: 'none',
         zIndex: 10,
@@ -68,23 +69,25 @@ const BundleNodeHoverCard: React.FC<BundleNodeHoverCardProps> = ({
       className="bg-gray-50 text-gray-800 text-xs rounded px-2 py-1 shadow-lg border border-gray-200"
     >
       <div className="font-medium">{title}</div>
-      {highlights.length > 0 && (
+      {matchingFilters.length > 0 && (
         <div className="mt-1 pt-1 border-t border-gray-200 text-left">
-          {highlights.map((highlight, idx) => (
-            <div key={idx} className="py-0.5">
+          {matchingFilters.map(filter => (
+            <div key={filter.filterId} data-testid="node-hover-filter" className="py-0.5">
               <div className="flex items-center gap-1.5">
-                <span
+                {filter.color && <span
+                  data-testid="filter-highlight-color"
                   className="inline-block w-2 h-2 rounded-full flex-shrink-0"
                   style={{
-                    backgroundColor: highlight.color,
-                    border: highlight.isDashed ? '1px dashed #374151' : 'none',
+                    backgroundColor: filter.color,
+                    border: filter.isDashed ? '1px dashed #374151' : 'none',
                   }}
-                />
-                <span className="text-gray-600">{highlight.filterName}</span>
+                />}
+                <span className="text-gray-600">{filter.filterName}</span>
+                {filter.marksSensitive && <span className="text-gray-600">+ sensitive</span>}
               </div>
-              {highlight.detailInfo && (
-                <div className="text-[11px] text-gray-500 ml-3.5">
-                  {renderWithStrikethrough(highlight.detailInfo)}
+              {filter.detailInfo && (
+                <div className={`text-[11px] text-gray-500 ${filter.color ? 'ml-3.5' : ''}`}>
+                  {renderWithStrikethrough(filter.detailInfo)}
                 </div>
               )}
             </div>

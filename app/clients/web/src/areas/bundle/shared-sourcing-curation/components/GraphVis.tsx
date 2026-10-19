@@ -20,7 +20,7 @@ import { useEditorViewValue } from '../utils/useEditorViewValue.js';
 import { Graph } from '../../../../../../../contracts/types/shared/bundle-graph/graph';
 import { isUntrackableFrontierNode } from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode';
 import { IFilter } from '../types/filters';
-import { DisplayGraph, DisplayNode, Highlight } from '../types/displayGraph';
+import { DisplayGraph, DisplayNode, MatchingFilter } from '../types/displayGraph';
 import { isImageFileType } from '../../../../../../../shared_code/utils/fileTypeUtils';
 import { sourceGraphPath } from '../../../../../../../shared_code/utils/bundleSourceUtils';
 import ImageHoverPreview, { HOVER_IMAGE_WIDTH } from './ImageHoverPreview';
@@ -78,7 +78,7 @@ const GraphVis: React.FC<GraphVisProps> = ({
     title: string;
     isImage: boolean;
     imagePath?: string;
-    highlights: Highlight[];
+    matchingFilters: MatchingFilter[];
   } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -564,27 +564,11 @@ const GraphVis: React.FC<GraphVisProps> = ({
 
       <div ref={containerRef} className="w-full h-full">
         {hoveredNode && (
-          hoveredNode.isImage && hoveredNode.imagePath ? (
-            <ImageHoverPreview
-              imagePath={hoveredNode.imagePath}
-              title={hoveredNode.title}
-              style={{
-                position: 'absolute',
-                left: hoveredNode.x - HOVER_IMAGE_WIDTH / 2, // center horizontally
-                top: hoveredNode.y + 20, // position below page nodes
-              }}
-            />
-          ) : (
-            <BundleNodeHoverCard
-              title={hoveredNode.title}
-              highlights={hoveredNode.highlights}
-              style={{
-                position: 'absolute',
-                left: hoveredNode.x - 40, // center horizontally
-                top: hoveredNode.y + 20, // position below page nodes
-              }}
-            />
-          )
+          <div style={{ position: 'absolute', pointerEvents: 'none', zIndex: 50,
+            left: hoveredNode.x - (hoveredNode.isImage ? HOVER_IMAGE_WIDTH / 2 : 40), top: hoveredNode.y + 20 }}>
+            {hoveredNode.isImage && hoveredNode.imagePath && <ImageHoverPreview imagePath={hoveredNode.imagePath} title={hoveredNode.title} />}
+            <BundleNodeHoverCard title={hoveredNode.title} matchingFilters={hoveredNode.matchingFilters} />
+          </div>
         )}
         <svg 
           ref={svgRef} 
@@ -880,7 +864,7 @@ const GraphVis: React.FC<GraphVisProps> = ({
                       title: page.bundleNodeName,
                       isImage: isImage && !page.isFrontierNode,
                       imagePath: isImage && !page.isFrontierNode ? editorSourcePath(bundleSlug, page.underlyingNode, filePath, displayGraph.underlyingGraph.sourceContentView === 'live') : undefined,
-                      highlights: page.highlights,
+                      matchingFilters: page.matchingFilters,
                     });
                   }
                 }}

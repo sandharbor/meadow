@@ -143,6 +143,16 @@ export class BundleEditorPage {
     return this.listViewRows.locator(`td:nth-child(${column + 1})`).allTextContents();
   }
 
+  async expectSelectedSensitivePageCount(count: number) {
+    const pills = this.page.locator('[data-testid^="selected-page-"]').getByText('Sensitive', { exact: true });
+    await this.expect(pills).toHaveCount(count);
+  }
+
+  async expectGraphHighlightCount(color: string, count: number) {
+    const rings = this.page.getByTestId('graph-page-node').locator(`[data-highlight-shape][stroke=${JSON.stringify(color)}]`);
+    await this.expect(rings, 'Matching nodes should immediately reflect the saved Highlight action').toHaveCount(count);
+  }
+
   async expectGraphViewPageCount(count: number) {
     await this.expect(this.page.getByTestId("graph-page-node")).toHaveCount(count);
   }
@@ -155,6 +165,22 @@ export class BundleEditorPage {
     await this.expect(
       this.page.locator(`[data-testid="graph-page-node"][data-page-id="${bundleNodeKey}"]`),
     ).toBeVisible();
+  }
+
+  async hoverGraphNode(bundleNodeKey: string) {
+    await this.page.locator(`[data-testid="graph-page-node"][data-page-id=${JSON.stringify(bundleNodeKey)}]`).hover();
+  }
+
+  async hoverListNodeGlyph(bundleNodeKey: string) {
+    await this.listViewRowByNodeKey(bundleNodeKey).locator('td').first().hover();
+  }
+
+  async expectNodeHoverFilter(filterName: string, options: { sensitive: boolean; colored: boolean }) {
+    const row = this.page.getByTestId('bundle-node-hover-card').getByTestId('node-hover-filter')
+      .filter({ has: this.page.getByText(filterName, { exact: true }) });
+    await this.expect(row).toBeVisible();
+    await this.expect(row.getByText('+ sensitive', { exact: true })).toHaveCount(options.sensitive ? 1 : 0);
+    await this.expect(row.getByTestId('filter-highlight-color')).toHaveCount(options.colored ? 1 : 0);
   }
 
   async clickGraphNode(bundleNodeKey: string) {

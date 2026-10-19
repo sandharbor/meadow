@@ -24,6 +24,7 @@ import {
 import { inheritedTraversalDepths, remainingTraversalDepths } from '../../../../shared/utils/traversalRoutes.js';
 import BundleNodeContextMenu, { ObsidianInfo } from './BundleNodeContextMenu';
 import { DisabledTooltip } from '../../../../shared/components/DisabledTooltip';
+import { SensitivityBadge } from './SensitivityBadge.js';
 import { NodeFolderDetails } from './NodeFolderDetails.js';
 import { SourceComparisonEvidence } from './SourceComparisonEvidence.js';
 import { useEditorKeySet } from '../utils/useEditorViewValue.js';
@@ -41,6 +42,7 @@ interface BundleNodeSelectionSidebarProps {
   onTrackSelected: () => void;
   onBlacklistSelected: () => void;
   isEffectivelySensitive: (page: IBundleNode) => boolean;
+  sensitivityFilterNames: (page: IBundleNode) => string[];
   onUpdatePageConfig: (bundleNodeKey: EncodedBundleNodeKey, key: 'outlinksDepth' | 'inlinksDepth', value: number) => void;
   onDeletePageConfigKey: (bundleNodeKey: EncodedBundleNodeKey, key: 'outlinksDepth' | 'inlinksDepth') => void;
   onPreviewPage: (bundleNodeKey: EncodedBundleNodeKey) => void;
@@ -64,6 +66,7 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
   onTrackSelected,
   onBlacklistSelected,
   isEffectivelySensitive,
+  sensitivityFilterNames,
   onUpdatePageConfig,
   onDeletePageConfigKey,
   onPreviewPage,
@@ -507,9 +510,7 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
                     </span>
                   )}
                   {isEffectivelySensitive(page!) && (
-                    <span className="inline-block px-2 py-0.5 rounded-full text-xs bg-danger-100 text-danger-800">
-                      Sensitive
-                    </span>
+                    <SensitivityBadge sourceSensitive={Boolean(page!.sensitive)} filterNames={sensitivityFilterNames(page!)} />
                   )}
                   {page!.isFrontierNode && (
                     <span className="inline-block px-2 py-0.5 rounded-full text-xs bg-pink-100 text-pink-800">

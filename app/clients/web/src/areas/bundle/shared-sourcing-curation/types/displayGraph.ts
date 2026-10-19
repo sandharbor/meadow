@@ -36,6 +36,15 @@ export interface Highlight {
   detailInfo?: string;
 }
 
+export interface MatchingFilter {
+  filterId: string;
+  filterName: string;
+  color?: string;
+  isDashed?: boolean;
+  marksSensitive: boolean;
+  detailInfo?: string;
+}
+
 export class DisplayNode {
   private _node: IBundleNode;
   private _isVisible: boolean = true;
@@ -43,6 +52,7 @@ export class DisplayNode {
   private _isFaded: boolean = false;
   private _isEffectivelySensitive: boolean = false;
   private _highlights: Highlight[] = [];
+  private _matchingFilters: MatchingFilter[] = [];
   private _distance: number | undefined;
   private _showLabel: boolean = false;
   private _showTitle: boolean = false;
@@ -94,6 +104,14 @@ export class DisplayNode {
 
   get highlights(): Highlight[] {
     return [...this._highlights];
+  }
+
+  get matchingFilters(): MatchingFilter[] {
+    return [...this._matchingFilters];
+  }
+
+  setMatchingFilters(filters: MatchingFilter[]): void {
+    this._matchingFilters = [...filters];
   }
 
   get distance(): number | undefined {
@@ -262,6 +280,7 @@ export class DisplayGraph {
     this._displayNodes.forEach(displayNode => {
       displayNode.setVisible(visibleBundleNodeKeys.has(displayNode.bundleNodeKey));
       displayNode.setHighlights([]);
+      displayNode.setMatchingFilters([]);
       displayNode.setFaded(false);
       displayNode.setShowLabel(false);
       displayNode.setShowTitle(false);
@@ -282,6 +301,15 @@ export class DisplayGraph {
           : selectedNodeKeys.every((nodeKeys: Set<EncodedBundleNodeKey>) => nodeKeys.has(displayNode.bundleNodeKey));
 
         if (isSelected) {
+          const highlight = filter.actions.find(action => action.type === 'highlight');
+          displayNode.setMatchingFilters([...displayNode.matchingFilters, {
+            filterId: filter.id,
+            filterName: filter.name,
+            color: highlight?.color,
+            isDashed: highlight?.isDashed,
+            marksSensitive: filter.actions.some(action => action.type === 'mark_sensitive'),
+            detailInfo: calculateHighlightDetail(filter.id, displayNode.underlyingNode, this._graph),
+          }]);
           // Process mark_sensitive before highlight so sensitivity state is set
           // before checking whether to apply a sensitivity-gated highlight.
           const sortedActions = [...filter.actions].sort((a, b) =>

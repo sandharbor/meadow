@@ -72,6 +72,7 @@ export const filters = defineMeadowConcept({
   subAreas: [{ areaId: coreConceptIds.bundleCuration, order: 1 }],
   definition: conceptText`The curation feature for creating and managing reusable rules that select and optionally act on matching pages.`,
   mechanics: [
+    conceptText`An enabled filter appears in matching nodes' hover explanations even without a Highlight action. The explanation shows its highlight color when present and + sensitive when its Mark Sensitive action applies. Saving an edited filter immediately updates the node presentation.`,
     conceptText`Custom filters define matching criteria and optional actions, can be viewed alone, and are evaluated against changing page data. Their matching sets can participate in ${conceptLink(coreConceptIds.filterMixing, "Filter Mixing")}.`,
   ],
   interplay: conceptText`Specialized filters expose ${conceptLink(coreConceptIds.frontier, "Frontier Bundle Pages")}, ${conceptLink(coreConceptIds.sensitive, "Sensitive Bundle Pages")}, ${conceptLink(coreConceptIds.overrides, "Page Configuration Overrides")}, and ${conceptLink(coreConceptIds.linkGap, "In-Link Gaps")}. A Mark Sensitive action provides ${conceptLink(coreConceptIds.filterSensitivity, "Filter-Derived Sensitivity")}.`,
@@ -121,6 +122,7 @@ export const filterSensitivity = defineMeadowConcept({
   definition: conceptText`An enabled custom filter's Mark Sensitive action makes matching nodes effectively sensitive, even when their source does not mark them sensitive.`,
   mechanics: [
     conceptText`Effective sensitivity combines ${conceptLink(coreConceptIds.sourceSensitivity, "Source-Marked Sensitivity")} with matches from enabled bundle and global filters that have a Mark Sensitive action. Filter matches follow each filter's selector criteria and do not rewrite source sensitivity markings.`,
+    conceptText`The selected node's Sensitive badge has a question-mark explanation. A source marking explains meadow-sensitive in the source; otherwise the explanation lists every enabled filter supplying sensitivity.`,
     conceptText`Source review identifies these pages as Sensitive via filter. Its automatic tracking skips them and lists the exact skipped pages in the Tracking changes panel before acceptance. Acceptance includes their source material in the snapshot without automatically tracking it.`,
     conceptText`For example, a filter matching titles containing confidential can protect newly discovered notes and planning pages while allowing a public update from the same source change to be tracked.`,
   ],

@@ -869,6 +869,7 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
             onTrackSelected={handleTrackSelected}
             onBlacklistSelected={handleBlacklistSelected}
             isEffectivelySensitive={page => currentDisplayGraph.getDisplayNode(page.bundleNodeKey)?.isEffectivelySensitive ?? false}
+            sensitivityFilterNames={page => currentDisplayGraph.getDisplayNode(page.bundleNodeKey)?.matchingFilters.filter(filter => filter.marksSensitive).map(filter => filter.filterName) ?? []}
             onUpdatePageConfig={handleUpdatePageConfig}
             onDeletePageConfigKey={handleDeletePageConfigKey}
             onPreviewPage={onPreviewPage}

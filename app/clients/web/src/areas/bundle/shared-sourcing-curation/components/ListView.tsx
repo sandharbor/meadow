@@ -16,7 +16,7 @@ limitations under the License.
 
 import { useEditorViewValue } from '../utils/useEditorViewValue.js';
 import React, { useState, useMemo, useEffect } from 'react';
-import { DisplayGraph, DisplayNode, Highlight } from '../types/displayGraph';
+import { DisplayGraph, DisplayNode, MatchingFilter } from '../types/displayGraph';
 import { apiUrl } from '../../../../shared/utils/apiClient';
 import { isImageFileType } from '../../../../../../../shared_code/utils/fileTypeUtils';
 import { sourceGraphPath } from '../../../../../../../shared_code/utils/bundleSourceUtils';
@@ -112,7 +112,7 @@ const ListView: React.FC<ListViewProps> = ({
   } | null>(null);
   const [hoveredHighlights, setHoveredHighlights] = useState<{
     title: string;
-    highlights: Highlight[];
+    matchingFilters: MatchingFilter[];
     x: number;
     y: number;
   } | null>(null);
@@ -216,12 +216,12 @@ const ListView: React.FC<ListViewProps> = ({
   const handleHighlightMouseEnter = (
     e: React.MouseEvent<Element>,
     title: string,
-    highlights: Highlight[]
+    matchingFilters: MatchingFilter[]
   ) => {
     const rect = e.currentTarget.getBoundingClientRect();
     setHoveredHighlights({
       title,
-      highlights,
+      matchingFilters,
       x: rect.right + 8,
       y: rect.top + rect.height / 2,
     });
@@ -243,7 +243,7 @@ const ListView: React.FC<ListViewProps> = ({
       {hoveredHighlights && (
         <BundleNodeHoverCard
           title={hoveredHighlights.title}
-          highlights={hoveredHighlights.highlights}
+          matchingFilters={hoveredHighlights.matchingFilters}
           style={{
             position: 'fixed',
             left: hoveredHighlights.x,
@@ -342,7 +342,7 @@ const ListView: React.FC<ListViewProps> = ({
                 >
                   <td
                     className="border px-4 py-2 relative"
-                    onMouseEnter={(e) => handleHighlightMouseEnter(e, page.bundleNodeName, page.highlights)}
+                    onMouseEnter={(e) => handleHighlightMouseEnter(e, page.bundleNodeName, page.matchingFilters)}
                     onMouseLeave={() => setHoveredHighlights(null)}
                   >
                     <ListNodeGlyph node={page} />
@@ -380,7 +380,7 @@ const ListView: React.FC<ListViewProps> = ({
                 directoryLabel={directoryLabel}
                 onNodeClick={onPageClick}
                 onNodeContextMenu={onBundleNodeContextMenu}
-                onGlyphMouseEnter={(event, node) => handleHighlightMouseEnter(event, node.bundleNodeName, node.highlights)}
+                onGlyphMouseEnter={(event, node) => handleHighlightMouseEnter(event, node.bundleNodeName, node.matchingFilters)}
                 onGlyphMouseLeave={() => setHoveredHighlights(null)}
                 renderInlineThumbnail={renderInlineThumbnail}
               />

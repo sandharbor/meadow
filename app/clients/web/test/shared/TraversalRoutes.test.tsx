@@ -138,7 +138,7 @@ describe('traversal arrivals', () => {
     if (zeroOverride) applyZeroInlinkOverride(node);
     render(<BundleNodeSelectionSidebar bundleSlug="traversal-test" graph={graph} selectedNodeKeys={testKeySet(new Set(['Hub.md']))}
       onClose={vi.fn()} onSelectedNodeKeysChange={vi.fn()} onTrackPage={vi.fn()} onBlacklistPage={vi.fn()}
-      onTrackSelected={vi.fn()} onBlacklistSelected={vi.fn()} isEffectivelySensitive={() => false}
+      onTrackSelected={vi.fn()} onBlacklistSelected={vi.fn()} isEffectivelySensitive={() => false} sensitivityFilterNames={() => []}
       onUpdatePageConfig={vi.fn()} onDeletePageConfigKey={vi.fn()} onPreviewPage={vi.fn()}
       hasDraftChanges={false} obsidianInfo={null} onShowTraversalDetails={vi.fn()} onShowLinks={vi.fn()} />);
     fireEvent.click(screen.getByText('Details'));

@@ -57,6 +57,29 @@ function createFilter(id: string, pages: string[], mode: 'solo' | 'hide'): IFilt
 }
 
 describe('DisplayGraph filter expressions', () => {
+  it('explains enabled matches independently of highlight actions and clears stale matches', () => {
+    const graph = createGraph();
+    graph.getNode(testKey('2'))!.sensitive = true;
+    const plain = { ...createFilter('Plain match', ['1'], 'solo'), isSolo: false };
+    const sensitive = { ...createFilter('Private', ['1'], 'solo'), isSolo: false, actions: [{ type: 'mark_sensitive' as const }] };
+    const colored = { ...createFilter('Colored private', ['1'], 'solo'), isSolo: false,
+      actions: [{ type: 'mark_sensitive' as const }, { type: 'highlight' as const, color: '#123456', isDashed: true }] };
+    const display = new DisplayGraph(graph);
+    display.setFilters([plain, sensitive, colored, { ...sensitive, id: 'disabled', enabled: false }]);
+    const node = display.getDisplayNode(testKey('1'))!;
+    expect(node.matchingFilters.map(filter => [filter.filterName, filter.color, filter.marksSensitive])).toEqual([
+      ['Plain match', undefined, false], ['Private', undefined, true], ['Colored private', '#123456', true],
+    ]);
+    expect(node.highlights).toHaveLength(1);
+    expect(node.isEffectivelySensitive).toBe(true);
+    expect(graph.getNode(testKey('1'))?.sensitive).toBeUndefined();
+    expect(display.getDisplayNode(testKey('3'))?.matchingFilters).toEqual([]);
+    display.setFilters([{ ...sensitive, enabled: false }]);
+    expect(node.matchingFilters).toEqual([]);
+    expect(node.highlights).toEqual([]);
+    expect(node.isEffectivelySensitive).toBe(false);
+    expect(display.getDisplayNode(testKey('2'))?.isEffectivelySensitive).toBe(true);
+  });
   it('restores Fade after a solo ends without hiding or changing tracked nodes', () => {
     const graph = createGraph();
     const faded = { ...createFilter('context', ['1', '2'], 'solo'), isSolo: false, actions: [{ type: 'fade' as const }] };

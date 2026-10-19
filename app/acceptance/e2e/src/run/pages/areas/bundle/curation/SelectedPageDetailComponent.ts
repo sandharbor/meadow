@@ -67,6 +67,13 @@ export class SelectedPageDetailComponent {
     await this.expect(loc).toBeVisible();
   }
 
+  async hoverSensitivityExplanation(expectedText: string[]) {
+    await this.root.getByRole('button', { name: 'Why this node is sensitive', exact: true }).hover();
+    const tooltip = this.root.getByRole('tooltip');
+    await this.expect(tooltip).toBeVisible();
+    for (const text of expectedText) await this.expect(tooltip).toContainText(text);
+  }
+
   async expectNoPill(pill: Pill) {
     const loc = this.root
       .locator("span.rounded-full")

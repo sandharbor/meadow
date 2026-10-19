@@ -157,6 +157,20 @@ export class FilterPanelComponent {
     await this.expect(this.page.getByRole('dialog', { name: 'Edit Custom Filter', exact: true })).toBeVisible();
   }
 
+  async addHighlightToSensitivityFilterEdits() {
+    const dialog = this.page.getByRole('dialog', { name: 'Edit Custom Filter', exact: true });
+    const actionTypes = dialog.locator('select').filter({ has: this.page.locator('option[value="mark_sensitive"]') });
+    await this.expect(actionTypes).toHaveCount(1);
+    await this.expect(actionTypes.first()).toHaveValue('mark_sensitive');
+    await dialog.getByRole('button', { name: 'Add Action', exact: true }).click();
+    await this.expect(actionTypes).toHaveCount(2);
+    await this.expect(actionTypes.nth(1)).toHaveValue('highlight');
+    const color = dialog.locator('input[type="color"]');
+    await this.expect(color).toHaveValue('#ffd700');
+    await color.scrollIntoViewIfNeeded();
+    await this.expect(color).toBeInViewport();
+  }
+
   async saveCustomFilterEdits(options: { note?: string; enabled?: boolean; name?: string }) {
     const dialog = this.page.getByRole('dialog', { name: 'Edit Custom Filter', exact: true });
     if (options.note !== undefined) await dialog.getByPlaceholder('Optional description shown when hovering over the filter').fill(options.note);
@@ -419,6 +433,11 @@ export class FilterPanelComponent {
       .locator(".flex.items-center", { has: this.page.locator("label", { hasText: filterName }) })
       .locator("span.group")
       .first();
+  }
+
+  async scrollFilterIntoView(filterName: string) {
+    const row = this.filterCheckbox(filterName).locator("xpath=ancestor::div[contains(@class, 'space-y-2')][1]");
+    await row.scrollIntoViewIfNeeded();
   }
 
   async expectFilterVisible(filterName: string) {
