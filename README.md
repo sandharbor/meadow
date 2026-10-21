@@ -10,13 +10,13 @@ Learn more about Meadow at [meadowshare.com](https://meadowshare.com).
 
 # Node.js toolchain
 
-Meadow development, tests, and builds use exactly Node.js 24.19.0 and npm
-11.17.0, as recorded in `.node-version` and `.npm-version`. The standard
+Meadow development, tests, and builds use exactly Node.js 24.22.1 and npm
+11.19.1, as recorded in `.node-version` and `.npm-version`. The standard
 prepare, quickcheck, E2E, development, setup, and desktop-build entrypoints
 reject a different active toolchain before installing dependencies or running
 code.
 
-The desktop distribution also bundles the official Node.js 24.19.0 binary for
+The desktop distribution also bundles the official Node.js 24.22.1 binary for
 the supervised Runtime. Electron's embedded Node.js is supplied by Electron
 itself and is isolated from the supervised Runtime and development commands.
 

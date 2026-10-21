@@ -469,7 +469,8 @@ class MeadowApp {
     });
 
     ipcMain.handle('get-backend-connection', (event) => {
-      if (!isTrustedDesktopRenderer(event.senderFrame.url, this.frontendPort)) {
+      const senderFrame = event.senderFrame;
+      if (!senderFrame || !isTrustedDesktopRenderer(senderFrame.url, this.frontendPort)) {
         throw new Error('Backend connection is unavailable to this renderer');
       }
       return {

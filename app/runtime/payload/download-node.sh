@@ -10,8 +10,8 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 NODE_VERSION="v$(tr -d '[:space:]' < "$REPO_ROOT/.node-version")"
 ARCH="arm64"
 PLATFORM="darwin"
-EXPECTED_TARBALL_SHA256="8294b7aa9b03997481c06babf1e8b270c859358f27da57a11509afe537ac381d"
-EXPECTED_NODE_SHA256="27db838bb204ef7c21df2931f5656e4c8fb32e6e947f363a402b49714d32b5b1"
+EXPECTED_TARBALL_SHA256="89c682593d76cd44233fa53b1563264e7de9cbb189cad169135c5b4fadfbc0a7"
+EXPECTED_NODE_SHA256="6f32069480ec14d52b6d7b1f3c7124cfbbc46203abf5ddf5c65b127435f3f329"
 
 if [ "$#" -ne 0 ]; then
     echo "Usage: app/runtime/payload/download-node.sh" >&2
