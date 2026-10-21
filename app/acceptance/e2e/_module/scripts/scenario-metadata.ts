@@ -86,7 +86,7 @@ export function scenarioMetadataIssues(source: ts.SourceFile): { line: number; m
       const options = node.arguments[1];
       const annotation = ts.isObjectLiteralExpression(options)
         ? options.properties.find((entry): entry is ts.PropertyAssignment => ts.isPropertyAssignment(entry) && entry.name.getText(source) === 'annotation')?.initializer : undefined;
-      for (const variable of ['name', 'description', 'areas', ...(declarations.has('pressures') ? ['pressures'] : [])]) {
+      for (const variable of ['name', 'description', 'areas', ...(declarations.has('pressures') ? ['pressures'] : []), ...(declarations.has('sections') ? ['sections'] : [])]) {
         if (!annotation || !ts.isArrayLiteralExpression(annotation) || !annotation.elements.some(entry => property(entry, variable, 'annotation'))) {
           report(node, `Include ${variable}.annotation in the test's annotation array.`);
         }

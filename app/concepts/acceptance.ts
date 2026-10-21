@@ -90,3 +90,23 @@ export function linkedScenarioName(nameText: ConceptText) {
 export function linkedScenarioDescription(descriptionText: ConceptText) {
   return { description: renderConceptText(descriptionText), annotation: { type: 'scenario-description', description: JSON.stringify(descriptionText) } };
 }
+
+/** Linked prose for a scenario phase, captured with the run. */
+export interface ScenarioSection {
+  readonly id: string;
+  readonly type: 'setup' | 'test';
+  readonly text: ConceptText;
+}
+
+/** Declare ordered phases once; use their plain names with test.step(). */
+export function scenarioSections<const T extends Record<string, Omit<ScenarioSection, 'id'>>>(declarations: T) {
+  const sections: ScenarioSection[] = Object.entries(declarations).map(([id, section]) => ({ id, ...section }));
+  if (sections.some((section, index) => section.type === 'setup' && index !== 0)) {
+    throw new Error('Only the first scenario section may be setup.');
+  }
+  if (sections.some(section => !renderConceptText(section.text).trim())) {
+    throw new Error('Scenario sections require non-empty prose.');
+  }
+  const steps = Object.fromEntries(sections.map(section => [section.id, renderConceptText(section.text)])) as { readonly [K in keyof T]: string };
+  return { steps, annotation: { type: 'scenario-sections', description: JSON.stringify(sections) } };
+}

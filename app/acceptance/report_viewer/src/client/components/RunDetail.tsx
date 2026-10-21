@@ -141,6 +141,7 @@ interface Scenario {
   slug: string
   testName: string
   nameText?: ConceptText
+  sections?: import('../../../../../concepts/acceptance.js').ScenarioSection[]
   descriptionText?: ConceptText
   description?: string
   testBasename?: string
@@ -327,6 +328,7 @@ export default function RunDetail() {
     next.set('view', tab)
     setSearchParams(next)
   }
+  const [showSections, setShowSections] = useState(false)
   const [mediaSize, setMediaSize] = useState<0 | 1 | 2 | 3>(0)
   const [playSpeed, setPlaySpeed] = useState(DEFAULT_PLAYBACK_SPEED_PERCENT)
   const videoRefs = useRef<Map<string, HTMLVideoElement>>(new Map())
@@ -1313,6 +1315,11 @@ export default function RunDetail() {
         </div>
       )}
 
+      {displayedTab === 'details' && <label className="mb-4 flex cursor-pointer items-center gap-2 text-sm text-neutral-600">
+        <input type="checkbox" checked={showSections} onChange={event => setShowSections(event.target.checked)} />
+        Show sections
+      </label>}
+
       {/* Details tab */}
       {displayedTab === 'details' && (
         <div className="space-y-6" style={{ '--detail-video-width': detailVideoWidth } as CSSProperties}>
@@ -1362,6 +1369,13 @@ export default function RunDetail() {
                             <p className="whitespace-pre-line leading-relaxed text-neutral-700 [overflow-wrap:anywhere]"><ScenarioText text={scenario.description} linkedText={scenario.descriptionText} runId={runId!} /></p>
                           ) : (
                             <p className="italic text-neutral-400">No description captured in this run.</p>
+                          )}
+                          {showSections && Boolean(scenario.sections?.some(section => section.type !== 'setup')) && (
+                            <ol aria-label="Scenario sections" className="mt-3 list-decimal space-y-2 border-l-2 border-neutral-200 pl-6 text-neutral-700">
+                              {scenario.sections!.filter(section => section.type !== 'setup').map(section => <li key={section.id} className="whitespace-pre-line pl-1 leading-relaxed [overflow-wrap:anywhere]">
+                                <ScenarioText text="" linkedText={section.text} runId={runId!} />
+                              </li>)}
+                            </ol>
                           )}
                           <dl aria-label="Scenario metadata" className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px]">
                             <ScenarioMetadataGroup label="Interface" accent="filter-interface"

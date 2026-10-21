@@ -69,6 +69,7 @@ interface Manifest {
   testName: string
   description?: string
   nameText?: ConceptText
+  sections?: import('../../../../../concepts/acceptance.js').ScenarioSection[]
   descriptionText?: ConceptText
   startTime?: string
   endTime?: string
@@ -1812,6 +1813,7 @@ export default function ScenarioViewer() {
   const activeFileModes = activeLenses(fileChangeView, fileChangeLenses, FILE_CHANGE_LENSES)
 
   const hasScenarioMetadata = Boolean(manifest.bundleMode || matchingAppAreas.length || matchingDocs.length)
+  const displayedSections = !showCaptureCode && manifest.sections?.length ? sourceLocations.sections : undefined
   const displayedProse = !showCaptureCode && manifest.nameText ? sourceLocations.scenarioProse : undefined
 
   const logsPanel = (
@@ -2701,6 +2703,20 @@ export default function ScenarioViewer() {
                     const prose = displayedProse
                     if (prose && [prose.name, prose.description].some(range => range && i + 1 >= range.start && i + 1 <= range.end)) return null
                     if (prose && i + 1 >= prose.name.start - 1 && sourceLocations.testLine && i + 1 < sourceLocations.testLine && !lineHtml.trim()) return null
+                    if (displayedSections) {
+                      const number = i + 1
+                      const { declaration, steps } = displayedSections
+                      if (number >= declaration.start && number <= declaration.end) return null
+                      const step = steps.find(step => number >= step.start && number <= step.end || number >= step.closingStart && number <= step.closingEnd)
+                      if (step) {
+                        const section = manifest.sections?.find(section => section.id === step.id)
+                        if (section) return number === step.start ? <div key={i} role="region" aria-label={`Scenario section: ${section.id}`}
+                          data-source-line={number} className="my-3 border-y border-neutral-200 bg-neutral-50 py-3 pl-[46px] pr-3 font-mono whitespace-pre-wrap">
+                          <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-neutral-400">{section.type === 'setup' ? 'Setup' : `Section ${manifest.sections!.filter(item => item.type !== 'setup').findIndex(item => item.id === section.id) + 1}`}</div>
+                          <ScenarioText text="" linkedText={section.text} runId={runId!} onOpenConcept={openConcept} />
+                        </div> : null
+                      }
+                    }
                     const fixtureReferences = testSourceFixturesByLine.get(i) ?? []
                     const lineEvents = sourceTimelineMarkers.get(i + 1)
                     const targetTick = lineEvents?.checkpoints[0] ?? lineEvents?.ticks[0]

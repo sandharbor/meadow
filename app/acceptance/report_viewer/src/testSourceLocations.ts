@@ -6,6 +6,10 @@ export interface TestSourceLocations {
   testLine: number | null;
   setupLine?: number;
   checkpoints: { message: string; line: number }[];
+  sections?: {
+    declaration: { start: number; end: number };
+    steps: { id: string; start: number; end: number; closingStart: number; closingEnd: number }[];
+  };
   scenarioProse?: { name: { start: number; end: number }; description?: { start: number; end: number } };
 }
 
@@ -32,7 +36,25 @@ export function testSourceLocations(source: string): TestSourceLocations {
       && ts.isIdentifier(declaration.initializer.expression)
       && declaration.initializer.expression.text === helper;
   });
+  const sectionsDeclaration = proseDeclaration('sections', 'scenarioSections');
+  if (sectionsDeclaration) locations.sections = { declaration: range(sectionsDeclaration.getStart(ast), sectionsDeclaration.end), steps: [] };
   const visit = (node: ts.Node) => {
+    if (locations.sections && ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)
+      && ts.isIdentifier(node.expression.expression) && node.expression.expression.text === 'test' && node.expression.name.text === 'step') {
+      const [title, callback] = node.arguments;
+      if (title && ts.isPropertyAccessExpression(title) && ts.isPropertyAccessExpression(title.expression)
+        && ts.isIdentifier(title.expression.expression) && title.expression.expression.text === 'sections'
+        && title.expression.name.text === 'steps' && callback && ts.isArrowFunction(callback) && ts.isBlock(callback.body)) {
+        const statement = ts.isAwaitExpression(node.parent) ? node.parent.parent : node.parent;
+        const header = range(statement.getStart(ast), callback.body.getStart(ast) + 1);
+        const footer = range(callback.body.end - 1, statement.end);
+        // Keep compact steps intact so hiding a wrapper never hides executable code.
+        if (ts.isExpressionStatement(statement) && callback.body.statements.every(child => range(child.getStart(ast), child.end).start > header.end
+          && range(child.getStart(ast), child.end).end < footer.start)) {
+          locations.sections.steps.push({ id: title.name.text, ...header, closingStart: footer.start, closingEnd: footer.end });
+        }
+      }
+    }
     if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) {
       const line = ast.getLineAndCharacterOfPosition(node.getStart(ast)).line + 1;
       if (node.expression.text === 'test' && locations.testLine === null) {

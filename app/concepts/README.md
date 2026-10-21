@@ -141,6 +141,38 @@ Concept links in a captured name or description open the shared floating concept
 within the report. Select related scenarios shows the count in that run and
 opens the run with that concept selected.
 
+## Scenario sections
+
+Scenarios can declare linked section prose beside their name and description:
+
+```ts
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Open the accepted bundle.` },
+  review: { type: 'test', text: conceptText`Review the proposed ${conceptLink(bridgeExclusion.id, 'bridge exclusion')}.` },
+});
+// Include sections.annotation in the scenario's annotation array.
+// Inside the test callback:
+await test.step(sections.steps.setup, async () => {
+  // Establish and checkpoint the starting state.
+});
+await test.step(sections.steps.review, async () => {
+  // Act, assert the outcome, and checkpoint it.
+});
+```
+
+The keyed declaration preserves order and supplies checked step names. Only the
+first section may have type `setup`; subsequent sections use `test`. Use short
+prose explaining the action and expected result, with document links where useful.
+Each multiline step surrounds its own code and can end with a checkpoint.
+
+Sections are captured before execution so the report retains the whole scenario
+even when an early step fails. The simplified Test Code view replaces the
+section declaration and step wrappers with linked inline prose blocks. Original
+line numbers still anchor commands and checkpoints; “show the real code” reveals
+the declarations and wrappers. Details offers a Show sections checkbox, initially
+off, which shows the test sections in order and omits setup. Older scenarios and
+captures without sections keep their existing display.
+
 ## Shared documents and design pressures
 
 `MeadowDocument` supplies a stable ID, name, linked description, optional app-area

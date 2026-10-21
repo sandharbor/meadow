@@ -69,6 +69,8 @@ export default class ArtifactReporter implements Reporter {
     const source = readFileSync(test.location.file, "utf8");
     writeFileSync(path.join(directory, "test-source.ts"), source);
     writeFileSync(path.join(directory, "source-changes.json"), JSON.stringify(collectReferencedSourceChanges(source), null, 2));
+    const sections = test.annotations.find(annotation => annotation.type === 'scenario-sections')?.description;
+    writeFileSync(path.join(directory, 'sections.json'), sections ?? '[]');
     const nameText = test.annotations.find(annotation => annotation.type === 'scenario-name')?.description;
     if (nameText) writeFileSync(path.join(directory, 'name-text.json'), nameText);
     const descriptionText = test.annotations.find(annotation => annotation.type === 'scenario-description')?.description;

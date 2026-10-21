@@ -213,6 +213,7 @@ interface Manifest {
   description: string;
   nameText?: import("../../../../concepts/types.js").ConceptText;
   descriptionText?: import("../../../../concepts/types.js").ConceptText;
+  sections?: import("../../../../concepts/acceptance.js").ScenarioSection[];
   status: string;
   startTime: string;
   endTime: string;
@@ -320,6 +321,7 @@ interface ScenarioReportMeta {
     description: string;
     nameText?: import("../../../../concepts/types.js").ConceptText;
     descriptionText?: import("../../../../concepts/types.js").ConceptText;
+    sections?: import("../../../../concepts/acceptance.js").ScenarioSection[];
     duration: number | null;
     bundleMode: BundleMode | null;
     executionSurface: ExecutionSurface;
@@ -1003,7 +1005,7 @@ function computeScenarioReportMeta(
   testDir: string,
   manifest: Manifest
 ): ScenarioReportMeta {
-  const { testName, description, nameText, descriptionText, startTime, endTime, logs, uncommittedEntries, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, subAreaDocIds, designPressureIds, sourceChangeCategories, keyFrames } = manifest;
+  const { testName, description, nameText, descriptionText, sections, startTime, endTime, logs, uncommittedEntries, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, subAreaDocIds, designPressureIds, sourceChangeCategories, keyFrames } = manifest;
 
   // Compute duration
   const duration = (startTime && endTime)
@@ -1016,7 +1018,7 @@ function computeScenarioReportMeta(
     ? readFileSync(failureReasonPath, "utf8").trim()
     : undefined;
 
-  const scenarioInfo = { scenarioId: manifest.scenarioId, testName, description, nameText, descriptionText, duration, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, subAreaDocIds, designPressureIds, sourceChangeCategories, keyFrames, ...(failureReason && { failureReason }) };
+  const scenarioInfo = { scenarioId: manifest.scenarioId, testName, description, nameText, descriptionText, sections, duration, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, subAreaDocIds, designPressureIds, sourceChangeCategories, keyFrames, ...(failureReason && { failureReason }) };
 
   // Load expected error windows (written by the expectLogErrors fixture)
   const expectedWindowsPath = path.join(testDir, "expected-error-windows.json");
@@ -1233,6 +1235,8 @@ export function assembleTestArtifacts(testDir: string, options: { dropTickLog?: 
   });
   const nameTextPath = path.join(testDir, 'name-text.json');
   const nameText: Manifest['nameText'] = existsSync(nameTextPath) ? JSON.parse(readFileSync(nameTextPath, 'utf8')) : undefined;
+  const sectionsPath = path.join(testDir, 'sections.json');
+  const sections: Manifest['sections'] = existsSync(sectionsPath) ? JSON.parse(readFileSync(sectionsPath, 'utf8')) : undefined;
   const descriptionTextPath = path.join(testDir, 'description-text.json');
   const descriptionText: Manifest['descriptionText'] = existsSync(descriptionTextPath) ? JSON.parse(readFileSync(descriptionTextPath, 'utf8')) : undefined;
   const descriptionPath = path.join(testDir, "description.txt");
@@ -1337,7 +1341,7 @@ export function assembleTestArtifacts(testDir: string, options: { dropTickLog?: 
   // Write manifest
   const identityPath = path.join(testDir, 'scenario-identity.json');
   const identity = existsSync(identityPath) ? JSON.parse(readFileSync(identityPath, 'utf8')) : {};
-  const manifest: Manifest = { ...identity, testName, description, nameText, descriptionText, status, startTime, endTime, homeCommits, homeCommitMeta, minioCommitMeta, extensionCommitMeta, uncommittedEntries, logs, testSourceFile, testSource, testSourceFixtures, testSourceChanges, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, subAreaDocIds, designPressureIds, sourceChangeCategories, keyFrames, ...tickData };
+  const manifest: Manifest = { ...identity, testName, description, nameText, descriptionText, sections, status, startTime, endTime, homeCommits, homeCommitMeta, minioCommitMeta, extensionCommitMeta, uncommittedEntries, logs, testSourceFile, testSource, testSourceFixtures, testSourceChanges, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, subAreaDocIds, designPressureIds, sourceChangeCategories, keyFrames, ...tickData };
   // On disk the manifest leaves out what the report viewer rebuilds, and
   // skips indentation; see manifestEncoding.ts.
   const blobGitDir = contentBlobGitDir(testDir);

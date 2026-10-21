@@ -52,3 +52,10 @@ test('areas are literal lists of imported concepts', () => {
     assert.ok(check(source.replace(/scenarioAreas\([^\n]+\);/, `${call};`)).some(issue => issue.message.includes('literal list')), call);
   }
 });
+
+
+test('scenarios opting into sections must capture their annotation', () => {
+  const withSections = source.replace('const areas =', 'const sections = scenarioSections({});\nconst areas =');
+  assert.ok(check(withSections).some(issue => issue.message.includes('sections.annotation')));
+  assert.deepEqual(check(withSections.replace('description.annotation,', 'description.annotation, sections.annotation,')), []);
+});

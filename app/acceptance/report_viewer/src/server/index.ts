@@ -700,6 +700,7 @@ app.get("/api/runs/:runId", (req, res) => {
       let description = "";
       let nameText;
       let descriptionText;
+      let sections;
       let duration: number | null = null;
       let bundleMode: BundleMode | null = null;
       let executionSurface: ExecutionSurface = "browser";
@@ -730,6 +731,7 @@ app.get("/api/runs/:runId", (req, res) => {
             description = meta.scenarioInfo.description || "";
             nameText = meta.scenarioInfo.nameText;
             descriptionText = meta.scenarioInfo.descriptionText;
+            sections = meta.scenarioInfo.sections;
             duration = meta.scenarioInfo.duration ?? null;
             bundleMode = isBundleMode(meta.scenarioInfo.bundleMode)
               ? meta.scenarioInfo.bundleMode
@@ -765,6 +767,7 @@ app.get("/api/runs/:runId", (req, res) => {
             description = manifest.description || "";
             nameText = manifest.nameText;
             descriptionText = manifest.descriptionText;
+            sections = manifest.sections;
             bundleMode = isBundleMode(manifest.bundleMode) ? manifest.bundleMode : null;
             executionSurface = isExecutionSurface(manifest.executionSurface)
               ? manifest.executionSurface
@@ -812,7 +815,7 @@ app.get("/api/runs/:runId", (req, res) => {
         }
       }
 
-      return { scenarioId, slug, testName, description, nameText, descriptionText, testBasename, status, duration, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, subAreaDocIds, designPressureIds, sourceChangeCategories, keyFrames, failureReason, hasIssues };
+      return { scenarioId, slug, testName, description, nameText, descriptionText, sections, testBasename, status, duration, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, subAreaDocIds, designPressureIds, sourceChangeCategories, keyFrames, failureReason, hasIssues };
     });
 
   // Read concept targeting metadata, with a fallback for historical runs.

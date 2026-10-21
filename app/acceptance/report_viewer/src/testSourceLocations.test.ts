@@ -93,3 +93,36 @@ test('a formal linked description replaces its declaration while preserving chec
     scenarioProse: { name: { start: 1, end: 1 }, description: { start: 2, end: 3 } },
   });
 });
+
+
+test('section wrappers are located without moving checkpoints or hiding compact step bodies', () => {
+  const source = [
+    'const sections = scenarioSections({',
+    '  setup: { type: "setup", text: conceptText`Prepare.` },',
+    '  review: { type: "test", text: conceptText`Review.` },',
+    '});',
+    'test(name.name, { annotation: [sections.annotation] }, async () => {',
+    '  await test.step(sections.steps.setup, async () => {',
+    '    await checkpoint("ready");',
+    '  });',
+    '  await test.step(',
+    '    sections.steps.review,',
+    '    async () => {',
+    '      await checkpoint("reviewed");',
+    '    },',
+    '  );',
+    '  await test.step(sections.steps.review, async () => { await act(); });',
+    '});',
+  ].join('\n');
+  expect(testSourceLocations(source)).toMatchObject({
+    testLine: 5,
+    checkpoints: [{ message: 'ready', line: 7 }, { message: 'reviewed', line: 12 }],
+    sections: {
+      declaration: { start: 1, end: 4 },
+      steps: [
+        { id: 'setup', start: 6, end: 6, closingStart: 8, closingEnd: 8 },
+        { id: 'review', start: 9, end: 11, closingStart: 13, closingEnd: 14 },
+      ],
+    },
+  });
+});
