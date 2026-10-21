@@ -5,7 +5,7 @@ import { BundleEditorPage, ChangesTab, PreviewPublishModal } from '../src/run/pa
 import { acceptSourceBaseline } from '../../../shared_code/shared_dev/sourceScenario.js';
 import { appPlacePath } from '../../../contracts/places/index.js';
 import type { GenerateBundleCliResult } from '../../../contracts/types/shared/cli/cliOperations.js';
-import { changesTab as changesTabDoc, generationRecord, conceptLink, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, bundleGeneration, bundleReview } from '../../../concepts/index.js';
+import { scenarioSections, changesTab as changesTabDoc, generationRecord, conceptLink, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, bundleGeneration, bundleReview } from '../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
 
@@ -16,54 +16,66 @@ const name = linkedScenarioName(conceptText`Review shows an accepted page move a
 const description = linkedScenarioDescription(conceptText`Save a generation, then move and edit a source page and accept it as the same file. Review
 should pair the page's old and new generated paths through its ${conceptLink(generationRecord.id, "generation record")}, list it once under its destination,
 show both paths with the edited content, and keep it visible under either the Moved or Modified filter.`);
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Establish the starting state: a saved generation is the comparison baseline.` },
+  moveEditPageKeepingItAsSame: { type: 'test', text: conceptText`Move and edit a page, keeping it as the same file.` },
+  reviewRegeneratedSite: { type: 'test', text: conceptText`Review the regenerated site.` },
+  movedModifiedFileMatchesEitherFilter: { type: 'test', text: conceptText`A moved and modified file matches either filter.` },
+});
 const areas = scenarioAreas([bundleSourcing, bundleGeneration, bundleReview]);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '20cb59b9-e1a1-49f7-910d-c17bcf1f8e64' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, meadowCli, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
-  // --- Setup ---
-  let command = 0;
-  const run = (args: string[]) => meadowCli.run(args, { artifactName: `setup-${++command}` });
-  await sourceCommand(() => acceptSourceBaseline(run, slug));
-  const generated = await sourceCommand(() => meadowCli.runJson<GenerateBundleCliResult>(['bundle', 'generate', slug], { artifactName: 'generate' }));
-  await sourceCommand(() => run(['bundle', 'save-generation', slug, '--version', generated.versionId]));
-  await sourceCommand(() => page.goto(appPlacePath({ page: 'bundle', slug })));
-  const editor = new BundleEditorPage(page, expect);
-  await sourceCommand(() => editor.waitForSourceCheck());
-  await sourceCommand(() => checkpoint('a saved generation is the comparison baseline'));
+test(name.name, { annotation: [{ type: 'scenario-id', description: '20cb59b9-e1a1-49f7-910d-c17bcf1f8e64' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, meadowCli, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+  const { editor } = await test.step(sections.steps.setup, async () => {
+    let command = 0;
+    const run = (args: string[]) => meadowCli.run(args, { artifactName: `setup-${++command}` });
+    await sourceCommand(() => acceptSourceBaseline(run, slug));
+    const generated = await sourceCommand(() => meadowCli.runJson<GenerateBundleCliResult>(['bundle', 'generate', slug], { artifactName: 'generate' }));
+    await sourceCommand(() => run(['bundle', 'save-generation', slug, '--version', generated.versionId]));
+    await sourceCommand(() => page.goto(appPlacePath({ page: 'bundle', slug })));
+    const editor = new BundleEditorPage(page, expect);
+    await sourceCommand(() => editor.waitForSourceCheck());
+    await sourceCommand(() => checkpoint('a saved generation is the comparison baseline'));
+    return { editor };
+  });
 
-  // --- Test start ---
-  // Move and edit a page, keeping it as the same file.
-  await sourceCommand(() => sourceChanges.apply('move-and-edit-page'));
-  await sourceCommand(() => editor.checkSourceChanges());
-  await sourceCommand(() => editor.sourceReview.open());
-  await sourceCommand(() => editor.sourceReview.confirmSuggestedIdentities());
-  await sourceCommand(() => editor.sourceReview.continueToGraph());
-  await sourceCommand(() => editor.sourceReview.accept());
-  await sourceCommand(() => checkpoint('the moved page keeps its identity'));
+  await test.step(sections.steps.moveEditPageKeepingItAsSame, async () => {
+    await sourceCommand(() => sourceChanges.apply('move-and-edit-page'));
+    await sourceCommand(() => editor.checkSourceChanges());
+    await sourceCommand(() => editor.sourceReview.open());
+    await sourceCommand(() => editor.sourceReview.confirmSuggestedIdentities());
+    await sourceCommand(() => editor.sourceReview.continueToGraph());
+    await sourceCommand(() => editor.sourceReview.accept());
+    await sourceCommand(() => checkpoint('the moved page keeps its identity'));
+  });
 
-  // Review the regenerated site.
-  const modal = new PreviewPublishModal(page, expect);
-  const changes = new ChangesTab(page, expect);
-  await sourceCommand(() => editor.clickPreview());
-  await sourceCommand(() => modal.waitForPreviewComplete());
-  await sourceCommand(() => modal.clickChangesTab());
-  await sourceCommand(() => changes.expectComparisonBaseline('Compared with the last saved generation of this version'));
-  await sourceCommand(() => changes.expectNoIdentityNotice());
-  await sourceCommand(() => changes.expectMovedFile('t024 - markdown links.html', { modified: true }));
-  await sourceCommand(() => changes.selectFile('t024 - markdown links.html'));
-  await sourceCommand(() => changes.expectSelectedFileMove('t024 - markdown links.html', 'source-changes/t024 - markdown links.html'));
-  await sourceCommand(() => changes.fileDetails.ensureOnDiffTab());
-  await sourceCommand(() => changes.fileDetails.expectRenderedInsertion('demonstrates'));
-  await sourceCommand(() => addKeyFrame(changesTabDoc));
-  await sourceCommand(() => checkpoint('the moved page appears once with its old and new paths and its edits'));
+  const { changes } = await test.step(sections.steps.reviewRegeneratedSite, async () => {
+    const modal = new PreviewPublishModal(page, expect);
+    const changes = new ChangesTab(page, expect);
+    await sourceCommand(() => editor.clickPreview());
+    await sourceCommand(() => modal.waitForPreviewComplete());
+    await sourceCommand(() => modal.expectUntrackedPagesWarning());
+    await sourceCommand(() => modal.clickChangesTab());
+    await sourceCommand(() => changes.expectComparisonBaseline('Compared with the last saved generation of this version'));
+    await sourceCommand(() => changes.expectNoIdentityNotice());
+    await sourceCommand(() => changes.expectMovedFile('t024 - markdown links.html', { modified: true }));
+    await sourceCommand(() => changes.selectFile('t024 - markdown links.html'));
+    await sourceCommand(() => changes.expectSelectedFileMove('t024 - markdown links.html', 'source-changes/t024 - markdown links.html'));
+    await sourceCommand(() => changes.fileDetails.ensureOnDiffTab());
+    await sourceCommand(() => changes.fileDetails.expectRenderedInsertion('demonstrates'));
+    await sourceCommand(() => addKeyFrame(changesTabDoc));
+    await sourceCommand(() => checkpoint('the moved page appears once with its old and new paths and its edits'));
+    return { changes };
+  });
 
-  // A moved and modified file matches either filter.
-  await sourceCommand(() => changes.openHtmlSectionChangesFilter());
-  await sourceCommand(() => changes.expectChangeTypeCount('Moved', 1));
-  await sourceCommand(() => changes.uncheckChangeType('Modified'));
-  await sourceCommand(() => changes.expectMovedFile('t024 - markdown links.html', { modified: true }));
-  await sourceCommand(() => changes.checkChangeType('Modified'));
-  await sourceCommand(() => changes.uncheckChangeType('Moved'));
-  await sourceCommand(() => changes.expectMovedFile('t024 - markdown links.html', { modified: true }));
-  await sourceCommand(() => checkpoint('the moved and modified page stays visible under either filter'));
+  await test.step(sections.steps.movedModifiedFileMatchesEitherFilter, async () => {
+    await sourceCommand(() => changes.openHtmlSectionChangesFilter());
+    await sourceCommand(() => changes.expectChangeTypeCount('Moved', 1));
+    await sourceCommand(() => changes.uncheckChangeType('Modified'));
+    await sourceCommand(() => changes.expectMovedFile('t024 - markdown links.html', { modified: true }));
+    await sourceCommand(() => changes.checkChangeType('Modified'));
+    await sourceCommand(() => changes.uncheckChangeType('Moved'));
+    await sourceCommand(() => changes.expectMovedFile('t024 - markdown links.html', { modified: true }));
+    await sourceCommand(() => checkpoint('the moved and modified page stays visible under either filter'));
+  });
 
   await sourceCommand(() => skipMeadowHomeStateCheck());
 });

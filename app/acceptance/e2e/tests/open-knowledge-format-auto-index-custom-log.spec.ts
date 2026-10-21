@@ -18,7 +18,7 @@ import path from "path";
 import { test, expect } from "../src/run/test-fixtures.js";
 import { PreviewPublishModal, ChangesTab, CustomizeTab } from "../src/run/pages/index.js";
 import { Workflows, Bundle } from "../src/run/workflows.js";
-import { customize, openKnowledgeFormat, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleGeneration } from "../../../concepts/index.js";
+import { scenarioSections, customize, openKnowledgeFormat, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleGeneration } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 import { seedTrackedAndLinkedFile, seedTrackedFile } from "../src/run/utils/index.js";
 import { OpenKnowledgeFormatBundle } from "./open-knowledge-format-support.js";
@@ -43,59 +43,70 @@ const name = linkedScenarioName(conceptText`OKF: auto-detect index.md and choose
 
 const description = linkedScenarioDescription(conceptText`Use a source index page and choose another tracked page as the Open Knowledge Format
 log. Check that the export uses both selections correctly.`);
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Establish the starting state: preview loaded.` },
+  chooseIndexLogPages: { type: 'test', text: conceptText`Choose the index and log pages.` },
+  generateKnowledgePackage: { type: 'test', text: conceptText`Generate the knowledge package.` },
+  inspectGeneratedPackageFiles: { type: 'test', text: conceptText`Inspect the generated package files.` },
+});
 const areas = scenarioAreas([bundleGeneration]);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '04a0b687-06a3-43d2-a523-ea09ea749045' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
+test(name.name, { annotation: [{ type: 'scenario-id', description: '04a0b687-06a3-43d2-a523-ea09ea749045' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   skipMeadowHomeStateCheck,
   addKeyFrame,
   testServer,
 }) => {
-  // --- Setup ---
-  const wf = new Workflows(page, expect);
-  await sourceCommand(() => wf.navigateToBigBundlePreview());
-  const optionsUrl = `/api/bundles/${Bundle.Big}/generation/open-knowledge-format/log-page-options?query=OKF&limit=200`;
-  const concurrentOptions = await sourceCommand(() => Promise.all(
-    Array.from({ length: 6 }, () => page.request.get(optionsUrl)),
-  ));
-  for (const response of concurrentOptions) {
-    expect(response.ok(), await sourceCommand(() => response.text())).toBe(true);
-    const options = await sourceCommand(() => response.json()) as { pages: Array<{ title: string }> };
-    expect(options.pages.map(candidate => candidate.title)).toContain(chosenLogPageName);
-    expect(options.pages.map(candidate => candidate.title)).not.toContain(orphanLogSubstitutePageName);
-  }
-  const modal = new PreviewPublishModal(page, expect);
-  await sourceCommand(() => checkpoint("preview loaded"));
+  const { modal } = await test.step(sections.steps.setup, async () => {
+    const wf = new Workflows(page, expect);
+    await sourceCommand(() => wf.navigateToBigBundlePreview());
+    const optionsUrl = `/api/bundles/${Bundle.Big}/generation/open-knowledge-format/log-page-options?query=OKF&limit=200`;
+    const concurrentOptions = await sourceCommand(() => Promise.all(
+      Array.from({ length: 6 }, () => page.request.get(optionsUrl)),
+    ));
+    for (const response of concurrentOptions) {
+      expect(response.ok(), await sourceCommand(() => response.text())).toBe(true);
+      const options = await sourceCommand(() => response.json()) as { pages: Array<{ title: string }> };
+      expect(options.pages.map(candidate => candidate.title)).toContain(chosenLogPageName);
+      expect(options.pages.map(candidate => candidate.title)).not.toContain(orphanLogSubstitutePageName);
+    }
+    const modal = new PreviewPublishModal(page, expect);
+    await sourceCommand(() => checkpoint("preview loaded"));
+    return { modal };
+  });
 
-  // --- Test start ---
-  // Choose the index and log pages.
-  await sourceCommand(() => modal.openCustomizeSidebar());
-  const customizeTab = new CustomizeTab(page, expect);
-  const okf = await sourceCommand(() => customizeTab.generationOptions.openOpenKnowledgeFormatSettings());
-  await sourceCommand(() => okf.expectSelectedIndex(sourceIndexPageName, "root"));
-  await sourceCommand(() => okf.expectNoReachableLogPageFound());
-  await sourceCommand(() => okf.expectLogPageNotSuggested(orphanLogSubstitutePageName, "orphan"));
-  await sourceCommand(() => okf.chooseLogPage(chosenLogPageName));
-  await sourceCommand(() => addKeyFrame(customize));
-  await sourceCommand(() => checkpoint("auto index and custom log selected"));
+  const { okf } = await test.step(sections.steps.chooseIndexLogPages, async () => {
+    await sourceCommand(() => modal.openCustomizeSidebar());
+    const customizeTab = new CustomizeTab(page, expect);
+    const okf = await sourceCommand(() => customizeTab.generationOptions.openOpenKnowledgeFormatSettings());
+    await sourceCommand(() => okf.expectSelectedIndex(sourceIndexPageName, "root"));
+    await sourceCommand(() => okf.expectNoReachableLogPageFound());
+    await sourceCommand(() => okf.expectLogPageNotSuggested(orphanLogSubstitutePageName, "orphan"));
+    await sourceCommand(() => okf.chooseLogPage(chosenLogPageName));
+    await sourceCommand(() => addKeyFrame(customize));
+    await sourceCommand(() => checkpoint("auto index and custom log selected"));
+    return { okf };
+  });
 
-  // Generate the knowledge package.
-  await sourceCommand(() => okf.save());
+  await test.step(sections.steps.generateKnowledgePackage, async () => {
+    await sourceCommand(() => okf.save());
 
-  const changesTab = new ChangesTab(page, expect);
-  await sourceCommand(() => changesTab.waitForRegenerationComplete());
-  await sourceCommand(() => addKeyFrame(openKnowledgeFormat));
-  await sourceCommand(() => checkpoint("okf generation complete with auto index and custom log"));
+    const changesTab = new ChangesTab(page, expect);
+    await sourceCommand(() => changesTab.waitForRegenerationComplete());
+    await sourceCommand(() => addKeyFrame(openKnowledgeFormat));
+    await sourceCommand(() => checkpoint("okf generation complete with auto index and custom log"));
+  });
 
-  // Inspect the generated package files.
-  const bundleDir = path.join(testServer.configDir, "bundles", Bundle.Big);
-  const okfBundle = new OpenKnowledgeFormatBundle(bundleDir, expect);
-  await sourceCommand(() => okfBundle.expectFileToContain("index.md", "Auto OKF index source page."));
-  await sourceCommand(() => okfBundle.expectFileToContain("log.md", "Chosen OKF log substitute."));
-  okfBundle.expectFileToBeAbsent("index-original.md");
-  void bigBundle;
+  await test.step(sections.steps.inspectGeneratedPackageFiles, async () => {
+    const bundleDir = path.join(testServer.configDir, "bundles", Bundle.Big);
+    const okfBundle = new OpenKnowledgeFormatBundle(bundleDir, expect);
+    await sourceCommand(() => okfBundle.expectFileToContain("index.md", "Auto OKF index source page."));
+    await sourceCommand(() => okfBundle.expectFileToContain("log.md", "Chosen OKF log substitute."));
+    okfBundle.expectFileToBeAbsent("index-original.md");
+    void bigBundle;
 
-  await sourceCommand(() => checkpoint("the package contains the automatic index and the selected custom log"));
+    await sourceCommand(() => checkpoint("the package contains the automatic index and the selected custom log"));
+  });
 
   await sourceCommand(() => skipMeadowHomeStateCheck());
 });

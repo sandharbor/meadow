@@ -5,7 +5,7 @@ import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { sourcingReviewRedesign, sourceReviewTrigger, pendingProposalRevalidation, sourceChangesDuringReview, overrides, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../../concepts/index.js';
+import { scenarioSections, sourcingReviewRedesign, sourceReviewTrigger, pendingProposalRevalidation, sourceChangesDuringReview, overrides, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.Example });
@@ -15,59 +15,69 @@ const name = linkedScenarioName(conceptText`Cancelling a depth change that needs
 const description = linkedScenarioDescription(conceptText`Stage an untrack decision, then change live links behind a traversal stop. Increasing depth asks
 whether to incorporate that newer material. Cancel and check that the captured identity, displayed
 bytes, depth, and existing tracking choice remain unchanged, including after Later and reopening.`);
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Establish the starting state: the reviewed capture retains its depth stop and a staged untrack choice.` },
+  changingLiveLinksMustNotBeSilently: { type: 'test', text: conceptText`Changing live links must not be silently folded into a depth edit.` },
+  cancelPreservesOldCaptureDisplayedDepthAs: { type: 'test', text: conceptText`Cancel preserves the old capture and the displayed depth as well as the durable draft.` },
+});
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'aac78272-d544-432b-ad5d-9945ba2c6515' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, sourceChanges, testServer, checkpoint, addKeyFrame, assertMeadowHomeState, expectLogErrors }) => {
-  // --- Setup ---
-  const list = new BundleListPage(page, expect);
-  const editor = new BundleEditorPage(page, expect);
-  const sourcing = new SourcingWorkspacePage(page, expect);
-  const proposal = new SourcingProposalState(testServer, 'example-bundle');
-  await sourceCommand(() => list.goto());
-  await sourceCommand(() => list.clickBundle('example-bundle'));
-  await sourceCommand(() => editor.waitForLoad('example-bundle'));
-  await sourceCommand(() => sourcing.openByLink('example-bundle'));
-  await sourceCommand(() => sourcing.select('Inversion'));
-  await sourceCommand(() => sourcing.untrackSelected());
-  await sourceCommand(() => sourcing.select('Cognitive Biases'));
-  const before = proposal.current;
-  await sourceCommand(() => checkpoint('the reviewed capture retains its depth stop and a staged untrack choice'));
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'aac78272-d544-432b-ad5d-9945ba2c6515' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, sourceChanges, testServer, checkpoint, addKeyFrame, assertMeadowHomeState, expectLogErrors }) => {
+  const { sourcing, proposal, before } = await test.step(sections.steps.setup, async () => {
+    const list = new BundleListPage(page, expect);
+    const editor = new BundleEditorPage(page, expect);
+    const sourcing = new SourcingWorkspacePage(page, expect);
+    const proposal = new SourcingProposalState(testServer, 'example-bundle');
+    await sourceCommand(() => list.goto());
+    await sourceCommand(() => list.clickBundle('example-bundle'));
+    await sourceCommand(() => editor.waitForLoad('example-bundle'));
+    await sourceCommand(() => sourcing.openByLink('example-bundle'));
+    await sourceCommand(() => sourcing.select('Inversion'));
+    await sourceCommand(() => sourcing.untrackSelected());
+    await sourceCommand(() => sourcing.select('Cognitive Biases'));
+    const before = proposal.current;
+    await sourceCommand(() => checkpoint('the reviewed capture retains its depth stop and a staged untrack choice'));
+    return { sourcing, proposal, before };
+  });
 
-  // --- Test start ---
-  // Changing live links must not be silently folded into a depth edit.
-  await sourceCommand(() => sourceChanges.apply('redirect-biases-link', 'example-bundle-data'));
-  const endConsentErrors = expectLogErrors(/This boundary change needs newer source material|server responded with a status of 409/);
-  await sourceCommand(() => sourcing.setSelectedOutlinkDepth(1));
-  const confirmation = page.getByRole('dialog', { name: 'Update sources for this change?', exact: true });
-  await sourceCommand(() => expect(confirmation).toBeVisible());
-  endConsentErrors();
-  await sourceCommand(() => expect(confirmation).toContainText('Newer source material is available'));
-  expect(proposal.current.candidateSnapshotId).toBe(before.candidateSnapshotId);
-  expect(proposal.current.proposed).toEqual(before.proposed);
-  await sourceCommand(() => addKeyFrame(sourceChangesDuringReview));
-  await sourceCommand(() => checkpoint('the depth refresh confirmation is open with the original proposal preserved'));
+  const { confirmation } = await test.step(sections.steps.changingLiveLinksMustNotBeSilently, async () => {
+    await sourceCommand(() => sourceChanges.apply('redirect-biases-link', 'example-bundle-data'));
+    const endConsentErrors = expectLogErrors(/This boundary change needs newer source material|server responded with a status of 409/);
+    await sourceCommand(() => sourcing.setSelectedOutlinkDepth(1));
+    const confirmation = page.getByRole('dialog', { name: 'Update sources for this change?', exact: true });
+    await sourceCommand(() => expect(confirmation).toBeVisible());
+    endConsentErrors();
+    await sourceCommand(() => expect(confirmation).toContainText('Newer source material is available'));
+    expect(proposal.current.candidateSnapshotId).toBe(before.candidateSnapshotId);
+    expect(proposal.current.proposed).toEqual(before.proposed);
+    await sourceCommand(() => addKeyFrame(sourceChangesDuringReview));
+    await sourceCommand(() => checkpoint('the depth refresh confirmation is open with the original proposal preserved'));
+    return { confirmation };
+  });
 
-  // Cancel preserves the old capture and the displayed depth as well as the durable draft.
-  await sourceCommand(() => confirmation.getByRole('button', { name: 'Cancel', exact: true }).click());
-  await sourceCommand(() => expect(confirmation).toBeHidden());
-  expect(proposal.current.proposed).toEqual(before.proposed);
-  expect(proposal.current.tracking).toEqual(before.tracking);
-  await sourceCommand(() => sourcing.select('Inversion'));
-  await sourceCommand(() => expect(sourcing.selectedPage.getByText('Not Tracked', { exact: true })).toBeVisible());
-  await sourceCommand(() => sourcing.select('Cognitive Biases'));
-  await sourceCommand(() => sourcing.expectNoSelectedSourceChange());
-  await sourceCommand(() => sourcing.later());
-  const graphResponse = page.waitForResponse(response => response.url().includes('/sourcing/proposal/graph?') && response.ok());
-  await sourceCommand(() => sourcing.open());
-  const comparison = await sourceCommand(async () => (await graphResponse).json());
-  const displayed = comparison.graph.nodes.find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Cognitive Biases');
-  expect(displayed.body).toContain('**[[Availability Bias]]**: Overweighting information');
-  expect(displayed.body).not.toContain('**[[Confirmation Bias]]**: Overweighting information');
-  expect(proposal.current.candidateSnapshotId).toBe(before.candidateSnapshotId);
-  expect(proposal.current.proposed).toEqual(before.proposed);
-  expect(proposal.current.tracking).toEqual(before.tracking);
-  await sourceCommand(() => checkpoint('cancelled depth and the earlier untrack decision survive deferral'));
+  await test.step(sections.steps.cancelPreservesOldCaptureDisplayedDepthAs, async () => {
+    await sourceCommand(() => confirmation.getByRole('button', { name: 'Cancel', exact: true }).click());
+    await sourceCommand(() => expect(confirmation).toBeHidden());
+    expect(proposal.current.proposed).toEqual(before.proposed);
+    expect(proposal.current.tracking).toEqual(before.tracking);
+    await sourceCommand(() => sourcing.select('Inversion'));
+    await sourceCommand(() => expect(sourcing.selectedPage.getByText('Not Tracked', { exact: true })).toBeVisible());
+    await sourceCommand(() => sourcing.select('Cognitive Biases'));
+    await sourceCommand(() => sourcing.expectNoSelectedSourceChange());
+    await sourceCommand(() => sourcing.later());
+    const graphResponse = page.waitForResponse(response => response.url().includes('/sourcing/proposal/graph?') && response.ok());
+    await sourceCommand(() => sourcing.open());
+    const comparison = await sourceCommand(async () => (await graphResponse).json());
+    const displayed = comparison.graph.nodes.find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Cognitive Biases');
+    expect(displayed.body).toContain('**[[Availability Bias]]**: Overweighting information');
+    expect(displayed.body).not.toContain('**[[Confirmation Bias]]**: Overweighting information');
+    expect(proposal.current.candidateSnapshotId).toBe(before.candidateSnapshotId);
+    expect(proposal.current.proposed).toEqual(before.proposed);
+    expect(proposal.current.tracking).toEqual(before.tracking);
+    await sourceCommand(() => checkpoint('cancelled depth and the earlier untrack decision survive deferral'));
 
-  // The pending proposal and the two external source edits intentionally remain for manual review.
+    // The pending proposal and the two external source edits intentionally remain for manual review.
+  });
+
   await sourceCommand(() => assertMeadowHomeState({ allowedUntracked: [proposal.relativePath, 'source_graphs/.source-changes.jsonl'],
     allowedModified: ['source_graphs/example-bundle-data/Cognitive Biases.md', 'source_graphs/example-bundle-data/Confirmation Bias.md'] }));
 });

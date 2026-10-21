@@ -22,7 +22,7 @@ import {
   FilterPanelComponent,
 } from "../src/run/pages/index.js";
 import { Fixture } from "../src/run/workflows.js";
-import { sourcingReviewRedesign, bundleConfig, overrides, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration, bundleSourcing, sourceReviewWorkspace } from "../../../concepts/index.js";
+import { scenarioSections, sourcingReviewRedesign, bundleConfig, overrides, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration, bundleSourcing, sourceReviewWorkspace } from "../../../concepts/index.js";
 import { exampleBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -33,65 +33,78 @@ const name = linkedScenarioName(conceptText`adding a depth override on a child p
 
 const description = linkedScenarioDescription(conceptText`Add a depth override to a child page. Unlike simple tracking changes, the override
 should remain pending until explicitly saved.`);
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Establish the starting state: example bundle loaded.` },
+  selectPageWithoutOverride: { type: 'test', text: conceptText`Select a page without an override.` },
+  selectNonInitialChildPageHasNo: { type: 'test', text: conceptText`Select a non-initial child page that has no existing override` },
+  expandPageSDetailsReachOutlinkDepth: { type: 'test', text: conceptText`Expand the page's details to reach the outlink depth override controls` },
+  stageTraversalOverrideWithoutChangingAcceptedCuration: { type: 'test', text: conceptText`Stage a traversal override without changing accepted curation.` },
+  findPageUsingOverrideFilterVerifyOverride: { type: 'test', text: conceptText`Find the page using the override filter. Verify the override persisted: the Depth Override filter should now include "First Principles Thinking".` },
+});
 const areas = scenarioAreas([bundleCuration, bundleSourcing], { subAreas: [sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '37d9c264-c863-4ac7-8b91-402f52ef1ffb' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
+test(name.name, { annotation: [{ type: 'scenario-id', description: '37d9c264-c863-4ac7-8b91-402f52ef1ffb' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   assertMeadowHomeState,
   addKeyFrame,
 }) => {
-  // --- Setup ---
-  const bundleList = new BundleListPage(page, expect);
-  const editor = new BundleEditorPage(page, expect);
-  const filterPanel = new FilterPanelComponent(page, expect);
+  const { editor, filterPanel } = await test.step(sections.steps.setup, async () => {
+    const bundleList = new BundleListPage(page, expect);
+    const editor = new BundleEditorPage(page, expect);
+    const filterPanel = new FilterPanelComponent(page, expect);
 
-  // Add the example bundle from the empty state
-  await sourceCommand(() => bundleList.goto());
-  await sourceCommand(() => bundleList.clickAddExampleBundleLink());
-  await sourceCommand(() => editor.waitForLoad("example-bundle"));
-  await sourceCommand(() => checkpoint("example bundle loaded"));
+    // Add the example bundle from the empty state
+    await sourceCommand(() => bundleList.goto());
+    await sourceCommand(() => bundleList.clickAddExampleBundleLink());
+    await sourceCommand(() => editor.waitForLoad("example-bundle"));
+    await sourceCommand(() => checkpoint("example bundle loaded"));
+    return { editor, filterPanel };
+  });
 
-  // --- Test start ---
-  // Select a page without an override.
-  await sourceCommand(() => editor.expectUndoNotVisible());
+  await test.step(sections.steps.selectPageWithoutOverride, async () => {
+    await sourceCommand(() => editor.expectUndoNotVisible());
+  });
 
-  // Select a non-initial child page that has no existing override
-  await sourceCommand(() => editor.switchToListView());
-  await sourceCommand(() => page.waitForTimeout(250));
-  await sourceCommand(() => editor.clickListViewRowByExactName("First Principles Thinking"));
-  await sourceCommand(() => page.waitForTimeout(500));
+  await test.step(sections.steps.selectNonInitialChildPageHasNo, async () => {
+    await sourceCommand(() => editor.switchToListView());
+    await sourceCommand(() => page.waitForTimeout(250));
+    await sourceCommand(() => editor.clickListViewRowByExactName("First Principles Thinking"));
+    await sourceCommand(() => page.waitForTimeout(500));
+  });
 
-  // Expand the page's details to reach the outlink depth override controls
-  const detail = new SelectedPageDetailComponent(
-    editor.getSelectedPageRoot(),
-    expect,
-  );
-  await sourceCommand(() => detail.openDetails());
-  await sourceCommand(() => checkpoint("child page selected with details open"));
+  const { detail } = await test.step(sections.steps.expandPageSDetailsReachOutlinkDepth, async () => {
+    const detail = new SelectedPageDetailComponent(
+      editor.getSelectedPageRoot(),
+      expect,
+    );
+    await sourceCommand(() => detail.openDetails());
+    await sourceCommand(() => checkpoint("child page selected with details open"));
+    return { detail };
+  });
 
-  // Stage a traversal override without changing accepted curation.
-  await sourceCommand(() => detail.addOutlinksDepthOverride(0));
-  await sourceCommand(() => expect(editor.sourceReview.root).toBeVisible());
-  await sourceCommand(() => addKeyFrame(bundleConfig));
-  await sourceCommand(() => checkpoint("override is captured in the sourcing proposal"));
-  await sourceCommand(() => editor.sourceReview.defer());
-  await sourceCommand(() => editor.expectUndoNotVisible());
-  await sourceCommand(() => editor.sourceReview.open());
-  await sourceCommand(() => editor.sourceReview.accept());
-  await sourceCommand(() => checkpoint("accepted override is now available to curation"));
+  await test.step(sections.steps.stageTraversalOverrideWithoutChangingAcceptedCuration, async () => {
+    await sourceCommand(() => detail.addOutlinksDepthOverride(0));
+    await sourceCommand(() => expect(editor.sourceReview.root).toBeVisible());
+    await sourceCommand(() => addKeyFrame(bundleConfig));
+    await sourceCommand(() => checkpoint("override is captured in the sourcing proposal"));
+    await sourceCommand(() => editor.sourceReview.defer());
+    await sourceCommand(() => editor.expectUndoNotVisible());
+    await sourceCommand(() => editor.sourceReview.open());
+    await sourceCommand(() => editor.sourceReview.accept());
+    await sourceCommand(() => checkpoint("accepted override is now available to curation"));
+  });
 
-  // Find the page using the override filter.
-  // Verify the override persisted: the Depth Override filter should now
-  // include "First Principles Thinking".
-  await sourceCommand(() => filterPanel.enableFilter("Depth Override"));
-  await sourceCommand(() => filterPanel.clickSoloOnFilter("Depth Override"));
-  await sourceCommand(() => page.waitForTimeout(250));
-  await sourceCommand(() => editor.switchToListView());
-  await sourceCommand(() => page.waitForTimeout(250));
+  await test.step(sections.steps.findPageUsingOverrideFilterVerifyOverride, async () => {
+    await sourceCommand(() => filterPanel.enableFilter("Depth Override"));
+    await sourceCommand(() => filterPanel.clickSoloOnFilter("Depth Override"));
+    await sourceCommand(() => page.waitForTimeout(250));
+    await sourceCommand(() => editor.switchToListView());
+    await sourceCommand(() => page.waitForTimeout(250));
 
-  await sourceCommand(() => editor.expectListViewRowByExactNamePresent("First Principles Thinking"));
-  await sourceCommand(() => addKeyFrame(overrides));
-  await sourceCommand(() => checkpoint("override page appears under Depth Override filter"));
+    await sourceCommand(() => editor.expectListViewRowByExactNamePresent("First Principles Thinking"));
+    await sourceCommand(() => addKeyFrame(overrides));
+    await sourceCommand(() => checkpoint("override page appears under Depth Override filter"));
+  });
 
   void exampleBundle;
 

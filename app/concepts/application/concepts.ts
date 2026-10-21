@@ -51,4 +51,27 @@ export const softwareUpdate = define({
   interplay: text`An update may introduce a new ${link(id.runtimePayload, "Runtime Payload")}, whose compatibility is resolved by ${link(id.compatibilityNegotiation, "Compatibility Negotiation")}.`,
 });
 
-export const applicationConcepts = [appPlace, migration, startupRecovery, softwareUpdate] as const;
+export const externalFileEdits = define({
+  id: id.externalFileEdits, name: "Editing Files Outside Meadow", aliases: ["External File Edits"],
+  kind: "process", searchFacet: true,
+  definition: text`Changing files directly with an editor, script, filesystem operation, or another application, bypassing Meadow's own editing and lifecycle operations.`,
+  mechanics: [
+    text`Outside Meadow describes how the change is made. The affected file can still be inside the ${link(id.meadowHome, "Meadow Home")}, including a generated version's output directory.`,
+    text`Source-file edits are normal inputs to ${link(id.bundleSourcing, "Sourcing")}: a source check can discover them for review and acceptance. Direct edits to retained generated output instead change files that Meadow expects to match their saved state.`,
+    text`An external edit does not automatically become an accepted source snapshot or a saved generated version. The owning workflow must discover, validate, and either accept or recover the changed data.`,
+  ],
+  interplay: text`External edits can expose a ${link(id.dataIntegrity, "Data Integrity")} problem. A modified ${link(id.frozenVersion, "Frozen Version")} can be repaired through ${link(id.restoringFrozenVersion, "Restoring a Frozen Version")}.`,
+});
+
+export const dataIntegrity = define({
+  id: id.dataIntegrity, name: "Data Integrity", kind: "capability", searchFacet: true,
+  definition: text`Keeping durable files and the records describing them consistent with the accepted or saved state that Meadow claims they represent.`,
+  mechanics: [
+    text`${link(id.sourceSnapshot, "Source Snapshots")} preserve accepted source material; ${link(id.generationRecord, "Generation Records")} pair generated output with its captured inputs and file identities. Integrity checks detect when the relevant files and records no longer agree with that retained state.`,
+    text`For a ${link(id.frozenVersion, "Frozen Version")}, changed, added, or missing local output files produce an Integrity Problem. Versioning operations that require intact predecessors are blocked until recovery, rather than silently treating the changed bytes as a new saved generation.`,
+    text`Detection and recovery belong to the affected workflow. Ordinary source editing remains a supported input workflow; restoring frozen output and recovering startup state apply to different retained data and recovery boundaries.`,
+  ],
+  interplay: text`${link(id.externalFileEdits, "Editing Files Outside Meadow")} can change retained data without updating its records. ${link(id.restoringFrozenVersion, "Restoring a Frozen Version")} recovers a saved output/record pair; ${link(id.startupRecovery, "Safe Startup Recovery")} handles failures at the startup boundary.`,
+});
+
+export const applicationConcepts = [appPlace, migration, startupRecovery, softwareUpdate, externalFileEdits, dataIntegrity] as const;

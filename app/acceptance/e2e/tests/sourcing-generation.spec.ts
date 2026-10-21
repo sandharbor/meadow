@@ -8,7 +8,7 @@ import { extractMainSectionLinkPaths, extractFooterBacklinkPaths } from '../../.
 import { test, expect } from '../src/run/test-fixtures.js';
 import { BundleEditorPage, PreviewPublishModal } from '../src/run/pages/index.js';
 import { Workflows } from '../src/run/workflows.js';
-import { sourcingReviewRedesign, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, bundleGeneration, sourceReviewWorkspace } from '../../../concepts/index.js';
+import { scenarioSections, sourcingReviewRedesign, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, bundleGeneration, sourceReviewWorkspace } from '../../../concepts/index.js';
 
 const slug = 'meadow-test-bundle-big';
 const originalTitle = 't003 ---- page with section to link to';
@@ -19,58 +19,76 @@ const name = linkedScenarioName(conceptText`Sourcing keeps generated material st
 
 const description = linkedScenarioDescription(conceptText`Replace a source page while a saved generation exists. Generated material should remain
 unchanged until the source replacement is accepted and regenerated.`);
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Establish the starting state: the accepted source state is established before changing files.` },
+  replaceSourcePage: { type: 'test', text: conceptText`Replace the source page.` },
+  reopeningPreviewExercisesPublicGenerationPathChanged: { type: 'test', text: conceptText`Reopening preview exercises the public generation path with changed live bytes.` },
+  acceptUpdateRegenerate: { type: 'test', text: conceptText`Accept the update and regenerate.` },
+  acceptRegenerate: { type: 'test', text: conceptText`Accept and regenerate.` },
+  completeReplacementPageCarriesOrdinaryUnconditionalNodeSpec: { type: 'test', text: conceptText`The complete replacement page carries an ordinary, unconditional NodeSpec.` },
+});
 const areas = scenarioAreas([bundleSourcing, bundleGeneration], { subAreas: [sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '7fcae7e6-194d-4a16-99bd-326d24679ee5' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, sourceChanges, testServer, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
-  // --- Setup ---
-  const wf = new Workflows(page, expect);
-  const editor = new BundleEditorPage(page, expect);
-  const previewModal = new PreviewPublishModal(page, expect);
-  await sourceCommand(() => wf.navigateToBigBundlePreview());
-  const retainedPath = path.join(testServer.configDir, 'bundles', slug, 'raw/tracked_page_content', `${originalTitle}.md`);
-  const before = fs.readFileSync(retainedPath, 'utf8');
-  await sourceCommand(() => checkpoint('the accepted source state is established before changing files'));
+test(name.name, { annotation: [{ type: 'scenario-id', description: '7fcae7e6-194d-4a16-99bd-326d24679ee5' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, sourceChanges, testServer, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+  const { editor, previewModal, retainedPath, before } = await test.step(sections.steps.setup, async () => {
+    const wf = new Workflows(page, expect);
+    const editor = new BundleEditorPage(page, expect);
+    const previewModal = new PreviewPublishModal(page, expect);
+    await sourceCommand(() => wf.navigateToBigBundlePreview());
+    const retainedPath = path.join(testServer.configDir, 'bundles', slug, 'raw/tracked_page_content', `${originalTitle}.md`);
+    const before = fs.readFileSync(retainedPath, 'utf8');
+    await sourceCommand(() => checkpoint('the accepted source state is established before changing files'));
+    return { editor, previewModal, retainedPath, before };
+  });
 
-  // --- Test start ---
-  // Replace the source page.
-  await sourceCommand(() => sourceChanges.apply('replace-section-page'));
-  // Reopening preview exercises the public generation path with changed live bytes.
-  await sourceCommand(() => previewModal.closeModal());
-  await sourceCommand(() => editor.clickPreview());
-  await sourceCommand(() => previewModal.waitForPreviewComplete());
-  expect(fs.readFileSync(retainedPath, 'utf8')).toBe(before);
-  await sourceCommand(() => addKeyFrame(sourceSnapshot));
-  await sourceCommand(() => checkpoint('generation continues using the accepted checkpoint while live source differs'));
+  await test.step(sections.steps.replaceSourcePage, async () => {
+    await sourceCommand(() => sourceChanges.apply('replace-section-page'));
+  });
 
-  // Accept the update and regenerate.
-  await sourceCommand(() => previewModal.closeModal());
-  await sourceCommand(() => editor.checkSourceChanges());
-  await sourceCommand(() => editor.sourceReview.open());
-  await sourceCommand(() => checkpoint('the replacement is ready for source review'));
+  await test.step(sections.steps.reopeningPreviewExercisesPublicGenerationPathChanged, async () => {
+    await sourceCommand(() => previewModal.closeModal());
+    await sourceCommand(() => editor.clickPreview());
+    await sourceCommand(() => previewModal.waitForPreviewComplete());
+    await sourceCommand(() => previewModal.expectUntrackedPagesWarning());
+    expect(fs.readFileSync(retainedPath, 'utf8')).toBe(before);
+    await sourceCommand(() => addKeyFrame(sourceSnapshot));
+    await sourceCommand(() => checkpoint('generation continues using the accepted checkpoint while live source differs'));
+  });
 
-  // Accept and regenerate.
-  await sourceCommand(() => editor.sourceReview.accept());
-  await sourceCommand(() => editor.clickPreview());
-  await sourceCommand(() => previewModal.waitForPreviewComplete());
-  expect(fs.readFileSync(retainedPath, 'utf8')).not.toBe(before);
-  const generationInputs = path.join(testServer.configDir, 'bundles', slug, 'raw/generation_inputs');
-  const record = JSON.parse(fs.readFileSync(path.join(generationInputs, fs.readdirSync(generationInputs)[0]), 'utf8'));
-  const accepted = JSON.parse(fs.readFileSync(path.join(testServer.configDir, 'bundles', slug, 'raw/sourcing/state.json'), 'utf8'));
-  expect(record.sourceSnapshotId).toBe(accepted.acceptedId);
-  // The complete replacement page carries an ordinary, unconditional NodeSpec.
-  const replacement = fileURLToPath(new URL('../../../shared_data/source_changes/meadow-test-bundles-data/replace-section-page/replacement.md', import.meta.url));
-  const nodeSpec = getNodespecForBundle(getNodespecBlock(replacement).block!, slug)!;
-  const graphResponse = await sourceCommand(() => page.request.get(`/api/bundles/${slug}/curation/working-graph`));
-  expect(graphResponse.ok()).toBe(true);
-  const graph = await sourceCommand(() => graphResponse.json());
-  const node = graph.nodes.find((item: { bundleNodeName: string }) => item.bundleNodeName === originalTitle);
-  expect(Boolean(node)).toBe(nodeSpec.sourcing.isInWorkingGraph);
-  expect(node.tracked).toBe(nodeSpec.curation.isTracked);
-  const versionsRoot = path.join(testServer.configDir, 'bundles', slug, 'html/generated_bundle_versions');
-  const html = fs.readFileSync(path.join(versionsRoot, fs.readdirSync(versionsRoot).find(name => /^v[A-Za-z0-9]{6}$/.test(name))!, `${originalTitle}.html`), 'utf8');
-  expect(extractMainSectionLinkPaths(html).sort()).toEqual(nodeSpec.generation.htmlRenderedLinks.mainSectionLinks.map(link => link.relativeLinkPath).sort());
-  expect(extractFooterBacklinkPaths(html).sort()).toEqual(nodeSpec.generation.htmlRenderedLinks.footerSectionBacklinks.map(link => link.relativeLinkPath).sort());
-  await sourceCommand(() => addKeyFrame(sourceSnapshot));
-  await sourceCommand(() => checkpoint('generation adopts replaced source only after checkpoint acceptance'));
+  await test.step(sections.steps.acceptUpdateRegenerate, async () => {
+    await sourceCommand(() => previewModal.closeModal());
+    await sourceCommand(() => editor.checkSourceChanges());
+    await sourceCommand(() => editor.sourceReview.open());
+    await sourceCommand(() => checkpoint('the replacement is ready for source review'));
+  });
+
+  await test.step(sections.steps.acceptRegenerate, async () => {
+    await sourceCommand(() => editor.sourceReview.accept());
+    await sourceCommand(() => editor.clickPreview());
+    await sourceCommand(() => previewModal.waitForPreviewComplete());
+    await sourceCommand(() => previewModal.expectUntrackedPagesWarning());
+    expect(fs.readFileSync(retainedPath, 'utf8')).not.toBe(before);
+    const generationInputs = path.join(testServer.configDir, 'bundles', slug, 'raw/generation_inputs');
+    const record = JSON.parse(fs.readFileSync(path.join(generationInputs, fs.readdirSync(generationInputs)[0]), 'utf8'));
+    const accepted = JSON.parse(fs.readFileSync(path.join(testServer.configDir, 'bundles', slug, 'raw/sourcing/state.json'), 'utf8'));
+    expect(record.sourceSnapshotId).toBe(accepted.acceptedId);
+  });
+
+  await test.step(sections.steps.completeReplacementPageCarriesOrdinaryUnconditionalNodeSpec, async () => {
+    const replacement = fileURLToPath(new URL('../../../shared_data/source_changes/meadow-test-bundles-data/replace-section-page/replacement.md', import.meta.url));
+    const nodeSpec = getNodespecForBundle(getNodespecBlock(replacement).block!, slug)!;
+    const graphResponse = await sourceCommand(() => page.request.get(`/api/bundles/${slug}/curation/working-graph`));
+    expect(graphResponse.ok()).toBe(true);
+    const graph = await sourceCommand(() => graphResponse.json());
+    const node = graph.nodes.find((item: { bundleNodeName: string }) => item.bundleNodeName === originalTitle);
+    expect(Boolean(node)).toBe(nodeSpec.sourcing.isInWorkingGraph);
+    expect(node.tracked).toBe(nodeSpec.curation.isTracked);
+    const versionsRoot = path.join(testServer.configDir, 'bundles', slug, 'html/generated_bundle_versions');
+    const html = fs.readFileSync(path.join(versionsRoot, fs.readdirSync(versionsRoot).find(name => /^v[A-Za-z0-9]{6}$/.test(name))!, `${originalTitle}.html`), 'utf8');
+    expect(extractMainSectionLinkPaths(html).sort()).toEqual(nodeSpec.generation.htmlRenderedLinks.mainSectionLinks.map(link => link.relativeLinkPath).sort());
+    expect(extractFooterBacklinkPaths(html).sort()).toEqual(nodeSpec.generation.htmlRenderedLinks.footerSectionBacklinks.map(link => link.relativeLinkPath).sort());
+    await sourceCommand(() => addKeyFrame(sourceSnapshot));
+    await sourceCommand(() => checkpoint('generation adopts replaced source only after checkpoint acceptance'));
+  });
 
   await sourceCommand(() => skipMeadowHomeStateCheck());
 });

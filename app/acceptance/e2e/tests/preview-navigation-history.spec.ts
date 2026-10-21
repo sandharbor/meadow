@@ -17,7 +17,7 @@ limitations under the License.
 import { test, expect } from '../src/run/test-fixtures.js';
 import { PreviewPublishModal } from '../src/run/pages/index.js';
 import { Workflows } from '../src/run/workflows.js';
-import { htmlGeneration, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleReview } from '../../../concepts/index.js';
+import { scenarioSections, htmlGeneration, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleReview } from '../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
 
@@ -25,49 +25,59 @@ const name = linkedScenarioName(conceptText`preview history navigates back and f
 
 const description = linkedScenarioDescription(conceptText`Follow links inside the generated preview, then use the editor's Back and Forward
 controls. A new link after going back should discard the forward branch.`);
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Establish the starting state: generated preview starts at the main page with empty history.` },
+  followTwoGeneratedLinksBuildThreePage: { type: 'test', text: conceptText`Follow two generated links to build a three-page history.` },
+  returnThroughHistoryThenMoveForwardAgain: { type: 'test', text: conceptText`Return through history and then move forward again.` },
+  differentLinkMiddleReplacesOldForwardBranch: { type: 'test', text: conceptText`A different link from the middle replaces the old forward branch.` },
+});
 const areas = scenarioAreas([bundleReview]);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '862fa2d0-3ce1-4398-a5cc-821eb8ba8549' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
+test(name.name, { annotation: [{ type: 'scenario-id', description: '862fa2d0-3ce1-4398-a5cc-821eb8ba8549' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page, checkpoint, addKeyFrame, skipMeadowHomeStateCheck,
 }) => {
-  // --- Setup ---
-  const modal = new PreviewPublishModal(page, expect);
-  await sourceCommand(() => new Workflows(page, expect).navigateToBigBundlePreview());
-  await sourceCommand(() => modal.generatedBundle.expectSingleHeading('main page'));
-  await sourceCommand(() => modal.expectPreviewNavigation(false, false));
-  await sourceCommand(() => checkpoint('generated preview starts at the main page with empty history'));
+  const { modal } = await test.step(sections.steps.setup, async () => {
+    const modal = new PreviewPublishModal(page, expect);
+    await sourceCommand(() => new Workflows(page, expect).navigateToBigBundlePreview());
+    await sourceCommand(() => modal.generatedBundle.expectSingleHeading('main page'));
+    await sourceCommand(() => modal.expectPreviewNavigation(false, false));
+    await sourceCommand(() => checkpoint('generated preview starts at the main page with empty history'));
+    return { modal };
+  });
 
-  // --- Test start ---
-  // Follow two generated links to build a three-page history.
-  await sourceCommand(() => modal.generatedBundle.clickPageLink('t001 - deeply nested'));
-  await sourceCommand(() => modal.generatedBundle.expectSingleHeading('t001 - deeply nested'));
-  await sourceCommand(() => modal.expectPreviewNavigation(true, false));
-  await sourceCommand(() => modal.generatedBundle.clickPageLink('t001 ---- child 1'));
-  await sourceCommand(() => modal.generatedBundle.expectSingleHeading('t001 ---- child 1'));
-  await sourceCommand(() => addKeyFrame(htmlGeneration));
-  await sourceCommand(() => checkpoint('two followed links appear in preview history'));
+  await test.step(sections.steps.followTwoGeneratedLinksBuildThreePage, async () => {
+    await sourceCommand(() => modal.generatedBundle.clickPageLink('t001 - deeply nested'));
+    await sourceCommand(() => modal.generatedBundle.expectSingleHeading('t001 - deeply nested'));
+    await sourceCommand(() => modal.expectPreviewNavigation(true, false));
+    await sourceCommand(() => modal.generatedBundle.clickPageLink('t001 ---- child 1'));
+    await sourceCommand(() => modal.generatedBundle.expectSingleHeading('t001 ---- child 1'));
+    await sourceCommand(() => addKeyFrame(htmlGeneration));
+    await sourceCommand(() => checkpoint('two followed links appear in preview history'));
+  });
 
-  // Return through history and then move forward again.
-  await sourceCommand(() => modal.goBackInPreview());
-  await sourceCommand(() => modal.generatedBundle.expectSingleHeading('t001 - deeply nested'));
-  await sourceCommand(() => modal.expectPreviewNavigation(true, true));
-  await sourceCommand(() => modal.goBackInPreview());
-  await sourceCommand(() => modal.generatedBundle.expectSingleHeading('main page'));
-  await sourceCommand(() => modal.expectPreviewNavigation(false, true));
-  await sourceCommand(() => modal.goForwardInPreview());
-  await sourceCommand(() => modal.generatedBundle.expectSingleHeading('t001 - deeply nested'));
-  await sourceCommand(() => modal.goForwardInPreview());
-  await sourceCommand(() => modal.generatedBundle.expectSingleHeading('t001 ---- child 1'));
-  await sourceCommand(() => modal.expectPreviewNavigation(true, false));
-  await sourceCommand(() => addKeyFrame(htmlGeneration));
-  await sourceCommand(() => checkpoint('back and forward restore the expected generated pages'));
+  await test.step(sections.steps.returnThroughHistoryThenMoveForwardAgain, async () => {
+    await sourceCommand(() => modal.goBackInPreview());
+    await sourceCommand(() => modal.generatedBundle.expectSingleHeading('t001 - deeply nested'));
+    await sourceCommand(() => modal.expectPreviewNavigation(true, true));
+    await sourceCommand(() => modal.goBackInPreview());
+    await sourceCommand(() => modal.generatedBundle.expectSingleHeading('main page'));
+    await sourceCommand(() => modal.expectPreviewNavigation(false, true));
+    await sourceCommand(() => modal.goForwardInPreview());
+    await sourceCommand(() => modal.generatedBundle.expectSingleHeading('t001 - deeply nested'));
+    await sourceCommand(() => modal.goForwardInPreview());
+    await sourceCommand(() => modal.generatedBundle.expectSingleHeading('t001 ---- child 1'));
+    await sourceCommand(() => modal.expectPreviewNavigation(true, false));
+    await sourceCommand(() => addKeyFrame(htmlGeneration));
+    await sourceCommand(() => checkpoint('back and forward restore the expected generated pages'));
+  });
 
-  // A different link from the middle replaces the old forward branch.
-  await sourceCommand(() => modal.goBackInPreview());
-  await sourceCommand(() => modal.generatedBundle.expectSingleHeading('t001 - deeply nested'));
-  await sourceCommand(() => modal.generatedBundle.clickPageLink('t001 ---- child 2'));
-  await sourceCommand(() => modal.generatedBundle.expectSingleHeading('t001 ---- child 2'));
-  await sourceCommand(() => modal.expectPreviewNavigation(true, false));
-  await sourceCommand(() => checkpoint('following a new link clears the old forward branch'));
+  await test.step(sections.steps.differentLinkMiddleReplacesOldForwardBranch, async () => {
+    await sourceCommand(() => modal.goBackInPreview());
+    await sourceCommand(() => modal.generatedBundle.expectSingleHeading('t001 - deeply nested'));
+    await sourceCommand(() => modal.generatedBundle.clickPageLink('t001 ---- child 2'));
+    await sourceCommand(() => modal.generatedBundle.expectSingleHeading('t001 ---- child 2'));
+    await sourceCommand(() => modal.expectPreviewNavigation(true, false));
+    await sourceCommand(() => checkpoint('following a new link clears the old forward branch'));
+  });
 
   await sourceCommand(() => skipMeadowHomeStateCheck());
 });

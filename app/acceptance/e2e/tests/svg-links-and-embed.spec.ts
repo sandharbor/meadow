@@ -17,7 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleEditorPage, PreviewPublishModal } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { svg, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleGeneration } from "../../../concepts/index.js";
+import { scenarioSections, svg, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleGeneration } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -26,58 +26,70 @@ const name = linkedScenarioName(conceptText`SVG links work in a directed embed`)
 
 const description = linkedScenarioDescription(conceptText`Preview a directed SVG embed, open it fullscreen, and follow one of its links. The
 drawing and its link targets should work in the generated bundle.`);
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Establish the starting state: the generated bundle preview is ready.` },
+  inspectDirectedSVGEmbed: { type: 'test', text: conceptText`Inspect the directed SVG embed.` },
+  openSVGFullscreen: { type: 'test', text: conceptText`Open the SVG fullscreen.` },
+  followSVGLink: { type: 'test', text: conceptText`Follow an SVG link.` },
+});
 const areas = scenarioAreas([bundleGeneration]);
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'f414fbce-32af-4a36-a75f-d5c514c9993c' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'f414fbce-32af-4a36-a75f-d5c514c9993c' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   addKeyFrame,
   assertMeadowHomeState,
 }) => {
-  // --- Setup ---
-  const workflows = new Workflows(page, expect);
-  const editor = new BundleEditorPage(page, expect);
-  const previewModal = new PreviewPublishModal(page, expect);
-  const generatedBundle = previewModal.generatedBundle;
+  const { generatedBundle } = await test.step(sections.steps.setup, async () => {
+    const workflows = new Workflows(page, expect);
+    const editor = new BundleEditorPage(page, expect);
+    const previewModal = new PreviewPublishModal(page, expect);
+    const generatedBundle = previewModal.generatedBundle;
 
-  await sourceCommand(() => workflows.navigateToBigBundle());
-  await sourceCommand(() => editor.clickPreview());
-  await sourceCommand(() => previewModal.waitForPreviewComplete());
+    await sourceCommand(() => workflows.navigateToBigBundle());
+    await sourceCommand(() => editor.clickPreview());
+    await sourceCommand(() => previewModal.waitForPreviewComplete());
+    await sourceCommand(() => previewModal.expectUntrackedPagesWarning());
 
-  await sourceCommand(() => checkpoint("the generated bundle preview is ready"));
+    await sourceCommand(() => checkpoint("the generated bundle preview is ready"));
+    return { generatedBundle };
+  });
 
-  // --- Test start ---
-  // Inspect the directed SVG embed.
-  await sourceCommand(() => generatedBundle.clickPageLink("t006 - embedded media"));
-  await sourceCommand(() => generatedBundle.expectHeading("t006 - embedded media"));
+  const { textLink } = await test.step(sections.steps.inspectDirectedSVGEmbed, async () => {
+    await sourceCommand(() => generatedBundle.clickPageLink("t006 - embedded media"));
+    await sourceCommand(() => generatedBundle.expectHeading("t006 - embedded media"));
 
-  await sourceCommand(() => generatedBundle.svg.expectOrdinaryImageEmbeds(3));
-  await sourceCommand(() => generatedBundle.svg.expectDirectedEmbedVisible());
-  const textLink =
-    "t006%20---%20page%20that%20embeds%20Excalidraw%20in%20another%20directory.html";
-  await sourceCommand(() => generatedBundle.svg.expectDirectedTextLink(
-    textLink,
-    "t006 --- page that embeds Excalidraw in another directory",
-  ));
-  await sourceCommand(() => generatedBundle.svg.expectDirectedShapeLink(
-    "../t006%20-%20embedded%20media.html",
-  ));
-  await sourceCommand(() => generatedBundle.svg.expectDirectedStandaloneLinkAbsent());
-  await sourceCommand(() => addKeyFrame(svg));
-  await sourceCommand(() => checkpoint("directed SVG embed rendered with live links"));
+    await sourceCommand(() => generatedBundle.svg.expectOrdinaryImageEmbeds(3));
+    await sourceCommand(() => generatedBundle.svg.expectDirectedEmbedVisible());
+    const textLink =
+      "t006%20---%20page%20that%20embeds%20Excalidraw%20in%20another%20directory.html";
+    await sourceCommand(() => generatedBundle.svg.expectDirectedTextLink(
+      textLink,
+      "t006 --- page that embeds Excalidraw in another directory",
+    ));
+    await sourceCommand(() => generatedBundle.svg.expectDirectedShapeLink(
+      "../t006%20-%20embedded%20media.html",
+    ));
+    await sourceCommand(() => generatedBundle.svg.expectDirectedStandaloneLinkAbsent());
+    await sourceCommand(() => addKeyFrame(svg));
+    await sourceCommand(() => checkpoint("directed SVG embed rendered with live links"));
+    return { textLink };
+  });
 
-  // Open the SVG fullscreen.
-  await sourceCommand(() => generatedBundle.svg.openDirectedFullscreen());
-  await sourceCommand(() => checkpoint("directed SVG embed fullscreen open"));
+  await test.step(sections.steps.openSVGFullscreen, async () => {
+    await sourceCommand(() => generatedBundle.svg.openDirectedFullscreen());
+    await sourceCommand(() => checkpoint("directed SVG embed fullscreen open"));
+  });
 
-  // Follow an SVG link.
-  await sourceCommand(() => generatedBundle.svg.closeDirectedFullscreen());
+  await test.step(sections.steps.followSVGLink, async () => {
+    await sourceCommand(() => generatedBundle.svg.closeDirectedFullscreen());
 
-  await sourceCommand(() => generatedBundle.svg.clickDirectedLink(textLink));
-  await sourceCommand(() => generatedBundle.expectHeading(
-    "t006 --- page that embeds Excalidraw in another directory",
-  ));
-  await sourceCommand(() => addKeyFrame(svg));
-  await sourceCommand(() => checkpoint("directed SVG embed link opened target"));
+    await sourceCommand(() => generatedBundle.svg.clickDirectedLink(textLink));
+    await sourceCommand(() => generatedBundle.expectHeading(
+      "t006 --- page that embeds Excalidraw in another directory",
+    ));
+    await sourceCommand(() => addKeyFrame(svg));
+    await sourceCommand(() => checkpoint("directed SVG embed link opened target"));
+  });
 
   void bigBundle;
   await sourceCommand(() => assertMeadowHomeState({

@@ -24,7 +24,7 @@ import {
   SelectedPageDetailComponent,
 } from "../src/run/pages/index.js";
 import { Fixture } from "../src/run/workflows.js";
-import { sourcingReviewRedesign, excalidraw, images, initialPage, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration, sourceSetupNew, bundleSourcing } from "../../../concepts/index.js";
+import { scenarioSections, sourcingReviewRedesign, excalidraw, images, initialPage, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration, sourceSetupNew, bundleSourcing } from "../../../concepts/index.js";
 import { customBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -44,8 +44,14 @@ const name = linkedScenarioName(conceptText`setting initial-page inlink depth to
 
 const description = linkedScenarioDescription(conceptText`Set the starting page's incoming-link depth to zero in a nested source directory. Its
 depth-one outgoing media should remain visible.`);
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Establish the starting state: editor loaded with t006 - embedded media as initial page.` },
+  selectInitialPageUseListViewReliably: { type: 'test', text: conceptText`Select the initial page. Use list view to reliably pick the initial-page row, then return to graph view so the recorded video shows the visual change when inlink depth is reduced.` },
+  removeIncomingTraversal: { type: 'test', text: conceptText`Remove incoming traversal.` },
+  checkOutgoingMediaDepthOutlinkMediaShould: { type: 'test', text: conceptText`Check the outgoing media. The depth-1 outlink media should still be present — switch to list view and assert each file type the user cares about is still in the graph. Titles in list view drop the extension (the file type lives in its own cell), so match by title + file-type cell.` },
+});
 const areas = scenarioAreas([bundleCuration, bundleSourcing], { subAreas: [sourceSetupNew] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'f6510873-acc2-4902-a532-b60aff409868' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'f6510873-acc2-4902-a532-b60aff409868' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   testServer,
   checkpoint,
@@ -53,7 +59,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'f6510873-acc
   addKeyFrame,
   expectLogErrors,
 }) => {
-  // --- Setup ---
+
   // Same Excalidraw worker fallback warning as the unwrapped variant.
   const releaseWorkerWarning = expectLogErrors(
     /Failed to use workers for subsetting, falling back to the main thread/,
@@ -74,66 +80,64 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'f6510873-acc
   );
 
   try {
-    const bundleList = new BundleListPage(page, expect);
-    const editor = new BundleEditorPage(page, expect);
-    const createModal = new CreateAndEditBundleModal(page, expect);
+    const { editor } = await test.step(sections.steps.setup, async () => {
+      const bundleList = new BundleListPage(page, expect);
+      const editor = new BundleEditorPage(page, expect);
+      const createModal = new CreateAndEditBundleModal(page, expect);
 
-    // Empty home → click "create a bundle" in the empty-state callout
-    await sourceCommand(() => bundleList.goto());
-    await sourceCommand(() => bundleList.expectCalloutVisible("Turn your notes into bundles"));
-    await sourceCommand(() => bundleList.clickCreateBundleLink());
+      // Empty home → click "create a bundle" in the empty-state callout
+      await sourceCommand(() => bundleList.goto());
+      await sourceCommand(() => bundleList.expectCalloutVisible("Turn your notes into bundles"));
+      await sourceCommand(() => bundleList.clickCreateBundleLink());
 
-    // Point the new bundle at the *wrapper* directory and pick "t006 - embedded
-    // media" as the initial page.
-    const sourceDir = path.join(testServer.sourceGraphsDir, "wrapper-around-meadow-test-bundles-data");
-    await sourceCommand(() => createModal.fillSourceDirectory(sourceDir));
-    await sourceCommand(() => createModal.typeInitialPageTitle("t006 - embedded media"));
-    await sourceCommand(() => createModal.selectSuggestion("t006 - embedded media"));
-    await sourceCommand(() => createModal.clickCreateBundle());
+      // Point the new bundle at the *wrapper* directory and pick "t006 - embedded
+      // media" as the initial page.
+      const sourceDir = path.join(testServer.sourceGraphsDir, "wrapper-around-meadow-test-bundles-data");
+      await sourceCommand(() => createModal.fillSourceDirectory(sourceDir));
+      await sourceCommand(() => createModal.typeInitialPageTitle("t006 - embedded media"));
+      await sourceCommand(() => createModal.selectSuggestion("t006 - embedded media"));
+      await sourceCommand(() => createModal.clickCreateBundle());
 
-    // Slug is derived from the title via lowercase → spaces+dashes collapse.
-    await sourceCommand(() => editor.waitForLoad("t006-embedded-media"));
-    await sourceCommand(() => checkpoint("editor loaded with t006 - embedded media as initial page"));
+      // Slug is derived from the title via lowercase → spaces+dashes collapse.
+      await sourceCommand(() => editor.waitForLoad("t006-embedded-media"));
+      await sourceCommand(() => checkpoint("editor loaded with t006 - embedded media as initial page"));
+      return { editor };
+    });
 
-    // --- Test start ---
-    // Select the initial page.
-    // Use list view to reliably pick the initial-page row, then return to
-    // graph view so the recorded video shows the visual change when inlink
-    // depth is reduced.
-    await sourceCommand(() => editor.switchToListView());
-    await sourceCommand(() => page.waitForTimeout(250));
-    await sourceCommand(() => editor.clickListViewRowByExactName("t006 - embedded media"));
-    await sourceCommand(() => page.waitForTimeout(250));
-    await sourceCommand(() => editor.switchToGraphView());
-    await sourceCommand(() => page.waitForTimeout(250));
-    await sourceCommand(() => addKeyFrame(initialPage));
-    await sourceCommand(() => checkpoint("initial node selected in graph view, inlinks visible"));
+    await test.step(sections.steps.selectInitialPageUseListViewReliably, async () => {
+      await sourceCommand(() => editor.switchToListView());
+      await sourceCommand(() => page.waitForTimeout(250));
+      await sourceCommand(() => editor.clickListViewRowByExactName("t006 - embedded media"));
+      await sourceCommand(() => page.waitForTimeout(250));
+      await sourceCommand(() => editor.switchToGraphView());
+      await sourceCommand(() => page.waitForTimeout(250));
+      await sourceCommand(() => addKeyFrame(initialPage));
+      await sourceCommand(() => checkpoint("initial node selected in graph view, inlinks visible"));
+    });
 
-    // Remove incoming traversal.
-    const detail = new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect);
-    await sourceCommand(() => detail.setInlinksDepth(0));
-    await sourceCommand(() => page.waitForTimeout(1000));
-    await sourceCommand(() => checkpoint("after setting inlink depth to 0"));
+    await test.step(sections.steps.removeIncomingTraversal, async () => {
+      const detail = new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect);
+      await sourceCommand(() => detail.setInlinksDepth(0));
+      await sourceCommand(() => page.waitForTimeout(1000));
+      await sourceCommand(() => checkpoint("after setting inlink depth to 0"));
+    });
 
-    // Check the outgoing media.
-    // The depth-1 outlink media should still be present — switch to list view
-    // and assert each file type the user cares about is still in the graph.
-    // Titles in list view drop the extension (the file type lives in its own
-    // cell), so match by title + file-type cell.
-    await sourceCommand(() => editor.switchToListView());
-    await sourceCommand(() => page.waitForTimeout(250));
-    await sourceCommand(() => editor.expectListViewRowByTitleAndFileTypePresent("t006 --- meadow", "png"));
-    await sourceCommand(() => editor.expectListViewRowByTitleAndFileTypePresent("t006 --- meadow-flower", "svg"));
-    await sourceCommand(() => editor.expectListViewRowByTitleAndFileTypePresent("t006 --- meadow-flower", "excalidraw"));
-    await sourceCommand(() => addKeyFrame(images));
-    await sourceCommand(() => addKeyFrame(excalidraw));
-    await sourceCommand(() => checkpoint("depth-1 outlink media still present in list view"));
-    await sourceCommand(() => editor.sourceReview.accept());
-    await sourceCommand(() => checkpoint("accepted incoming-depth change preserves the outgoing media"));
+    await test.step(sections.steps.checkOutgoingMediaDepthOutlinkMediaShould, async () => {
+      await sourceCommand(() => editor.switchToListView());
+      await sourceCommand(() => page.waitForTimeout(250));
+      await sourceCommand(() => editor.expectListViewRowByTitleAndFileTypePresent("t006 --- meadow", "png"));
+      await sourceCommand(() => editor.expectListViewRowByTitleAndFileTypePresent("t006 --- meadow-flower", "svg"));
+      await sourceCommand(() => editor.expectListViewRowByTitleAndFileTypePresent("t006 --- meadow-flower", "excalidraw"));
+      await sourceCommand(() => addKeyFrame(images));
+      await sourceCommand(() => addKeyFrame(excalidraw));
+      await sourceCommand(() => checkpoint("depth-1 outlink media still present in list view"));
+      await sourceCommand(() => editor.sourceReview.accept());
+      await sourceCommand(() => checkpoint("accepted incoming-depth change preserves the outgoing media"));
 
-    void customBundle;
+      void customBundle;
 
-    releaseWorkerWarning();
+      releaseWorkerWarning();
+    });
   } finally {
     // Always remove the wrapper so we don't pollute the shared source_graphs
     // directory between runs.

@@ -16,7 +16,7 @@ limitations under the License.
 
 import fs from "fs";
 import path from "path";
-import { cli, versioning, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleGeneration } from "../../../concepts/index.js";
+import { scenarioSections, cli, versioning, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleGeneration } from "../../../concepts/index.js";
 import { expect, test } from "../src/run/test-fixtures.js";
 import { Bundle } from "../src/run/workflows.js";
 
@@ -55,133 +55,150 @@ const name = linkedScenarioName(conceptText`CLI manages generated versions throu
 const description = linkedScenarioDescription(conceptText`Create and save generated versions through the CLI. Edit notes, cancel a temporary
 successor, restore damaged frozen files, and delete local files while retaining version
 history.`);
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Establish the starting state: the initial generation is saved.` },
+  editVersionNotes: { type: 'test', text: conceptText`Edit version notes.` },
+  createCancelTemporarySuccessor: { type: 'test', text: conceptText`Create and cancel a temporary successor.` },
+  saveDurableSuccessor: { type: 'test', text: conceptText`Save a durable successor.` },
+  damageRestoreFrozenVersion: { type: 'test', text: conceptText`Damage and restore the frozen version.` },
+  deleteFrozenLocalFiles: { type: 'test', text: conceptText`Delete the frozen local files.` },
+  checkVersionCommandHelp: { type: 'test', text: conceptText`Check version command help.` },
+});
 const areas = scenarioAreas([bundleGeneration]);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '8b742038-6302-4432-851c-241d7446a677' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
+test(name.name, { annotation: [{ type: 'scenario-id', description: '8b742038-6302-4432-851c-241d7446a677' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   assertMeadowHomeState,
   meadowCli,
   testServer,
   checkpoint,
 }) => {
-  // --- Setup ---
-  await sourceCommand(() => meadowCli.runJson(["bundle", "nodes", Bundle.Big, "--scope", "all"], {
-    artifactName: "capture-fixture-source-before-generation",
-  }));
-  const generated = await sourceCommand(() => meadowCli.runJson<{ versionId: string }>([
-    "bundle", "generate", Bundle.Big,
-  ], { artifactName: "versions-generate-initial" }));
-  await sourceCommand(() => meadowCli.runJson([
-    "bundle", "save-generation", Bundle.Big, "--version", generated.versionId,
-  ], { artifactName: "versions-save-initial" }));
-  const initial = await sourceCommand(() => meadowCli.runJson<VersionListResult>([
-    "bundle", "versions", "list", Bundle.Big,
-  ], { artifactName: "versions-list-initial" }));
-  expect(initial).toMatchObject({ operation: "bundle.versions.list", slug: Bundle.Big });
-  expect(initial.versions).toHaveLength(1);
-  const originalVersionId = initial.versions[0].versionId;
-  expect(originalVersionId).toBe(generated.versionId);
+  const { originalVersionId } = await test.step(sections.steps.setup, async () => {
+    await sourceCommand(() => meadowCli.runJson(["bundle", "nodes", Bundle.Big, "--scope", "all"], {
+      artifactName: "capture-fixture-source-before-generation",
+    }));
+    const generated = await sourceCommand(() => meadowCli.runJson<{ versionId: string }>([
+      "bundle", "generate", Bundle.Big,
+    ], { artifactName: "versions-generate-initial" }));
+    await sourceCommand(() => meadowCli.runJson([
+      "bundle", "save-generation", Bundle.Big, "--version", generated.versionId,
+    ], { artifactName: "versions-save-initial" }));
+    const initial = await sourceCommand(() => meadowCli.runJson<VersionListResult>([
+      "bundle", "versions", "list", Bundle.Big,
+    ], { artifactName: "versions-list-initial" }));
+    expect(initial).toMatchObject({ operation: "bundle.versions.list", slug: Bundle.Big });
+    expect(initial.versions).toHaveLength(1);
+    const originalVersionId = initial.versions[0].versionId;
+    expect(originalVersionId).toBe(generated.versionId);
 
-  await sourceCommand(() => checkpoint("the initial generation is saved"));
-
-  // --- Test start ---
-  // Edit version notes.
-  const updated = await sourceCommand(() => meadowCli.runJson<{ operation: string; notes: string }>([
-    "bundle", "versions", "update", Bundle.Big, originalVersionId,
-    "--notes", "Original CLI-managed generation",
-  ], { artifactName: "versions-update-note" }));
-  expect(updated).toMatchObject({
-    operation: "bundle.versions.update",
-    notes: "Original CLI-managed generation",
-  });
-  const original = await sourceCommand(() => meadowCli.runJson<{ operation: string; version: VersionRecord }>([
-    "bundle", "versions", "get", Bundle.Big, originalVersionId,
-  ], { artifactName: "versions-get-original" }));
-  expect(original.version).toMatchObject({
-    versionId: originalVersionId,
-    notes: "Original CLI-managed generation",
-    localFilesState: "present",
+    await sourceCommand(() => checkpoint("the initial generation is saved"));
+    return { originalVersionId };
   });
 
-  await sourceCommand(() => checkpoint("version notes persist"));
+  await test.step(sections.steps.editVersionNotes, async () => {
+    const updated = await sourceCommand(() => meadowCli.runJson<{ operation: string; notes: string }>([
+      "bundle", "versions", "update", Bundle.Big, originalVersionId,
+      "--notes", "Original CLI-managed generation",
+    ], { artifactName: "versions-update-note" }));
+    expect(updated).toMatchObject({
+      operation: "bundle.versions.update",
+      notes: "Original CLI-managed generation",
+    });
+    const original = await sourceCommand(() => meadowCli.runJson<{ operation: string; version: VersionRecord }>([
+      "bundle", "versions", "get", Bundle.Big, originalVersionId,
+    ], { artifactName: "versions-get-original" }));
+    expect(original.version).toMatchObject({
+      versionId: originalVersionId,
+      notes: "Original CLI-managed generation",
+      localFilesState: "present",
+    });
 
-  // Create and cancel a temporary successor.
-  const firstSuccessor = await sourceCommand(() => meadowCli.runJson<{ operation: string; versionId: string }>([
-    "bundle", "versions", "create", Bundle.Big,
-    "--notes", "Disposable successor",
-    "--confirm-no-changes",
-  ], { artifactName: "versions-create-disposable" }));
-  expect(firstSuccessor.operation).toBe("bundle.versions.create");
-  expect(firstSuccessor.versionId).not.toBe(originalVersionId);
-  const cancelled = await sourceCommand(() => meadowCli.runJson<{ operation: string; currentVersionId: string }>([
-    "bundle", "versions", "cancel-current", Bundle.Big,
-  ], { artifactName: "versions-cancel-current" }));
-  expect(cancelled).toMatchObject({
-    operation: "bundle.versions.cancel-current",
-    currentVersionId: originalVersionId,
+    await sourceCommand(() => checkpoint("version notes persist"));
   });
 
-  await sourceCommand(() => checkpoint("cancellation restores the original version"));
+  await test.step(sections.steps.createCancelTemporarySuccessor, async () => {
+    const firstSuccessor = await sourceCommand(() => meadowCli.runJson<{ operation: string; versionId: string }>([
+      "bundle", "versions", "create", Bundle.Big,
+      "--notes", "Disposable successor",
+      "--confirm-no-changes",
+    ], { artifactName: "versions-create-disposable" }));
+    expect(firstSuccessor.operation).toBe("bundle.versions.create");
+    expect(firstSuccessor.versionId).not.toBe(originalVersionId);
+    const cancelled = await sourceCommand(() => meadowCli.runJson<{ operation: string; currentVersionId: string }>([
+      "bundle", "versions", "cancel-current", Bundle.Big,
+    ], { artifactName: "versions-cancel-current" }));
+    expect(cancelled).toMatchObject({
+      operation: "bundle.versions.cancel-current",
+      currentVersionId: originalVersionId,
+    });
 
-  // Save a durable successor.
-  const successor = await sourceCommand(() => meadowCli.runJson<{ operation: string; versionId: string }>([
-    "bundle", "versions", "create", Bundle.Big,
-    "--notes", "Durable CLI successor",
-    "--confirm-no-changes",
-  ], { artifactName: "versions-create-successor" }));
-  await sourceCommand(() => meadowCli.runJson([
-    "bundle", "save-generation", Bundle.Big, "--version", successor.versionId,
-  ], { artifactName: "versions-save-successor" }));
-
-  await sourceCommand(() => checkpoint("the successor is saved"));
-
-  // Damage and restore the frozen version.
-  const frozenVersionDirectory = path.join(
-    testServer.configDir,
-    "bundles",
-    Bundle.Big,
-    "html",
-    "generated_bundle_versions",
-    originalVersionId,
-  );
-  const frozenIndexPath = findGeneratedHtmlFile(frozenVersionDirectory);
-  expect(frozenIndexPath).not.toBe("");
-  const frozenIndex = fs.readFileSync(frozenIndexPath, "utf8");
-  fs.appendFileSync(frozenIndexPath, "\n<!-- simulated accidental edit -->\n", "utf8");
-  const restored = await sourceCommand(() => meadowCli.runJson<{ operation: string; success: boolean }>([
-    "bundle", "versions", "restore", Bundle.Big, originalVersionId,
-  ], { artifactName: "versions-restore-frozen" }));
-  expect(restored).toMatchObject({ operation: "bundle.versions.restore", success: true });
-  expect(fs.readFileSync(frozenIndexPath, "utf8")).toBe(frozenIndex);
-
-  await sourceCommand(() => checkpoint("restoration recovers the original content"));
-
-  // Delete the frozen local files.
-  const deleted = await sourceCommand(() => meadowCli.runJson<{ operation: string; success: boolean }>([
-    "bundle", "versions", "delete", Bundle.Big, originalVersionId,
-  ], { artifactName: "versions-delete-frozen" }));
-  expect(deleted).toMatchObject({ operation: "bundle.versions.delete", success: true });
-  const tombstone = await sourceCommand(() => meadowCli.runJson<{ version: VersionRecord }>([
-    "bundle", "versions", "get", Bundle.Big, originalVersionId,
-  ], { artifactName: "versions-get-tombstone" }));
-  expect(tombstone.version).toMatchObject({
-    versionId: originalVersionId,
-    localFilesState: "deleted",
-    displayState: "locally-deleted",
+    await sourceCommand(() => checkpoint("cancellation restores the original version"));
   });
-  expect(fs.existsSync(frozenVersionDirectory)).toBe(false);
 
-  await sourceCommand(() => checkpoint("local deletion retains version history"));
+  await test.step(sections.steps.saveDurableSuccessor, async () => {
+    const successor = await sourceCommand(() => meadowCli.runJson<{ operation: string; versionId: string }>([
+      "bundle", "versions", "create", Bundle.Big,
+      "--notes", "Durable CLI successor",
+      "--confirm-no-changes",
+    ], { artifactName: "versions-create-successor" }));
+    await sourceCommand(() => meadowCli.runJson([
+      "bundle", "save-generation", Bundle.Big, "--version", successor.versionId,
+    ], { artifactName: "versions-save-successor" }));
 
-  // Check version command help.
-  const help = await sourceCommand(() => meadowCli.run(
-    ["bundle", "versions", "--help"],
-    { artifactName: "versions-help" },
-  ));
-  expect(help).toContain("Create a new unsaved version");
-  expect(help).toContain("cancel-current");
-  expect(help).toContain("Local deletion never deletes publication records");
-  void cli;
-  void versioning;
-  await sourceCommand(() => checkpoint("help explains version creation cancellation and deletion"));
+    await sourceCommand(() => checkpoint("the successor is saved"));
+  });
+
+  const { frozenVersionDirectory } = await test.step(sections.steps.damageRestoreFrozenVersion, async () => {
+    const frozenVersionDirectory = path.join(
+      testServer.configDir,
+      "bundles",
+      Bundle.Big,
+      "html",
+      "generated_bundle_versions",
+      originalVersionId,
+    );
+    const frozenIndexPath = findGeneratedHtmlFile(frozenVersionDirectory);
+    expect(frozenIndexPath).not.toBe("");
+    const frozenIndex = fs.readFileSync(frozenIndexPath, "utf8");
+    fs.appendFileSync(frozenIndexPath, "\n<!-- simulated accidental edit -->\n", "utf8");
+    const restored = await sourceCommand(() => meadowCli.runJson<{ operation: string; success: boolean }>([
+      "bundle", "versions", "restore", Bundle.Big, originalVersionId,
+    ], { artifactName: "versions-restore-frozen" }));
+    expect(restored).toMatchObject({ operation: "bundle.versions.restore", success: true });
+    expect(fs.readFileSync(frozenIndexPath, "utf8")).toBe(frozenIndex);
+
+    await sourceCommand(() => checkpoint("restoration recovers the original content"));
+    return { frozenVersionDirectory };
+  });
+
+  await test.step(sections.steps.deleteFrozenLocalFiles, async () => {
+    const deleted = await sourceCommand(() => meadowCli.runJson<{ operation: string; success: boolean }>([
+      "bundle", "versions", "delete", Bundle.Big, originalVersionId,
+    ], { artifactName: "versions-delete-frozen" }));
+    expect(deleted).toMatchObject({ operation: "bundle.versions.delete", success: true });
+    const tombstone = await sourceCommand(() => meadowCli.runJson<{ version: VersionRecord }>([
+      "bundle", "versions", "get", Bundle.Big, originalVersionId,
+    ], { artifactName: "versions-get-tombstone" }));
+    expect(tombstone.version).toMatchObject({
+      versionId: originalVersionId,
+      localFilesState: "deleted",
+      displayState: "locally-deleted",
+    });
+    expect(fs.existsSync(frozenVersionDirectory)).toBe(false);
+
+    await sourceCommand(() => checkpoint("local deletion retains version history"));
+  });
+
+  await test.step(sections.steps.checkVersionCommandHelp, async () => {
+    const help = await sourceCommand(() => meadowCli.run(
+      ["bundle", "versions", "--help"],
+      { artifactName: "versions-help" },
+    ));
+    expect(help).toContain("Create a new unsaved version");
+    expect(help).toContain("cancel-current");
+    expect(help).toContain("Local deletion never deletes publication records");
+    void cli;
+    void versioning;
+    await sourceCommand(() => checkpoint("help explains version creation cancellation and deletion"));
+  });
 
   await sourceCommand(() => assertMeadowHomeState());
 });

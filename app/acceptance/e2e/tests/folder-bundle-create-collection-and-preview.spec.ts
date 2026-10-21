@@ -21,7 +21,7 @@ import {
   BundleListPage,
 } from "../src/run/pages/index.js";
 import { Fixture, Bundle } from "../src/run/workflows.js";
-import { sourcingReviewRedesign, folderBundles, htmlGeneration, tracking, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration, bundleGeneration } from "../../../concepts/index.js";
+import { scenarioSections, sourcingReviewRedesign, folderBundles, htmlGeneration, tracking, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration, bundleGeneration } from "../../../concepts/index.js";
 import { customBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "multiple-folders" });
@@ -32,84 +32,97 @@ const name = linkedScenarioName(conceptText`previews a configured multiple-folde
 
 const description = linkedScenarioDescription(conceptText`Generate a bundle assembled from several folders. The preview should preserve the
 collection's home page, folder order, and contents.`);
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Establish the starting state: multiple folder graph with two linked depth rows.` },
+  inspectOrderedStructure: { type: 'test', text: conceptText`Inspect the ordered structure.` },
+  trackFoldersContentsFolderStartsTrackOnly: { type: 'test', text: conceptText`Track the folders' contents; folder starts track only the folders themselves.` },
+  previewCollectionHome: { type: 'test', text: conceptText`Preview the collection home.` },
+  openPageInSelectedFolder: { type: 'test', text: conceptText`Open a page in a selected folder.` },
+});
 const areas = scenarioAreas([bundleCuration, bundleGeneration]);
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'df33875b-e30f-4dba-8c86-b342facc6d2e' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'df33875b-e30f-4dba-8c86-b342facc6d2e' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   addKeyFrame,
   assertMeadowHomeState,
 }) => {
-  // --- Setup ---
-  const bundleList = new BundleListPage(page, expect);
-  const editor = new BundleEditorPage(page, expect);
-  const previewModal = new PreviewPublishModal(page, expect);
+  const { editor, previewModal } = await test.step(sections.steps.setup, async () => {
+    const bundleList = new BundleListPage(page, expect);
+    const editor = new BundleEditorPage(page, expect);
+    const previewModal = new PreviewPublishModal(page, expect);
 
-  await sourceCommand(() => bundleList.goto());
-  await sourceCommand(() => bundleList.clickBundle(Bundle.FolderStructureMultiple));
-  await sourceCommand(() => editor.waitForLoad(Bundle.FolderStructureMultiple));
-  await sourceCommand(() => editor.expectGraphViewHasPages());
-  await sourceCommand(() => addKeyFrame(folderBundles));
-  await sourceCommand(() => checkpoint("multiple folder graph with two linked depth rows"));
+    await sourceCommand(() => bundleList.goto());
+    await sourceCommand(() => bundleList.clickBundle(Bundle.FolderStructureMultiple));
+    await sourceCommand(() => editor.waitForLoad(Bundle.FolderStructureMultiple));
+    await sourceCommand(() => editor.expectGraphViewHasPages());
+    await sourceCommand(() => addKeyFrame(folderBundles));
+    await sourceCommand(() => checkpoint("multiple folder graph with two linked depth rows"));
+    return { editor, previewModal };
+  });
 
-  // --- Test start ---
-  // Inspect the ordered structure.
-  await sourceCommand(() => editor.switchToListView());
-  await sourceCommand(() => editor.switchToStructuralListView());
-  await sourceCommand(() => editor.expectStructuralListHasNoSelectionColumn());
-  await sourceCommand(() => editor.expectListViewNodeGlyph("Ordered Folders", "collection"));
-  await sourceCommand(() => editor.expectListViewNodeGlyph("Beta", "folder"));
-  await sourceCommand(() => editor.expectListViewNodeGlyph("Beta note", "file"));
-  await sourceCommand(() => editor.expectListViewRowByExactNamePresent("Ordered Folders"));
-  await sourceCommand(() => editor.expectListViewRowByExactNamePresent("Beta"));
-  await sourceCommand(() => editor.expectListViewRowByExactNamePresent("Alpha"));
-  await sourceCommand(() => editor.expectListViewRowByExactNamePresent("Beta note"));
-  await sourceCommand(() => editor.expectListViewRowByExactNamePresent("Alpha note"));
-  await sourceCommand(() => editor.expectListViewRowByExactNamePresent("Visual map"));
-  await sourceCommand(() => editor.expectListViewRowByExactNamePresent("Nested note"));
-  await sourceCommand(() => editor.expectListViewRowByExactNamePresent("Outside note"));
-  await sourceCommand(() => editor.expectListViewRowByExactNamePresent("Beyond outside"));
-  await sourceCommand(() => editor.expectListViewRowByExactNamePresent("Frontier image"));
-  await sourceCommand(() => checkpoint("ordered folder structure in the editor"));
+  await test.step(sections.steps.inspectOrderedStructure, async () => {
+    await sourceCommand(() => editor.switchToListView());
+    await sourceCommand(() => editor.switchToStructuralListView());
+    await sourceCommand(() => editor.expectStructuralListHasNoSelectionColumn());
+    await sourceCommand(() => editor.expectListViewNodeGlyph("Ordered Folders", "collection"));
+    await sourceCommand(() => editor.expectListViewNodeGlyph("Beta", "folder"));
+    await sourceCommand(() => editor.expectListViewNodeGlyph("Beta note", "file"));
+    await sourceCommand(() => editor.expectListViewRowByExactNamePresent("Ordered Folders"));
+    await sourceCommand(() => editor.expectListViewRowByExactNamePresent("Beta"));
+    await sourceCommand(() => editor.expectListViewRowByExactNamePresent("Alpha"));
+    await sourceCommand(() => editor.expectListViewRowByExactNamePresent("Beta note"));
+    await sourceCommand(() => editor.expectListViewRowByExactNamePresent("Alpha note"));
+    await sourceCommand(() => editor.expectListViewRowByExactNamePresent("Visual map"));
+    await sourceCommand(() => editor.expectListViewRowByExactNamePresent("Nested note"));
+    await sourceCommand(() => editor.expectListViewRowByExactNamePresent("Outside note"));
+    await sourceCommand(() => editor.expectListViewRowByExactNamePresent("Beyond outside"));
+    await sourceCommand(() => editor.expectListViewRowByExactNamePresent("Frontier image"));
+    await sourceCommand(() => checkpoint("ordered folder structure in the editor"));
+  });
 
-  // Track the folders' contents; folder starts track only the folders themselves.
-  await sourceCommand(() => editor.trackAllReachablePages());
-  await sourceCommand(() => addKeyFrame(tracking));
-  await sourceCommand(() => checkpoint("ordered folder contents tracked for publishing"));
+  await test.step(sections.steps.trackFoldersContentsFolderStartsTrackOnly, async () => {
+    await sourceCommand(() => editor.trackAllReachablePages());
+    await sourceCommand(() => addKeyFrame(tracking));
+    await sourceCommand(() => checkpoint("ordered folder contents tracked for publishing"));
+  });
 
-  // Preview the collection home.
-  await sourceCommand(() => editor.clickPreview());
-  await sourceCommand(() => previewModal.waitForPreviewCompleteAllTracked());
-  await sourceCommand(() => previewModal.generatedBundle.expectSingleHeading("Ordered Folders", 60_000));
-  const folderNavigation = previewModal.generatedBundle.folderNavigation;
-  await sourceCommand(() => folderNavigation.expectAvailable());
-  await sourceCommand(() => folderNavigation.open());
-  await sourceCommand(() => folderNavigation.expectRootFolderNames(["Alpha", "Beta", "Outside"]));
-  await sourceCommand(() => folderNavigation.expectRootFileNames([]));
-  await sourceCommand(() => folderNavigation.openFolder("Alpha"));
-  await sourceCommand(() => folderNavigation.expectDirectFileNames("Alpha", [
-    "Alpha note.html",
-  ]));
-  await sourceCommand(() => folderNavigation.openFolder("Beta"));
-  await sourceCommand(() => folderNavigation.expectDirectFileNames("Beta", [
-    "Beta note.html",
-  ]));
-  await sourceCommand(() => folderNavigation.openFolder("Outside"));
-  await sourceCommand(() => folderNavigation.expectDirectFileNames("Outside", [
-    "Beyond outside.html",
-    "Outside note.html",
-  ]));
-  await sourceCommand(() => previewModal.generatedBundle.expectStructuralChildNames(["Beta", "Alpha"]));
-  await sourceCommand(() => folderNavigation.close());
-  await sourceCommand(() => addKeyFrame(htmlGeneration));
-  await sourceCommand(() => checkpoint("ordered collection generated home"));
+  const { folderNavigation } = await test.step(sections.steps.previewCollectionHome, async () => {
+    await sourceCommand(() => editor.clickPreview());
+    await sourceCommand(() => previewModal.waitForPreviewComplete());
+    await sourceCommand(() => previewModal.generatedBundle.expectSingleHeading("Ordered Folders", 60_000));
+    const folderNavigation = previewModal.generatedBundle.folderNavigation;
+    await sourceCommand(() => folderNavigation.expectAvailable());
+    await sourceCommand(() => folderNavigation.open());
+    await sourceCommand(() => folderNavigation.expectRootFolderNames(["Alpha", "Beta", "Outside"]));
+    await sourceCommand(() => folderNavigation.expectRootFileNames([]));
+    await sourceCommand(() => folderNavigation.openFolder("Alpha"));
+    await sourceCommand(() => folderNavigation.expectDirectFileNames("Alpha", [
+      "Alpha note.html",
+    ]));
+    await sourceCommand(() => folderNavigation.openFolder("Beta"));
+    await sourceCommand(() => folderNavigation.expectDirectFileNames("Beta", [
+      "Beta note.html",
+    ]));
+    await sourceCommand(() => folderNavigation.openFolder("Outside"));
+    await sourceCommand(() => folderNavigation.expectDirectFileNames("Outside", [
+      "Beyond outside.html",
+      "Outside note.html",
+    ]));
+    await sourceCommand(() => previewModal.generatedBundle.expectStructuralChildNames(["Beta", "Alpha"]));
+    await sourceCommand(() => folderNavigation.close());
+    await sourceCommand(() => addKeyFrame(htmlGeneration));
+    await sourceCommand(() => checkpoint("ordered collection generated home"));
+    return { folderNavigation };
+  });
 
-  // Open a page in a selected folder.
-  await sourceCommand(() => folderNavigation.open());
-  await sourceCommand(() => folderNavigation.clickFile("Alpha", "Alpha note.html"));
-  await sourceCommand(() => previewModal.generatedBundle.expectSingleHeading("Alpha note"));
-  await sourceCommand(() => folderNavigation.expectSelectedFile("Alpha note.html"));
-  await sourceCommand(() => folderNavigation.open());
-  await sourceCommand(() => checkpoint("ordered collection selected folder page"));
+  await test.step(sections.steps.openPageInSelectedFolder, async () => {
+    await sourceCommand(() => folderNavigation.open());
+    await sourceCommand(() => folderNavigation.clickFile("Alpha", "Alpha note.html"));
+    await sourceCommand(() => previewModal.generatedBundle.expectSingleHeading("Alpha note"));
+    await sourceCommand(() => folderNavigation.expectSelectedFile("Alpha note.html"));
+    await sourceCommand(() => folderNavigation.open());
+    await sourceCommand(() => checkpoint("ordered collection selected folder page"));
+  });
 
   void customBundle;
 

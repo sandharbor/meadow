@@ -108,6 +108,10 @@ export const coreConceptIds = {
   tracking: "tracking",
   versioning: "versioning",
   generationRecord: "generation-record",
+  frozenVersion: "frozen-version",
+  restoringFrozenVersion: "restoring-a-frozen-version",
+  externalFileEdits: "editing-files-outside-meadow",
+  dataIntegrity: "data-integrity",
 
   meadowHome: "meadow-home",
   runtimeInstance: "runtime-instance",

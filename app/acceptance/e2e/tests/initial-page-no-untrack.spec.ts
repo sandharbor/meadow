@@ -17,7 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, BundleEditorPage } from "../src/run/pages/index.js";
 import { Fixture } from "../src/run/workflows.js";
-import { initialPage, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
+import { scenarioSections, initialPage, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
 import { exampleBundle, exampleBundleInitialPageTitle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -28,35 +28,43 @@ const name = linkedScenarioName(conceptText`a publisher should not be able to un
 
 const description = linkedScenarioDescription(conceptText`Select the bundle's starting page and inspect tracking actions. Meadow should prevent
 untracking the page that anchors the bundle.`);
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Establish the starting state: initial page untrack is grayed out.` },
+  compareRegularTrackedPage: { type: 'test', text: conceptText`Compare a regular tracked page.` },
+  rightClickNonInitialTrackedPageUntrack: { type: 'test', text: conceptText`Right-click a non-initial tracked page — Untrack should be enabled` },
+});
 const areas = scenarioAreas([bundleCuration]);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '4fa96a5b-e698-4f24-b93f-756e0f05bea5' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
+test(name.name, { annotation: [{ type: 'scenario-id', description: '4fa96a5b-e698-4f24-b93f-756e0f05bea5' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page, checkpoint, assertMeadowHomeState, addKeyFrame,
 }) => {
-  // --- Setup ---
-  const bundleList = new BundleListPage(page, expect);
-  const editor = new BundleEditorPage(page, expect);
+  const { editor } = await test.step(sections.steps.setup, async () => {
+    const bundleList = new BundleListPage(page, expect);
+    const editor = new BundleEditorPage(page, expect);
 
-  // Add the example bundle and switch to list view
-  await sourceCommand(() => bundleList.goto());
-  await sourceCommand(() => bundleList.clickAddExampleBundleLink());
-  await sourceCommand(() => editor.waitForLoad("example-bundle"));
-  await sourceCommand(() => editor.switchToListView());
-  await sourceCommand(() => page.waitForTimeout(250));
+    // Add the example bundle and switch to list view
+    await sourceCommand(() => bundleList.goto());
+    await sourceCommand(() => bundleList.clickAddExampleBundleLink());
+    await sourceCommand(() => editor.waitForLoad("example-bundle"));
+    await sourceCommand(() => editor.switchToListView());
+    await sourceCommand(() => page.waitForTimeout(250));
 
-  // Right-click the initial page — Untrack should be visible but disabled
-  await sourceCommand(() => editor.rightClickRow(exampleBundleInitialPageTitle));
-  await sourceCommand(() => editor.expectContextMenuItemDisabled("Untrack"));
-  await sourceCommand(() => addKeyFrame(initialPage));
-  await sourceCommand(() => checkpoint("initial page untrack is grayed out"));
+    // Right-click the initial page — Untrack should be visible but disabled
+    await sourceCommand(() => editor.rightClickRow(exampleBundleInitialPageTitle));
+    await sourceCommand(() => editor.expectContextMenuItemDisabled("Untrack"));
+    await sourceCommand(() => addKeyFrame(initialPage));
+    await sourceCommand(() => checkpoint("initial page untrack is grayed out"));
+    return { editor };
+  });
 
-  // --- Test start ---
-  // Compare a regular tracked page.
-  await sourceCommand(() => page.keyboard.press("Escape"));
+  await test.step(sections.steps.compareRegularTrackedPage, async () => {
+    await sourceCommand(() => page.keyboard.press("Escape"));
+  });
 
-  // Right-click a non-initial tracked page — Untrack should be enabled
-  await sourceCommand(() => editor.rightClickRow("Cognitive Biases"));
-  await sourceCommand(() => editor.expectContextMenuItemEnabled("Untrack"));
-  await sourceCommand(() => checkpoint("non-initial page untrack is enabled"));
+  await test.step(sections.steps.rightClickNonInitialTrackedPageUntrack, async () => {
+    await sourceCommand(() => editor.rightClickRow("Cognitive Biases"));
+    await sourceCommand(() => editor.expectContextMenuItemEnabled("Untrack"));
+    await sourceCommand(() => checkpoint("non-initial page untrack is enabled"));
+  });
 
   void exampleBundle;
 

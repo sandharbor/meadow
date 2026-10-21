@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { bundles, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
+import { scenarioSections, bundles, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 import { cli } from "../../../concepts/index.js";
 import { expect, test } from "../src/run/test-fixtures.js";
@@ -28,33 +28,38 @@ const name = linkedScenarioName(conceptText`CLI describes all and final nodes in
 
 const description = linkedScenarioDescription(conceptText`Request both the working graph and final graph through the CLI. Compare their JSON
 output with the expected node inventories.`);
+const sections = scenarioSections({
+  inspectWorkingGraph: { type: 'test', text: conceptText`Inspect the working graph.` },
+  inspectFinalGraph: { type: 'test', text: conceptText`Inspect the final graph.` },
+});
 const areas = scenarioAreas([bundleCuration]);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '380064ce-e016-4815-8cc4-752cbd3c35fa' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
+test(name.name, { annotation: [{ type: 'scenario-id', description: '380064ce-e016-4815-8cc4-752cbd3c35fa' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   assertMeadowHomeState,
   meadowCli,
   checkpoint,
 }) => {
-  // --- Test start ---
-  // Inspect the working graph.
-  const allNodes = await sourceCommand(() => meadowCli.run(
-    ["bundle", "nodes", "meadow-test-bundle-big", "--scope", "all"],
-    { artifactName: "big-bundle-all-nodes" },
-  ));
-  expect(allNodes).toBe(readCliFixture("big-bundle-all-nodes.json"));
+  await test.step(sections.steps.inspectWorkingGraph, async () => {
+    const allNodes = await sourceCommand(() => meadowCli.run(
+      ["bundle", "nodes", "meadow-test-bundle-big", "--scope", "all"],
+      { artifactName: "big-bundle-all-nodes" },
+    ));
+    expect(allNodes).toBe(readCliFixture("big-bundle-all-nodes.json"));
 
-  await sourceCommand(() => checkpoint("all nodes match the expected graph"));
+    await sourceCommand(() => checkpoint("all nodes match the expected graph"));
+  });
 
-  // Inspect the final graph.
-  const finalNodes = await sourceCommand(() => meadowCli.run(
-    ["bundle", "nodes", "meadow-test-bundle-big", "--scope", "final"],
-    { artifactName: "big-bundle-final-nodes" },
-  ));
-  expect(finalNodes).toBe(readCliFixture("big-bundle-final-nodes.json"));
+  await test.step(sections.steps.inspectFinalGraph, async () => {
+    const finalNodes = await sourceCommand(() => meadowCli.run(
+      ["bundle", "nodes", "meadow-test-bundle-big", "--scope", "final"],
+      { artifactName: "big-bundle-final-nodes" },
+    ));
+    expect(finalNodes).toBe(readCliFixture("big-bundle-final-nodes.json"));
 
-  void cli;
-  void bundles;
-  void bigBundle;
-  await sourceCommand(() => checkpoint("final nodes match the expected export"));
+    void cli;
+    void bundles;
+    void bigBundle;
+    await sourceCommand(() => checkpoint("final nodes match the expected export"));
+  });
 
   await sourceCommand(() => assertMeadowHomeState());
 });

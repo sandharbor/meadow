@@ -17,7 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, BundleEditorPage } from "../src/run/pages/index.js";
 import { Fixture } from "../src/run/workflows.js";
-import { tracking, sensitive, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
+import { scenarioSections, tracking, sensitive, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
 import { exampleBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -28,48 +28,54 @@ const name = linkedScenarioName(conceptText`Track All on example bundle untracke
 
 const description = linkedScenarioDescription(conceptText`Select all untracked pages in the example bundle and track them. The operation should
 save automatically without an extra Save click.`);
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Establish the starting state: example bundle loaded.` },
+  selectSafePages: { type: 'test', text: conceptText`Select the safe pages.` },
+  selectAllPagesThisOpensSelectionSidebar: { type: 'test', text: conceptText`Select all pages — this opens the selection sidebar and reveals the bulk action buttons.` },
+  deselectSensitivePagesExampleBundleShipsSensitive: { type: 'test', text: conceptText`Deselect sensitive pages. The example bundle ships with sensitive pages the user hasn't yet acknowledged, so Track All is disabled until they are removed from the selection.` },
+  trackSelectedPagesTrackAllSimpleOp: { type: 'test', text: conceptText`Track the selected pages. Track All is a "simple op": it auto-saves the config and commits in a single request. The Save/Undo buttons must never appear — tracking a batch of pages shouldn't feel like "make-work" to the user.` },
+});
 const areas = scenarioAreas([bundleCuration]);
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'f7ebd9d2-d561-4f63-95f4-0e08e6dfdfe4' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'f7ebd9d2-d561-4f63-95f4-0e08e6dfdfe4' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   assertMeadowHomeState,
   addKeyFrame,
 }) => {
-  // --- Setup ---
-  const bundleList = new BundleListPage(page, expect);
-  const editor = new BundleEditorPage(page, expect);
+  const { editor } = await test.step(sections.steps.setup, async () => {
+    const bundleList = new BundleListPage(page, expect);
+    const editor = new BundleEditorPage(page, expect);
 
-  // Add the example bundle from the empty state
-  await sourceCommand(() => bundleList.goto());
-  await sourceCommand(() => bundleList.clickAddExampleBundleLink());
-  await sourceCommand(() => editor.waitForLoad("example-bundle"));
-  await sourceCommand(() => checkpoint("example bundle loaded"));
+    // Add the example bundle from the empty state
+    await sourceCommand(() => bundleList.goto());
+    await sourceCommand(() => bundleList.clickAddExampleBundleLink());
+    await sourceCommand(() => editor.waitForLoad("example-bundle"));
+    await sourceCommand(() => checkpoint("example bundle loaded"));
+    return { editor };
+  });
 
-  // --- Test start ---
-  // Select the safe pages.
-  await sourceCommand(() => editor.expectUndoNotVisible());
+  await test.step(sections.steps.selectSafePages, async () => {
+    await sourceCommand(() => editor.expectUndoNotVisible());
+  });
 
-  // Select all pages — this opens the selection sidebar and reveals the
-  // bulk action buttons.
-  await sourceCommand(() => editor.clickSelectAll());
-  await sourceCommand(() => page.waitForTimeout(500));
+  await test.step(sections.steps.selectAllPagesThisOpensSelectionSidebar, async () => {
+    await sourceCommand(() => editor.clickSelectAll());
+    await sourceCommand(() => page.waitForTimeout(500));
+  });
 
-  // Deselect sensitive pages. The example bundle ships with sensitive pages
-  // the user hasn't yet acknowledged, so Track All is disabled until they
-  // are removed from the selection.
-  await sourceCommand(() => editor.clickDeselectSensitivePagesIfVisible());
-  await sourceCommand(() => page.waitForTimeout(250));
-  await sourceCommand(() => addKeyFrame(sensitive));
-  await sourceCommand(() => checkpoint("sensitive pages deselected"));
+  await test.step(sections.steps.deselectSensitivePagesExampleBundleShipsSensitive, async () => {
+    await sourceCommand(() => editor.clickDeselectSensitivePagesIfVisible());
+    await sourceCommand(() => page.waitForTimeout(250));
+    await sourceCommand(() => addKeyFrame(sensitive));
+    await sourceCommand(() => checkpoint("sensitive pages deselected"));
+  });
 
-  // Track the selected pages.
-  // Track All is a "simple op": it auto-saves the config and commits in a
-  // single request. The Save/Undo buttons must never appear — tracking a
-  // batch of pages shouldn't feel like "make-work" to the user.
-  await sourceCommand(() => editor.clickTrackAll());
-  await sourceCommand(() => editor.expectUndoNotVisible());
-  await sourceCommand(() => addKeyFrame(tracking));
-  await sourceCommand(() => checkpoint("track all applied — no save button"));
+  await test.step(sections.steps.trackSelectedPagesTrackAllSimpleOp, async () => {
+    await sourceCommand(() => editor.clickTrackAll());
+    await sourceCommand(() => editor.expectUndoNotVisible());
+    await sourceCommand(() => addKeyFrame(tracking));
+    await sourceCommand(() => checkpoint("track all applied — no save button"));
+  });
 
   void exampleBundle;
 

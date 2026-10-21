@@ -16,7 +16,7 @@ limitations under the License.
 
 import type { StartupFailureDiagnostic } from '../../../contracts/types/shared/app-shell/startupRecovery.js';
 import { renderStartupRecoveryHtml } from '../../../shared_code/utils/startupRecoveryHtml.js';
-import { callout, startupRecovery, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas } from '../../../concepts/index.js';
+import { scenarioSections, callout, startupRecovery, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas } from '../../../concepts/index.js';
 import { expect, test } from '../src/run/test-fixtures.js';
 
 test.use({ fixtureHome: 'home_fixture_minimal' });
@@ -40,74 +40,82 @@ const name = linkedScenarioName(conceptText`Startup recovery surfaces remain act
 
 const description = linkedScenarioDescription(conceptText`Exercise startup failure and recovery states. The screens should offer actionable
 choices without exposing secrets.`);
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Establish the starting state: invalid bootstrap recovery screen.` },
+  checkUnsupportedHomeFormat: { type: 'test', text: conceptText`Check an unsupported Home format.` },
+  checkIncompleteMigration: { type: 'test', text: conceptText`Check an incomplete migration.` },
+});
 const areas = scenarioAreas([]);
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'f367e5cb-e72f-4b64-b120-ba1012226a1b' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'f367e5cb-e72f-4b64-b120-ba1012226a1b' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   addKeyFrame,
   assertMeadowHomeState,
 }) => {
-  // --- Setup ---
-  const show = async (diagnostic: StartupFailureDiagnostic): Promise<void> => {
-    await page.setContent(renderStartupRecoveryHtml(diagnostic));
-    await expect(page.getByRole('banner').getByText('Meadow', { exact: true })).toBeVisible();
-    await expect(page.getByText('Meadow stopped before making recovery changes to your Home.')).toBeVisible();
-    await expect(page.getByText('Technical details')).toBeVisible();
-    await expect(page.getByText('Selected Meadow Home')).toBeHidden();
-  };
+  const { show } = await test.step(sections.steps.setup, async () => {
+    const show = async (diagnostic: StartupFailureDiagnostic): Promise<void> => {
+      await page.setContent(renderStartupRecoveryHtml(diagnostic));
+      await expect(page.getByRole('banner').getByText('Meadow', { exact: true })).toBeVisible();
+      await expect(page.getByText('Meadow stopped before making recovery changes to your Home.')).toBeVisible();
+      await expect(page.getByText('Technical details')).toBeVisible();
+      await expect(page.getByText('Selected Meadow Home')).toBeHidden();
+    };
 
-  await sourceCommand(() => show({
-    ...commonDiagnostic,
-    category: 'invalid-syntax',
-    title: 'The bootstrap file has invalid syntax',
-    summary: 'Meadow preserved the existing bootstrap file and did not select a default Home.',
-    relevantPath: commonDiagnostic.bootstrapPath,
-  }));
-  await sourceCommand(() => expect(page.getByRole('button', { name: 'Show the file' })).toBeVisible());
-  await sourceCommand(() => expect(page.getByRole('button', { name: 'Try again' })).toBeVisible());
-  await sourceCommand(() => expect(page.getByRole('button', { name: 'Choose another Home…' })).toBeVisible());
-  await sourceCommand(() => expect(page.getByRole('button', { name: 'Restore verified checkpoint' })).toHaveCount(0));
-  await sourceCommand(() => page.evaluate(() => window.scrollTo(0, 0)));
-  await sourceCommand(() => expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0));
-  await sourceCommand(() => addKeyFrame(startupRecovery, callout));
-  await sourceCommand(() => checkpoint('invalid bootstrap recovery screen'));
+    await sourceCommand(() => show({
+      ...commonDiagnostic,
+      category: 'invalid-syntax',
+      title: 'The bootstrap file has invalid syntax',
+      summary: 'Meadow preserved the existing bootstrap file and did not select a default Home.',
+      relevantPath: commonDiagnostic.bootstrapPath,
+    }));
+    await sourceCommand(() => expect(page.getByRole('button', { name: 'Show the file' })).toBeVisible());
+    await sourceCommand(() => expect(page.getByRole('button', { name: 'Try again' })).toBeVisible());
+    await sourceCommand(() => expect(page.getByRole('button', { name: 'Choose another Home…' })).toBeVisible());
+    await sourceCommand(() => expect(page.getByRole('button', { name: 'Restore verified checkpoint' })).toHaveCount(0));
+    await sourceCommand(() => page.evaluate(() => window.scrollTo(0, 0)));
+    await sourceCommand(() => expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0));
+    await sourceCommand(() => addKeyFrame(startupRecovery, callout));
+    await sourceCommand(() => checkpoint('invalid bootstrap recovery screen'));
+    return { show };
+  });
 
-  // --- Test start ---
-  // Check an unsupported Home format.
-  await sourceCommand(() => show({
-    ...commonDiagnostic,
-    category: 'unsupported-home-format',
-    title: 'This Meadow Home is not compatible with this app',
-    summary: 'Meadow Home format 2 is newer than supported format 1.',
-    relevantPath: '/Users/example/Meadow Home/meadow_home.yaml',
-  }));
-  await sourceCommand(() => expect(page.getByRole('button', { name: 'Choose another Home…' })).toBeVisible());
-  await sourceCommand(() => expect(page.getByRole('button', { name: 'Show this Home' })).toBeVisible());
-  await sourceCommand(() => page.evaluate(() => window.scrollTo(0, 0)));
-  await sourceCommand(() => expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0));
-  await sourceCommand(() => addKeyFrame(startupRecovery, callout));
-  await sourceCommand(() => checkpoint('unsupported Home recovery screen'));
+  await test.step(sections.steps.checkUnsupportedHomeFormat, async () => {
+    await sourceCommand(() => show({
+      ...commonDiagnostic,
+      category: 'unsupported-home-format',
+      title: 'This Meadow Home is not compatible with this app',
+      summary: 'Meadow Home format 2 is newer than supported format 1.',
+      relevantPath: '/Users/example/Meadow Home/meadow_home.yaml',
+    }));
+    await sourceCommand(() => expect(page.getByRole('button', { name: 'Choose another Home…' })).toBeVisible());
+    await sourceCommand(() => expect(page.getByRole('button', { name: 'Show this Home' })).toBeVisible());
+    await sourceCommand(() => page.evaluate(() => window.scrollTo(0, 0)));
+    await sourceCommand(() => expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0));
+    await sourceCommand(() => addKeyFrame(startupRecovery, callout));
+    await sourceCommand(() => checkpoint('unsupported Home recovery screen'));
+  });
 
-  // Check an incomplete migration.
-  await sourceCommand(() => show({
-    ...commonDiagnostic,
-    category: 'incomplete-migration',
-    title: 'A migration needs recovery',
-    summary: 'Migration provider/example stopped in an ambiguous state. Meadow will not rerun it blindly.',
-    relevantPath: '/Users/example/Meadow Home/migrations.yaml',
-    lastSuccessfulMigration: 'core/previous-migration',
-    checkpointId: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-    checkpointPath: '/Users/example/Meadow Home/.meadow-migration-recovery',
-    checkpointAvailable: true,
-  }));
-  await sourceCommand(() => expect(page.getByRole('button', { name: 'Show recovery files' })).toBeVisible());
-  await sourceCommand(() => expect(page.getByText('Pre-migration Git commit', { exact: true })).toBeHidden());
-  await sourceCommand(() => expect(page.getByText('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')).toBeHidden());
-  await sourceCommand(() => expect(page.getByRole('button', { name: 'Restore verified checkpoint' })).toHaveCount(0));
-  await sourceCommand(() => page.evaluate(() => window.scrollTo(0, 0)));
-  await sourceCommand(() => expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0));
-  await sourceCommand(() => addKeyFrame(startupRecovery, callout));
-  await sourceCommand(() => checkpoint('incomplete migration recovery screen'));
+  await test.step(sections.steps.checkIncompleteMigration, async () => {
+    await sourceCommand(() => show({
+      ...commonDiagnostic,
+      category: 'incomplete-migration',
+      title: 'A migration needs recovery',
+      summary: 'Migration provider/example stopped in an ambiguous state. Meadow will not rerun it blindly.',
+      relevantPath: '/Users/example/Meadow Home/migrations.yaml',
+      lastSuccessfulMigration: 'core/previous-migration',
+      checkpointId: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      checkpointPath: '/Users/example/Meadow Home/.meadow-migration-recovery',
+      checkpointAvailable: true,
+    }));
+    await sourceCommand(() => expect(page.getByRole('button', { name: 'Show recovery files' })).toBeVisible());
+    await sourceCommand(() => expect(page.getByText('Pre-migration Git commit', { exact: true })).toBeHidden());
+    await sourceCommand(() => expect(page.getByText('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')).toBeHidden());
+    await sourceCommand(() => expect(page.getByRole('button', { name: 'Restore verified checkpoint' })).toHaveCount(0));
+    await sourceCommand(() => page.evaluate(() => window.scrollTo(0, 0)));
+    await sourceCommand(() => expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0));
+    await sourceCommand(() => addKeyFrame(startupRecovery, callout));
+    await sourceCommand(() => checkpoint('incomplete migration recovery screen'));
+  });
 
   await sourceCommand(() => assertMeadowHomeState());
 });

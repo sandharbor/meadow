@@ -6,6 +6,17 @@ Every `.spec.ts` file must contain exactly one `test(...)` call. If the user
 asks for multiple related scenarios, create multiple spec files. Never put
 multiple tests in a single file.
 
+## Named scenario sections
+
+Declare the scenario's phases with `scenarioSections` from the concept registry,
+include `sections.annotation`, and execute each phase with its named
+`test.step(sections.steps.<name>, async () => { ... })`. Use typed `conceptText`
+for the former section comments so reports reuse the same prose and checked
+links. The first section may have type `setup`; subsequent sections have type
+`test`. Keep implementation notes inside the phase they explain. See
+[`app/concepts/README.md`](../../../../concepts/README.md#scenario-sections)
+for the authoring pattern and passing values between sections.
+
 ## Use workflows for navigation
 
 `acceptance/e2e/src/run/workflows.ts` has composable helpers that chain page object

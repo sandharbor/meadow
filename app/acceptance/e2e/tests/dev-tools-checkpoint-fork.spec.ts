@@ -8,7 +8,7 @@ import { startDevTools } from '../src/run/devTools.js';
 import { DevSavedStatesPage } from '../src/run/pages/dev-tools/SavedStatesPage.js';
 import { BundleEditorPage } from '../src/run/pages/index.js';
 import { Workflows } from '../src/run/workflows.js';
-import { sourcingReviewRedesign, checkpoint as checkpointConcept, localServices, serviceTarget, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas } from '../../../concepts/index.js';
+import { scenarioSections, sourcingReviewRedesign, checkpoint as checkpointConcept, localServices, serviceTarget, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas } from '../../../concepts/index.js';
 import { minioBucketName } from '../../../tooling/local_services/src/index.js';
 import { MinioS3 } from '../src/run/utils/MinioS3.js';
 import { getRuntimePaths } from '../../../runtime/supervisor/src/runtimePaths.js';
@@ -33,82 +33,110 @@ object, the checkpoint is opened in Dev Tools the way the report viewer opens
 it: the whole home and its object storage are restored into a fresh home and
 partition, Hosted Development is refused because local storage holds state,
 and the forked app shows the same pending move on current code.`);
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Establish the starting state: a pending move and a published page exist before the fork.` },
+  openCheckpointInDevToolsWayReport: { type: 'test', text: conceptText`Open the checkpoint in Dev Tools the way the report viewer does.` },
+  verifyScenarioDevToolsOpenedCheckpointLocal: { type: 'test', text: conceptText`Verify the scenario: Dev Tools opened the checkpoint with Local services and refused Hosted Development.` },
+  checkWhatForkRestored: { type: 'test', text: conceptText`Check what the fork restored.` },
+  prepareScenarioVerifyStartingState: { type: 'test', text: conceptText`Prepare the scenario and verify its starting state.` },
+  verifyScenarioForkHoldsCapturedHomeObject: { type: 'test', text: conceptText`Verify the scenario: the fork holds the captured home and object storage.` },
+  reviewMoveInForkedApplication: { type: 'test', text: conceptText`Review the move in the forked application.` },
+  moveHappenedAfterScenarioSLastSource: { type: 'test', text: conceptText`The move happened after the scenario's last source check, exactly as in the captured home, so the fork discovers it on its first check.` },
+});
 const areas = scenarioAreas([]);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '581b954b-d946-45f4-888c-8e6d829757d6' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, minioS3, artifactDir, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }, testInfo) => {
-  // --- Setup ---
-  await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
-  await sourceCommand(() => new BundleEditorPage(page, expect).waitForSourceCheck());
-  await sourceCommand(() => sourceChanges.apply('move-nested-page'));
-  await sourceCommand(() => minioS3.putObjectContent('bundles/forked/index.html', '<h1>Published before the checkpoint</h1>', 'text/html'));
-  await sourceCommand(() => checkpoint('a pending move and a published page exist before the fork'));
+test(name.name, { annotation: [{ type: 'scenario-id', description: '581b954b-d946-45f4-888c-8e6d829757d6' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, minioS3, artifactDir, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }, testInfo) => {
+  await test.step(sections.steps.setup, async () => {
+    await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
+    await sourceCommand(() => new BundleEditorPage(page, expect).waitForSourceCheck());
+    await sourceCommand(() => sourceChanges.apply('move-nested-page'));
+    await sourceCommand(() => minioS3.putObjectContent('bundles/forked/index.html', '<h1>Published before the checkpoint</h1>', 'text/html'));
+    await sourceCommand(() => checkpoint('a pending move and a published page exist before the fork'));
+  });
 
-  // --- Test start ---
-  // Open the checkpoint in Dev Tools the way the report viewer does.
-  const runsDirectory = path.dirname(path.dirname(artifactDir));
-  const runId = path.basename(path.dirname(artifactDir));
-  const scenario = path.basename(artifactDir);
-  const devHomes = fs.mkdtempSync(path.join(os.tmpdir(), 'meadow-dev-homes-'));
-  const devTools = await sourceCommand(() => startDevTools(expect, {
-    MEADOW_HOME_DIRECTORY_OVERRIDE: path.join(devHomes, 'normal-home'),
-    MEADOW_DEV_HOMES_DIRECTORY: devHomes,
-    MEADOW_E2E_RUNS_DIRECTORY: runsDirectory,
-    MEADOW_REPORT_VIEWER_URL: 'http://localhost:5175',
-  }));
+  const { runId, scenario, devHomes, devTools } = await test.step(sections.steps.openCheckpointInDevToolsWayReport, async () => {
+    const runsDirectory = path.dirname(path.dirname(artifactDir));
+    const runId = path.basename(path.dirname(artifactDir));
+    const scenario = path.basename(artifactDir);
+    const devHomes = fs.mkdtempSync(path.join(os.tmpdir(), 'meadow-dev-homes-'));
+    const devTools = await sourceCommand(() => startDevTools(expect, {
+      MEADOW_HOME_DIRECTORY_OVERRIDE: path.join(devHomes, 'normal-home'),
+      MEADOW_DEV_HOMES_DIRECTORY: devHomes,
+      MEADOW_E2E_RUNS_DIRECTORY: runsDirectory,
+      MEADOW_REPORT_VIEWER_URL: 'http://localhost:5175',
+    }));
+    return { runId, scenario, devHomes, devTools };
+  });
+
   let forkHome = '';
-  try {
-    const options = await sourceCommand(async () => (await fetch(`${devTools.serverUrl}/api/checkpoints/${runId}/${scenario}`)).json()) as {
-      checkpoints: { index: number; message: string; openable: boolean; hostedAvailable: boolean; hostedUnavailableReason?: string }[];
-    };
-    expect(options.checkpoints).toHaveLength(1);
-    expect(options.checkpoints[0]).toMatchObject({ index: 1, message: 'a pending move and a published page exist before the fork', openable: true, hostedAvailable: false });
-    expect(options.checkpoints[0].hostedUnavailableReason).toContain('Object storage (MinIO)');
-    const refused = await sourceCommand(() => fetch(`${devTools.serverUrl}/api/saved-states/open`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ origin: { kind: 'checkpoint', runId, scenario, checkpoint: 1 }, serviceTarget: 'hosted', launch: 'none' }),
-    }));
-    expect(refused.status).toBe(409);
-    expect((await sourceCommand(() => refused.json()) as { error: string }).error).toContain('a hosted backend could not resolve it');
-    const opened = await sourceCommand(() => fetch(`${devTools.serverUrl}/api/saved-states/open`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ origin: { kind: 'checkpoint', runId, scenario, checkpoint: 1 }, serviceTarget: 'local', launch: 'browser', targetPath: '/bundle/meadow-test-bundle-big?surface=source-review' }),
-    }));
-    expect(opened.ok).toBe(true);
-    const { state, destination } = await sourceCommand(() => opened.json()) as { state: { homeDirectory: string; partition: string }; destination: string };
-    forkHome = state.homeDirectory;
-    expect(forkHome).not.toBe(testServer.configDir);
-    await sourceCommand(() => addKeyFrame(serviceTarget));
-    await sourceCommand(() => checkpoint('Dev Tools opened the checkpoint with Local services and refused Hosted Development'));
 
-    // Check what the fork restored.
-    await sourceCommand(() => page.goto(devTools.clientUrl));
-    await sourceCommand(() => new DevSavedStatesPage(page, expect).expectOpen({
-      origin: 'Checkpoint 1 of an E2E run',
-      services: /^Local · partition dev-/,
-      checkpoint: 'a pending move and a published page exist before the fork',
-      code: /^Run at [0-9a-f]{7}( \(\+uncommitted\))?; you're at [0-9a-f]{7}( \(\+uncommitted\))?$/,
-    }));
-    await sourceCommand(() => addKeyFrame(checkpointConcept));
-    expect(fs.existsSync(path.join(forkHome, 'source_graphs/meadow-test-bundles-data/source-changes/moved/t001 ---- child 2.md'))).toBe(true);
-    const forkStorage = new MinioS3(testServer.localServices.containers.minio.endpoint, minioBucketName(state.partition), expect);
+  try {
+    const { state, destination } = await test.step(sections.steps.verifyScenarioDevToolsOpenedCheckpointLocal, async () => {
+      const options = await sourceCommand(async () => (await fetch(`${devTools.serverUrl}/api/checkpoints/${runId}/${scenario}`)).json()) as {
+        checkpoints: { index: number; message: string; openable: boolean; hostedAvailable: boolean; hostedUnavailableReason?: string }[];
+      };
+      expect(options.checkpoints).toHaveLength(1);
+      expect(options.checkpoints[0]).toMatchObject({ index: 1, message: 'a pending move and a published page exist before the fork', openable: true, hostedAvailable: false });
+      expect(options.checkpoints[0].hostedUnavailableReason).toContain('Object storage (MinIO)');
+      const refused = await sourceCommand(() => fetch(`${devTools.serverUrl}/api/saved-states/open`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ origin: { kind: 'checkpoint', runId, scenario, checkpoint: 1 }, serviceTarget: 'hosted', launch: 'none' }),
+      }));
+      expect(refused.status).toBe(409);
+      expect((await sourceCommand(() => refused.json()) as { error: string }).error).toContain('a hosted backend could not resolve it');
+      const opened = await sourceCommand(() => fetch(`${devTools.serverUrl}/api/saved-states/open`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ origin: { kind: 'checkpoint', runId, scenario, checkpoint: 1 }, serviceTarget: 'local', launch: 'browser', targetPath: '/bundle/meadow-test-bundle-big?surface=source-review' }),
+      }));
+      expect(opened.ok).toBe(true);
+      const { state, destination } = await sourceCommand(() => opened.json()) as { state: { homeDirectory: string; partition: string }; destination: string };
+      forkHome = state.homeDirectory;
+      expect(forkHome).not.toBe(testServer.configDir);
+      await sourceCommand(() => addKeyFrame(serviceTarget));
+      await sourceCommand(() => checkpoint('Dev Tools opened the checkpoint with Local services and refused Hosted Development'));
+      return { state, destination };
+    });
+
+    const { forkStorage } = await test.step(sections.steps.checkWhatForkRestored, async () => {
+      await sourceCommand(() => page.goto(devTools.clientUrl));
+      await sourceCommand(() => new DevSavedStatesPage(page, expect).expectOpen({
+        origin: 'Checkpoint 1 of an E2E run',
+        services: /^Local · partition dev-/,
+        checkpoint: 'a pending move and a published page exist before the fork',
+        code: /^Run at [0-9a-f]{7}( \(\+uncommitted\))?; you're at [0-9a-f]{7}( \(\+uncommitted\))?$/,
+      }));
+      await sourceCommand(() => addKeyFrame(checkpointConcept));
+      expect(fs.existsSync(path.join(forkHome, 'source_graphs/meadow-test-bundles-data/source-changes/moved/t001 ---- child 2.md'))).toBe(true);
+      const forkStorage = new MinioS3(testServer.localServices.containers.minio.endpoint, minioBucketName(state.partition), expect);
+      return { forkStorage };
+    });
+
     try {
-      expect(await sourceCommand(() => forkStorage.getObjectContent('bundles/forked/index.html'))).toBe('<h1>Published before the checkpoint</h1>');
+      await test.step(sections.steps.prepareScenarioVerifyStartingState, async () => {
+        expect(await sourceCommand(() => forkStorage.getObjectContent('bundles/forked/index.html'))).toBe('<h1>Published before the checkpoint</h1>');
+      });
     } finally {
       forkStorage.destroy();
     }
-    await sourceCommand(() => addKeyFrame(localServices));
-    await sourceCommand(() => checkpoint('the fork holds the captured home and object storage'));
 
-    // Review the move in the forked application.
-    await sourceCommand(() => page.goto(destination));
-    const review = new BundleEditorPage(page, expect).sourceReview;
-    await sourceCommand(() => expect(page.getByTestId('sourcing-workspace')).toBeVisible());
-    await sourceCommand(() => review.open());
-    // The move happened after the scenario's last source check, exactly as in
-    // the captured home, so the fork discovers it on its first check.
-    await sourceCommand(() => review.checkAgain());
-    await sourceCommand(() => review.expectMove('Moved', 't001/deeper/t001 ---- child 2.md', 'source-changes/moved/t001 ---- child 2.md'));
-    await sourceCommand(() => addKeyFrame(checkpointConcept));
-    await sourceCommand(() => checkpoint('the forked application reviews the same pending move'));
+    await test.step(sections.steps.verifyScenarioForkHoldsCapturedHomeObject, async () => {
+      await sourceCommand(() => addKeyFrame(localServices));
+      await sourceCommand(() => checkpoint('the fork holds the captured home and object storage'));
+    });
+
+    const { review } = await test.step(sections.steps.reviewMoveInForkedApplication, async () => {
+      await sourceCommand(() => page.goto(destination));
+      const review = new BundleEditorPage(page, expect).sourceReview;
+      await sourceCommand(() => expect(page.getByTestId('sourcing-workspace')).toBeVisible());
+      await sourceCommand(() => review.open());
+      return { review };
+    });
+
+    await test.step(sections.steps.moveHappenedAfterScenarioSLastSource, async () => {
+      await sourceCommand(() => review.checkAgain());
+      await sourceCommand(() => review.expectMove('Moved', 't001/deeper/t001 ---- child 2.md', 'source-changes/moved/t001 ---- child 2.md'));
+      await sourceCommand(() => addKeyFrame(checkpointConcept));
+      await sourceCommand(() => checkpoint('the forked application reviews the same pending move'));
+    });
   } finally {
     await sourceCommand(() => page.goto('about:blank').catch(() => undefined));
     await sourceCommand(() => devTools.stop());
@@ -116,5 +144,6 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '581b954b-d94
     await sourceCommand(() => testInfo.attach('dev-tools-processes.log', { body: devTools.logs(), contentType: 'text/plain' }));
     fs.rmSync(devHomes, { recursive: true, force: true });
   }
+
   await sourceCommand(() => skipMeadowHomeStateCheck());
 });

@@ -116,24 +116,23 @@ export class PreviewPublishModal {
   // Preview completion
   // ---------------------------------------------------------------------------
 
+  /** Wait for successful preview generation, regardless of tracking state. */
   async waitForPreviewComplete() {
-    await this.expect(this.page.getByText(/untracked page/)).toBeVisible({
-      timeout: 60_000,
-    });
-    // The warning appears before the atomic staging directory has necessarily
-    // been promoted. Wait for the editor's generation action to leave its
-    // Loading state so teardown cannot race a staging-directory rename.
+    await this.expect(this.bundlePreviewTab).toBeVisible({ timeout: 60_000 });
+    // Preview content can appear before staging has been promoted. Wait for the
+    // editor's generation action to finish so closing the modal cannot race it.
     await this.expect(
       this.page.getByRole("button", { name: "Preview", exact: true }).first(),
     ).toBeEnabled({ timeout: 60_000 });
   }
 
-  /** Wait for preview to finish when the bundle has no untracked pages. */
-  async waitForPreviewCompleteAllTracked() {
-    await this.expect(this.bundlePreviewTab).toBeVisible({ timeout: 60_000 });
-    await this.expect(
-      this.page.getByRole("button", { name: "Preview", exact: true }).first(),
-    ).toBeEnabled({ timeout: 60_000 });
+  /** Assert the preview's untracked-page warning, optionally checking its count. */
+  async expectUntrackedPagesWarning(count?: number) {
+    const message = count === undefined
+      ? /^Hey, there (?:is|are) \d+ untracked pages?!$/
+      : `Hey, there ${count === 1 ? 'is' : 'are'} ${count} untracked page${count === 1 ? '' : 's'}!`;
+    await this.expect(this.page.getByRole("dialog", { name: "Preview and publish", exact: true })
+      .getByText(message, { exact: true })).toBeVisible({ timeout: 60_000 });
   }
 
   // ---------------------------------------------------------------------------

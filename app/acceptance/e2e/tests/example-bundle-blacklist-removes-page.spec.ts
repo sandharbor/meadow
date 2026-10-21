@@ -21,7 +21,7 @@ import {
   PreviewPublishModal,
 } from "../src/run/pages/index.js";
 import { Fixture } from "../src/run/workflows.js";
-import { sourcingReviewRedesign, blacklist, bundleConfig, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration, bundleGeneration } from "../../../concepts/index.js";
+import { scenarioSections, sourcingReviewRedesign, blacklist, bundleConfig, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration, bundleGeneration } from "../../../concepts/index.js";
 import { exampleBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -32,67 +32,73 @@ const name = linkedScenarioName(conceptText`blacklisting a single page removes i
 
 const description = linkedScenarioDescription(conceptText`Blacklist a page in the example bundle and regenerate it. The rendered bundle should
 omit that page.`);
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Establish the starting state: example bundle preview — Razors link present.` },
+  blacklistLinkedPage: { type: 'test', text: conceptText`Blacklist the linked page.` },
+  blacklistRazorsViaRightClickContextMenu: { type: 'test', text: conceptText`Blacklist "Razors" via the right-click context menu. Blacklisting a tracked page is a "simple op" that auto-saves and commits immediately, so no explicit Save click is required. (The Blacklist action button in the selected-page detail panel only appears for untracked pages; tracked pages use the context-menu path.)` },
+  autoSaveMeansThereNoPendingDraft: { type: 'test', text: conceptText`Auto-save means there is no pending draft — Save/Undo should not appear.` },
+  previewChangedLinksPreviewAgainLinkRazors: { type: 'test', text: conceptText`Preview the changed links. Preview again: the link to Razors must be gone from the rendered initial page. "Occam's Razor" and "Hanlon's Razor" remain — they are tracked and still reachable directly from the initial page, so blacklisting "Razors" does not transitively remove them. Blacklisting is per-page.` },
+});
 const areas = scenarioAreas([bundleCuration, bundleGeneration]);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '1e577e1d-98d4-4d19-abf1-e48652aa4196' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
+test(name.name, { annotation: [{ type: 'scenario-id', description: '1e577e1d-98d4-4d19-abf1-e48652aa4196' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   skipMeadowHomeStateCheck,
   addKeyFrame,
 }) => {
-  // --- Setup ---
-  const bundleList = new BundleListPage(page, expect);
-  const editor = new BundleEditorPage(page, expect);
-  const previewModal = new PreviewPublishModal(page, expect);
+  const { editor, previewModal } = await test.step(sections.steps.setup, async () => {
+    const bundleList = new BundleListPage(page, expect);
+    const editor = new BundleEditorPage(page, expect);
+    const previewModal = new PreviewPublishModal(page, expect);
 
-  // Add the example bundle from the empty state
-  await sourceCommand(() => bundleList.goto());
-  await sourceCommand(() => bundleList.clickAddExampleBundleLink());
-  await sourceCommand(() => editor.waitForLoad("example-bundle"));
+    // Add the example bundle from the empty state
+    await sourceCommand(() => bundleList.goto());
+    await sourceCommand(() => bundleList.clickAddExampleBundleLink());
+    await sourceCommand(() => editor.waitForLoad("example-bundle"));
 
-  // Sanity-check the initial preview: "Razors" is linked from the initial
-  // page, and its link targets "Occam's Razor" and "Hanlon's Razor" (which
-  // are also linked directly from the initial page) are present too. This
-  // baseline matters for the post-blacklist assertions below.
-  await sourceCommand(() => editor.clickPreview());
-  await sourceCommand(() => previewModal.waitForPreviewComplete());
-  await sourceCommand(() => previewModal.expectPreviewIframeHeading("Notable Mental Models"));
-  await sourceCommand(() => previewModal.expectPreviewLinkVisible("Razors.html"));
-  await sourceCommand(() => previewModal.expectPreviewLinkVisible("Occam's%20Razor.html"));
-  await sourceCommand(() => previewModal.expectPreviewLinkVisible("Hanlon's%20Razor.html"));
-  await sourceCommand(() => checkpoint("example bundle preview — Razors link present"));
+    // Sanity-check the initial preview: "Razors" is linked from the initial
+    // page, and its link targets "Occam's Razor" and "Hanlon's Razor" (which
+    // are also linked directly from the initial page) are present too. This
+    // baseline matters for the post-blacklist assertions below.
+    await sourceCommand(() => editor.clickPreview());
+    await sourceCommand(() => previewModal.waitForPreviewComplete());
+    await sourceCommand(() => previewModal.expectUntrackedPagesWarning());
+    await sourceCommand(() => previewModal.expectPreviewIframeHeading("Notable Mental Models"));
+    await sourceCommand(() => previewModal.expectPreviewLinkVisible("Razors.html"));
+    await sourceCommand(() => previewModal.expectPreviewLinkVisible("Occam's%20Razor.html"));
+    await sourceCommand(() => previewModal.expectPreviewLinkVisible("Hanlon's%20Razor.html"));
+    await sourceCommand(() => checkpoint("example bundle preview — Razors link present"));
+    return { editor, previewModal };
+  });
 
-  // --- Test start ---
-  // Blacklist the linked page.
-  await sourceCommand(() => previewModal.closeModal());
+  await test.step(sections.steps.blacklistLinkedPage, async () => {
+    await sourceCommand(() => previewModal.closeModal());
+  });
 
-  // Blacklist "Razors" via the right-click context menu. Blacklisting a
-  // tracked page is a "simple op" that auto-saves and commits immediately,
-  // so no explicit Save click is required. (The Blacklist action button in
-  // the selected-page detail panel only appears for untracked pages; tracked
-  // pages use the context-menu path.)
-  await sourceCommand(() => editor.switchToListView());
-  await sourceCommand(() => page.waitForTimeout(250));
-  await sourceCommand(() => editor.rightClickRow("Razors"));
-  await sourceCommand(() => editor.clickContextMenuItemAndAwaitAutoSaveAndGraphReload("Blacklist"));
+  await test.step(sections.steps.blacklistRazorsViaRightClickContextMenu, async () => {
+    await sourceCommand(() => editor.switchToListView());
+    await sourceCommand(() => page.waitForTimeout(250));
+    await sourceCommand(() => editor.rightClickRow("Razors"));
+    await sourceCommand(() => editor.clickContextMenuItemAndAwaitAutoSaveAndGraphReload("Blacklist"));
+  });
 
-  // Auto-save means there is no pending draft — Save/Undo should not appear.
-  await sourceCommand(() => expect(page.getByRole('button', { name: 'Undo blacklist change', exact: true })).toBeVisible());
-  await sourceCommand(() => addKeyFrame(blacklist));
-  await sourceCommand(() => addKeyFrame(bundleConfig));
-  await sourceCommand(() => checkpoint("Razors blacklisted — no save button"));
+  await test.step(sections.steps.autoSaveMeansThereNoPendingDraft, async () => {
+    await sourceCommand(() => expect(page.getByRole('button', { name: 'Undo blacklist change', exact: true })).toBeVisible());
+    await sourceCommand(() => addKeyFrame(blacklist));
+    await sourceCommand(() => addKeyFrame(bundleConfig));
+    await sourceCommand(() => checkpoint("Razors blacklisted — no save button"));
+  });
 
-  // Preview the changed links.
-  // Preview again: the link to Razors must be gone from the rendered initial
-  // page. "Occam's Razor" and "Hanlon's Razor" remain — they are tracked and
-  // still reachable directly from the initial page, so blacklisting "Razors"
-  // does not transitively remove them. Blacklisting is per-page.
-  await sourceCommand(() => editor.clickPreview());
-  await sourceCommand(() => previewModal.waitForPreviewComplete());
-  await sourceCommand(() => previewModal.expectPreviewIframeHeading("Notable Mental Models"));
-  await sourceCommand(() => previewModal.expectPreviewLinkNotVisible("Razors.html"));
-  await sourceCommand(() => previewModal.expectPreviewLinkVisible("Occam's%20Razor.html"));
-  await sourceCommand(() => previewModal.expectPreviewLinkVisible("Hanlon's%20Razor.html"));
-  await sourceCommand(() => checkpoint("post-blacklist preview — Razors link removed"));
+  await test.step(sections.steps.previewChangedLinksPreviewAgainLinkRazors, async () => {
+    await sourceCommand(() => editor.clickPreview());
+    await sourceCommand(() => previewModal.waitForPreviewComplete());
+    await sourceCommand(() => previewModal.expectUntrackedPagesWarning());
+    await sourceCommand(() => previewModal.expectPreviewIframeHeading("Notable Mental Models"));
+    await sourceCommand(() => previewModal.expectPreviewLinkNotVisible("Razors.html"));
+    await sourceCommand(() => previewModal.expectPreviewLinkVisible("Occam's%20Razor.html"));
+    await sourceCommand(() => previewModal.expectPreviewLinkVisible("Hanlon's%20Razor.html"));
+    await sourceCommand(() => checkpoint("post-blacklist preview — Razors link removed"));
+  });
 
   void exampleBundle;
 

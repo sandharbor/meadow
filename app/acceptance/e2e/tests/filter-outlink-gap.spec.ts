@@ -17,7 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleEditorPage, FilterPanelComponent } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { linkGap, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
+import { scenarioSections, linkGap, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -26,39 +26,53 @@ const name = linkedScenarioName(conceptText`outlink gap filter auto-calculates t
 
 const description = linkedScenarioDescription(conceptText`Enable the outgoing-link gap filter. Check its calculated threshold and the pages
 selected by that threshold.`);
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Establish the starting state: bundle editor loaded.` },
+  enableOutlinkGapFilter: { type: 'test', text: conceptText`Enable the outlink-gap filter.` },
+  checkAutomaticThreshold: { type: 'test', text: conceptText`Check the automatic threshold.` },
+  soloMatchingPages: { type: 'test', text: conceptText`Solo the matching pages.` },
+  selectVisiblePages: { type: 'test', text: conceptText`Select the visible pages.` },
+  checkSelection: { type: 'test', text: conceptText`Check the selection.` },
+});
 const areas = scenarioAreas([bundleCuration]);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '8ffd467d-ec88-4ef7-894d-72fe4354dd1a' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, checkpoint, assertMeadowHomeState, addKeyFrame }) => {
-  // --- Setup ---
-  const wf = new Workflows(page, expect);
-  await sourceCommand(() => wf.navigateToBigBundle());
-  await sourceCommand(() => checkpoint("bundle editor loaded"));
+test(name.name, { annotation: [{ type: 'scenario-id', description: '8ffd467d-ec88-4ef7-894d-72fe4354dd1a' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, checkpoint, assertMeadowHomeState, addKeyFrame }) => {
+  await test.step(sections.steps.setup, async () => {
+    const wf = new Workflows(page, expect);
+    await sourceCommand(() => wf.navigateToBigBundle());
+    await sourceCommand(() => checkpoint("bundle editor loaded"));
+  });
 
-  // --- Test start ---
-  // Enable the outlink-gap filter.
-  const editor = new BundleEditorPage(page, expect);
-  const filterPanel = new FilterPanelComponent(page, expect);
-  await sourceCommand(() => filterPanel.enableFilter("Outlink Gap"));
-  await sourceCommand(() => page.waitForTimeout(250));
-  await sourceCommand(() => checkpoint("outlink gap filter enabled"));
+  const { editor, filterPanel } = await test.step(sections.steps.enableOutlinkGapFilter, async () => {
+    const editor = new BundleEditorPage(page, expect);
+    const filterPanel = new FilterPanelComponent(page, expect);
+    await sourceCommand(() => filterPanel.enableFilter("Outlink Gap"));
+    await sourceCommand(() => page.waitForTimeout(250));
+    await sourceCommand(() => checkpoint("outlink gap filter enabled"));
+    return { editor, filterPanel };
+  });
 
-  // Check the automatic threshold.
-  const threshold = await sourceCommand(() => filterPanel.getFilterThresholdValue("Outlink Gap"));
-  expect(threshold).toBe(9);
-  await sourceCommand(() => addKeyFrame(linkGap));
-  await sourceCommand(() => checkpoint("outlink gap threshold is 9"));
+  await test.step(sections.steps.checkAutomaticThreshold, async () => {
+    const threshold = await sourceCommand(() => filterPanel.getFilterThresholdValue("Outlink Gap"));
+    expect(threshold).toBe(9);
+    await sourceCommand(() => addKeyFrame(linkGap));
+    await sourceCommand(() => checkpoint("outlink gap threshold is 9"));
+  });
 
-  // Solo the matching pages.
-  await sourceCommand(() => filterPanel.clickSoloOnFilter("Outlink Gap"));
-  await sourceCommand(() => checkpoint("outlink gap filter soloed"));
+  await test.step(sections.steps.soloMatchingPages, async () => {
+    await sourceCommand(() => filterPanel.clickSoloOnFilter("Outlink Gap"));
+    await sourceCommand(() => checkpoint("outlink gap filter soloed"));
+  });
 
-  // Select the visible pages.
-  await sourceCommand(() => editor.clickSelectAll());
-  await sourceCommand(() => checkpoint("all visible pages selected"));
+  await test.step(sections.steps.selectVisiblePages, async () => {
+    await sourceCommand(() => editor.clickSelectAll());
+    await sourceCommand(() => checkpoint("all visible pages selected"));
+  });
 
-  // Check the selection.
-  const titles = await sourceCommand(() => editor.getSelectedPageTitles());
-  expect(titles.length).toBeGreaterThanOrEqual(1);
-  await sourceCommand(() => checkpoint("verified pages selected with outlink gap"));
+  await test.step(sections.steps.checkSelection, async () => {
+    const titles = await sourceCommand(() => editor.getSelectedPageTitles());
+    expect(titles.length).toBeGreaterThanOrEqual(1);
+    await sourceCommand(() => checkpoint("verified pages selected with outlink gap"));
+  });
 
   void bigBundle;
 

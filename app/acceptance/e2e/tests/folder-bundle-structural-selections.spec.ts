@@ -16,7 +16,7 @@ limitations under the License.
 
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleEditorPage, BundleListPage } from "../src/run/pages/index.js";
-import { sourcingReviewRedesign, folderBundles, paths, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
+import { scenarioSections, sourcingReviewRedesign, folderBundles, paths, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
 import { Bundle, Fixture } from "../src/run/workflows.js";
 
 test.use({ bundleMode: "multiple-folders" });
@@ -26,55 +26,63 @@ const name = linkedScenarioName(conceptText`folder context selections include st
 
 const description = linkedScenarioDescription(conceptText`Select a folder's direct children, then its deeper paths. Confirm that structural
 descendants and linked pages are selected in the list and graph.`);
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Establish the starting state: the folder graph is ready for structural selection.` },
+  selectDirectChildren: { type: 'test', text: conceptText`Select direct children.` },
+  selectAllDeeperPaths: { type: 'test', text: conceptText`Select all deeper paths.` },
+});
 const areas = scenarioAreas([bundleCuration]);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '7d68931a-2d3c-403f-b1d4-293f0dd5f124' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
+test(name.name, { annotation: [{ type: 'scenario-id', description: '7d68931a-2d3c-403f-b1d4-293f0dd5f124' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   addKeyFrame,
   assertMeadowHomeState,
 }) => {
-  // --- Setup ---
-  const bundleList = new BundleListPage(page, expect);
-  const editor = new BundleEditorPage(page, expect);
+  const { editor } = await test.step(sections.steps.setup, async () => {
+    const bundleList = new BundleListPage(page, expect);
+    const editor = new BundleEditorPage(page, expect);
 
-  await sourceCommand(() => bundleList.goto());
-  await sourceCommand(() => bundleList.clickBundle(Bundle.FolderStructureMultiple));
-  await sourceCommand(() => editor.waitForLoad(Bundle.FolderStructureMultiple));
-  await sourceCommand(() => editor.switchToListView());
-  await sourceCommand(() => checkpoint("the folder graph is ready for structural selection"));
+    await sourceCommand(() => bundleList.goto());
+    await sourceCommand(() => bundleList.clickBundle(Bundle.FolderStructureMultiple));
+    await sourceCommand(() => editor.waitForLoad(Bundle.FolderStructureMultiple));
+    await sourceCommand(() => editor.switchToListView());
+    await sourceCommand(() => checkpoint("the folder graph is ready for structural selection"));
+    return { editor };
+  });
 
-  // --- Test start ---
-  // Select direct children.
-  await sourceCommand(() => editor.rightClickListViewRowByNodeKey("folder:Alpha"));
-  await sourceCommand(() => editor.clickContextMenuItem("Select Children"));
+  await test.step(sections.steps.selectDirectChildren, async () => {
+    await sourceCommand(() => editor.rightClickListViewRowByNodeKey("folder:Alpha"));
+    await sourceCommand(() => editor.clickContextMenuItem("Select Children"));
 
-  expect((await sourceCommand(() => editor.getSelectedPageTitles())).sort()).toEqual([
-    "Alpha",
-    "Alpha note",
-    "Nested",
-    "Visual map",
-  ].sort());
-  await sourceCommand(() => addKeyFrame(folderBundles));
-  await sourceCommand(() => checkpoint("Select Children includes every direct Alpha child"));
+    expect((await sourceCommand(() => editor.getSelectedPageTitles())).sort()).toEqual([
+      "Alpha",
+      "Alpha note",
+      "Nested",
+      "Visual map",
+    ].sort());
+    await sourceCommand(() => addKeyFrame(folderBundles));
+    await sourceCommand(() => checkpoint("Select Children includes every direct Alpha child"));
+  });
 
-  // Select all deeper paths.
-  await sourceCommand(() => editor.rightClickListViewRowByNodeKey("folder:Alpha"));
-  await sourceCommand(() => editor.clickContextMenuItem("Select Deeper Paths from Here"));
+  await test.step(sections.steps.selectAllDeeperPaths, async () => {
+    await sourceCommand(() => editor.rightClickListViewRowByNodeKey("folder:Alpha"));
+    await sourceCommand(() => editor.clickContextMenuItem("Select Deeper Paths from Here"));
 
-  expect((await sourceCommand(() => editor.getSelectedPageTitles())).sort()).toEqual([
-    "Alpha",
-    "Alpha note",
-    "Beyond outside",
-    "Frontier image",
-    "Nested",
-    "Nested note",
-    "Outside note",
-    "Visual map",
-  ].sort());
-  await sourceCommand(() => editor.switchToGraphView());
-  await sourceCommand(() => editor.expectGraphViewActive());
-  await sourceCommand(() => addKeyFrame(paths));
-  await sourceCommand(() => checkpoint("Select Deeper Paths highlights structural and linked descendants in the graph"));
+    expect((await sourceCommand(() => editor.getSelectedPageTitles())).sort()).toEqual([
+      "Alpha",
+      "Alpha note",
+      "Beyond outside",
+      "Frontier image",
+      "Nested",
+      "Nested note",
+      "Outside note",
+      "Visual map",
+    ].sort());
+    await sourceCommand(() => editor.switchToGraphView());
+    await sourceCommand(() => editor.expectGraphViewActive());
+    await sourceCommand(() => addKeyFrame(paths));
+    await sourceCommand(() => checkpoint("Select Deeper Paths highlights structural and linked descendants in the graph"));
+  });
 
   await sourceCommand(() => assertMeadowHomeState({
     allowedUntracked: [

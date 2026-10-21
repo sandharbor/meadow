@@ -17,7 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleEditorPage, BundleListPage, DeleteBundleModal } from "../src/run/pages/index.js";
 import { Workflows, Bundle } from "../src/run/workflows.js";
-import { deletion, callout, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundles } from "../../../concepts/index.js";
+import { scenarioSections, deletion, callout, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundles } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -26,44 +26,55 @@ const name = linkedScenarioName(conceptText`Delete unpublished bundle from withi
 
 const description = linkedScenarioDescription(conceptText`Delete an unpublished bundle from its editor. Confirm that it disappears from the list
 and its local files are removed.`);
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Establish the starting state: the unpublished bundle is ready for deletion.` },
+  openDeletionConfirmationOpenBundleOptionsMenu: { type: 'test', text: conceptText`Open the deletion confirmation. Open bundle options menu and click Delete bundle` },
+  verifyDeleteConfirmationModal: { type: 'test', text: conceptText`Verify delete confirmation modal` },
+  confirmDeletion: { type: 'test', text: conceptText`Confirm the deletion.` },
+  shouldNavigateBackBundleListAutomatically: { type: 'test', text: conceptText`Should navigate back to bundle list automatically` },
+});
 const areas = scenarioAreas([bundles]);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '720025cc-0103-45b5-8e58-2ca9b37af6d0' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
+test(name.name, { annotation: [{ type: 'scenario-id', description: '720025cc-0103-45b5-8e58-2ca9b37af6d0' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   skipMeadowHomeStateCheck,
   addKeyFrame,
 }) => {
-  // --- Setup ---
-  const wf = new Workflows(page, expect);
-  await sourceCommand(() => wf.navigateToBigBundle());
+  const { editor, deleteModal } = await test.step(sections.steps.setup, async () => {
+    const wf = new Workflows(page, expect);
+    await sourceCommand(() => wf.navigateToBigBundle());
 
-  const editor = new BundleEditorPage(page, expect);
-  const deleteModal = new DeleteBundleModal(page, expect);
-  // Finish the initial fixture review before exercising bundle deletion.
-  await sourceCommand(() => editor.waitForSourceCheck());
+    const editor = new BundleEditorPage(page, expect);
+    const deleteModal = new DeleteBundleModal(page, expect);
+    // Finish the initial fixture review before exercising bundle deletion.
+    await sourceCommand(() => editor.waitForSourceCheck());
 
-  await sourceCommand(() => checkpoint("the unpublished bundle is ready for deletion"));
+    await sourceCommand(() => checkpoint("the unpublished bundle is ready for deletion"));
+    return { editor, deleteModal };
+  });
 
-  // --- Test start ---
-  // Open the deletion confirmation.
-  // Open bundle options menu and click Delete bundle
-  await sourceCommand(() => editor.clickBundleOptionsMenu());
-  await sourceCommand(() => editor.clickDeleteBundleOption());
+  await test.step(sections.steps.openDeletionConfirmationOpenBundleOptionsMenu, async () => {
+    await sourceCommand(() => editor.clickBundleOptionsMenu());
+    await sourceCommand(() => editor.clickDeleteBundleOption());
+  });
 
-  // Verify delete confirmation modal
-  await sourceCommand(() => deleteModal.expectVisible());
-  await sourceCommand(() => addKeyFrame(callout));
-  await sourceCommand(() => addKeyFrame(deletion));
-  await sourceCommand(() => checkpoint("delete confirmation for unpublished bundle"));
+  await test.step(sections.steps.verifyDeleteConfirmationModal, async () => {
+    await sourceCommand(() => deleteModal.expectVisible());
+    await sourceCommand(() => addKeyFrame(callout));
+    await sourceCommand(() => addKeyFrame(deletion));
+    await sourceCommand(() => checkpoint("delete confirmation for unpublished bundle"));
+  });
 
-  // Confirm the deletion.
-  await sourceCommand(() => deleteModal.confirmDelete());
+  await test.step(sections.steps.confirmDeletion, async () => {
+    await sourceCommand(() => deleteModal.confirmDelete());
+  });
 
-  // Should navigate back to bundle list automatically
-  const bundleList = new BundleListPage(page, expect);
-  await sourceCommand(() => bundleList.expectHeadingVisible());
-  await sourceCommand(() => bundleList.expectBundleNotVisible(Bundle.Big));
-  await sourceCommand(() => checkpoint("bundle list after deletion - bundle gone"));
+  await test.step(sections.steps.shouldNavigateBackBundleListAutomatically, async () => {
+    const bundleList = new BundleListPage(page, expect);
+    await sourceCommand(() => bundleList.expectHeadingVisible());
+    await sourceCommand(() => bundleList.expectBundleNotVisible(Bundle.Big));
+    await sourceCommand(() => checkpoint("bundle list after deletion - bundle gone"));
+  });
 
   void bigBundle;
 

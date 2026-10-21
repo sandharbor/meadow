@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { softwareUpdate, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas } from '../../../concepts/index.js';
+import { scenarioSections, softwareUpdate, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas } from '../../../concepts/index.js';
 import { expect, test } from '../src/run/test-fixtures.js';
 
 test.use({ bundleMode: 'single-file' });
@@ -23,73 +23,78 @@ const name = linkedScenarioName(conceptText`Verified update failure remains retr
 
 const description = linkedScenarioDescription(conceptText`Open the software update dialog after a checksum failure. The error should explain that
 the installed app was preserved and offer retry without offering installation.`);
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Establish the starting state: the update callback is registered without renderer errors.` },
+  openFailedUpdateDetails: { type: 'test', text: conceptText`Open the failed update details.` },
+});
 const areas = scenarioAreas([]);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '08283c70-2042-4ae9-a2e3-39709b66458c' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
+test(name.name, { annotation: [{ type: 'scenario-id', description: '08283c70-2042-4ae9-a2e3-39709b66458c' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   testServer,
   checkpoint,
   addKeyFrame,
   assertMeadowHomeState,
 }) => {
-  // --- Setup ---
-  const pageErrors: string[] = [];
-  page.on('pageerror', (error) => pageErrors.push(error.message));
-  const backendConnection = testServer.getBackendConnectionForRendererTest();
-  await sourceCommand(() => page.addInitScript(({ backendConnection: connection }) => {
-    const target = window as unknown as {
-      electronAPI?: Record<string, unknown>;
-      openUpdateModalForTest?: () => void;
-    };
-    target.electronAPI = {
-      getBackendConnection: async () => connection,
-      getTargetPageInfo: async () => null,
-      onOpenFindInBundles: () => undefined,
-      offOpenFindInBundles: () => undefined,
-      showOpenDialog: async () => ({ canceled: true, filePaths: [] }),
-      showSaveDialog: async () => ({ canceled: true }),
-      openExternal: async () => undefined,
-      windowMinimize: async () => undefined,
-      windowMaximize: async () => undefined,
-      windowClose: async () => undefined,
-      checkForUpdate: async () => undefined,
-      downloadUpdate: async () => undefined,
-      installUpdate: async () => undefined,
-      getUpdateState: async () => ({
-        status: 'error',
-        currentVersion: '0.5.41',
-        errorMessage: 'Download failed: the artifact checksum did not match signed metadata. The installed Meadow app was preserved.',
-      }),
-      onUpdateStatus: () => undefined,
-      offUpdateStatus: () => undefined,
-      onOpenUpdateModal: (callback: () => void) => {
-        target.openUpdateModalForTest = callback;
-      },
-      offOpenUpdateModal: () => undefined,
-    };
-  }, { backendConnection }));
-  await sourceCommand(() => page.goto('/'));
-  await sourceCommand(() => expect.poll(async () => ({
-    registered: await page.evaluate(() => Boolean(
-      (window as unknown as { openUpdateModalForTest?: () => void }).openUpdateModalForTest,
-    )),
-    pageErrors,
-  })).toEqual({ registered: true, pageErrors: [] }));
-  await sourceCommand(() => checkpoint("the update callback is registered without renderer errors"));
+  await test.step(sections.steps.setup, async () => {
+    const pageErrors: string[] = [];
+    page.on('pageerror', (error) => pageErrors.push(error.message));
+    const backendConnection = testServer.getBackendConnectionForRendererTest();
+    await sourceCommand(() => page.addInitScript(({ backendConnection: connection }) => {
+      const target = window as unknown as {
+        electronAPI?: Record<string, unknown>;
+        openUpdateModalForTest?: () => void;
+      };
+      target.electronAPI = {
+        getBackendConnection: async () => connection,
+        getTargetPageInfo: async () => null,
+        onOpenFindInBundles: () => undefined,
+        offOpenFindInBundles: () => undefined,
+        showOpenDialog: async () => ({ canceled: true, filePaths: [] }),
+        showSaveDialog: async () => ({ canceled: true }),
+        openExternal: async () => undefined,
+        windowMinimize: async () => undefined,
+        windowMaximize: async () => undefined,
+        windowClose: async () => undefined,
+        checkForUpdate: async () => undefined,
+        downloadUpdate: async () => undefined,
+        installUpdate: async () => undefined,
+        getUpdateState: async () => ({
+          status: 'error',
+          currentVersion: '0.5.41',
+          errorMessage: 'Download failed: the artifact checksum did not match signed metadata. The installed Meadow app was preserved.',
+        }),
+        onUpdateStatus: () => undefined,
+        offUpdateStatus: () => undefined,
+        onOpenUpdateModal: (callback: () => void) => {
+          target.openUpdateModalForTest = callback;
+        },
+        offOpenUpdateModal: () => undefined,
+      };
+    }, { backendConnection }));
+    await sourceCommand(() => page.goto('/'));
+    await sourceCommand(() => expect.poll(async () => ({
+      registered: await page.evaluate(() => Boolean(
+        (window as unknown as { openUpdateModalForTest?: () => void }).openUpdateModalForTest,
+      )),
+      pageErrors,
+    })).toEqual({ registered: true, pageErrors: [] }));
+    await sourceCommand(() => checkpoint("the update callback is registered without renderer errors"));
+  });
 
-  // --- Test start ---
-  // Open the failed update details.
-  await sourceCommand(() => page.evaluate(() => {
-    (window as unknown as { openUpdateModalForTest?: () => void }).openUpdateModalForTest?.();
-  }));
+  await test.step(sections.steps.openFailedUpdateDetails, async () => {
+    await sourceCommand(() => page.evaluate(() => {
+      (window as unknown as { openUpdateModalForTest?: () => void }).openUpdateModalForTest?.();
+    }));
 
-  await sourceCommand(() => expect(page.getByRole('heading', { name: 'Software Update' })).toBeVisible());
-  await sourceCommand(() => expect(page.getByText('Update Error')).toBeVisible());
-  await sourceCommand(() => expect(page.getByText(/checksum did not match signed metadata/i)).toBeVisible());
-  await sourceCommand(() => expect(page.getByText(/installed Meadow app was preserved/i)).toBeVisible());
-  await sourceCommand(() => expect(page.getByRole('button', { name: 'Try Again' })).toBeVisible());
-  await sourceCommand(() => expect(page.getByRole('button', { name: 'Restart to Update' })).toHaveCount(0));
-  await sourceCommand(() => addKeyFrame(softwareUpdate));
-  await sourceCommand(() => checkpoint('verified update checksum failure preserved installed app'));
+    await sourceCommand(() => expect(page.getByRole('heading', { name: 'Software Update' })).toBeVisible());
+    await sourceCommand(() => expect(page.getByText('Update Error')).toBeVisible());
+    await sourceCommand(() => expect(page.getByText(/checksum did not match signed metadata/i)).toBeVisible());
+    await sourceCommand(() => expect(page.getByText(/installed Meadow app was preserved/i)).toBeVisible());
+    await sourceCommand(() => expect(page.getByRole('button', { name: 'Try Again' })).toBeVisible());
+    await sourceCommand(() => expect(page.getByRole('button', { name: 'Restart to Update' })).toHaveCount(0));
+    await sourceCommand(() => addKeyFrame(softwareUpdate));
+    await sourceCommand(() => checkpoint('verified update checksum failure preserved installed app'));
+  });
 
   await sourceCommand(() => assertMeadowHomeState());
 });

@@ -16,7 +16,7 @@ limitations under the License.
 
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, BundleEditorPage, FilterPanelComponent } from "../src/run/pages/index.js";
-import { linkGap, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
+import { scenarioSections, linkGap, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -25,44 +25,62 @@ const name = linkedScenarioName(conceptText`inlink gap filter auto-calculates th
 
 const description = linkedScenarioDescription(conceptText`Enable the incoming-link gap filter. Check its calculated threshold and the pages
 selected by that threshold.`);
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Establish the starting state: bundle list loaded.` },
+  openBigBundle: { type: 'test', text: conceptText`Open the big bundle.` },
+  enableInlinkGapFilter: { type: 'test', text: conceptText`Enable the inlink-gap filter.` },
+  checkAutomaticThreshold: { type: 'test', text: conceptText`Check the automatic threshold.` },
+  soloMatchingPages: { type: 'test', text: conceptText`Solo the matching pages.` },
+  selectVisiblePages: { type: 'test', text: conceptText`Select the visible pages.` },
+  checkSelection: { type: 'test', text: conceptText`Check the selection.` },
+});
 const areas = scenarioAreas([bundleCuration]);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '80a06cf6-e286-4a89-926f-16bc96b26deb' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, checkpoint, assertMeadowHomeState, addKeyFrame }) => {
-  // --- Setup ---
-  const bundleList = new BundleListPage(page, expect);
-  await sourceCommand(() => bundleList.goto());
-  await sourceCommand(() => checkpoint("bundle list loaded"));
+test(name.name, { annotation: [{ type: 'scenario-id', description: '80a06cf6-e286-4a89-926f-16bc96b26deb' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, checkpoint, assertMeadowHomeState, addKeyFrame }) => {
+  const { bundleList } = await test.step(sections.steps.setup, async () => {
+    const bundleList = new BundleListPage(page, expect);
+    await sourceCommand(() => bundleList.goto());
+    await sourceCommand(() => checkpoint("bundle list loaded"));
+    return { bundleList };
+  });
 
-  // --- Test start ---
-  // Open the big bundle.
-  await sourceCommand(() => bundleList.clickBundle("meadow-test-bundle-big"));
-  const editor = new BundleEditorPage(page, expect);
-  await sourceCommand(() => editor.waitForLoad("meadow-test-bundle-big"));
-  await sourceCommand(() => checkpoint("bundle editor loaded"));
+  const { editor } = await test.step(sections.steps.openBigBundle, async () => {
+    await sourceCommand(() => bundleList.clickBundle("meadow-test-bundle-big"));
+    const editor = new BundleEditorPage(page, expect);
+    await sourceCommand(() => editor.waitForLoad("meadow-test-bundle-big"));
+    await sourceCommand(() => checkpoint("bundle editor loaded"));
+    return { editor };
+  });
 
-  // Enable the inlink-gap filter.
-  const filterPanel = new FilterPanelComponent(page, expect);
-  await sourceCommand(() => filterPanel.enableFilter("Inlink Gap"));
-  await sourceCommand(() => page.waitForTimeout(250));
-  await sourceCommand(() => checkpoint("inlink gap filter enabled"));
+  const { filterPanel } = await test.step(sections.steps.enableInlinkGapFilter, async () => {
+    const filterPanel = new FilterPanelComponent(page, expect);
+    await sourceCommand(() => filterPanel.enableFilter("Inlink Gap"));
+    await sourceCommand(() => page.waitForTimeout(250));
+    await sourceCommand(() => checkpoint("inlink gap filter enabled"));
+    return { filterPanel };
+  });
 
-  // Check the automatic threshold.
-  const threshold = await sourceCommand(() => filterPanel.getFilterThresholdValue("Inlink Gap"));
-  expect(threshold).toBe(3);
-  await sourceCommand(() => addKeyFrame(linkGap));
-  await sourceCommand(() => checkpoint("inlink gap threshold is 3"));
+  await test.step(sections.steps.checkAutomaticThreshold, async () => {
+    const threshold = await sourceCommand(() => filterPanel.getFilterThresholdValue("Inlink Gap"));
+    expect(threshold).toBe(3);
+    await sourceCommand(() => addKeyFrame(linkGap));
+    await sourceCommand(() => checkpoint("inlink gap threshold is 3"));
+  });
 
-  // Solo the matching pages.
-  await sourceCommand(() => filterPanel.clickSoloOnFilter("Inlink Gap"));
-  await sourceCommand(() => checkpoint("inlink gap filter soloed"));
+  await test.step(sections.steps.soloMatchingPages, async () => {
+    await sourceCommand(() => filterPanel.clickSoloOnFilter("Inlink Gap"));
+    await sourceCommand(() => checkpoint("inlink gap filter soloed"));
+  });
 
-  // Select the visible pages.
-  await sourceCommand(() => editor.clickSelectAll());
-  await sourceCommand(() => checkpoint("all visible pages selected"));
+  await test.step(sections.steps.selectVisiblePages, async () => {
+    await sourceCommand(() => editor.clickSelectAll());
+    await sourceCommand(() => checkpoint("all visible pages selected"));
+  });
 
-  // Check the selection.
-  const titles = await sourceCommand(() => editor.getSelectedPageTitles());
-  expect(titles.length).toBe(1);
-  await sourceCommand(() => checkpoint("verified one page selected with inlink gap"));
+  await test.step(sections.steps.checkSelection, async () => {
+    const titles = await sourceCommand(() => editor.getSelectedPageTitles());
+    expect(titles.length).toBe(1);
+    await sourceCommand(() => checkpoint("verified one page selected with inlink gap"));
+  });
 
   void bigBundle;
 

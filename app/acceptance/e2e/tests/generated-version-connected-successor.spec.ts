@@ -18,7 +18,7 @@ import { test, expect } from "../src/run/test-fixtures.js";
 import { ChangesTab, CustomizeTab, PreviewPublishModal } from "../src/run/pages/index.js";
 import { GeneratedBundleVersions } from "../src/run/utils/index.js";
 import { Bundle, Workflows } from "../src/run/workflows.js";
-import { changesTab as changesTabDoc, customize, versioning, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleGeneration, bundleReview, bundleSharing } from "../../../concepts/index.js";
+import { scenarioSections, changesTab as changesTabDoc, customize, versioning, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleGeneration, bundleReview, bundleSharing } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -29,98 +29,115 @@ const name = linkedScenarioName(conceptText`V06 generated version connected succ
 const description = linkedScenarioDescription(conceptText`Change a saved generation and create a connected successor. The predecessor should
 freeze, the unsaved successor should show only its differences from the predecessor's
 saved generation, and sharing should warn when an older version is selected.`);
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Establish the starting state: the initial generated version is saved.` },
+  changeGenerationOptions: { type: 'test', text: conceptText`Change the generation options.` },
+  reviewChangedOutput: { type: 'test', text: conceptText`Review the changed output.` },
+  createConnectedVersion: { type: 'test', text: conceptText`Create a connected version.` },
+  unsavedSuccessorComparesPredecessorSSavedGeneration: { type: 'test', text: conceptText`The unsaved successor compares with its predecessor's saved generation.` },
+  compareSharingOldNewVersions: { type: 'test', text: conceptText`Compare sharing the old and new versions.` },
+  returnNewVersion: { type: 'test', text: conceptText`Return to the new version.` },
+});
 const areas = scenarioAreas([bundleGeneration, bundleReview, bundleSharing]);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '74ff8663-eed7-4380-b7d6-bfd3ded60fda' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
+test(name.name, { annotation: [{ type: 'scenario-id', description: '74ff8663-eed7-4380-b7d6-bfd3ded60fda' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   skipMeadowHomeStateCheck,
   addKeyFrame,
 }) => {
-  // --- Setup ---
-  const workflows = new Workflows(page, expect);
-  await sourceCommand(() => workflows.navigateToBigBundlePreview());
+  const { modal, changesTab, versions, initialVersion } = await test.step(sections.steps.setup, async () => {
+    const workflows = new Workflows(page, expect);
+    await sourceCommand(() => workflows.navigateToBigBundlePreview());
 
-  const modal = new PreviewPublishModal(page, expect);
-  const changesTab = new ChangesTab(page, expect);
-  const versions = new GeneratedBundleVersions(page, expect, Bundle.Big);
-  const initialVersion = await sourceCommand(() => versions.waitForOnlyVersion());
+    const modal = new PreviewPublishModal(page, expect);
+    const changesTab = new ChangesTab(page, expect);
+    const versions = new GeneratedBundleVersions(page, expect, Bundle.Big);
+    const initialVersion = await sourceCommand(() => versions.waitForOnlyVersion());
 
-  await sourceCommand(() => modal.clickSaveChanges());
-  await sourceCommand(() => modal.waitForSaveComplete());
-  await sourceCommand(() => modal.clickStep1Review());
+    await sourceCommand(() => modal.clickSaveChanges());
+    await sourceCommand(() => modal.waitForSaveComplete());
+    await sourceCommand(() => modal.clickStep1Review());
 
-  await sourceCommand(() => checkpoint("the initial generated version is saved"));
-
-  // --- Test start ---
-  // Change the generation options.
-  await sourceCommand(() => modal.openCustomizeSidebar());
-  const customizeTab = new CustomizeTab(page, expect);
-  await sourceCommand(() => customizeTab.generationOptions.disableBreadcrumbs());
-  await sourceCommand(() => checkpoint("breadcrumbs disabled for successor"));
-
-  // Review the changed output.
-  await sourceCommand(() => changesTab.waitForRegenerationComplete());
-  await sourceCommand(() => changesTab.expectBadgeVisible());
-  await sourceCommand(() => modal.clickChangesTab());
-  await sourceCommand(() => changesTab.expectOnlyModifiedFiles());
-  await sourceCommand(() => changesTab.clickFirstHtmlFile());
-  await sourceCommand(() => changesTab.fileDetails.ensureOnDiffTab());
-  await sourceCommand(() => changesTab.fileDetails.clickCodeSubTab());
-  await sourceCommand(() => changesTab.fileDetails.expectChangesHeader());
-  await sourceCommand(() => addKeyFrame(customize));
-  await sourceCommand(() => addKeyFrame(changesTabDoc));
-  await sourceCommand(() => checkpoint("pending successor contains modified files"));
-
-  // Create a connected version.
-  await sourceCommand(() => modal.openCreateNewVersionDialog());
-  await sourceCommand(() => modal.createConnectedVersion("Breadcrumb-free reader version"));
-  await sourceCommand(() => modal.expectVersionsTabActive());
-  await sourceCommand(() => modal.expectVersionCreatedMessageHidden());
-
-  const [predecessor, successor] = await sourceCommand(() => versions.waitForCount(2));
-  expect(predecessor).toMatchObject({
-    versionId: initialVersion.versionId,
-    displayState: "frozen",
-  });
-  expect(successor).toMatchObject({
-    displayState: "unsaved",
-    notes: "Breadcrumb-free reader version",
+    await sourceCommand(() => checkpoint("the initial generated version is saved"));
+    return { modal, changesTab, versions, initialVersion };
   });
 
-  await sourceCommand(() => modal.clickVersionsTab());
-  await sourceCommand(() => expect(page.getByText("Frozen", { exact: true })).toBeVisible());
-  await sourceCommand(() => expect(page.getByText("Unsaved", { exact: true })).toBeVisible());
-  await sourceCommand(() => expect(page.getByText("Breadcrumb-free reader version", { exact: true })).toBeVisible());
-  await sourceCommand(() => modal.expectCreateNewVersionDisabledForUnsavedVersion());
-  await sourceCommand(() => modal.expectVersionCardsNewestFirst(successor.versionId, predecessor.versionId));
-  await sourceCommand(() => expect(page.getByRole("heading", { name: "Compare generated files" })).toBeVisible());
-  await sourceCommand(() => expect(page.getByText("modified", { exact: true }).first()).toBeVisible());
-  await sourceCommand(() => addKeyFrame(versioning));
-  await sourceCommand(() => checkpoint("connected successor created and compared"));
+  await test.step(sections.steps.changeGenerationOptions, async () => {
+    await sourceCommand(() => modal.openCustomizeSidebar());
+    const customizeTab = new CustomizeTab(page, expect);
+    await sourceCommand(() => customizeTab.generationOptions.disableBreadcrumbs());
+    await sourceCommand(() => checkpoint("breadcrumbs disabled for successor"));
+  });
 
-  // The unsaved successor compares with its predecessor's saved generation.
-  await sourceCommand(() => modal.clickChangesTab());
-  await sourceCommand(() => changesTab.expectComparisonBaseline("Compared with the saved generation of the previous version"));
-  await sourceCommand(() => changesTab.expectOnlyModifiedFiles());
-  await sourceCommand(() => changesTab.expectNoIdentityNotice());
-  await sourceCommand(() => checkpoint("the unsaved successor shows its differences from the frozen predecessor"));
+  await test.step(sections.steps.reviewChangedOutput, async () => {
+    await sourceCommand(() => changesTab.waitForRegenerationComplete());
+    await sourceCommand(() => changesTab.expectBadgeVisible());
+    await sourceCommand(() => modal.clickChangesTab());
+    await sourceCommand(() => changesTab.expectOnlyModifiedFiles());
+    await sourceCommand(() => changesTab.clickFirstHtmlFile());
+    await sourceCommand(() => changesTab.fileDetails.ensureOnDiffTab());
+    await sourceCommand(() => changesTab.fileDetails.clickCodeSubTab());
+    await sourceCommand(() => changesTab.fileDetails.expectChangesHeader());
+    await sourceCommand(() => addKeyFrame(customize));
+    await sourceCommand(() => addKeyFrame(changesTabDoc));
+    await sourceCommand(() => checkpoint("pending successor contains modified files"));
+  });
 
-  // Compare sharing the old and new versions.
-  await sourceCommand(() => modal.clickSaveChanges());
-  await sourceCommand(() => modal.waitForSaveComplete());
-  await sourceCommand(() => modal.expectShareVersionPurpose("publish"));
-  await sourceCommand(() => modal.expectShareVersionSelected(successor.versionId, "v2"));
-  await sourceCommand(() => modal.expectShareVersionOptionsNewestFirst(successor.versionId, predecessor.versionId));
-  await sourceCommand(() => modal.selectShareVersion(predecessor.versionId));
-  await sourceCommand(() => modal.expectOlderShareVersionWarning("v1", "v2"));
-  await sourceCommand(() => addKeyFrame(versioning));
-  await sourceCommand(() => checkpoint("publish identifies the selected generated version and warns before using an older one"));
+  const { predecessor, successor } = await test.step(sections.steps.createConnectedVersion, async () => {
+    await sourceCommand(() => modal.openCreateNewVersionDialog());
+    await sourceCommand(() => modal.createConnectedVersion("Breadcrumb-free reader version"));
+    await sourceCommand(() => modal.expectVersionsTabActive());
+    await sourceCommand(() => modal.expectVersionCreatedMessageHidden());
 
-  // Return to the new version.
-  await sourceCommand(() => modal.selectShareVersion(successor.versionId));
+    const [predecessor, successor] = await sourceCommand(() => versions.waitForCount(2));
+    expect(predecessor).toMatchObject({
+      versionId: initialVersion.versionId,
+      displayState: "frozen",
+    });
+    expect(successor).toMatchObject({
+      displayState: "unsaved",
+      notes: "Breadcrumb-free reader version",
+    });
 
-  void bigBundle;
-  await sourceCommand(() => checkpoint("the connected successor is selected for sharing"));
+    await sourceCommand(() => modal.clickVersionsTab());
+    await sourceCommand(() => expect(page.getByText("Frozen", { exact: true })).toBeVisible());
+    await sourceCommand(() => expect(page.getByText("Unsaved", { exact: true })).toBeVisible());
+    await sourceCommand(() => expect(page.getByText("Breadcrumb-free reader version", { exact: true })).toBeVisible());
+    await sourceCommand(() => modal.expectCreateNewVersionDisabledForUnsavedVersion());
+    await sourceCommand(() => modal.expectVersionCardsNewestFirst(successor.versionId, predecessor.versionId));
+    await sourceCommand(() => expect(page.getByRole("heading", { name: "Compare generated files" })).toBeVisible());
+    await sourceCommand(() => expect(page.getByText("modified", { exact: true }).first()).toBeVisible());
+    await sourceCommand(() => addKeyFrame(versioning));
+    await sourceCommand(() => checkpoint("connected successor created and compared"));
+    return { predecessor, successor };
+  });
+
+  await test.step(sections.steps.unsavedSuccessorComparesPredecessorSSavedGeneration, async () => {
+    await sourceCommand(() => modal.clickChangesTab());
+    await sourceCommand(() => changesTab.expectComparisonBaseline("Compared with the saved generation of the previous version"));
+    await sourceCommand(() => changesTab.expectOnlyModifiedFiles());
+    await sourceCommand(() => changesTab.expectNoIdentityNotice());
+    await sourceCommand(() => checkpoint("the unsaved successor shows its differences from the frozen predecessor"));
+  });
+
+  await test.step(sections.steps.compareSharingOldNewVersions, async () => {
+    await sourceCommand(() => modal.clickSaveChanges());
+    await sourceCommand(() => modal.waitForSaveComplete());
+    await sourceCommand(() => modal.expectShareVersionPurpose("publish"));
+    await sourceCommand(() => modal.expectShareVersionSelected(successor.versionId, "v2"));
+    await sourceCommand(() => modal.expectShareVersionOptionsNewestFirst(successor.versionId, predecessor.versionId));
+    await sourceCommand(() => modal.selectShareVersion(predecessor.versionId));
+    await sourceCommand(() => modal.expectOlderShareVersionWarning("v1", "v2"));
+    await sourceCommand(() => addKeyFrame(versioning));
+    await sourceCommand(() => checkpoint("publish identifies the selected generated version and warns before using an older one"));
+  });
+
+  await test.step(sections.steps.returnNewVersion, async () => {
+    await sourceCommand(() => modal.selectShareVersion(successor.versionId));
+
+    void bigBundle;
+    await sourceCommand(() => checkpoint("the connected successor is selected for sharing"));
+  });
 
   await sourceCommand(() => skipMeadowHomeStateCheck());
 });

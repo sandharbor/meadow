@@ -20,7 +20,7 @@ import {
   PreviewPublishModal,
 } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { tracking, callout, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration, bundleReview } from "../../../concepts/index.js";
+import { scenarioSections, tracking, callout, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration, bundleReview } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -29,46 +29,56 @@ const name = linkedScenarioName(conceptText`Preview reopens on Review step after
 
 const description = linkedScenarioDescription(conceptText`Follow the preview warning's Check Them link and track more pages. Reopening preview
 should return to Review so the new output can be inspected.`);
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Establish the starting state: share tab with untracked warning.` },
+  inspectUntrackedPages: { type: 'test', text: conceptText`Inspect the untracked pages.` },
+  trackSafePagesThisLeavesSensitivePages: { type: 'test', text: conceptText`Track the safe pages. This leaves sensitive pages untracked so the "untracked page" warning still appears when we reopen the preview modal.` },
+  reopenPreview: { type: 'test', text: conceptText`Reopen the preview.` },
+});
 const areas = scenarioAreas([bundleCuration, bundleReview]);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '21247a8b-c295-4725-a5dd-d78f071f8e4d' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
+test(name.name, { annotation: [{ type: 'scenario-id', description: '21247a8b-c295-4725-a5dd-d78f071f8e4d' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   skipMeadowHomeStateCheck,
   addKeyFrame,
 }) => {
-  // --- Setup ---
-  const wf = new Workflows(page, expect);
-  const editor = new BundleEditorPage(page, expect);
-  const modal = new PreviewPublishModal(page, expect);
+  const { editor, modal } = await test.step(sections.steps.setup, async () => {
+    const wf = new Workflows(page, expect);
+    const editor = new BundleEditorPage(page, expect);
+    const modal = new PreviewPublishModal(page, expect);
 
-  await sourceCommand(() => wf.navigateToBigBundleShareTab());
-  await sourceCommand(() => checkpoint("share tab with untracked warning"));
+    await sourceCommand(() => wf.navigateToBigBundleShareTab());
+    await sourceCommand(() => modal.expectUntrackedPagesWarning());
+    await sourceCommand(() => checkpoint("share tab with untracked warning"));
+    return { editor, modal };
+  });
 
-  // --- Test start ---
-  // Inspect the untracked pages.
-  await sourceCommand(() => modal.clickCheckUntrackedPages());
-  await sourceCommand(() => page.waitForTimeout(500));
-  await sourceCommand(() => addKeyFrame(callout));
-  await sourceCommand(() => checkpoint("modal closed - untracked filter active"));
+  await test.step(sections.steps.inspectUntrackedPages, async () => {
+    await sourceCommand(() => modal.clickCheckUntrackedPages());
+    await sourceCommand(() => page.waitForTimeout(500));
+    await sourceCommand(() => addKeyFrame(callout));
+    await sourceCommand(() => checkpoint("modal closed - untracked filter active"));
+  });
 
-  // Track the safe pages.
-  // This leaves sensitive pages untracked so the "untracked page" warning
-  // still appears when we reopen the preview modal.
-  await sourceCommand(() => editor.clickSelectAll());
-  await sourceCommand(() => page.waitForTimeout(500));
+  await test.step(sections.steps.trackSafePagesThisLeavesSensitivePages, async () => {
+    await sourceCommand(() => editor.clickSelectAll());
+    await sourceCommand(() => page.waitForTimeout(500));
 
-  await sourceCommand(() => editor.clickDeselectSensitivePagesIfVisible());
-  await sourceCommand(() => page.waitForTimeout(250));
+    await sourceCommand(() => editor.clickDeselectSensitivePagesIfVisible());
+    await sourceCommand(() => page.waitForTimeout(250));
 
-  await sourceCommand(() => editor.clickTrackAll());
-  await sourceCommand(() => addKeyFrame(tracking));
-  await sourceCommand(() => checkpoint("non-sensitive untracked pages tracked"));
+    await sourceCommand(() => editor.clickTrackAll());
+    await sourceCommand(() => addKeyFrame(tracking));
+    await sourceCommand(() => checkpoint("non-sensitive untracked pages tracked"));
+  });
 
-  // Reopen the preview.
-  await sourceCommand(() => editor.clickPreview());
-  await sourceCommand(() => modal.waitForPreviewComplete());
-  await sourceCommand(() => modal.expectOnReviewStep());
-  await sourceCommand(() => checkpoint("preview reopens on review step not share step"));
+  await test.step(sections.steps.reopenPreview, async () => {
+    await sourceCommand(() => editor.clickPreview());
+    await sourceCommand(() => modal.waitForPreviewComplete());
+    await sourceCommand(() => modal.expectUntrackedPagesWarning());
+    await sourceCommand(() => modal.expectOnReviewStep());
+    await sourceCommand(() => checkpoint("preview reopens on review step not share step"));
+  });
 
   void bigBundle;
 

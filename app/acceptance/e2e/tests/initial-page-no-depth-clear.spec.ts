@@ -18,7 +18,7 @@ import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, BundleEditorPage } from "../src/run/pages/index.js";
 import { SelectedPageDetailComponent } from "../src/run/pages/areas/bundle/curation/SelectedPageDetailComponent.js";
 import { Fixture } from "../src/run/workflows.js";
-import { sourcingReviewRedesign, initialPage, bundleConfig, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
+import { scenarioSections, sourcingReviewRedesign, initialPage, bundleConfig, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
 import { exampleBundle, exampleBundleInitialPageTitle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -29,43 +29,51 @@ const name = linkedScenarioName(conceptText`a publisher should not be able to re
 
 const description = linkedScenarioDescription(conceptText`Select the starting page and inspect its depth controls. Its required traversal depths
 should not be removable.`);
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Establish the starting state: initial page depth has no remove override button.` },
+  compareRegularPageOverride: { type: 'test', text: conceptText`Compare a regular page override.` },
+  openDetailsVerifyRemoveOverrideButtonVisible: { type: 'test', text: conceptText`Open details and verify the Remove override button IS visible` },
+});
 const areas = scenarioAreas([bundleCuration]);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '5f71211d-5ca3-48b0-8655-686be2662d65' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
+test(name.name, { annotation: [{ type: 'scenario-id', description: '5f71211d-5ca3-48b0-8655-686be2662d65' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page, checkpoint, assertMeadowHomeState, addKeyFrame,
 }) => {
-  // --- Setup ---
-  const bundleList = new BundleListPage(page, expect);
-  const editor = new BundleEditorPage(page, expect);
+  const { editor } = await test.step(sections.steps.setup, async () => {
+    const bundleList = new BundleListPage(page, expect);
+    const editor = new BundleEditorPage(page, expect);
 
-  // Add the example bundle and switch to list view
-  await sourceCommand(() => bundleList.goto());
-  await sourceCommand(() => bundleList.clickAddExampleBundleLink());
-  await sourceCommand(() => editor.waitForLoad("example-bundle"));
-  await sourceCommand(() => editor.switchToListView());
-  await sourceCommand(() => page.waitForTimeout(250));
+    // Add the example bundle and switch to list view
+    await sourceCommand(() => bundleList.goto());
+    await sourceCommand(() => bundleList.clickAddExampleBundleLink());
+    await sourceCommand(() => editor.waitForLoad("example-bundle"));
+    await sourceCommand(() => editor.switchToListView());
+    await sourceCommand(() => page.waitForTimeout(250));
 
-  // Click the initial page — its details auto-expand (depth 0)
-  await sourceCommand(() => editor.clickListViewRowByExactName(exampleBundleInitialPageTitle));
-  await sourceCommand(() => page.waitForTimeout(250));
+    // Click the initial page — its details auto-expand (depth 0)
+    await sourceCommand(() => editor.clickListViewRowByExactName(exampleBundleInitialPageTitle));
+    await sourceCommand(() => page.waitForTimeout(250));
 
-  // The initial page has a depth set but the Remove override button should NOT be visible
-  const initialDetail = new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect);
-  await sourceCommand(() => initialDetail.expectRemoveOutlinksDepthNotVisible());
-  await sourceCommand(() => addKeyFrame(initialPage));
-  await sourceCommand(() => checkpoint("initial page depth has no remove override button"));
+    // The initial page has a depth set but the Remove override button should NOT be visible
+    const initialDetail = new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect);
+    await sourceCommand(() => initialDetail.expectRemoveOutlinksDepthNotVisible());
+    await sourceCommand(() => addKeyFrame(initialPage));
+    await sourceCommand(() => checkpoint("initial page depth has no remove override button"));
+    return { editor };
+  });
 
-  // --- Test start ---
-  // Compare a regular page override.
-  await sourceCommand(() => editor.clickListViewRowByExactName("Cognitive Biases"));
-  await sourceCommand(() => page.waitForTimeout(250));
+  await test.step(sections.steps.compareRegularPageOverride, async () => {
+    await sourceCommand(() => editor.clickListViewRowByExactName("Cognitive Biases"));
+    await sourceCommand(() => page.waitForTimeout(250));
+  });
 
-  // Open details and verify the Remove override button IS visible
-  const overrideDetail = new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect);
-  await sourceCommand(() => overrideDetail.openDetails());
-  await sourceCommand(() => page.waitForTimeout(250));
-  await sourceCommand(() => overrideDetail.expectRemoveOutlinksDepthVisible());
-  await sourceCommand(() => addKeyFrame(bundleConfig));
-  await sourceCommand(() => checkpoint("non-initial page depth has remove override button"));
+  await test.step(sections.steps.openDetailsVerifyRemoveOverrideButtonVisible, async () => {
+    const overrideDetail = new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect);
+    await sourceCommand(() => overrideDetail.openDetails());
+    await sourceCommand(() => page.waitForTimeout(250));
+    await sourceCommand(() => overrideDetail.expectRemoveOutlinksDepthVisible());
+    await sourceCommand(() => addKeyFrame(bundleConfig));
+    await sourceCommand(() => checkpoint("non-initial page depth has remove override button"));
+  });
 
   void exampleBundle;
 

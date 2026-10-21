@@ -35,8 +35,10 @@ for (const width of [1280, 390]) {
       '  accept: { type: "test", text: conceptText`Accept the choices.` },',
       '});',
       'test(name.name, { annotation: [name.annotation, description.annotation, sections.annotation] }, async () => {',
-      '  await test.step(sections.steps.setup, async () => {',
+      '  const { editor } = await test.step(sections.steps.setup, async () => {',
+      '    const editor = new Editor();',
       '    await sourceCommand(() => checkpoint("ready"));',
+      '    return { editor };',
       '  });',
       '  await test.step(sections.steps.review, async () => {',
       '    await sourceCommand(() => checkpoint("reviewed"));',
@@ -81,9 +83,11 @@ for (const width of [1280, 390]) {
       await expect(review).toContainText('Section 1');
       await expect(page.getByRole('region', { name: 'Scenario section: accept', exact: true })).toContainText('Section 2');
       await expect(page.locator('[data-source-line="4"]')).toHaveCount(0);
-      await expect(page.locator('[data-source-line="12"]')).toHaveCount(0);
-      await expect(page.locator('[data-source-line="11"]')).toContainText('checkpoint("ready")');
-      await expect(page.locator('[data-source-line="14"]')).toContainText('checkpoint("reviewed")');
+      await expect(page.locator('[data-source-line="14"]')).toHaveCount(0);
+      await expect(page.locator('[data-source-line="12"]')).toContainText('checkpoint("ready")');
+      await expect(page.locator('[data-source-line="16"]')).toContainText('checkpoint("reviewed")');
+      await expect(page.locator('[data-source-line="13"]')).toHaveCount(0);
+      await expect(page.locator('[data-source-line="11"]')).toContainText('const editor = new Editor()');
       expect((await setup.boundingBox())!.y).toBeLessThan((await page.locator('[data-source-line="11"]').boundingBox())!.y);
       await review.getByRole('link', { name: 'source-sensitive', exact: true }).click();
       await expect(panel.getByRole('heading', { name: sourceSensitivity.name, exact: true })).toBeVisible();
@@ -94,6 +98,7 @@ for (const width of [1280, 390]) {
       await expect(review).toHaveCount(0);
       await expect(page.locator('[data-source-line="4"]')).toContainText('const sections = scenarioSections');
       await expect(page.locator('[data-source-line="10"]')).toContainText('test.step(sections.steps.setup');
+      await expect(page.locator('[data-source-line="13"]')).toContainText('return { editor }');
       await page.getByRole('checkbox', { name: 'show the real code', exact: true }).uncheck();
       await expect(review).toBeVisible();
       // Legacy captures retain their source rather than losing declarations without prose.

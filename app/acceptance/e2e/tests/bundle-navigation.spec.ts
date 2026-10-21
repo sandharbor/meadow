@@ -17,7 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { AppPlace, BundleListPage, BundleEditorPage, PreviewPublishModal } from "../src/run/pages/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
-import { appPlace, bundles, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas } from "../../../concepts/index.js";
+import { scenarioSections, appPlace, bundles, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas } from "../../../concepts/index.js";
 
 test.use({ bundleMode: "single-file" });
 
@@ -27,55 +27,75 @@ const description = linkedScenarioDescription(conceptText`Open a bundle from the
 pages and navigation controls. Each page's menu opens its dialogs, which close
 without leaving the page. Opening Preview adds a history entry, so browser Back
 closes Preview, then returns to the list, and Forward replays both.`);
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Establish the starting state: bundle list loaded.` },
+  openCloseBundleSDialogsList: { type: 'test', text: conceptText`Open and close the bundle's dialogs from the list.` },
+  openBigBundle: { type: 'test', text: conceptText`Open the big bundle.` },
+  openCloseBundleSDialogsOptions: { type: 'test', text: conceptText`Open and close the bundle's dialogs from its options.` },
+  openPreviewThenStepThroughHistory: { type: 'test', text: conceptText`Open Preview, then step through history.` },
+  letPreviewFinishGeneratingSoClosingIt: { type: 'test', text: conceptText`Let the preview finish generating, so closing it does not cancel the run.` },
+});
 const areas = scenarioAreas([bundles]);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '0db228c5-345b-459d-8ff0-27b5ef0acc87' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, checkpoint, assertMeadowHomeState }) => {
-  // --- Setup ---
-  const bundleList = new BundleListPage(page, expect);
-  await sourceCommand(() => bundleList.goto());
-  await sourceCommand(() => checkpoint("bundle list loaded"));
+test(name.name, { annotation: [{ type: 'scenario-id', description: '0db228c5-345b-459d-8ff0-27b5ef0acc87' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, checkpoint, assertMeadowHomeState }) => {
+  const { bundleList } = await test.step(sections.steps.setup, async () => {
+    const bundleList = new BundleListPage(page, expect);
+    await sourceCommand(() => bundleList.goto());
+    await sourceCommand(() => checkpoint("bundle list loaded"));
+    return { bundleList };
+  });
 
-  // --- Test start ---
-  // Open and close the bundle's dialogs from the list.
-  const places = new AppPlace(page, expect);
-  await sourceCommand(() => bundleList.openAndCloseBundleAction("meadow-test-bundle-big", "Edit bundle details", "Edit Bundle Details"));
-  await sourceCommand(() => bundleList.openAndCloseBundleAction("meadow-test-bundle-big", "Rename bundle", "Rename bundle"));
-  await sourceCommand(() => places.expectCurrent("/"));
-  await sourceCommand(() => checkpoint("the list's bundle dialogs open and close"));
+  const { places } = await test.step(sections.steps.openCloseBundleSDialogsList, async () => {
+    const places = new AppPlace(page, expect);
+    await sourceCommand(() => bundleList.openAndCloseBundleAction("meadow-test-bundle-big", "Edit bundle details", "Edit Bundle Details"));
+    await sourceCommand(() => bundleList.openAndCloseBundleAction("meadow-test-bundle-big", "Rename bundle", "Rename bundle"));
+    await sourceCommand(() => places.expectCurrent("/"));
+    await sourceCommand(() => checkpoint("the list's bundle dialogs open and close"));
+    return { places };
+  });
 
-  // Open the big bundle.
-  await sourceCommand(() => bundleList.clickBundle("meadow-test-bundle-big"));
-  const editor = new BundleEditorPage(page, expect);
-  await sourceCommand(() => editor.waitForLoad("meadow-test-bundle-big"));
+  const { editor } = await test.step(sections.steps.openBigBundle, async () => {
+    await sourceCommand(() => bundleList.clickBundle("meadow-test-bundle-big"));
+    const editor = new BundleEditorPage(page, expect);
+    await sourceCommand(() => editor.waitForLoad("meadow-test-bundle-big"));
 
-  await sourceCommand(() => editor.expectGraphViewActive());
-  await sourceCommand(() => checkpoint("graph view visible"));
+    await sourceCommand(() => editor.expectGraphViewActive());
+    await sourceCommand(() => checkpoint("graph view visible"));
+    return { editor };
+  });
 
-  // Open and close the bundle's dialogs from its options.
-  await sourceCommand(() => editor.openAndCloseBundleOption("Edit bundle details", "Edit Bundle Details"));
-  await sourceCommand(() => editor.openAndCloseBundleOption("Rename bundle", "Rename bundle"));
-  await sourceCommand(() => editor.openAndCloseBundleOption("Bundle logs", "Bundle logs"));
-  await sourceCommand(() => places.expectCurrent("/bundle/meadow-test-bundle-big"));
-  await sourceCommand(() => checkpoint("the bundle's option dialogs open and close"));
+  await test.step(sections.steps.openCloseBundleSDialogsOptions, async () => {
+    await sourceCommand(() => editor.openAndCloseBundleOption("Edit bundle details", "Edit Bundle Details"));
+    await sourceCommand(() => editor.openAndCloseBundleOption("Rename bundle", "Rename bundle"));
+    await sourceCommand(() => editor.openAndCloseBundleOption("Bundle logs", "Bundle logs"));
+    await sourceCommand(() => places.expectCurrent("/bundle/meadow-test-bundle-big"));
+    await sourceCommand(() => checkpoint("the bundle's option dialogs open and close"));
+  });
 
-  // Open Preview, then step through history.
-  const preview = page.getByRole("dialog", { name: "Preview and publish" });
-  await sourceCommand(() => editor.clickPreview());
-  await sourceCommand(() => expect(preview).toBeVisible());
-  await sourceCommand(() => places.expectUrlMatching(/^\/bundle\/meadow-test-bundle-big\?surface=preview&step=review&tab=bundle-preview/));
-  // Let the preview finish generating, so closing it does not cancel the run.
-  await sourceCommand(() => new PreviewPublishModal(page, expect).waitForPreviewComplete());
-  await sourceCommand(() => places.back());
-  await sourceCommand(() => expect(preview).toBeHidden());
-  await sourceCommand(() => places.expectCurrent("/bundle/meadow-test-bundle-big"));
-  await sourceCommand(() => places.back());
-  await sourceCommand(() => places.expectCurrent("/"));
-  await sourceCommand(() => places.forward());
-  await sourceCommand(() => places.expectCurrent("/bundle/meadow-test-bundle-big"));
-  await sourceCommand(() => places.forward());
-  await sourceCommand(() => expect(preview).toBeVisible());
-  await sourceCommand(() => places.expectCurrentMatching(/^\/bundle\/meadow-test-bundle-big\?surface=preview&step=review&tab=bundle-preview/));
-  await sourceCommand(() => new PreviewPublishModal(page, expect).waitForPreviewComplete());
-  await sourceCommand(() => checkpoint("Back and Forward move through the bundle list, the bundle, and Preview"));
+  const { preview } = await test.step(sections.steps.openPreviewThenStepThroughHistory, async () => {
+    const preview = page.getByRole("dialog", { name: "Preview and publish" });
+    await sourceCommand(() => editor.clickPreview());
+    await sourceCommand(() => expect(preview).toBeVisible());
+    await sourceCommand(() => places.expectUrlMatching(/^\/bundle\/meadow-test-bundle-big\?surface=preview&step=review&tab=bundle-preview/));
+    return { preview };
+  });
+
+  await test.step(sections.steps.letPreviewFinishGeneratingSoClosingIt, async () => {
+    await sourceCommand(() => new PreviewPublishModal(page, expect).waitForPreviewComplete());
+    await sourceCommand(() => new PreviewPublishModal(page, expect).expectUntrackedPagesWarning());
+    await sourceCommand(() => places.back());
+    await sourceCommand(() => expect(preview).toBeHidden());
+    await sourceCommand(() => places.expectCurrent("/bundle/meadow-test-bundle-big"));
+    await sourceCommand(() => places.back());
+    await sourceCommand(() => places.expectCurrent("/"));
+    await sourceCommand(() => places.forward());
+    await sourceCommand(() => places.expectCurrent("/bundle/meadow-test-bundle-big"));
+    await sourceCommand(() => places.forward());
+    await sourceCommand(() => expect(preview).toBeVisible());
+    await sourceCommand(() => places.expectCurrentMatching(/^\/bundle\/meadow-test-bundle-big\?surface=preview&step=review&tab=bundle-preview/));
+    await sourceCommand(() => new PreviewPublishModal(page, expect).waitForPreviewComplete());
+    await sourceCommand(() => new PreviewPublishModal(page, expect).expectUntrackedPagesWarning());
+    await sourceCommand(() => checkpoint("Back and Forward move through the bundle list, the bundle, and Preview"));
+  });
 
   void bigBundle;
   void bundles;

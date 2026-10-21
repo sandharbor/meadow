@@ -16,12 +16,12 @@ test.use({ fixtureHome: Fixture.SourcingReview });
 const name = linkedScenarioName(conceptText`Sourcing tracks safe additions by default and skips sensitive additions`);
 
 const description = linkedScenarioDescription(conceptText`Track added pages starts on: safe additions are tracked, while ${conceptLink(sourceSensitivity.id, 'source-sensitive')} and ${conceptLink(filterSensitivity.id, 'filter-sensitive')} additions are skipped.
-Accept the automatic choices, then verify that only the sensitive additions remain in the ordinary Untracked filter and preview warns about them.`);
+Accept the automatic choices, then verify that only the sensitive additions remain in the ordinary Untracked filter and preview reports two untracked pages.`);
 const sections = scenarioSections({
   setup: { type: 'setup', text: conceptText`Open the accepted bundle and mark policy drafts sensitive with a custom filter.` },
   review: { type: 'test', text: conceptText`Add two safe pages, a ${conceptLink(sourceSensitivity.id, 'source-sensitive')} page, and a ${conceptLink(filterSensitivity.id, 'filter-sensitive')} policy draft. Review the automatic choices: safe pages are tracked, both sensitive pages are skipped, and only those skipped pages appear in Untracked.` },
   accept: { type: 'test', text: conceptText`Accept the automatic choices without page-specific overrides. Verify the saved configuration tracks both safe pages and the ordinary Untracked filter contains only the sensitive additions.` },
-  preview: { type: 'test', text: conceptText`Preview the accepted bundle and check the warning about the sensitive pages skipped by automatic tracking.` },
+  preview: { type: 'test', text: conceptText`Preview the accepted bundle and verify the untracked-page warning reports two pages: the sensitive additions left untracked.` },
 });
 const pressures = scenarioDesignPressures([preventAccidentalSharing]);
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
@@ -80,7 +80,8 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '33353032-44b
     await sourceCommand(() => editor.clickPreview());
     const preview = new PreviewPublishModal(page, expect);
     await sourceCommand(() => preview.waitForPreviewComplete());
-    await sourceCommand(() => checkpoint('preview warns about the automatically skipped sensitive additions'));
+    await sourceCommand(() => preview.expectUntrackedPagesWarning(2));
+    await sourceCommand(() => checkpoint('preview warns about two untracked pages after sensitive additions were skipped'));
     await sourceCommand(() => preview.closeModal());
   });
   await sourceCommand(() => assertMeadowHomeState({ allowedUntracked: ['source_graphs/.source-changes.jsonl', 'bundles/sourcing-review/config/generated_bundle_versions.yaml', 'bundles/sourcing-review/build/', 'bundles/sourcing-review/html/', 'bundles/sourcing-review/raw/generation_inputs/', 'bundles/sourcing-review/raw/tracked_page_content/'], allowedModified: ['source_graphs/sourcing-review-data/Start.md'] }));

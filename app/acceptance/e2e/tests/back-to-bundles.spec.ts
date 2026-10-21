@@ -18,7 +18,7 @@ import { test, expect } from "../src/run/test-fixtures.js";
 import { Workflows } from "../src/run/workflows.js";
 import { BundleListPage, BundleEditorPage } from "../src/run/pages/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
-import { bundles, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas } from "../../../concepts/index.js";
+import { scenarioSections, bundles, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas } from "../../../concepts/index.js";
 
 test.use({ bundleMode: "single-file" });
 
@@ -26,21 +26,27 @@ const name = linkedScenarioName(conceptText`navigate back to bundles list from b
 
 const description = linkedScenarioDescription(conceptText`Open the big bundle, then return to the bundle list. The list should show the available
 bundles again.`);
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Establish the starting state: big bundle loaded.` },
+  returnBundleList: { type: 'test', text: conceptText`Return to the bundle list.` },
+});
 const areas = scenarioAreas([bundles]);
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'fb52e607-1bb1-4cc8-9a88-15ab2735b7f1' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, checkpoint, assertMeadowHomeState }) => {
-  // --- Setup ---
-  const wf = new Workflows(page, expect);
-  const bundleList = new BundleListPage(page, expect);
-  const editor = new BundleEditorPage(page, expect);
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'fb52e607-1bb1-4cc8-9a88-15ab2735b7f1' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, checkpoint, assertMeadowHomeState }) => {
+  const { bundleList, editor } = await test.step(sections.steps.setup, async () => {
+    const wf = new Workflows(page, expect);
+    const bundleList = new BundleListPage(page, expect);
+    const editor = new BundleEditorPage(page, expect);
 
-  await sourceCommand(() => wf.navigateToBigBundle());
-  await sourceCommand(() => checkpoint("big bundle loaded"));
+    await sourceCommand(() => wf.navigateToBigBundle());
+    await sourceCommand(() => checkpoint("big bundle loaded"));
+    return { bundleList, editor };
+  });
 
-  // --- Test start ---
-  // Return to the bundle list.
-  await sourceCommand(() => editor.clickBackToBundles());
-  await sourceCommand(() => bundleList.expectHeadingVisible());
-  await sourceCommand(() => checkpoint("back at bundles list"));
+  await test.step(sections.steps.returnBundleList, async () => {
+    await sourceCommand(() => editor.clickBackToBundles());
+    await sourceCommand(() => bundleList.expectHeadingVisible());
+    await sourceCommand(() => checkpoint("back at bundles list"));
+  });
 
   void bigBundle;
   void bundles;

@@ -2707,6 +2707,7 @@ export default function ScenarioViewer() {
                       const number = i + 1
                       const { declaration, steps } = displayedSections
                       if (number >= declaration.start && number <= declaration.end) return null
+                      if (steps.some(step => step.returnedValues && number >= step.returnedValues.start && number <= step.returnedValues.end)) return null
                       const step = steps.find(step => number >= step.start && number <= step.end || number >= step.closingStart && number <= step.closingEnd)
                       if (step) {
                         const section = manifest.sections?.find(section => section.id === step.id)

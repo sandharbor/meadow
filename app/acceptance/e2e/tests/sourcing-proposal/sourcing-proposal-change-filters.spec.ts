@@ -8,7 +8,7 @@ import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { sourcingReviewRedesign, sourceReviewWorkspace, sourceReviewFiltering, sourceReviewAcceptance, orphan, sourceMove, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing } from '../../../../concepts/index.js';
+import { scenarioSections, sourcingReviewRedesign, sourceReviewWorkspace, sourceReviewFiltering, sourceReviewAcceptance, orphan, sourceMove, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });
@@ -18,89 +18,104 @@ const name = linkedScenarioName(conceptText`Source-change filters alter only pre
 const description = linkedScenarioDescription(conceptText`One capture includes additions, modifications, a rename, missing and unreachable departures, and
 unchanged context. Orphans overlap the departures rather than inflating their count. Category and
 folder solos/hides affect only the view; acceptance still installs the entire reviewed proposal.`);
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Establish the starting state: accepted material contains the original routes and identities.` },
+  verifyScenarioCapturedEvidenceDistinguishesMissingFile: { type: 'test', text: conceptText`Verify the scenario: captured evidence distinguishes a missing file from the removed route.` },
+  soloHideCanCombineFolderFiltersWithout: { type: 'test', text: conceptText`Solo and hide can combine with folder filters without changing any proposal decisions.` },
+  safeOneAdditionTrackedByTrackAdded: { type: 'test', text: conceptText`Safe One is an addition, tracked by Track added pages.` },
+});
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'cf10d7e1-184d-4c62-b964-54361693c518' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
-  // --- Setup ---
-  const list = new BundleListPage(page, expect);
-  const editor = new BundleEditorPage(page, expect);
-  const filters = new FilterPanelComponent(page, expect);
-  const sourcing = new SourcingWorkspacePage(page, expect);
-  const proposal = new SourcingProposalState(testServer, 'sourcing-review');
-  const directory = path.join(testServer.configDir, 'bundles/sourcing-review');
-  await sourceCommand(() => list.goto());
-  await sourceCommand(() => list.clickBundle('sourcing-review'));
-  await sourceCommand(() => editor.waitForLoad('sourcing-review'));
-  await sourceCommand(() => checkpoint('accepted material contains the original routes and identities'));
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'cf10d7e1-184d-4c62-b964-54361693c518' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+  const { editor, filters, sourcing, proposal, directory } = await test.step(sections.steps.setup, async () => {
+    const list = new BundleListPage(page, expect);
+    const editor = new BundleEditorPage(page, expect);
+    const filters = new FilterPanelComponent(page, expect);
+    const sourcing = new SourcingWorkspacePage(page, expect);
+    const proposal = new SourcingProposalState(testServer, 'sourcing-review');
+    const directory = path.join(testServer.configDir, 'bundles/sourcing-review');
+    await sourceCommand(() => list.goto());
+    await sourceCommand(() => list.clickBundle('sourcing-review'));
+    await sourceCommand(() => editor.waitForLoad('sourcing-review'));
+    await sourceCommand(() => checkpoint('accepted material contains the original routes and identities'));
+    return { editor, filters, sourcing, proposal, directory };
+  });
 
-  // --- Test start ---
-  await sourceCommand(() => sourceChanges.apply('review-mixed-changes', 'sourcing-review-data'));
-  await sourceCommand(() => editor.checkSourceChanges());
-  await sourceCommand(() => sourcing.open());
-  await sourceCommand(() => sourcing.chooseIdentity('100000000003', 'Routes/Reference Renamed.md'));
-  await sourceCommand(() => sourcing.continueToGraph());
-  await sourceCommand(() => filters.expandFilterGroup('Remove'));
-  for (const [name, count] of [['Add', 1], ['Rename', 1], ['Modify', 2], ['Remove', 3], ['Source missing', 1], ['Not reachable', 2], ['Disconnected', 0], ['Unchanged', 1]] as const) {
-    await sourceCommand(() => filters.expectSourceChangeCount(name, count));
-  }
-  await sourceCommand(() => sourcing.select('Leaf'));
-  await sourceCommand(() => sourcing.expectSelectedChangeSummary('Leaf', 'Remove'));
-  await sourceCommand(() => sourcing.expectRemovedLineCount(4));
-  await sourceCommand(() => addKeyFrame(sourceReviewWorkspace));
-  await sourceCommand(() => sourcing.seePreviousContent('Excluding this page has no effect on any other page.'));
-  await sourceCommand(() => sourcing.closeComparison());
-  await sourceCommand(() => sourcing.expectSelectedRemovalReason('Source missing'));
-  await sourceCommand(() => sourcing.expectSelectedRoute(['Start', 'Leaf']));
-  await sourceCommand(() => sourcing.expectNodeExplanation('Leaf', /source was missing/));
-  await sourceCommand(() => sourcing.select('Departing'));
-  await sourceCommand(() => sourcing.expectSelectedRemovalReason('Not reachable'));
-  await sourceCommand(() => sourcing.expectSelectedRoute(['Start', 'Bridge', 'Departing']));
-  await sourceCommand(() => addKeyFrame(sourceReviewWorkspace));
-  await sourceCommand(() => sourcing.select('Bridge'));
-  await sourceCommand(() => sourcing.expectSelectedChangeSummary('Bridge', 'Modify'));
-  await sourceCommand(() => sourcing.expectSelectedLineCounts(1, 1));
-  await sourceCommand(() => addKeyFrame(sourceReviewWorkspace));
-  await sourceCommand(() => sourcing.compare('Bridge'));
-  await sourceCommand(() => sourcing.expectAddedContent('The route to Departing is no longer included.'));
-  await sourceCommand(() => checkpoint('captured evidence distinguishes a missing file from the removed route'));
-  await sourceCommand(() => sourcing.closeComparison());
-  await sourceCommand(() => sourcing.select('Reference Renamed'));
-  await sourceCommand(() => sourcing.expectSelectedChangeSummary('Reference Renamed', 'Rename'));
-  await sourceCommand(() => sourcing.expectSelectedLineCounts(0, 0));
-  await sourceCommand(() => sourcing.expectSelectedRename('Routes/Reference.md', 'Routes/Reference Renamed.md'));
-  await sourceCommand(() => sourcing.expectNodeVisible('Reference', false));
-  await sourceCommand(() => addKeyFrame(sourceReviewWorkspace));
-  await sourceCommand(() => sourcing.select('Safe One'));
-  await sourceCommand(() => sourcing.expectSelectedChangeSummary('Safe One', 'Add'));
-  await sourceCommand(() => addKeyFrame(sourceReviewWorkspace));
-  await sourceCommand(() => sourcing.clearSelection());
-  const reviewed = proposal.current;
-  await sourceCommand(() => addKeyFrame(sourceReviewFiltering));
-  await sourceCommand(() => checkpoint('each category has an exact count and the confirmed rename is one comparison node'));
+  const { reviewed } = await test.step(sections.steps.verifyScenarioCapturedEvidenceDistinguishesMissingFile, async () => {
+    await sourceCommand(() => sourceChanges.apply('review-mixed-changes', 'sourcing-review-data'));
+    await sourceCommand(() => editor.checkSourceChanges());
+    await sourceCommand(() => sourcing.open());
+    await sourceCommand(() => sourcing.chooseIdentity('100000000003', 'Routes/Reference Renamed.md'));
+    await sourceCommand(() => sourcing.continueToGraph());
+    await sourceCommand(() => filters.expandFilterGroup('Remove'));
+    for (const [name, count] of [['Add', 1], ['Rename', 1], ['Modify', 2], ['Remove', 3], ['Source missing', 1], ['Not reachable', 2], ['Disconnected', 0], ['Unchanged', 1]] as const) {
+      await sourceCommand(() => filters.expectSourceChangeCount(name, count));
+    }
+    await sourceCommand(() => sourcing.select('Leaf'));
+    await sourceCommand(() => sourcing.expectSelectedChangeSummary('Leaf', 'Remove'));
+    await sourceCommand(() => sourcing.expectRemovedLineCount(4));
+    await sourceCommand(() => addKeyFrame(sourceReviewWorkspace));
+    await sourceCommand(() => sourcing.seePreviousContent('Excluding this page has no effect on any other page.'));
+    await sourceCommand(() => sourcing.closeComparison());
+    await sourceCommand(() => sourcing.expectSelectedRemovalReason('Source missing'));
+    await sourceCommand(() => sourcing.expectSelectedRoute(['Start', 'Leaf']));
+    await sourceCommand(() => sourcing.expectNodeExplanation('Leaf', /source was missing/));
+    await sourceCommand(() => sourcing.select('Departing'));
+    await sourceCommand(() => sourcing.expectSelectedRemovalReason('Not reachable'));
+    await sourceCommand(() => sourcing.expectSelectedRoute(['Start', 'Bridge', 'Departing']));
+    await sourceCommand(() => addKeyFrame(sourceReviewWorkspace));
+    await sourceCommand(() => sourcing.select('Bridge'));
+    await sourceCommand(() => sourcing.expectSelectedChangeSummary('Bridge', 'Modify'));
+    await sourceCommand(() => sourcing.expectSelectedLineCounts(1, 1));
+    await sourceCommand(() => addKeyFrame(sourceReviewWorkspace));
+    await sourceCommand(() => sourcing.compare('Bridge'));
+    await sourceCommand(() => sourcing.expectAddedContent('The route to Departing is no longer included.'));
+    await sourceCommand(() => checkpoint('captured evidence distinguishes a missing file from the removed route'));
+    await sourceCommand(() => sourcing.closeComparison());
+    await sourceCommand(() => sourcing.select('Reference Renamed'));
+    await sourceCommand(() => sourcing.expectSelectedChangeSummary('Reference Renamed', 'Rename'));
+    await sourceCommand(() => sourcing.expectSelectedLineCounts(0, 0));
+    await sourceCommand(() => sourcing.expectSelectedRename('Routes/Reference.md', 'Routes/Reference Renamed.md'));
+    await sourceCommand(() => sourcing.expectNodeVisible('Reference', false));
+    await sourceCommand(() => addKeyFrame(sourceReviewWorkspace));
+    await sourceCommand(() => sourcing.select('Safe One'));
+    await sourceCommand(() => sourcing.expectSelectedChangeSummary('Safe One', 'Add'));
+    await sourceCommand(() => addKeyFrame(sourceReviewWorkspace));
+    await sourceCommand(() => sourcing.clearSelection());
+    const reviewed = proposal.current;
+    await sourceCommand(() => addKeyFrame(sourceReviewFiltering));
+    await sourceCommand(() => checkpoint('each category has an exact count and the confirmed rename is one comparison node'));
+    return { reviewed };
+  });
 
-  // Solo and hide can combine with folder filters without changing any proposal decisions.
-  await sourceCommand(() => filters.clickSoloOnFilter('Remove'));
-  await sourceCommand(() => editor.expectListViewRowCount(3));
-  await sourceCommand(() => filters.clickSoloOnFilter('Remove'));
-  await sourceCommand(() => filters.expandFilterGroup('Folders'));
-  await sourceCommand(() => filters.expandFolder('Routes'));
-  await sourceCommand(() => filters.soloFolder('Routes'));
-  await sourceCommand(() => filters.clickSoloOnFilter('Modify'));
-  await sourceCommand(() => filters.hideFolder('Routes/Branch'));
-  await sourceCommand(() => sourcing.expectNodeVisible('Reference Renamed'));
-  await sourceCommand(() => sourcing.expectNodeVisible('Bridge', false));
-  await sourceCommand(() => sourcing.expectNodeVisible('Leaf', false));
-  expect(proposal.current).toEqual(reviewed);
-  await sourceCommand(() => checkpoint('combined category and folder presentation leaves the complete proposal unchanged'));
-  await sourceCommand(() => sourcing.accept());
-  const nodes = YAML.parse(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).nodes;
-  for (const name of ['Leaf', 'Departing', 'Outside', 'Reference']) expect(nodes.some((node: { bundleNodeName: string }) => node.bundleNodeName === name)).toBe(false);
-  expect(nodes.find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Reference Renamed')?.bundleNodeId).toBe('100000000003');
-  // Safe One is an addition, tracked by Track added pages.
-  expect(nodes.some((node: { bundleNodeName: string }) => node.bundleNodeName === 'Safe One')).toBe(true);
-  await sourceCommand(() => editor.switchToListView());
-  await sourceCommand(() => editor.expectListViewRowByExactNamePresent('Safe One'));
-  await sourceCommand(() => editor.expectListViewRowByExactNamePresent('Reference Renamed'));
-  await sourceCommand(() => editor.expectListViewRowByExactNameNotPresent('Leaf'));
-  await sourceCommand(() => checkpoint('acceptance applies hidden additions modifications rename and all cleanup'));
+  const { nodes } = await test.step(sections.steps.soloHideCanCombineFolderFiltersWithout, async () => {
+    await sourceCommand(() => filters.clickSoloOnFilter('Remove'));
+    await sourceCommand(() => editor.expectListViewRowCount(3));
+    await sourceCommand(() => filters.clickSoloOnFilter('Remove'));
+    await sourceCommand(() => filters.expandFilterGroup('Folders'));
+    await sourceCommand(() => filters.expandFolder('Routes'));
+    await sourceCommand(() => filters.soloFolder('Routes'));
+    await sourceCommand(() => filters.clickSoloOnFilter('Modify'));
+    await sourceCommand(() => filters.hideFolder('Routes/Branch'));
+    await sourceCommand(() => sourcing.expectNodeVisible('Reference Renamed'));
+    await sourceCommand(() => sourcing.expectNodeVisible('Bridge', false));
+    await sourceCommand(() => sourcing.expectNodeVisible('Leaf', false));
+    expect(proposal.current).toEqual(reviewed);
+    await sourceCommand(() => checkpoint('combined category and folder presentation leaves the complete proposal unchanged'));
+    await sourceCommand(() => sourcing.accept());
+    const nodes = YAML.parse(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).nodes;
+    for (const name of ['Leaf', 'Departing', 'Outside', 'Reference']) expect(nodes.some((node: { bundleNodeName: string }) => node.bundleNodeName === name)).toBe(false);
+    expect(nodes.find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Reference Renamed')?.bundleNodeId).toBe('100000000003');
+    return { nodes };
+  });
+
+  await test.step(sections.steps.safeOneAdditionTrackedByTrackAdded, async () => {
+    expect(nodes.some((node: { bundleNodeName: string }) => node.bundleNodeName === 'Safe One')).toBe(true);
+    await sourceCommand(() => editor.switchToListView());
+    await sourceCommand(() => editor.expectListViewRowByExactNamePresent('Safe One'));
+    await sourceCommand(() => editor.expectListViewRowByExactNamePresent('Reference Renamed'));
+    await sourceCommand(() => editor.expectListViewRowByExactNameNotPresent('Leaf'));
+    await sourceCommand(() => checkpoint('acceptance applies hidden additions modifications rename and all cleanup'));
+  });
+
   await sourceCommand(() => assertMeadowHomeState({ allowedUntracked: ['source_graphs/.source-changes.jsonl', 'source_graphs/sourcing-review-data/Routes/Reference Renamed.md'], allowedModified: ['source_graphs/sourcing-review-data/Start.md', 'source_graphs/sourcing-review-data/Routes/Branch/Bridge.md', 'source_graphs/sourcing-review-data/Routes/Reference.md', 'source_graphs/sourcing-review-data/Leaf.md'] }));
 });

@@ -23,30 +23,45 @@ Describe what happens and what the scenario verifies so a reader can skim it
 without following every statement; avoid repeating the title or listing
 implementation details. Add typed concept links when they clarify the prose.
 
-If the first section establishes the starting state, label it
-`// --- Setup ---`. After the setup checkpoint and a blank line, mark the first
-test phase with `// --- Test start ---`, followed immediately by a short comment
-explaining its action. Later phases only need their short action comments. If a
-scenario needs no setup, begin with the Test start banner and its action comment.
+Declare ordered, named phases with `scenarioSections` from the concept registry,
+using typed `conceptText` prose for each section. Include `sections.annotation`
+in the test's annotation array and run each phase through
+`test.step(sections.steps.<name>, async () => { ... })`. The first section uses
+`type: 'setup'` when it establishes the starting state; later sections use
+`type: 'test'`. A scenario that needs no setup starts with a test section.
 
-Write scenarios as short, readable phases: establish the starting state, make a
-change, review its effect, and accept or reject it. When a meaningful phase is
-complete, assert its outcome and end it with `await checkpoint('...')`. Capture the
-established setup before the first action as well as intermediate review states;
-do not reserve checkpoints for the end of the test.
+Write sections as short, readable phases: establish the starting state, make a
+change, review its effect, and accept or reject it. Keep the former section
+comment's action and expected outcome in the section text, adding checked document
+links when useful. Implementation notes stay beside the code they explain.
 
-After a phase-ending checkpoint, leave a blank line and start the next phase with
-a very short comment explaining what happens next:
+When a meaningful phase is complete, assert its outcome and end it with
+`await checkpoint('...')`. Capture the established setup before the first action
+as well as intermediate review states. Return values needed by later phases from
+the step and destructure them at the test level:
 
 ```ts
-// --- Setup ---
-// Establish the starting state here.
-await checkpoint('the accepted page identity is established');
-
-// --- Test start ---
-// Review the competing destinations.
-await sourceChanges.apply('competing-cross-source-moves', 'multi-source');
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Open the accepted bundle.` },
+  review: { type: 'test', text: conceptText`Review the competing destinations.` },
+});
+// Include sections.annotation beside name.annotation and description.annotation.
+const { editor } = await test.step(sections.steps.setup, async () => {
+  const editor = await openAcceptedBundle();
+  await checkpoint('the accepted page identity is established');
+  return { editor };
+});
+await test.step(sections.steps.review, async () => {
+  await editor.reviewCompetingDestinations();
+  await checkpoint('the competing identities are ready for a decision');
+});
 ```
+
+Keep mutable state shared with callbacks in the test's outer scope so every
+phase and callback observes the same binding. The simplified Test Code view
+renders the linked section text inline and hides step wrappers and returned-value
+transfers; the real-code view retains them. Details can show test sections while
+omitting setup.
 
 Use judgment about phase size. A checkpoint should mark a useful point to inspect
 while stepping through the report, not every click or assertion. Every checkpoint

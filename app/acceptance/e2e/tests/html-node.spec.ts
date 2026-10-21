@@ -23,7 +23,7 @@ import {
   PreviewPublishModal,
 } from "../src/run/pages/index.js";
 import { customBundle } from "../src/bundle-docs/index.js";
-import { htmlNode, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleGeneration, sourceSetupNew, bundleSourcing } from "../../../concepts/index.js";
+import { scenarioSections, htmlNode, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleGeneration, sourceSetupNew, bundleSourcing } from "../../../concepts/index.js";
 import { Fixture } from "../src/run/workflows.js";
 
 test.use({ bundleMode: "single-file" });
@@ -33,76 +33,86 @@ const name = linkedScenarioName(conceptText`tracks and browses a native HTML nod
 
 const description = linkedScenarioDescription(conceptText`Track a native HTML page and explore its linked graph. Generate the bundle and verify
 that the HTML content is browsable.`);
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Establish the starting state: HTML node - source graph nodes selected.` },
+  trackPreviewHTMLPages: { type: 'test', text: conceptText`Track and preview the HTML pages.` },
+  followLinkSecondHTMLPage: { type: 'test', text: conceptText`Follow the link to the second HTML page.` },
+  followLinkIntoMarkdown: { type: 'test', text: conceptText`Follow the link into Markdown.` },
+});
 const areas = scenarioAreas([bundleGeneration, bundleSourcing], { subAreas: [sourceSetupNew] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '721b46f5-299e-4185-a676-d773b7b95308' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
+test(name.name, { annotation: [{ type: 'scenario-id', description: '721b46f5-299e-4185-a676-d773b7b95308' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   testServer,
   checkpoint,
   addKeyFrame,
   skipMeadowHomeStateCheck,
 }) => {
-  // --- Setup ---
-  const bundleList = new BundleListPage(page, expect);
-  const editor = new BundleEditorPage(page, expect);
-  const createModal = new CreateAndEditBundleModal(page, expect);
-  const previewModal = new PreviewPublishModal(page, expect);
-  const generatedBundle = previewModal.generatedBundle;
+  const { editor, previewModal, generatedBundle } = await test.step(sections.steps.setup, async () => {
+    const bundleList = new BundleListPage(page, expect);
+    const editor = new BundleEditorPage(page, expect);
+    const createModal = new CreateAndEditBundleModal(page, expect);
+    const previewModal = new PreviewPublishModal(page, expect);
+    const generatedBundle = previewModal.generatedBundle;
 
-  await sourceCommand(() => bundleList.goto());
-  await sourceCommand(() => bundleList.clickCreateBundleLink());
+    await sourceCommand(() => bundleList.goto());
+    await sourceCommand(() => bundleList.clickCreateBundleLink());
 
-  const sourceDir = path.join(testServer.sourceGraphsDir, "meadow-test-bundles-data");
-  await sourceCommand(() => createModal.fillSourceDirectory(sourceDir));
-  await sourceCommand(() => createModal.typeInitialPageTitle("t026 - HTML node"));
-  await sourceCommand(() => createModal.selectSuggestion("t026 - HTML node"));
-  await sourceCommand(() => createModal.fillDefaultTraversalDepths(3, 0));
-  await sourceCommand(() => createModal.clickCreateBundle());
+    const sourceDir = path.join(testServer.sourceGraphsDir, "meadow-test-bundles-data");
+    await sourceCommand(() => createModal.fillSourceDirectory(sourceDir));
+    await sourceCommand(() => createModal.typeInitialPageTitle("t026 - HTML node"));
+    await sourceCommand(() => createModal.selectSuggestion("t026 - HTML node"));
+    await sourceCommand(() => createModal.fillDefaultTraversalDepths(3, 0));
+    await sourceCommand(() => createModal.clickCreateBundle());
 
-  await sourceCommand(() => editor.waitForLoad("t026-html-node"));
-  await sourceCommand(() => editor.switchToListView());
-  await sourceCommand(() => editor.expectListViewRowByTitleAndFileTypePresent("t026 ---- first HTML page", "html"));
-  await sourceCommand(() => editor.expectListViewRowByTitleAndFileTypePresent("t026 ---- second HTML page", "html"));
-  await sourceCommand(() => editor.expectListViewRowByTitleAndFileTypePresent("t026 ---- shared style", "css"));
-  await sourceCommand(() => editor.expectListViewRowByTitleAndFileTypePresent("t026 ---- shared behavior", "js"));
-  await sourceCommand(() => editor.expectListViewRowByTitleAndFileTypePresent("t026 ---- shared image", "svg"));
-  await sourceCommand(() => editor.expectListViewRowByTitleAndFileTypePresent("t026 ---- nested markdown", "md"));
+    await sourceCommand(() => editor.waitForLoad("t026-html-node"));
+    await sourceCommand(() => editor.switchToListView());
+    await sourceCommand(() => editor.expectListViewRowByTitleAndFileTypePresent("t026 ---- first HTML page", "html"));
+    await sourceCommand(() => editor.expectListViewRowByTitleAndFileTypePresent("t026 ---- second HTML page", "html"));
+    await sourceCommand(() => editor.expectListViewRowByTitleAndFileTypePresent("t026 ---- shared style", "css"));
+    await sourceCommand(() => editor.expectListViewRowByTitleAndFileTypePresent("t026 ---- shared behavior", "js"));
+    await sourceCommand(() => editor.expectListViewRowByTitleAndFileTypePresent("t026 ---- shared image", "svg"));
+    await sourceCommand(() => editor.expectListViewRowByTitleAndFileTypePresent("t026 ---- nested markdown", "md"));
 
-  await sourceCommand(() => editor.clickSelectAll());
-  await sourceCommand(() => page.waitForTimeout(500));
-  await sourceCommand(() => editor.clickDeselectSensitivePagesIfVisible());
-  await sourceCommand(() => page.waitForTimeout(250));
-  await sourceCommand(() => addKeyFrame(htmlNode));
-  await sourceCommand(() => checkpoint("HTML node - source graph nodes selected"));
+    await sourceCommand(() => editor.clickSelectAll());
+    await sourceCommand(() => page.waitForTimeout(500));
+    await sourceCommand(() => editor.clickDeselectSensitivePagesIfVisible());
+    await sourceCommand(() => page.waitForTimeout(250));
+    await sourceCommand(() => addKeyFrame(htmlNode));
+    await sourceCommand(() => checkpoint("HTML node - source graph nodes selected"));
+    return { editor, previewModal, generatedBundle };
+  });
 
-  // --- Test start ---
-  // Track and preview the HTML pages.
-  await sourceCommand(() => editor.clickTrackAll());
-  await sourceCommand(() => editor.clickPreview());
-  await sourceCommand(() => previewModal.waitForPreviewCompleteAllTracked());
+  await test.step(sections.steps.trackPreviewHTMLPages, async () => {
+    await sourceCommand(() => editor.clickTrackAll());
+    await sourceCommand(() => editor.clickPreview());
+    await sourceCommand(() => previewModal.waitForPreviewComplete());
 
-  await sourceCommand(() => generatedBundle.expectHeading("t026 - HTML node", 30_000));
-  await sourceCommand(() => generatedBundle.clickPageLink("Open the first HTML page"));
-  await sourceCommand(() => generatedBundle.expectHeading("First HTML page"));
+    await sourceCommand(() => generatedBundle.expectHeading("t026 - HTML node", 30_000));
+    await sourceCommand(() => generatedBundle.clickPageLink("Open the first HTML page"));
+    await sourceCommand(() => generatedBundle.expectHeading("First HTML page"));
 
-  await sourceCommand(() => generatedBundle.expectNativeHtmlCardColor("rgb(251, 249, 255)"));
-  await sourceCommand(() => generatedBundle.expectNativeHtmlSharedImageVisible());
-  await sourceCommand(() => generatedBundle.expectNativeHtmlSharedScriptLoaded());
-  await sourceCommand(() => addKeyFrame(htmlNode));
-  await sourceCommand(() => checkpoint("HTML node - first generated page"));
+    await sourceCommand(() => generatedBundle.expectNativeHtmlCardColor("rgb(251, 249, 255)"));
+    await sourceCommand(() => generatedBundle.expectNativeHtmlSharedImageVisible());
+    await sourceCommand(() => generatedBundle.expectNativeHtmlSharedScriptLoaded());
+    await sourceCommand(() => addKeyFrame(htmlNode));
+    await sourceCommand(() => checkpoint("HTML node - first generated page"));
+  });
 
-  // Follow the link to the second HTML page.
-  await sourceCommand(() => generatedBundle.clickPageLink("Continue to the second HTML page"));
-  await sourceCommand(() => generatedBundle.expectHeading("Second HTML page"));
-  await sourceCommand(() => generatedBundle.expectNativeHtmlCardColor("rgb(245, 239, 255)"));
-  await sourceCommand(() => generatedBundle.expectNativeHtmlSharedScriptLoaded());
-  await sourceCommand(() => addKeyFrame(htmlNode));
-  await sourceCommand(() => checkpoint("HTML node - second generated page"));
+  await test.step(sections.steps.followLinkSecondHTMLPage, async () => {
+    await sourceCommand(() => generatedBundle.clickPageLink("Continue to the second HTML page"));
+    await sourceCommand(() => generatedBundle.expectHeading("Second HTML page"));
+    await sourceCommand(() => generatedBundle.expectNativeHtmlCardColor("rgb(245, 239, 255)"));
+    await sourceCommand(() => generatedBundle.expectNativeHtmlSharedScriptLoaded());
+    await sourceCommand(() => addKeyFrame(htmlNode));
+    await sourceCommand(() => checkpoint("HTML node - second generated page"));
+  });
 
-  // Follow the link into Markdown.
-  await sourceCommand(() => generatedBundle.clickPageLink("Open the nested Markdown note"));
-  await sourceCommand(() => generatedBundle.expectHeading("t026 ---- nested markdown"));
-  await sourceCommand(() => addKeyFrame(htmlNode));
-  await sourceCommand(() => checkpoint("HTML node - nested Markdown reached from HTML"));
+  await test.step(sections.steps.followLinkIntoMarkdown, async () => {
+    await sourceCommand(() => generatedBundle.clickPageLink("Open the nested Markdown note"));
+    await sourceCommand(() => generatedBundle.expectHeading("t026 ---- nested markdown"));
+    await sourceCommand(() => addKeyFrame(htmlNode));
+    await sourceCommand(() => checkpoint("HTML node - nested Markdown reached from HTML"));
+  });
 
   void customBundle;
   await sourceCommand(() => skipMeadowHomeStateCheck());

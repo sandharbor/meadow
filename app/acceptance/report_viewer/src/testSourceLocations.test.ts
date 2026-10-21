@@ -126,3 +126,26 @@ test('section wrappers are located without moving checkpoints or hiding compact 
     },
   });
 });
+
+
+test('sections can pass shared values onward without exposing transfer scaffolding as scenario prose', () => {
+  const source = [
+    'const sections = scenarioSections({});',
+    'test(name.name, { annotation: [sections.annotation] }, async () => {',
+    '  const { editor, before } = await test.step(sections.steps.setup, async () => {',
+    '    const editor = new Editor();',
+    '    const before = await capture();',
+    '    await checkpoint("ready");',
+    '    return { editor, before };',
+    '  });',
+    '  const result = await test.step(sections.steps.review, async () => {',
+    '    return await editor.review(before);',
+    '  });',
+    '});',
+  ].join('\n');
+  expect(testSourceLocations(source).sections).toEqual({
+    declaration: { start: 1, end: 1 },
+    steps: [{ id: 'setup', start: 3, end: 3, closingStart: 8, closingEnd: 8, returnedValues: { start: 7, end: 7 } }],
+  });
+  expect(testSourceLocations(source).checkpoints).toEqual([{ message: 'ready', line: 6 }]);
+});

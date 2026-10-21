@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { cli, publicationRevision, publishing, s3, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSharing } from "../../../concepts/index.js";
+import { scenarioSections, cli, publicationRevision, publishing, s3, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSharing } from "../../../concepts/index.js";
 import { expect, test } from "../src/run/test-fixtures.js";
 import { Bundle } from "../src/run/workflows.js";
 
@@ -49,209 +49,232 @@ const name = linkedScenarioName(conceptText`CLI manages S3 publication revisions
 const description = linkedScenarioDescription(conceptText`Publish a saved generation to S3, then plan, cancel, and publish it under a new slug.
 Check reader connections, predecessor cleanup, and repeatable deletion with retained
 history.`);
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Establish the starting state: the initial generation is ready for S3.` },
+  publishFirstRevision: { type: 'test', text: conceptText`Publish the first revision.` },
+  planNewPublicationSlug: { type: 'test', text: conceptText`Plan a new publication slug.` },
+  cancelPendingRevision: { type: 'test', text: conceptText`Cancel the pending revision.` },
+  planSuccessorAgain: { type: 'test', text: conceptText`Plan the successor again.` },
+  changeReaderCleanupChoices: { type: 'test', text: conceptText`Change reader and cleanup choices.` },
+  publishPredecessorCleanup: { type: 'test', text: conceptText`Publish with predecessor cleanup.` },
+  deleteCurrentPublication: { type: 'test', text: conceptText`Delete the current publication.` },
+  checkPublicationCommandHelp: { type: 'test', text: conceptText`Check publication command help.` },
+});
 const areas = scenarioAreas([bundleSharing]);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '6f66d070-98df-4b44-b9cc-464f88a4ff60' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
+test(name.name, { annotation: [{ type: 'scenario-id', description: '6f66d070-98df-4b44-b9cc-464f88a4ff60' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   meadowCli,
   minioS3,
   skipMeadowHomeStateCheck,
   testServer,
   checkpoint,
 }) => {
-  // --- Setup ---
-  await sourceCommand(() => testServer.activateS3Provider());
-  const providers = await sourceCommand(() => meadowCli.runJson<{
-    operation: string;
-    providers: Array<{ manifest: { id: string }; isActive: boolean }>;
-  }>(["providers", "list"], { artifactName: "publication-providers-list" }));
-  expect(providers.operation).toBe("providers.list");
-  expect(providers.providers).toContainEqual(expect.objectContaining({
-    manifest: expect.objectContaining({ id: PROVIDER_ID }),
-    isActive: true,
-  }));
+  const { versionId, firstSlug, secondSlug } = await test.step(sections.steps.setup, async () => {
+    await sourceCommand(() => testServer.activateS3Provider());
+    const providers = await sourceCommand(() => meadowCli.runJson<{
+      operation: string;
+      providers: Array<{ manifest: { id: string }; isActive: boolean }>;
+    }>(["providers", "list"], { artifactName: "publication-providers-list" }));
+    expect(providers.operation).toBe("providers.list");
+    expect(providers.providers).toContainEqual(expect.objectContaining({
+      manifest: expect.objectContaining({ id: PROVIDER_ID }),
+      isActive: true,
+    }));
 
-  await sourceCommand(() => meadowCli.runJson(["bundle", "nodes", Bundle.Big, "--scope", "all"], {
-    artifactName: "capture-fixture-source-before-generation",
-  }));
-  const generated = await sourceCommand(() => meadowCli.runJson<{ versionId: string }>([
-    "bundle", "generate", Bundle.Big,
-  ], { artifactName: "publication-generate-initial" }));
-  await sourceCommand(() => meadowCli.runJson([
-    "bundle", "save-generation", Bundle.Big, "--version", generated.versionId,
-  ], { artifactName: "publication-save-initial" }));
-  const versions = await sourceCommand(() => meadowCli.runJson<{ versions: Array<{ versionId: string }> }>([
-    "bundle", "versions", "list", Bundle.Big,
-  ], { artifactName: "publication-versions-list" }));
-  const versionId = versions.versions[0].versionId;
-  expect(versionId).toBe(generated.versionId);
-  const firstSlug = `${Bundle.Big}-cli-s3`;
-  const secondSlug = `${firstSlug}-moved`;
+    await sourceCommand(() => meadowCli.runJson(["bundle", "nodes", Bundle.Big, "--scope", "all"], {
+      artifactName: "capture-fixture-source-before-generation",
+    }));
+    const generated = await sourceCommand(() => meadowCli.runJson<{ versionId: string }>([
+      "bundle", "generate", Bundle.Big,
+    ], { artifactName: "publication-generate-initial" }));
+    await sourceCommand(() => meadowCli.runJson([
+      "bundle", "save-generation", Bundle.Big, "--version", generated.versionId,
+    ], { artifactName: "publication-save-initial" }));
+    const versions = await sourceCommand(() => meadowCli.runJson<{ versions: Array<{ versionId: string }> }>([
+      "bundle", "versions", "list", Bundle.Big,
+    ], { artifactName: "publication-versions-list" }));
+    const versionId = versions.versions[0].versionId;
+    expect(versionId).toBe(generated.versionId);
+    const firstSlug = `${Bundle.Big}-cli-s3`;
+    const secondSlug = `${firstSlug}-moved`;
 
-  await sourceCommand(() => checkpoint("the initial generation is ready for S3"));
-
-  // --- Test start ---
-  // Publish the first revision.
-  const configured = await sourceCommand(() => meadowCli.runJson<{ operation: string; publishSlug: string }>([
-    "bundle", "publications", "configure", Bundle.Big,
-    "--provider", PROVIDER_ID,
-    "--slug", firstSlug,
-  ], { artifactName: "publication-configure-initial-slug" }));
-  expect(configured).toMatchObject({
-    operation: "bundle.publications.configure",
-    publishSlug: firstSlug,
-  });
-  const firstPublish = await sourceCommand(() => meadowCli.runJson<{ provider: { id: string }; url: string }>([
-    "bundle", "publish", Bundle.Big,
-    "--version", versionId,
-    "--provider", PROVIDER_ID,
-  ], { artifactName: "publication-publish-initial" }));
-  expect(firstPublish.provider.id).toBe(PROVIDER_ID);
-  expect(firstPublish.url).toContain(`${firstSlug}-${versionId}`);
-
-  const initialState = await sourceCommand(() => meadowCli.runJson<PublicationListResult>([
-    "bundle", "publications", "list", Bundle.Big,
-    "--provider", PROVIDER_ID,
-  ], { artifactName: "publication-list-initial" }));
-  expect(initialState.state.revisions).toHaveLength(1);
-  const initialRevisionId = initialState.state.revisions[0].publicationRevisionId;
-  await sourceCommand(() => checkpoint("the first S3 revision is published"));
-
-  // Plan a new publication slug.
-  await sourceCommand(() => meadowCli.runJson([
-    "bundle", "publications", "configure", Bundle.Big,
-    "--provider", PROVIDER_ID,
-    "--slug", secondSlug,
-    "--version", versionId,
-    "--readers", "connected",
-    "--predecessor-files", "delete-after-success",
-  ], { artifactName: "publication-configure-successor-slug" }));
-  const planned = await sourceCommand(() => meadowCli.runJson<PublicationListResult>([
-    "bundle", "publications", "list", Bundle.Big,
-    "--provider", PROVIDER_ID,
-  ], { artifactName: "publication-list-pending" }));
-  const pendingRevisionId = planned.state.pendingRevisionId!;
-  expect(planned.state.revisions).toHaveLength(2);
-  expect(planned.state.revisions.find(revision => revision.publicationRevisionId === pendingRevisionId)).toMatchObject({
-    generatedVersionId: versionId,
-    publishSlug: secondSlug,
-    readerConnectionToPredecessor: "connected",
-    predecessorCleanupPolicy: "delete-after-success",
-    remoteState: "pending",
+    await sourceCommand(() => checkpoint("the initial generation is ready for S3"));
+    return { versionId, firstSlug, secondSlug };
   });
 
-  await sourceCommand(() => checkpoint("the pending revision connects readers and schedules cleanup"));
+  const { initialRevisionId } = await test.step(sections.steps.publishFirstRevision, async () => {
+    const configured = await sourceCommand(() => meadowCli.runJson<{ operation: string; publishSlug: string }>([
+      "bundle", "publications", "configure", Bundle.Big,
+      "--provider", PROVIDER_ID,
+      "--slug", firstSlug,
+    ], { artifactName: "publication-configure-initial-slug" }));
+    expect(configured).toMatchObject({
+      operation: "bundle.publications.configure",
+      publishSlug: firstSlug,
+    });
+    const firstPublish = await sourceCommand(() => meadowCli.runJson<{ provider: { id: string }; url: string }>([
+      "bundle", "publish", Bundle.Big,
+      "--version", versionId,
+      "--provider", PROVIDER_ID,
+    ], { artifactName: "publication-publish-initial" }));
+    expect(firstPublish.provider.id).toBe(PROVIDER_ID);
+    expect(firstPublish.url).toContain(`${firstSlug}-${versionId}`);
 
-  // Cancel the pending revision.
-  const cancelled = await sourceCommand(() => meadowCli.runJson<{ operation: string; publishSlug: string }>([
-    "bundle", "publications", "cancel", Bundle.Big, pendingRevisionId,
-    "--provider", PROVIDER_ID,
-  ], { artifactName: "publication-cancel-pending" }));
-  expect(cancelled).toMatchObject({
-    operation: "bundle.publications.cancel",
-    publishSlug: firstSlug,
+    const initialState = await sourceCommand(() => meadowCli.runJson<PublicationListResult>([
+      "bundle", "publications", "list", Bundle.Big,
+      "--provider", PROVIDER_ID,
+    ], { artifactName: "publication-list-initial" }));
+    expect(initialState.state.revisions).toHaveLength(1);
+    const initialRevisionId = initialState.state.revisions[0].publicationRevisionId;
+    await sourceCommand(() => checkpoint("the first S3 revision is published"));
+    return { initialRevisionId };
   });
-  const afterCancellation = await sourceCommand(() => meadowCli.runJson<PublicationListResult>([
-    "bundle", "publications", "list", Bundle.Big,
-    "--provider", PROVIDER_ID,
-  ], { artifactName: "publication-list-after-cancel" }));
-  expect(afterCancellation.state.pendingRevisionId).toBeNull();
-  expect(afterCancellation.state.revisions).toHaveLength(1);
-  await sourceCommand(() => checkpoint("cancellation restores the original publication slug"));
 
-  // Plan the successor again.
-  await sourceCommand(() => meadowCli.runJson([
-    "bundle", "publications", "configure", Bundle.Big,
-    "--provider", PROVIDER_ID,
-    "--slug", secondSlug,
-    "--version", versionId,
-    "--readers", "connected",
-    "--predecessor-files", "delete-after-success",
-  ], { artifactName: "publication-reconfigure-successor-slug" }));
-  const replanned = await sourceCommand(() => meadowCli.runJson<PublicationListResult>([
-    "bundle", "publications", "list", Bundle.Big,
-    "--provider", PROVIDER_ID,
-  ], { artifactName: "publication-list-replanned" }));
-  const replannedRevisionId = replanned.state.pendingRevisionId!;
+  const { pendingRevisionId } = await test.step(sections.steps.planNewPublicationSlug, async () => {
+    await sourceCommand(() => meadowCli.runJson([
+      "bundle", "publications", "configure", Bundle.Big,
+      "--provider", PROVIDER_ID,
+      "--slug", secondSlug,
+      "--version", versionId,
+      "--readers", "connected",
+      "--predecessor-files", "delete-after-success",
+    ], { artifactName: "publication-configure-successor-slug" }));
+    const planned = await sourceCommand(() => meadowCli.runJson<PublicationListResult>([
+      "bundle", "publications", "list", Bundle.Big,
+      "--provider", PROVIDER_ID,
+    ], { artifactName: "publication-list-pending" }));
+    const pendingRevisionId = planned.state.pendingRevisionId!;
+    expect(planned.state.revisions).toHaveLength(2);
+    expect(planned.state.revisions.find(revision => revision.publicationRevisionId === pendingRevisionId)).toMatchObject({
+      generatedVersionId: versionId,
+      publishSlug: secondSlug,
+      readerConnectionToPredecessor: "connected",
+      predecessorCleanupPolicy: "delete-after-success",
+      remoteState: "pending",
+    });
 
-  await sourceCommand(() => checkpoint("a replacement pending revision is ready"));
-
-  // Change reader and cleanup choices.
-  const updatedPlan = await sourceCommand(() => meadowCli.runJson<{ pendingRevisionId: string }>([
-    "bundle", "publications", "plan", Bundle.Big,
-    "--provider", PROVIDER_ID,
-    "--version", versionId,
-    "--readers", "disconnected",
-    "--predecessor-files", "keep",
-  ], { artifactName: "publication-update-pending" }));
-  expect(updatedPlan.pendingRevisionId).toBe(replannedRevisionId);
-  const pendingRecord = await sourceCommand(() => meadowCli.runJson<{ revision: Revision }>([
-    "bundle", "publications", "get", Bundle.Big, replannedRevisionId,
-    "--provider", PROVIDER_ID,
-  ], { artifactName: "publication-get-updated-pending" }));
-  expect(pendingRecord.revision).toMatchObject({
-    readerConnectionToPredecessor: "disconnected",
-    predecessorCleanupPolicy: "keep",
+    await sourceCommand(() => checkpoint("the pending revision connects readers and schedules cleanup"));
+    return { pendingRevisionId };
   });
-  await sourceCommand(() => checkpoint("reader connection and cleanup choices update independently"));
 
-  // Publish with predecessor cleanup.
-  await sourceCommand(() => meadowCli.runJson([
-    "bundle", "publications", "plan", Bundle.Big,
-    "--provider", PROVIDER_ID,
-    "--version", versionId,
-    "--readers", "connected",
-    "--predecessor-files", "delete-after-success",
-  ], { artifactName: "publication-restore-cleanup-plan" }));
-  await sourceCommand(() => meadowCli.runJson([
-    "bundle", "publish", Bundle.Big,
-    "--version", versionId,
-    "--provider", PROVIDER_ID,
-  ], { artifactName: "publication-publish-successor" }));
+  await test.step(sections.steps.cancelPendingRevision, async () => {
+    const cancelled = await sourceCommand(() => meadowCli.runJson<{ operation: string; publishSlug: string }>([
+      "bundle", "publications", "cancel", Bundle.Big, pendingRevisionId,
+      "--provider", PROVIDER_ID,
+    ], { artifactName: "publication-cancel-pending" }));
+    expect(cancelled).toMatchObject({
+      operation: "bundle.publications.cancel",
+      publishSlug: firstSlug,
+    });
+    const afterCancellation = await sourceCommand(() => meadowCli.runJson<PublicationListResult>([
+      "bundle", "publications", "list", Bundle.Big,
+      "--provider", PROVIDER_ID,
+    ], { artifactName: "publication-list-after-cancel" }));
+    expect(afterCancellation.state.pendingRevisionId).toBeNull();
+    expect(afterCancellation.state.revisions).toHaveLength(1);
+    await sourceCommand(() => checkpoint("cancellation restores the original publication slug"));
+  });
 
-  const published = await sourceCommand(() => meadowCli.runJson<PublicationListResult>([
-    "bundle", "publications", "list", Bundle.Big,
-    "--provider", PROVIDER_ID,
-  ], { artifactName: "publication-list-after-successor" }));
-  expect(published.state.currentRevisionId).toBe(replannedRevisionId);
-  expect(published.state.pendingRevisionId).toBeNull();
-  expect(published.state.revisions.find(revision => revision.publicationRevisionId === initialRevisionId)?.remoteState).toBe("deleted");
-  expect(published.state.revisions.find(revision => revision.publicationRevisionId === replannedRevisionId)?.remoteState).toBe("present");
-  await sourceCommand(() => minioS3.expectEmpty(`${firstSlug}-${versionId}/`));
-  await sourceCommand(() => minioS3.expectHasHtmlFiles(`${secondSlug}-${versionId}/`));
+  const { replannedRevisionId } = await test.step(sections.steps.planSuccessorAgain, async () => {
+    await sourceCommand(() => meadowCli.runJson([
+      "bundle", "publications", "configure", Bundle.Big,
+      "--provider", PROVIDER_ID,
+      "--slug", secondSlug,
+      "--version", versionId,
+      "--readers", "connected",
+      "--predecessor-files", "delete-after-success",
+    ], { artifactName: "publication-reconfigure-successor-slug" }));
+    const replanned = await sourceCommand(() => meadowCli.runJson<PublicationListResult>([
+      "bundle", "publications", "list", Bundle.Big,
+      "--provider", PROVIDER_ID,
+    ], { artifactName: "publication-list-replanned" }));
+    const replannedRevisionId = replanned.state.pendingRevisionId!;
 
-  await sourceCommand(() => checkpoint("the successor is published and predecessor files are removed"));
+    await sourceCommand(() => checkpoint("a replacement pending revision is ready"));
+    return { replannedRevisionId };
+  });
 
-  // Delete the current publication.
-  const deleted = await sourceCommand(() => meadowCli.runJson<{ operation: string; alreadyAbsent: boolean }>([
-    "bundle", "publications", "delete", Bundle.Big, replannedRevisionId,
-    "--provider", PROVIDER_ID,
-  ], { artifactName: "publication-delete-current" }));
-  expect(deleted).toMatchObject({ operation: "bundle.publications.delete", alreadyAbsent: false });
-  const retriedDelete = await sourceCommand(() => meadowCli.runJson<{ alreadyAbsent: boolean }>([
-    "bundle", "publications", "delete", Bundle.Big, replannedRevisionId,
-    "--provider", PROVIDER_ID,
-  ], { artifactName: "publication-delete-current-retry" }));
-  expect(retriedDelete.alreadyAbsent).toBe(true);
-  const deletedRecord = await sourceCommand(() => meadowCli.runJson<{ revision: Revision }>([
-    "bundle", "publications", "get", Bundle.Big, replannedRevisionId,
-    "--provider", PROVIDER_ID,
-  ], { artifactName: "publication-get-deleted" }));
-  expect(deletedRecord.revision.remoteState).toBe("deleted");
-  await sourceCommand(() => minioS3.expectEmpty(`${secondSlug}-${versionId}/`));
+  await test.step(sections.steps.changeReaderCleanupChoices, async () => {
+    const updatedPlan = await sourceCommand(() => meadowCli.runJson<{ pendingRevisionId: string }>([
+      "bundle", "publications", "plan", Bundle.Big,
+      "--provider", PROVIDER_ID,
+      "--version", versionId,
+      "--readers", "disconnected",
+      "--predecessor-files", "keep",
+    ], { artifactName: "publication-update-pending" }));
+    expect(updatedPlan.pendingRevisionId).toBe(replannedRevisionId);
+    const pendingRecord = await sourceCommand(() => meadowCli.runJson<{ revision: Revision }>([
+      "bundle", "publications", "get", Bundle.Big, replannedRevisionId,
+      "--provider", PROVIDER_ID,
+    ], { artifactName: "publication-get-updated-pending" }));
+    expect(pendingRecord.revision).toMatchObject({
+      readerConnectionToPredecessor: "disconnected",
+      predecessorCleanupPolicy: "keep",
+    });
+    await sourceCommand(() => checkpoint("reader connection and cleanup choices update independently"));
+  });
 
-  await sourceCommand(() => checkpoint("repeated deletion retains the deleted revision record"));
+  await test.step(sections.steps.publishPredecessorCleanup, async () => {
+    await sourceCommand(() => meadowCli.runJson([
+      "bundle", "publications", "plan", Bundle.Big,
+      "--provider", PROVIDER_ID,
+      "--version", versionId,
+      "--readers", "connected",
+      "--predecessor-files", "delete-after-success",
+    ], { artifactName: "publication-restore-cleanup-plan" }));
+    await sourceCommand(() => meadowCli.runJson([
+      "bundle", "publish", Bundle.Big,
+      "--version", versionId,
+      "--provider", PROVIDER_ID,
+    ], { artifactName: "publication-publish-successor" }));
 
-  // Check publication command help.
-  const help = await sourceCommand(() => meadowCli.run(
-    ["bundle", "publications", "--help"],
-    { artifactName: "publication-help" },
-  ));
-  expect(help).toContain("--readers <connected|disconnected>");
-  expect(help).toContain("retains its deleted history record");
-  void cli;
-  void publicationRevision;
-  void publishing;
-  void s3;
-  await sourceCommand(() => checkpoint("help explains reader connections and retained history"));
+    const published = await sourceCommand(() => meadowCli.runJson<PublicationListResult>([
+      "bundle", "publications", "list", Bundle.Big,
+      "--provider", PROVIDER_ID,
+    ], { artifactName: "publication-list-after-successor" }));
+    expect(published.state.currentRevisionId).toBe(replannedRevisionId);
+    expect(published.state.pendingRevisionId).toBeNull();
+    expect(published.state.revisions.find(revision => revision.publicationRevisionId === initialRevisionId)?.remoteState).toBe("deleted");
+    expect(published.state.revisions.find(revision => revision.publicationRevisionId === replannedRevisionId)?.remoteState).toBe("present");
+    await sourceCommand(() => minioS3.expectEmpty(`${firstSlug}-${versionId}/`));
+    await sourceCommand(() => minioS3.expectHasHtmlFiles(`${secondSlug}-${versionId}/`));
+
+    await sourceCommand(() => checkpoint("the successor is published and predecessor files are removed"));
+  });
+
+  await test.step(sections.steps.deleteCurrentPublication, async () => {
+    const deleted = await sourceCommand(() => meadowCli.runJson<{ operation: string; alreadyAbsent: boolean }>([
+      "bundle", "publications", "delete", Bundle.Big, replannedRevisionId,
+      "--provider", PROVIDER_ID,
+    ], { artifactName: "publication-delete-current" }));
+    expect(deleted).toMatchObject({ operation: "bundle.publications.delete", alreadyAbsent: false });
+    const retriedDelete = await sourceCommand(() => meadowCli.runJson<{ alreadyAbsent: boolean }>([
+      "bundle", "publications", "delete", Bundle.Big, replannedRevisionId,
+      "--provider", PROVIDER_ID,
+    ], { artifactName: "publication-delete-current-retry" }));
+    expect(retriedDelete.alreadyAbsent).toBe(true);
+    const deletedRecord = await sourceCommand(() => meadowCli.runJson<{ revision: Revision }>([
+      "bundle", "publications", "get", Bundle.Big, replannedRevisionId,
+      "--provider", PROVIDER_ID,
+    ], { artifactName: "publication-get-deleted" }));
+    expect(deletedRecord.revision.remoteState).toBe("deleted");
+    await sourceCommand(() => minioS3.expectEmpty(`${secondSlug}-${versionId}/`));
+
+    await sourceCommand(() => checkpoint("repeated deletion retains the deleted revision record"));
+  });
+
+  await test.step(sections.steps.checkPublicationCommandHelp, async () => {
+    const help = await sourceCommand(() => meadowCli.run(
+      ["bundle", "publications", "--help"],
+      { artifactName: "publication-help" },
+    ));
+    expect(help).toContain("--readers <connected|disconnected>");
+    expect(help).toContain("retains its deleted history record");
+    void cli;
+    void publicationRevision;
+    void publishing;
+    void s3;
+    await sourceCommand(() => checkpoint("help explains reader connections and retained history"));
+  });
 
   await sourceCommand(() => skipMeadowHomeStateCheck());
 });

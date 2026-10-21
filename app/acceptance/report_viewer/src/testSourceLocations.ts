@@ -8,7 +8,7 @@ export interface TestSourceLocations {
   checkpoints: { message: string; line: number }[];
   sections?: {
     declaration: { start: number; end: number };
-    steps: { id: string; start: number; end: number; closingStart: number; closingEnd: number }[];
+    steps: { id: string; start: number; end: number; closingStart: number; closingEnd: number; returnedValues?: { start: number; end: number } }[];
   };
   scenarioProse?: { name: { start: number; end: number }; description?: { start: number; end: number } };
 }
@@ -45,13 +45,37 @@ export function testSourceLocations(source: string): TestSourceLocations {
       if (title && ts.isPropertyAccessExpression(title) && ts.isPropertyAccessExpression(title.expression)
         && ts.isIdentifier(title.expression.expression) && title.expression.expression.text === 'sections'
         && title.expression.name.text === 'steps' && callback && ts.isArrowFunction(callback) && ts.isBlock(callback.body)) {
-        const statement = ts.isAwaitExpression(node.parent) ? node.parent.parent : node.parent;
-        const header = range(statement.getStart(ast), callback.body.getStart(ast) + 1);
-        const footer = range(callback.body.end - 1, statement.end);
-        // Keep compact steps intact so hiding a wrapper never hides executable code.
-        if (ts.isExpressionStatement(statement) && callback.body.statements.every(child => range(child.getStart(ast), child.end).start > header.end
-          && range(child.getStart(ast), child.end).end < footer.start)) {
-          locations.sections.steps.push({ id: title.name.text, ...header, closingStart: footer.start, closingEnd: footer.end });
+        const expression = ts.isAwaitExpression(node.parent) ? node.parent : node;
+        let statement: ts.Statement | undefined;
+        let returnedValues: { start: number; end: number } | undefined;
+        if (ts.isExpressionStatement(expression.parent)) statement = expression.parent;
+        else if (ts.isVariableDeclaration(expression.parent) && expression.parent.initializer === expression
+          && ts.isObjectBindingPattern(expression.parent.name)) {
+          const declaration = expression.parent;
+          const list = declaration.parent;
+          const returned = callback.body.statements.at(-1);
+          const bindings = expression.parent.name.elements;
+          // A step may return shared values for the next section. Hide only
+          // this exact transfer pattern, preserving all other assignment code.
+          if (ts.isVariableDeclarationList(list) && list.declarations.length === 1 && ts.isVariableStatement(list.parent)
+            && bindings.every(binding => !binding.dotDotDotToken && !binding.propertyName && !binding.initializer && ts.isIdentifier(binding.name))
+            && returned && ts.isReturnStatement(returned) && returned.expression && ts.isObjectLiteralExpression(returned.expression)
+            && returned.expression.properties.length === bindings.length
+            && returned.expression.properties.every(property => ts.isShorthandPropertyAssignment(property)
+              && bindings.some(binding => binding.name.getText(ast) === property.name.text))) {
+            statement = list.parent;
+            returnedValues = range(returned.getStart(ast), returned.end);
+          }
+        }
+        if (statement) {
+          const header = range(statement.getStart(ast), callback.body.getStart(ast) + 1);
+          const footer = range(callback.body.end - 1, statement.end);
+          // Keep compact steps intact so hiding a wrapper never hides executable code.
+          if (callback.body.statements.every(child => range(child.getStart(ast), child.end).start > header.end
+            && range(child.getStart(ast), child.end).end < footer.start)) {
+            locations.sections.steps.push({ id: title.name.text, ...header, closingStart: footer.start, closingEnd: footer.end,
+              ...(returnedValues ? { returnedValues } : {}) });
+          }
         }
       }
     }

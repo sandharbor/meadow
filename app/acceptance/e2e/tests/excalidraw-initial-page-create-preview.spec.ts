@@ -23,7 +23,7 @@ import {
   PreviewPublishModal,
 } from "../src/run/pages/index.js";
 import { Fixture } from "../src/run/workflows.js";
-import { excalidraw, initialPage, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleGeneration, sourceSetupNew, bundleSourcing } from "../../../concepts/index.js";
+import { scenarioSections, excalidraw, initialPage, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleGeneration, sourceSetupNew, bundleSourcing } from "../../../concepts/index.js";
 import { customBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -34,8 +34,13 @@ const name = linkedScenarioName(conceptText`create a custom bundle with an excal
 
 const description = linkedScenarioDescription(conceptText`Create a bundle whose starting page is an Excalidraw drawing. Generate its preview and
 follow a drawing link to another page.`);
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Establish the starting state: graph view loaded with excalidraw initial page.` },
+  inspectPreviewDrawing: { type: 'test', text: conceptText`Inspect and preview the drawing.` },
+  followLinkInsideDrawing: { type: 'test', text: conceptText`Follow a link inside the drawing.` },
+});
 const areas = scenarioAreas([bundleGeneration, bundleSourcing], { subAreas: [sourceSetupNew] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '05e433b3-03e3-46b3-82c9-99271d27b813' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
+test(name.name, { annotation: [{ type: 'scenario-id', description: '05e433b3-03e3-46b3-82c9-99271d27b813' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   testServer,
   checkpoint,
@@ -43,67 +48,71 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '05e433b3-03e
   addKeyFrame,
   expectLogErrors,
 }) => {
-  // --- Setup ---
-  const releaseWorkerWarning = expectLogErrors(
-    /Failed to use workers for subsetting, falling back to the main thread/,
-  );
+  const { releaseWorkerWarning, editor, previewModal, generatedBundle } = await test.step(sections.steps.setup, async () => {
+    const releaseWorkerWarning = expectLogErrors(
+      /Failed to use workers for subsetting, falling back to the main thread/,
+    );
 
-  const bundleList = new BundleListPage(page, expect);
-  const editor = new BundleEditorPage(page, expect);
-  const createModal = new CreateAndEditBundleModal(page, expect);
-  const previewModal = new PreviewPublishModal(page, expect);
-  const generatedBundle = previewModal.generatedBundle;
+    const bundleList = new BundleListPage(page, expect);
+    const editor = new BundleEditorPage(page, expect);
+    const createModal = new CreateAndEditBundleModal(page, expect);
+    const previewModal = new PreviewPublishModal(page, expect);
+    const generatedBundle = previewModal.generatedBundle;
 
-  await sourceCommand(() => bundleList.goto());
-  await sourceCommand(() => bundleList.expectCalloutVisible("Turn your notes into bundles"));
-  await sourceCommand(() => bundleList.clickCreateBundleLink());
+    await sourceCommand(() => bundleList.goto());
+    await sourceCommand(() => bundleList.expectCalloutVisible("Turn your notes into bundles"));
+    await sourceCommand(() => bundleList.clickCreateBundleLink());
 
-  const sourceDir = path.join(testServer.sourceGraphsDir, "meadow-test-bundles-data");
-  await sourceCommand(() => createModal.fillSourceDirectory(sourceDir));
-  await sourceCommand(() => createModal.typeInitialPageTitle("t006 --- meadow-flower"));
-  await sourceCommand(() => createModal.selectSuggestion("t006 --- meadow-flower"));
-  await sourceCommand(() => createModal.clickCreateBundle());
+    const sourceDir = path.join(testServer.sourceGraphsDir, "meadow-test-bundles-data");
+    await sourceCommand(() => createModal.fillSourceDirectory(sourceDir));
+    await sourceCommand(() => createModal.typeInitialPageTitle("t006 --- meadow-flower"));
+    await sourceCommand(() => createModal.selectSuggestion("t006 --- meadow-flower"));
+    await sourceCommand(() => createModal.clickCreateBundle());
 
-  await sourceCommand(() => editor.waitForLoad("t006-meadow-flower"));
-  await sourceCommand(() => addKeyFrame(initialPage));
-  await sourceCommand(() => addKeyFrame(excalidraw));
-  await sourceCommand(() => checkpoint("graph view loaded with excalidraw initial page"));
+    await sourceCommand(() => editor.waitForLoad("t006-meadow-flower"));
+    await sourceCommand(() => addKeyFrame(initialPage));
+    await sourceCommand(() => addKeyFrame(excalidraw));
+    await sourceCommand(() => checkpoint("graph view loaded with excalidraw initial page"));
+    return { releaseWorkerWarning, editor, previewModal, generatedBundle };
+  });
 
-  // --- Test start ---
-  // Inspect and preview the drawing.
-  await sourceCommand(() => editor.switchToListView());
-  await sourceCommand(() => editor.expectListViewRowByTitleAndFileTypePresent(
-    "t006 --- meadow-flower",
-    "excalidraw",
-  ));
-  await sourceCommand(() => editor.clickSelectAll());
-  await sourceCommand(() => page.waitForTimeout(500));
-  await sourceCommand(() => editor.clickDeselectSensitivePagesIfVisible());
-  await sourceCommand(() => page.waitForTimeout(250));
-  await sourceCommand(() => editor.clickTrackAll());
+  await test.step(sections.steps.inspectPreviewDrawing, async () => {
+    await sourceCommand(() => editor.switchToListView());
+    await sourceCommand(() => editor.expectListViewRowByTitleAndFileTypePresent(
+      "t006 --- meadow-flower",
+      "excalidraw",
+    ));
+    await sourceCommand(() => editor.clickSelectAll());
+    await sourceCommand(() => page.waitForTimeout(500));
+    await sourceCommand(() => editor.clickDeselectSensitivePagesIfVisible());
+    await sourceCommand(() => page.waitForTimeout(250));
+    await sourceCommand(() => editor.clickTrackAll());
 
-  await sourceCommand(() => editor.clickPreview());
-  await sourceCommand(() => previewModal.waitForPreviewCompleteAllTracked());
+    await sourceCommand(() => editor.clickPreview());
+    await sourceCommand(() => previewModal.waitForPreviewComplete());
 
-  await sourceCommand(() => generatedBundle.expectHeading("t006 --- meadow-flower", 30_000));
-  await sourceCommand(() => generatedBundle.excalidraw.expectStandaloneDrawingVisible());
-  await sourceCommand(() => addKeyFrame(excalidraw));
-  await sourceCommand(() => checkpoint("preview shows excalidraw initial page"));
+    await sourceCommand(() => generatedBundle.expectHeading("t006 --- meadow-flower", 30_000));
+    await sourceCommand(() => generatedBundle.excalidraw.expectStandaloneDrawingVisible());
+    await sourceCommand(() => addKeyFrame(excalidraw));
+    await sourceCommand(() => checkpoint("preview shows excalidraw initial page"));
+  });
 
-  // Follow a link inside the drawing.
-  const firstDrawingLinkHref =
-    "t006%20---%20linked-from-excalidraw.html";
-  await sourceCommand(() => generatedBundle.excalidraw.expectStandaloneDrawingLink(
-    firstDrawingLinkHref,
-  ));
-  await sourceCommand(() => generatedBundle.excalidraw.clickStandaloneDrawingLink(firstDrawingLinkHref));
+  await test.step(sections.steps.followLinkInsideDrawing, async () => {
+    const firstDrawingLinkHref =
+      "t006%20---%20linked-from-excalidraw.html";
+    await sourceCommand(() => generatedBundle.excalidraw.expectStandaloneDrawingLink(
+      firstDrawingLinkHref,
+    ));
+    await sourceCommand(() => generatedBundle.excalidraw.clickStandaloneDrawingLink(firstDrawingLinkHref));
 
-  await sourceCommand(() => generatedBundle.expectHeading("t006 --- linked-from-excalidraw"));
-  await sourceCommand(() => addKeyFrame(excalidraw));
-  await sourceCommand(() => checkpoint("preview after clicking first excalidraw link"));
+    await sourceCommand(() => generatedBundle.expectHeading("t006 --- linked-from-excalidraw"));
+    await sourceCommand(() => addKeyFrame(excalidraw));
+    await sourceCommand(() => checkpoint("preview after clicking first excalidraw link"));
 
-  void customBundle;
+    void customBundle;
 
-  releaseWorkerWarning();
+    releaseWorkerWarning();
+  });
+
   await sourceCommand(() => skipMeadowHomeStateCheck());
 });

@@ -17,7 +17,7 @@ limitations under the License.
 import path from "path";
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, BundleEditorPage, CreateAndEditBundleModal } from "../src/run/pages/index.js";
-import { callout, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleReview, sourceSetupNew, bundleSourcing } from "../../../concepts/index.js";
+import { scenarioSections, callout, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleReview, sourceSetupNew, bundleSourcing } from "../../../concepts/index.js";
 import { customBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -28,50 +28,59 @@ const name = linkedScenarioName(conceptText`Callout warns when previewing with o
 
 const description = linkedScenarioDescription(conceptText`Create a bundle with only its starting page tracked, then preview it. Check that the
 single-page warning explains how to include more pages.`);
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Establish the starting state: the new bundle contains only its tracked initial page.` },
+  previewSinglePageBundleClickPreviewShould: { type: 'test', text: conceptText`Preview the single-page bundle. Click Preview — should trigger single-page warning modal` },
+  returnTrackingPages: { type: 'test', text: conceptText`Return to tracking pages.` },
+  verifyWeReBackOnGraphView: { type: 'test', text: conceptText`Verify we're back on the graph view (modal closed, not navigated to preview)` },
+});
 const areas = scenarioAreas([bundleReview, bundleSourcing], { subAreas: [sourceSetupNew] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'f4209c12-21ad-4a3a-8adc-8a858f1dedf0' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'f4209c12-21ad-4a3a-8adc-8a858f1dedf0' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   testServer,
   checkpoint,
   assertMeadowHomeState,
   addKeyFrame,
 }) => {
-  // --- Setup ---
-  const bundleList = new BundleListPage(page, expect);
-  await sourceCommand(() => bundleList.goto());
-  await sourceCommand(() => bundleList.expectCalloutVisible("Turn your notes into bundles"));
+  const { editor } = await test.step(sections.steps.setup, async () => {
+    const bundleList = new BundleListPage(page, expect);
+    await sourceCommand(() => bundleList.goto());
+    await sourceCommand(() => bundleList.expectCalloutVisible("Turn your notes into bundles"));
 
-  // Click "create a bundle" in the empty state callout
-  await sourceCommand(() => bundleList.clickCreateBundleLink());
+    // Click "create a bundle" in the empty state callout
+    await sourceCommand(() => bundleList.clickCreateBundleLink());
 
-  // Fill in the Create New Bundle modal
-  const createModal = new CreateAndEditBundleModal(page, expect);
-  const sourceDir = path.join(testServer.sourceGraphsDir, "meadow-test-bundles-data");
-  await sourceCommand(() => createModal.fillSourceDirectory(sourceDir));
-  await sourceCommand(() => createModal.typeInitialPageTitle("main page"));
-  await sourceCommand(() => createModal.selectSuggestion("main page"));
-  await sourceCommand(() => createModal.clickCreateBundle());
+    // Fill in the Create New Bundle modal
+    const createModal = new CreateAndEditBundleModal(page, expect);
+    const sourceDir = path.join(testServer.sourceGraphsDir, "meadow-test-bundles-data");
+    await sourceCommand(() => createModal.fillSourceDirectory(sourceDir));
+    await sourceCommand(() => createModal.typeInitialPageTitle("main page"));
+    await sourceCommand(() => createModal.selectSuggestion("main page"));
+    await sourceCommand(() => createModal.clickCreateBundle());
 
-  // Wait for graph view to load
-  const editor = new BundleEditorPage(page, expect);
-  await sourceCommand(() => editor.waitForLoad("main-page"));
+    // Wait for graph view to load
+    const editor = new BundleEditorPage(page, expect);
+    await sourceCommand(() => editor.waitForLoad("main-page"));
 
-  await sourceCommand(() => checkpoint("the new bundle contains only its tracked initial page"));
+    await sourceCommand(() => checkpoint("the new bundle contains only its tracked initial page"));
+    return { editor };
+  });
 
-  // --- Test start ---
-  // Preview the single-page bundle.
-  // Click Preview — should trigger single-page warning modal
-  await sourceCommand(() => editor.clickPreview());
-  await sourceCommand(() => editor.expectSinglePagePreviewWarningVisible());
-  await sourceCommand(() => addKeyFrame(callout));
-  await sourceCommand(() => checkpoint("single page preview warning shown"));
+  await test.step(sections.steps.previewSinglePageBundleClickPreviewShould, async () => {
+    await sourceCommand(() => editor.clickPreview());
+    await sourceCommand(() => editor.expectSinglePagePreviewWarningVisible());
+    await sourceCommand(() => addKeyFrame(callout));
+    await sourceCommand(() => checkpoint("single page preview warning shown"));
+  });
 
-  // Return to tracking pages.
-  await sourceCommand(() => editor.clickGoBackAndTrackMorePages());
+  await test.step(sections.steps.returnTrackingPages, async () => {
+    await sourceCommand(() => editor.clickGoBackAndTrackMorePages());
+  });
 
-  // Verify we're back on the graph view (modal closed, not navigated to preview)
-  await sourceCommand(() => editor.expectGraphViewButtonVisible());
-  await sourceCommand(() => checkpoint("back on graph view after dismissing warning"));
+  await test.step(sections.steps.verifyWeReBackOnGraphView, async () => {
+    await sourceCommand(() => editor.expectGraphViewButtonVisible());
+    await sourceCommand(() => checkpoint("back on graph view after dismissing warning"));
+  });
 
   void customBundle;
 

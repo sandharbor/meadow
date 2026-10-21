@@ -8,7 +8,7 @@ import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { sourcingReviewRedesign, sourceReviewCleanup, pendingSourceProposal, blacklist, overrides, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../../concepts/index.js';
+import { scenarioSections, sourcingReviewRedesign, sourceReviewCleanup, pendingSourceProposal, blacklist, overrides, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });
@@ -18,61 +18,69 @@ const name = linkedScenarioName(conceptText`Reversing pending scope exclusions r
 const description = linkedScenarioDescription(conceptText`Reduce a bridge's depth, defer and reload, then reverse the boundary. Repeat with a blacklist.
 Excluded pages retain their saved identity, tracking and traversal settings throughout the pending
 proposal, and both reversal paths restore those settings before anything is accepted.`);
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Establish the starting state: configured pages are present before either provisional exclusion.` },
+  verifyScenarioReducedDepthLeavesExcludedPage: { type: 'test', text: conceptText`Verify the scenario: the reduced depth leaves excluded page configuration in the pending proposal.` },
+});
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '3edbe143-aa65-47b7-bdec-8422d2c3d888' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
-  // --- Setup ---
-  const list = new BundleListPage(page, expect);
-  const editor = new BundleEditorPage(page, expect);
-  const sourcing = new SourcingWorkspacePage(page, expect);
-  const proposal = new SourcingProposalState(testServer, 'sourcing-review');
-  await sourceCommand(() => list.goto());
-  await sourceCommand(() => list.clickBundle('sourcing-review'));
-  await sourceCommand(() => editor.waitForLoad('sourcing-review'));
-  const directory = path.join(testServer.configDir, 'bundles/sourcing-review');
-  const saved = fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8');
-  const original = YAML.parse(saved).nodes.find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Departing');
-  await sourceCommand(() => sourcing.openByLink('sourcing-review'));
-  await sourceCommand(() => checkpoint('configured pages are present before either provisional exclusion'));
+test(name.name, { annotation: [{ type: 'scenario-id', description: '3edbe143-aa65-47b7-bdec-8422d2c3d888' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+  const { editor, sourcing, proposal, directory, saved, original } = await test.step(sections.steps.setup, async () => {
+    const list = new BundleListPage(page, expect);
+    const editor = new BundleEditorPage(page, expect);
+    const sourcing = new SourcingWorkspacePage(page, expect);
+    const proposal = new SourcingProposalState(testServer, 'sourcing-review');
+    await sourceCommand(() => list.goto());
+    await sourceCommand(() => list.clickBundle('sourcing-review'));
+    await sourceCommand(() => editor.waitForLoad('sourcing-review'));
+    const directory = path.join(testServer.configDir, 'bundles/sourcing-review');
+    const saved = fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8');
+    const original = YAML.parse(saved).nodes.find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Departing');
+    await sourceCommand(() => sourcing.openByLink('sourcing-review'));
+    await sourceCommand(() => checkpoint('configured pages are present before either provisional exclusion'));
+    return { editor, sourcing, proposal, directory, saved, original };
+  });
 
-  // --- Test start ---
-  await sourceCommand(() => sourcing.select('Bridge'));
-  await sourceCommand(() => sourcing.setSelectedOutlinkDepth(0));
-  await sourceCommand(() => sourcing.select('Departing'));
-  await sourceCommand(() => sourcing.expectSelectedRemovalReason('Not reachable'));
-  expect(proposal.current.proposed.nodes.find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Departing')).toEqual(original);
-  await sourceCommand(() => checkpoint('the reduced depth leaves excluded page configuration in the pending proposal'));
-  await sourceCommand(() => sourcing.later());
-  await sourceCommand(() => page.reload());
-  await sourceCommand(() => editor.waitForLoad('sourcing-review'));
-  await sourceCommand(() => sourcing.open());
-  await sourceCommand(() => sourcing.select('Departing'));
-  await sourceCommand(() => expect(sourcing.changeKind).toHaveText('Remove'));
-  await sourceCommand(() => checkpoint('reopening restores the excluded page and its pending cleanup evidence'));
-  await sourceCommand(() => sourcing.select('Bridge'));
-  await sourceCommand(() => sourcing.setSelectedOutlinkDepth(3));
-  await sourceCommand(() => sourcing.select('Departing'));
-  await sourceCommand(() => sourcing.expectNoSelectedSourceChange());
-  await sourceCommand(() => expect(sourcing.selectedPage.getByText('Tracked', { exact: true })).toBeVisible());
-  expect(proposal.current.proposed.nodes.find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Departing')).toEqual(original);
+  await test.step(sections.steps.verifyScenarioReducedDepthLeavesExcludedPage, async () => {
+    await sourceCommand(() => sourcing.select('Bridge'));
+    await sourceCommand(() => sourcing.setSelectedOutlinkDepth(0));
+    await sourceCommand(() => sourcing.select('Departing'));
+    await sourceCommand(() => sourcing.expectSelectedRemovalReason('Not reachable'));
+    expect(proposal.current.proposed.nodes.find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Departing')).toEqual(original);
+    await sourceCommand(() => checkpoint('the reduced depth leaves excluded page configuration in the pending proposal'));
+    await sourceCommand(() => sourcing.later());
+    await sourceCommand(() => page.reload());
+    await sourceCommand(() => editor.waitForLoad('sourcing-review'));
+    await sourceCommand(() => sourcing.open());
+    await sourceCommand(() => sourcing.select('Departing'));
+    await sourceCommand(() => expect(sourcing.changeKind).toHaveText('Remove'));
+    await sourceCommand(() => checkpoint('reopening restores the excluded page and its pending cleanup evidence'));
+    await sourceCommand(() => sourcing.select('Bridge'));
+    await sourceCommand(() => sourcing.setSelectedOutlinkDepth(3));
+    await sourceCommand(() => sourcing.select('Departing'));
+    await sourceCommand(() => sourcing.expectNoSelectedSourceChange());
+    await sourceCommand(() => expect(sourcing.selectedPage.getByText('Tracked', { exact: true })).toBeVisible());
+    expect(proposal.current.proposed.nodes.find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Departing')).toEqual(original);
 
-  await sourceCommand(() => sourcing.select('Bridge'));
-  await sourceCommand(() => sourcing.setSelectedBlacklisted(true));
-  await sourceCommand(() => sourcing.select('Departing'));
-  await sourceCommand(() => expect(sourcing.changeKind).toHaveText('Remove'));
-  await sourceCommand(() => sourcing.later());
-  await sourceCommand(() => page.reload());
-  await sourceCommand(() => editor.waitForLoad('sourcing-review'));
-  await sourceCommand(() => sourcing.open());
-  await sourceCommand(() => sourcing.select('Bridge'));
-  await sourceCommand(() => sourcing.setSelectedBlacklisted(false));
-  await sourceCommand(() => sourcing.select('Departing'));
-  await sourceCommand(() => sourcing.expectNoSelectedSourceChange());
-  await sourceCommand(() => expect(sourcing.selectedPage.getByText('Tracked', { exact: true })).toBeVisible());
-  expect(proposal.current.proposed.nodes.find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Departing')).toEqual(original);
-  expect(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).toBe(saved);
-  await sourceCommand(() => addKeyFrame(sourceReviewCleanup));
-  await sourceCommand(() => checkpoint('reversing both exclusions restores the saved identity tracking and depth settings'));
-  await sourceCommand(() => sourcing.discard());
-  await sourceCommand(() => expect(sourcing.root).toBeHidden());
+    await sourceCommand(() => sourcing.select('Bridge'));
+    await sourceCommand(() => sourcing.setSelectedBlacklisted(true));
+    await sourceCommand(() => sourcing.select('Departing'));
+    await sourceCommand(() => expect(sourcing.changeKind).toHaveText('Remove'));
+    await sourceCommand(() => sourcing.later());
+    await sourceCommand(() => page.reload());
+    await sourceCommand(() => editor.waitForLoad('sourcing-review'));
+    await sourceCommand(() => sourcing.open());
+    await sourceCommand(() => sourcing.select('Bridge'));
+    await sourceCommand(() => sourcing.setSelectedBlacklisted(false));
+    await sourceCommand(() => sourcing.select('Departing'));
+    await sourceCommand(() => sourcing.expectNoSelectedSourceChange());
+    await sourceCommand(() => expect(sourcing.selectedPage.getByText('Tracked', { exact: true })).toBeVisible());
+    expect(proposal.current.proposed.nodes.find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Departing')).toEqual(original);
+    expect(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).toBe(saved);
+    await sourceCommand(() => addKeyFrame(sourceReviewCleanup));
+    await sourceCommand(() => checkpoint('reversing both exclusions restores the saved identity tracking and depth settings'));
+    await sourceCommand(() => sourcing.discard());
+    await sourceCommand(() => expect(sourcing.root).toBeHidden());
+  });
+
   await sourceCommand(() => assertMeadowHomeState());
 });

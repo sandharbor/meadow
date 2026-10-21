@@ -143,7 +143,7 @@ opens the run with that concept selected.
 
 ## Scenario sections
 
-Scenarios can declare linked section prose beside their name and description:
+Declare linked section prose for each scenario beside their name and description:
 
 ```ts
 const sections = scenarioSections({
@@ -164,6 +164,11 @@ The keyed declaration preserves order and supplies checked step names. Only the
 first section may have type `setup`; subsequent sections use `test`. Use short
 prose explaining the action and expected result, with document links where useful.
 Each multiline step surrounds its own code and can end with a checkpoint.
+When later sections need a value created by a step, return an object from the
+step and destructure it at the test level (`const { editor } = await test.step(...)`).
+The simplified code view keeps the original value declarations and hides this
+transfer scaffolding. Mutable variables shared with callbacks stay in the test's
+outer scope, preserving one binding across phases.
 
 Sections are captured before execution so the report retains the whole scenario
 even when an early step fails. The simplified Test Code view replaces the

@@ -8,7 +8,7 @@ import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { sourcingReviewRedesign, sourceReviewIdentity, sourceMove, pendingSourceProposal, checkpointViewRestoration, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../../concepts/index.js';
+import { scenarioSections, sourcingReviewRedesign, sourceReviewIdentity, sourceMove, pendingSourceProposal, checkpointViewRestoration, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });
@@ -16,69 +16,85 @@ test.use({ fixtureHome: Fixture.SourcingReview });
 const name = linkedScenarioName(conceptText`Sourcing requires identity decisions before graph entry and preserves partial review on Cancel`);
 
 const description = linkedScenarioDescription(conceptText`Enter a rename review and make one identity decision. Cancel and reload preserve that partial choice, now listed as already decided, while blocking the graph until every identity is resolved.`);
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Establish the starting state: accepted identities are configured before the rename batch.` },
+  verifyScenarioIdentityModalOpenOneDecision: { type: 'test', text: conceptText`Verify the scenario: the identity modal is open with one decision made and the others unresolved.` },
+  cancellingRequiredReviewReturnsAcceptedCurationKeeps: { type: 'test', text: conceptText`Cancelling the required review returns to accepted curation and keeps the partial review.` },
+  everyRemainingIdentityNeedsChoiceBeforeGraph: { type: 'test', text: conceptText`Every remaining identity needs a choice before graph entry.` },
+  petalStartsFreshAsNewFileTracked: { type: 'test', text: conceptText`Petal starts fresh as a new file, tracked as an addition rather than taking Leaf's identity.` },
+});
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewIdentity, sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '9fbb91cb-48e4-43dc-b5a2-72864118bd2d' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
-  // --- Setup ---
-  const list = new BundleListPage(page, expect);
-  const editor = new BundleEditorPage(page, expect);
-  const sourcing = new SourcingWorkspacePage(page, expect);
-  const proposal = new SourcingProposalState(testServer, 'sourcing-review');
-  const directory = path.join(testServer.configDir, 'bundles/sourcing-review');
-  await sourceCommand(() => list.goto());
-  await sourceCommand(() => list.clickBundle('sourcing-review'));
-  await sourceCommand(() => editor.waitForLoad('sourcing-review'));
-  const saved = fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8');
-  await sourceCommand(() => checkpoint('accepted identities are configured before the rename batch'));
+test(name.name, { annotation: [{ type: 'scenario-id', description: '9fbb91cb-48e4-43dc-b5a2-72864118bd2d' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+  const { editor, sourcing, proposal, directory, saved } = await test.step(sections.steps.setup, async () => {
+    const list = new BundleListPage(page, expect);
+    const editor = new BundleEditorPage(page, expect);
+    const sourcing = new SourcingWorkspacePage(page, expect);
+    const proposal = new SourcingProposalState(testServer, 'sourcing-review');
+    const directory = path.join(testServer.configDir, 'bundles/sourcing-review');
+    await sourceCommand(() => list.goto());
+    await sourceCommand(() => list.clickBundle('sourcing-review'));
+    await sourceCommand(() => editor.waitForLoad('sourcing-review'));
+    const saved = fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8');
+    await sourceCommand(() => checkpoint('accepted identities are configured before the rename batch'));
+    return { editor, sourcing, proposal, directory, saved };
+  });
 
-  // --- Test start ---
-  await sourceCommand(() => sourceChanges.apply('rename-review-pages', 'sourcing-review-data'));
-  await sourceCommand(() => editor.checkSourceChanges());
-  await sourceCommand(() => sourcing.open());
-  await sourceCommand(() => expect(sourcing.identities).toBeVisible());
-  await sourceCommand(() => expect(sourcing.identityButton('Confirm')).toBeDisabled());
-  await sourceCommand(() => expect(sourcing.root.getByRole('button', { name: 'List View', exact: true })).toHaveCount(0));
-  await sourceCommand(() => sourcing.showIdentity('100000000006'));
-  await sourceCommand(() => sourcing.expectPickRequired('100000000006'));
-  await sourceCommand(() => sourcing.chooseIdentity('100000000002', 'Routes/Branch/Gateway.md'));
-  await sourceCommand(() => addKeyFrame(sourceReviewIdentity));
-  await sourceCommand(() => checkpoint('the identity modal is open with one decision made and the others unresolved'));
+  await test.step(sections.steps.verifyScenarioIdentityModalOpenOneDecision, async () => {
+    await sourceCommand(() => sourceChanges.apply('rename-review-pages', 'sourcing-review-data'));
+    await sourceCommand(() => editor.checkSourceChanges());
+    await sourceCommand(() => sourcing.open());
+    await sourceCommand(() => expect(sourcing.identities).toBeVisible());
+    await sourceCommand(() => expect(sourcing.identityButton('Confirm')).toBeDisabled());
+    await sourceCommand(() => expect(sourcing.root.getByRole('button', { name: 'List View', exact: true })).toHaveCount(0));
+    await sourceCommand(() => sourcing.showIdentity('100000000006'));
+    await sourceCommand(() => sourcing.expectPickRequired('100000000006'));
+    await sourceCommand(() => sourcing.chooseIdentity('100000000002', 'Routes/Branch/Gateway.md'));
+    await sourceCommand(() => addKeyFrame(sourceReviewIdentity));
+    await sourceCommand(() => checkpoint('the identity modal is open with one decision made and the others unresolved'));
+  });
 
-  // Cancelling the required review returns to accepted curation and keeps the partial review.
-  await sourceCommand(() => sourcing.identityButton('Cancel').click());
-  await sourceCommand(() => expect(sourcing.root).toBeHidden());
-  expect(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).toBe(saved);
-  await sourceCommand(() => page.reload());
-  await sourceCommand(() => editor.waitForLoad('sourcing-review'));
-  await sourceCommand(() => sourcing.open());
-  await sourceCommand(() => expect(sourcing.identities).toBeVisible());
-  await sourceCommand(() => expect(sourcing.identitySection('Already decided').getByTestId('source-move-100000000002')).toBeVisible());
-  await sourceCommand(() => sourcing.expectIdentityDecision('100000000002', 'Same file'));
-  expect(Object.keys(proposal.current.identities)).toEqual(['100000000002']);
-  await sourceCommand(() => expect(sourcing.identityButton('Confirm')).toBeDisabled());
-  await sourceCommand(() => checkpoint('reopening restores the partial identity review and still gates the graph'));
+  await test.step(sections.steps.cancellingRequiredReviewReturnsAcceptedCurationKeeps, async () => {
+    await sourceCommand(() => sourcing.identityButton('Cancel').click());
+    await sourceCommand(() => expect(sourcing.root).toBeHidden());
+    expect(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).toBe(saved);
+    await sourceCommand(() => page.reload());
+    await sourceCommand(() => editor.waitForLoad('sourcing-review'));
+    await sourceCommand(() => sourcing.open());
+    await sourceCommand(() => expect(sourcing.identities).toBeVisible());
+    await sourceCommand(() => expect(sourcing.identitySection('Already decided').getByTestId('source-move-100000000002')).toBeVisible());
+    await sourceCommand(() => sourcing.expectIdentityDecision('100000000002', 'Same file'));
+    expect(Object.keys(proposal.current.identities)).toEqual(['100000000002']);
+    await sourceCommand(() => expect(sourcing.identityButton('Confirm')).toBeDisabled());
+    await sourceCommand(() => checkpoint('reopening restores the partial identity review and still gates the graph'));
+  });
 
-  // Every remaining identity needs a choice before graph entry.
-  await sourceCommand(() => sourcing.chooseIdentity('100000000003', 'Routes/Independent.md'));
-  await sourceCommand(() => sourcing.chooseIdentity('100000000007', null));
-  await sourceCommand(() => sourcing.chooseIdentity('100000000006', 'Retained One.md'));
-  await sourceCommand(() => sourcing.continueToGraph());
-  await sourceCommand(() => sourcing.select('Gateway'));
-  await sourceCommand(() => sourcing.expectSelectedRename('Routes/Branch/Bridge.md', 'Routes/Branch/Gateway.md'));
-  await sourceCommand(() => sourcing.expectNodeVisible('Bridge', false));
-  await sourceCommand(() => sourcing.expectNodeVisible('Leaf'));
-  await sourceCommand(() => sourcing.expectNodeVisible('Petal'));
-  await sourceCommand(() => sourcing.select('Leaf'));
-  await sourceCommand(() => sourcing.expectSelectedRemovalReason('Source missing'));
-  await sourceCommand(() => sourcing.select('Petal'));
-  await sourceCommand(() => expect(sourcing.changeKind).toHaveText('Add'));
-  expect(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).toBe(saved);
-  await sourceCommand(() => checkpoint('resolved identities are visible in the comparison without accepting the sources'));
-  await sourceCommand(() => sourcing.accept());
-  const nodes = YAML.parse(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).nodes;
-  expect(nodes.find((node: { bundleNodeId: string }) => node.bundleNodeId === '100000000002').bundleNodeName).toBe('Gateway');
-  expect(nodes.some((node: { bundleNodeId: string }) => node.bundleNodeId === '100000000007')).toBe(false);
-  // Petal starts fresh as a new file, tracked as an addition rather than taking Leaf's identity.
-  expect(nodes.find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Petal')?.bundleNodeId).not.toBe('100000000007');
-  await sourceCommand(() => checkpoint('acceptance preserves confirmed identities and removes the rejected old configuration'));
+  const { nodes } = await test.step(sections.steps.everyRemainingIdentityNeedsChoiceBeforeGraph, async () => {
+    await sourceCommand(() => sourcing.chooseIdentity('100000000003', 'Routes/Independent.md'));
+    await sourceCommand(() => sourcing.chooseIdentity('100000000007', null));
+    await sourceCommand(() => sourcing.chooseIdentity('100000000006', 'Retained One.md'));
+    await sourceCommand(() => sourcing.continueToGraph());
+    await sourceCommand(() => sourcing.select('Gateway'));
+    await sourceCommand(() => sourcing.expectSelectedRename('Routes/Branch/Bridge.md', 'Routes/Branch/Gateway.md'));
+    await sourceCommand(() => sourcing.expectNodeVisible('Bridge', false));
+    await sourceCommand(() => sourcing.expectNodeVisible('Leaf'));
+    await sourceCommand(() => sourcing.expectNodeVisible('Petal'));
+    await sourceCommand(() => sourcing.select('Leaf'));
+    await sourceCommand(() => sourcing.expectSelectedRemovalReason('Source missing'));
+    await sourceCommand(() => sourcing.select('Petal'));
+    await sourceCommand(() => expect(sourcing.changeKind).toHaveText('Add'));
+    expect(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).toBe(saved);
+    await sourceCommand(() => checkpoint('resolved identities are visible in the comparison without accepting the sources'));
+    await sourceCommand(() => sourcing.accept());
+    const nodes = YAML.parse(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).nodes;
+    expect(nodes.find((node: { bundleNodeId: string }) => node.bundleNodeId === '100000000002').bundleNodeName).toBe('Gateway');
+    expect(nodes.some((node: { bundleNodeId: string }) => node.bundleNodeId === '100000000007')).toBe(false);
+    return { nodes };
+  });
+
+  await test.step(sections.steps.petalStartsFreshAsNewFileTracked, async () => {
+    expect(nodes.find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Petal')?.bundleNodeId).not.toBe('100000000007');
+    await sourceCommand(() => checkpoint('acceptance preserves confirmed identities and removes the rejected old configuration'));
+  });
+
   await sourceCommand(() => assertMeadowHomeState({ allowedUntracked: ['source_graphs/.source-changes.jsonl', 'source_graphs/sourcing-review-data/Petal.md', 'source_graphs/sourcing-review-data/Retained One.md', 'source_graphs/sourcing-review-data/Retained Twin.md', 'source_graphs/sourcing-review-data/Routes/Branch/Gateway.md', 'source_graphs/sourcing-review-data/Routes/Independent.md'], allowedModified: ['source_graphs/sourcing-review-data/Start.md', 'source_graphs/sourcing-review-data/Leaf.md', 'source_graphs/sourcing-review-data/Retained.md', 'source_graphs/sourcing-review-data/Routes/Branch/Bridge.md', 'source_graphs/sourcing-review-data/Routes/Reference.md'] }));
 });

@@ -98,15 +98,43 @@ export const svg = define({
 
 export const versioning = define({
   id: id.versioning, name: "Generated Bundle Version", aliases: ["Versioning"], kind: "entity", searchFacet: true, appAreaIds: [id.bundleGeneration, id.bundleReview],
-  definition: text`An immutable, named snapshot in the lifecycle of generated bundle output.`,
+  definition: text`A named version of generated bundle output, with saved and unsaved generations while current and a retained saved state once frozen.`,
   mechanics: [
-    text`Versions move from initial unsaved output to saved current versions with comparisons, recovery, and cancellation.`,
+    text`Versions move from initial unsaved output to saved current versions with comparisons, recovery, and cancellation. Creating a successor makes it current and leaves its predecessor as a ${link(id.frozenVersion, "Frozen Version")}.`,
     text`Adding a second source or renaming a canonical source can change output paths. Source review recommends a new generated version, a connected publication revision, and retention of the prior publication. This guidance is optional and does not generate or publish a version automatically.`,
     text`Saving completes the local site workflow and returns a local preview link. Publishing is a separate, optional operation that requires an explicit user request.`,
     text`A version's generated files and its local generation record are one pair. Generation installs them together; Save, freezing a predecessor, restoration, cancellation, and recovery keep them together under one exclusive versioning operation. Freezing restores the predecessor's saved files and saved record, including a legitimately absent record.`,
     text`Review compares a saved current version with its saved generation, a never-saved new version with its predecessor's saved generation, and the first version with an empty site. Paths are relative to each version root, so a new version namespace alone is not a change. Save state is independent of that comparison: a new version can show no site differences and still be unsaved.`,
   ],
   interplay: text`${link(id.bundleGeneration, "Bundle Generation")} creates versions and ${link(id.bundleReview, "Bundle Review")} explains their currentness and differences. ${link(id.generationRecord, "Generation Records")} explain how one version's files correspond to another's. Reader connections and remote addresses belong to ${link(id.publicationRevision, "Publication Revisions")}, not generated versions.`,
+});
+
+export const frozenVersion = define({
+  id: id.frozenVersion, name: "Frozen Version", aliases: ["Frozen Generated Bundle Version"],
+  kind: "state", searchFacet: false, parentId: id.versioning,
+  appAreaIds: [id.bundleGeneration, id.bundleReview],
+  implementationRoles: ["freeze-predecessor", "inspect-integrity"] as const,
+  definition: text`A previously current generated bundle version retained at its last saved generation after a successor becomes current.`,
+  mechanics: [
+    text`Creating the successor restores the predecessor's last saved files and matching ${link(id.generationRecord, "Generation Record")}, including the saved absence of a record for legacy output. The predecessor then remains frozen while the successor is current.`,
+    text`The retained website files are inside the ${link(id.meadowHome, "Meadow Home")}, under bundles/<bundle>/html/generated_bundle_versions/<version-id>/. An HTML page in that directory is a file within the frozen version. Generation records are local metadata kept outside the website output.`,
+    text`Frozen is a lifecycle promise, rather than a filesystem permission setting. ${link(id.externalFileEdits, "Editing Files Outside Meadow")} can still alter those files. Meadow checks retained output against its saved Git state and reports an Integrity Problem for modified, added, or missing files.`,
+    text`The frozen version keeps its identity and saved history. Canceling a never-saved successor makes the predecessor current again; explicitly deleting frozen local files is a separate recorded lifecycle operation.`,
+  ],
+  interplay: text`A ${link(id.versioning, "Generated Bundle Version")} becomes frozen when a successor is created. Its ${link(id.dataIntegrity, "Data Integrity")} can be recovered through ${link(id.restoringFrozenVersion, "Restoring a Frozen Version")}. Reader links and remote copies belong to ${link(id.publicationRevision, "Publication Revisions")}.`,
+});
+
+export const restoringFrozenVersion = define({
+  id: id.restoringFrozenVersion, name: "Restoring a Frozen Version", aliases: ["Restore Frozen Version from Git"],
+  kind: "process", searchFacet: false, parentId: id.versioning, appAreaIds: [id.bundleReview],
+  implementationRoles: ["restore"] as const,
+  definition: text`Recovering a retained frozen version's local output and matching generation records from their saved Git state after an integrity problem.`,
+  mechanics: [
+    text`In Versions, Restore Frozen Version from Git replaces local changes with the saved output and saved ${link(id.generationRecord, "Generation Record")}. This removes the unsaved external edits to that version and restores the saved output/record pair.`,
+    text`The operation requires a retained ${link(id.frozenVersion, "Frozen Version")} whose local files have not been explicitly deleted. It runs under the exclusive versioning operation lock, preserving the version's identity and the current successor.`,
+    text`Restoration clears the repaired integrity problem so guarded versioning operations can proceed. It does not itself cancel the successor or make the predecessor current; canceling the never-saved successor is the later operation that returns to the predecessor.`,
+  ],
+  interplay: text`This is the local ${link(id.dataIntegrity, "Data Integrity")} recovery for a ${link(id.frozenVersion, "Frozen Version")} changed through ${link(id.externalFileEdits, "Editing Files Outside Meadow")}.`,
 });
 
 export const generationRecord = define({
@@ -125,5 +153,5 @@ export const generationRecord = define({
 
 export const generationConcepts = [
   customize, excalidraw, generatedBundleSearch, hooks, htmlGeneration, htmlNode,
-  images, openKnowledgeFormat, sourcesExport, svg, versioning, generationRecord,
+  images, openKnowledgeFormat, sourcesExport, svg, versioning, frozenVersion, restoringFrozenVersion, generationRecord,
 ] as const;

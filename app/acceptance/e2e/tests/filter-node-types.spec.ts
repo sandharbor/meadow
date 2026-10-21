@@ -17,7 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { FilterPanelComponent, BundleEditorPage } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { filters, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
+import { scenarioSections, filters, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -26,39 +26,45 @@ const name = linkedScenarioName(conceptText`type filter lists concrete file type
 
 const description = linkedScenarioDescription(conceptText`Inspect the available concrete file types and solo Markdown. The graph should retain
 only pages of that type.`);
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Establish the starting state: type filters expanded.` },
+  soloMarkdownPages: { type: 'test', text: conceptText`Solo Markdown pages.` },
+});
 const areas = scenarioAreas([bundleCuration]);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '463d5905-356e-4fd4-bbc9-ef4078d3ecba' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
+test(name.name, { annotation: [{ type: 'scenario-id', description: '463d5905-356e-4fd4-bbc9-ef4078d3ecba' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   assertMeadowHomeState,
   addKeyFrame,
 }) => {
-  // --- Setup ---
-  const workflows = new Workflows(page, expect);
-  const editor = new BundleEditorPage(page, expect);
-  const filterPanel = new FilterPanelComponent(page, expect);
+  const { editor, filterPanel, markdownNodeCount } = await test.step(sections.steps.setup, async () => {
+    const workflows = new Workflows(page, expect);
+    const editor = new BundleEditorPage(page, expect);
+    const filterPanel = new FilterPanelComponent(page, expect);
 
-  await sourceCommand(() => workflows.navigateToBigBundle());
-  await sourceCommand(() => editor.expectGraphEdgeKindControlsHidden());
-  await sourceCommand(() => filterPanel.expandFilterGroup("Types"));
-  const markdownNodeCount = await sourceCommand(() => filterPanel.getNodeTypeCount("Markdown"));
-  expect(markdownNodeCount).toBeGreaterThan(0);
-  for (const typeName of ["HTML", "JavaScript", "CSS", "PNG", "GIF", "SVG", "Excalidraw"]) {
-    expect(await sourceCommand(() => filterPanel.getNodeTypeCount(typeName))).toBeGreaterThan(0);
-  }
-  await sourceCommand(() => checkpoint("type filters expanded"));
+    await sourceCommand(() => workflows.navigateToBigBundle());
+    await sourceCommand(() => editor.expectGraphEdgeKindControlsHidden());
+    await sourceCommand(() => filterPanel.expandFilterGroup("Types"));
+    const markdownNodeCount = await sourceCommand(() => filterPanel.getNodeTypeCount("Markdown"));
+    expect(markdownNodeCount).toBeGreaterThan(0);
+    for (const typeName of ["HTML", "JavaScript", "CSS", "PNG", "GIF", "SVG", "Excalidraw"]) {
+      expect(await sourceCommand(() => filterPanel.getNodeTypeCount(typeName))).toBeGreaterThan(0);
+    }
+    await sourceCommand(() => checkpoint("type filters expanded"));
+    return { editor, filterPanel, markdownNodeCount };
+  });
 
-  // --- Test start ---
-  // Solo Markdown pages.
-  await sourceCommand(() => filterPanel.soloNodeType("Markdown"));
-  await sourceCommand(() => editor.switchToListView());
-  await sourceCommand(() => expect.poll(() => editor.getListViewPageCount()).toBe(markdownNodeCount));
+  await test.step(sections.steps.soloMarkdownPages, async () => {
+    await sourceCommand(() => filterPanel.soloNodeType("Markdown"));
+    await sourceCommand(() => editor.switchToListView());
+    await sourceCommand(() => expect.poll(() => editor.getListViewPageCount()).toBe(markdownNodeCount));
 
-  const visibleTypes = await sourceCommand(() => editor.getListViewNodeTypes());
-  expect(visibleTypes).toHaveLength(markdownNodeCount);
-  expect(visibleTypes.every(type => type.trim() === ".md")).toBe(true);
-  await sourceCommand(() => addKeyFrame(filters));
-  await sourceCommand(() => checkpoint("Markdown nodes soloed"));
+    const visibleTypes = await sourceCommand(() => editor.getListViewNodeTypes());
+    expect(visibleTypes).toHaveLength(markdownNodeCount);
+    expect(visibleTypes.every(type => type.trim() === ".md")).toBe(true);
+    await sourceCommand(() => addKeyFrame(filters));
+    await sourceCommand(() => checkpoint("Markdown nodes soloed"));
+  });
 
   void bigBundle;
 

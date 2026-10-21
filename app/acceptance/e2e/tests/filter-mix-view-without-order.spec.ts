@@ -17,7 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { FilterPanelComponent, BundleEditorPage } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { filterMixing, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
+import { scenarioSections, filterMixing, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -26,46 +26,56 @@ const name = linkedScenarioName(conceptText`without mix terms can be reordered b
 
 const description = linkedScenarioDescription(conceptText`Build a filter expression with two exclusions and drag one onto the other. The
 expression should preserve the intended ordering and result.`);
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Establish the starting state: the bundle is ready to combine filters.` },
+  buildSelectionWithoutUntrackedPages: { type: 'test', text: conceptText`Build a selection without untracked pages.` },
+  reverseFilterOrder: { type: 'test', text: conceptText`Reverse the filter order.` },
+  checkReversedResult: { type: 'test', text: conceptText`Check the reversed result.` },
+});
 const areas = scenarioAreas([bundleCuration], { subAreas: [filterMixing] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '9a8a5d08-d311-4deb-81a8-c6b2a608761e' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
+test(name.name, { annotation: [{ type: 'scenario-id', description: '9a8a5d08-d311-4deb-81a8-c6b2a608761e' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   assertMeadowHomeState,
   addKeyFrame,
 }) => {
-  // --- Setup ---
-  const workflows = new Workflows(page, expect);
-  await sourceCommand(() => workflows.navigateToBigBundle());
+  const { editor, filterPanel } = await test.step(sections.steps.setup, async () => {
+    const workflows = new Workflows(page, expect);
+    await sourceCommand(() => workflows.navigateToBigBundle());
 
-  const editor = new BundleEditorPage(page, expect);
-  const filterPanel = new FilterPanelComponent(page, expect);
+    const editor = new BundleEditorPage(page, expect);
+    const filterPanel = new FilterPanelComponent(page, expect);
 
-  await sourceCommand(() => checkpoint("the bundle is ready to combine filters"));
+    await sourceCommand(() => checkpoint("the bundle is ready to combine filters"));
+    return { editor, filterPanel };
+  });
 
-  // --- Test start ---
-  // Build a selection without untracked pages.
-  await sourceCommand(() => editor.clickSelectAll());
-  await sourceCommand(() => editor.clickSoloSelection());
-  await sourceCommand(() => filterPanel.enableAndSoloFilter("Untracked"));
+  await test.step(sections.steps.buildSelectionWithoutUntrackedPages, async () => {
+    await sourceCommand(() => editor.clickSelectAll());
+    await sourceCommand(() => editor.clickSoloSelection());
+    await sourceCommand(() => filterPanel.enableAndSoloFilter("Untracked"));
 
-  await sourceCommand(() => filterPanel.openMixFilters());
-  await sourceCommand(() => filterPanel.expectMixTermOrder(["Selection Solo", "Untracked"]));
-  await sourceCommand(() => filterPanel.chooseMixOperator("Without"));
-  await sourceCommand(() => filterPanel.closeMixFilters());
-  await sourceCommand(() => editor.expectGraphViewHasPages());
-  await sourceCommand(() => checkpoint("selection without untracked pages"));
+    await sourceCommand(() => filterPanel.openMixFilters());
+    await sourceCommand(() => filterPanel.expectMixTermOrder(["Selection Solo", "Untracked"]));
+    await sourceCommand(() => filterPanel.chooseMixOperator("Without"));
+    await sourceCommand(() => filterPanel.closeMixFilters());
+    await sourceCommand(() => editor.expectGraphViewHasPages());
+    await sourceCommand(() => checkpoint("selection without untracked pages"));
+  });
 
-  // Reverse the filter order.
-  await sourceCommand(() => filterPanel.openMixFilters());
-  await sourceCommand(() => filterPanel.dragMixTermOnto("Selection Solo", "Untracked"));
-  await sourceCommand(() => filterPanel.expectMixTermOrder(["Untracked", "Selection Solo"]));
-  await sourceCommand(() => addKeyFrame(filterMixing));
-  await sourceCommand(() => checkpoint("without terms reordered directly"));
+  await test.step(sections.steps.reverseFilterOrder, async () => {
+    await sourceCommand(() => filterPanel.openMixFilters());
+    await sourceCommand(() => filterPanel.dragMixTermOnto("Selection Solo", "Untracked"));
+    await sourceCommand(() => filterPanel.expectMixTermOrder(["Untracked", "Selection Solo"]));
+    await sourceCommand(() => addKeyFrame(filterMixing));
+    await sourceCommand(() => checkpoint("without terms reordered directly"));
+  });
 
-  // Check the reversed result.
-  await sourceCommand(() => filterPanel.closeMixFilters());
-  await sourceCommand(() => editor.expectGraphViewPageCount(0));
-  await sourceCommand(() => checkpoint("untracked without the selected pages is empty"));
+  await test.step(sections.steps.checkReversedResult, async () => {
+    await sourceCommand(() => filterPanel.closeMixFilters());
+    await sourceCommand(() => editor.expectGraphViewPageCount(0));
+    await sourceCommand(() => checkpoint("untracked without the selected pages is empty"));
+  });
 
   void bigBundle;
 

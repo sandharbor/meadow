@@ -8,7 +8,7 @@ import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { sourcingReviewRedesign, pendingProposalRevalidation, sourceChangesDuringReview, sourceReviewSensitivity, sensitive, filterSensitivity, tracking, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../../concepts/index.js';
+import { scenarioSections, sourcingReviewRedesign, pendingProposalRevalidation, sourceChangesDuringReview, sourceReviewSensitivity, sensitive, filterSensitivity, tracking, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../../concepts/index.js';
 import { scenarioDesignPressures, preventAccidentalSharing } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
@@ -19,58 +19,65 @@ const name = linkedScenarioName(conceptText`Refreshing source material stops tra
 const description = linkedScenarioDescription(conceptText`Review additions that Track added pages tracks, then refresh after their content starts matching sensitivity policy. The
 newly sensitive additions become untracked without requiring explicit confirmation, and are listed as skipped.
 Checkpoints preserve the pending decisions and their current sensitivity evidence.`);
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Establish the starting state: safe additions are tracked by Track added pages.` },
+  refreshIncorporatesChangedBytesRevalidatesExistingTracking: { type: 'test', text: conceptText`Refresh incorporates changed bytes and revalidates the existing tracking decisions.` },
+});
 const pressures = scenarioDesignPressures([preventAccidentalSharing]);
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '63b363d7-248b-4c3b-a136-7cc5dffb7754' }, name.annotation, description.annotation, areas.annotation, pressures.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
-  // --- Setup ---
-  const list = new BundleListPage(page, expect);
-  const editor = new BundleEditorPage(page, expect);
-  const sourcing = new SourcingWorkspacePage(page, expect);
-  const proposal = new SourcingProposalState(testServer, 'sourcing-review');
-  const filters = new FilterPanelComponent(page, expect);
-  const directory = path.join(testServer.configDir, 'bundles/sourcing-review');
-  await sourceCommand(() => list.goto());
-  await sourceCommand(() => list.clickBundle('sourcing-review'));
-  await sourceCommand(() => editor.waitForLoad('sourcing-review'));
-  await sourceCommand(() => filters.clickAddCustomFilter());
-  await sourceCommand(() => filters.fillAndSaveCustomFilter({ name: 'Restricted review material', field: 'content', matchType: 'substring', value: 'review-sensitive', markSensitive: true }));
-  await sourceCommand(() => sourceChanges.apply('add-review-pages', 'sourcing-review-data'));
-  await sourceCommand(() => editor.checkSourceChanges());
-  await sourceCommand(() => sourcing.open());
-  for (const name of ['Safe One', 'Safe Two']) {
-    await sourceCommand(() => sourcing.select(name));
-    await sourceCommand(() => expect(sourcing.selectedPage.getByText('Tracked', { exact: true })).toBeVisible());
-  }
-  for (const name of ['Safe One', 'Safe Two']) expect(proposal.current.tracking[`file:Additions/${name}.md`]).toMatchObject({ track: true, origin: 'additions' });
-  const captured = proposal.current.candidateSnapshotId;
-  await sourceCommand(() => checkpoint('safe additions are tracked by Track added pages'));
+test(name.name, { annotation: [{ type: 'scenario-id', description: '63b363d7-248b-4c3b-a136-7cc5dffb7754' }, name.annotation, description.annotation, areas.annotation, pressures.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+  const { editor, sourcing, proposal, filters, directory, captured } = await test.step(sections.steps.setup, async () => {
+    const list = new BundleListPage(page, expect);
+    const editor = new BundleEditorPage(page, expect);
+    const sourcing = new SourcingWorkspacePage(page, expect);
+    const proposal = new SourcingProposalState(testServer, 'sourcing-review');
+    const filters = new FilterPanelComponent(page, expect);
+    const directory = path.join(testServer.configDir, 'bundles/sourcing-review');
+    await sourceCommand(() => list.goto());
+    await sourceCommand(() => list.clickBundle('sourcing-review'));
+    await sourceCommand(() => editor.waitForLoad('sourcing-review'));
+    await sourceCommand(() => filters.clickAddCustomFilter());
+    await sourceCommand(() => filters.fillAndSaveCustomFilter({ name: 'Restricted review material', field: 'content', matchType: 'substring', value: 'review-sensitive', markSensitive: true }));
+    await sourceCommand(() => sourceChanges.apply('add-review-pages', 'sourcing-review-data'));
+    await sourceCommand(() => editor.checkSourceChanges());
+    await sourceCommand(() => sourcing.open());
+    for (const name of ['Safe One', 'Safe Two']) {
+      await sourceCommand(() => sourcing.select(name));
+      await sourceCommand(() => expect(sourcing.selectedPage.getByText('Tracked', { exact: true })).toBeVisible());
+    }
+    for (const name of ['Safe One', 'Safe Two']) expect(proposal.current.tracking[`file:Additions/${name}.md`]).toMatchObject({ track: true, origin: 'additions' });
+    const captured = proposal.current.candidateSnapshotId;
+    await sourceCommand(() => checkpoint('safe additions are tracked by Track added pages'));
+    return { editor, sourcing, proposal, filters, directory, captured };
+  });
 
-  // --- Test start ---
-  // Refresh incorporates changed bytes and revalidates the existing tracking decisions.
-  await sourceCommand(() => sourceChanges.apply('mark-review-pages-sensitive', 'sourcing-review-data'));
-  const comparisonResponse = page.waitForResponse(response => response.url().includes('/sourcing/proposal/graph?') && response.ok());
-  await sourceCommand(() => sourcing.updateSources());
-  const comparison = await sourceCommand(async () => (await comparisonResponse).json());
-  expect(comparison.graph.nodes.find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Safe One').body).toContain('review-sensitive');
-  expect(proposal.current.candidateSnapshotId).not.toBe(captured);
-  for (const name of ['Safe One', 'Safe Two']) {
-    await sourceCommand(() => sourcing.select(name));
-    await sourceCommand(() => expect(sourcing.selectedPage.getByText('Not Tracked', { exact: true })).toBeVisible());
-    await sourceCommand(() => expect(sourcing.selectedPage.getByText('Sensitive', { exact: true })).toBeVisible());
-    expect(proposal.current.tracking[`file:Additions/${name}.md`]).toBeUndefined();
-  }
-  await sourceCommand(() => sourcing.expectNoTrackingConfirmations());
-  await sourceCommand(() => expect(sourcing.root.getByTestId('track-additions-sensitive')).toContainText('sensitive skipped'));
-  await sourceCommand(() => addKeyFrame(sourceReviewSensitivity));
-  await sourceCommand(() => checkpoint('newly sensitive additions are untracked without an explicit-choice confirmation'));
-  await sourceCommand(() => sourcing.accept());
-  const nodes = YAML.parse(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).nodes;
-  expect(nodes.some((node: { bundleNodeName: string }) => node.bundleNodeName === 'Safe One')).toBe(false);
-  expect(nodes.some((node: { bundleNodeName: string }) => node.bundleNodeName === 'Safe Two')).toBe(false);
-  await sourceCommand(() => editor.switchToListView());
-  await sourceCommand(() => editor.expectListViewRowByExactNamePresent('Safe One'));
-  await sourceCommand(() => editor.expectListViewRowByExactNamePresent('Safe Two'));
-  await sourceCommand(() => filters.expectFilterVisible('Restricted review material'));
-  await sourceCommand(() => checkpoint('accepted curation contains the reviewed material and the resolved tracking choices'));
+  await test.step(sections.steps.refreshIncorporatesChangedBytesRevalidatesExistingTracking, async () => {
+    await sourceCommand(() => sourceChanges.apply('mark-review-pages-sensitive', 'sourcing-review-data'));
+    const comparisonResponse = page.waitForResponse(response => response.url().includes('/sourcing/proposal/graph?') && response.ok());
+    await sourceCommand(() => sourcing.updateSources());
+    const comparison = await sourceCommand(async () => (await comparisonResponse).json());
+    expect(comparison.graph.nodes.find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Safe One').body).toContain('review-sensitive');
+    expect(proposal.current.candidateSnapshotId).not.toBe(captured);
+    for (const name of ['Safe One', 'Safe Two']) {
+      await sourceCommand(() => sourcing.select(name));
+      await sourceCommand(() => expect(sourcing.selectedPage.getByText('Not Tracked', { exact: true })).toBeVisible());
+      await sourceCommand(() => expect(sourcing.selectedPage.getByText('Sensitive', { exact: true })).toBeVisible());
+      expect(proposal.current.tracking[`file:Additions/${name}.md`]).toBeUndefined();
+    }
+    await sourceCommand(() => sourcing.expectNoTrackingConfirmations());
+    await sourceCommand(() => expect(sourcing.root.getByTestId('track-additions-sensitive')).toContainText('sensitive skipped'));
+    await sourceCommand(() => addKeyFrame(sourceReviewSensitivity));
+    await sourceCommand(() => checkpoint('newly sensitive additions are untracked without an explicit-choice confirmation'));
+    await sourceCommand(() => sourcing.accept());
+    const nodes = YAML.parse(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).nodes;
+    expect(nodes.some((node: { bundleNodeName: string }) => node.bundleNodeName === 'Safe One')).toBe(false);
+    expect(nodes.some((node: { bundleNodeName: string }) => node.bundleNodeName === 'Safe Two')).toBe(false);
+    await sourceCommand(() => editor.switchToListView());
+    await sourceCommand(() => editor.expectListViewRowByExactNamePresent('Safe One'));
+    await sourceCommand(() => editor.expectListViewRowByExactNamePresent('Safe Two'));
+    await sourceCommand(() => filters.expectFilterVisible('Restricted review material'));
+    await sourceCommand(() => checkpoint('accepted curation contains the reviewed material and the resolved tracking choices'));
+  });
+
   await sourceCommand(() => assertMeadowHomeState({ allowedUntracked: ['source_graphs/.source-changes.jsonl'], allowedModified: ['source_graphs/sourcing-review-data/Start.md', 'source_graphs/sourcing-review-data/Additions/Safe One.md', 'source_graphs/sourcing-review-data/Additions/Safe Two.md'] }));
 });

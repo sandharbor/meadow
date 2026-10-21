@@ -2,7 +2,7 @@
 
 import { test, expect } from "../src/run/test-fixtures.js";
 import { AppPlace, BundleEditorPage } from "../src/run/pages/index.js";
-import { appPlace, callout, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
+import { scenarioSections, appPlace, callout, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
 
 test.use({ bundleMode: "single-file" });
 
@@ -12,33 +12,39 @@ const description = linkedScenarioDescription(conceptText`Follow a link that ask
 that does not exist and a selected page that is gone. The app opens as deep
 as it can, selects the page that still exists, and a callout says exactly
 where it stopped. The Runtime receives the same report a CLI caller reads.`);
+const sections = scenarioSections({
+  followLinkIntoBigBundle: { type: 'test', text: conceptText`Follow the link into the big bundle.` },
+  checkReportSenderReadsBack: { type: 'test', text: conceptText`Check the report the sender reads back.` },
+});
 const areas = scenarioAreas([bundleCuration]);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '2771ea2c-ce5c-44d6-81dd-eabb2aa8f97a' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
-  // --- Test start ---
-  // Follow the link into the big bundle.
-  const places = new AppPlace(page, expect);
-  const requested = "/bundle/meadow-test-bundle-big?surface=custom-filter&filter=missing-filter&select=id:ef63f962db68,key:%2Fno+such+page.md";
-  await sourceCommand(() => places.open(requested));
-  await sourceCommand(() => new BundleEditorPage(page, expect).waitForLoad("meadow-test-bundle-big"));
-  await sourceCommand(() => places.expectArrivalCallout(
-    "Opened meadow-test-bundle-big › 1 selected, but 1 of 2 selected pages no longer exists; "
-    + "Custom filter couldn't open: there is no custom filter missing-filter.×",
-  ));
-  await sourceCommand(() => places.expectCurrent("/bundle/meadow-test-bundle-big?select=id:ef63f962db68"));
-  await sourceCommand(() => addKeyFrame(callout, appPlace));
-  await sourceCommand(() => checkpoint("the app reached the bundle and the page that still exists"));
-
-  // Check the report the sender reads back.
-  const { baseUrl, capability } = testServer.getBackendConnectionForRendererTest();
-  const response = await sourceCommand(() => page.request.get(`${baseUrl}/places/arrivals`, { headers: { "x-meadow-capability": capability } }));
-  const { arrivals } = await sourceCommand(() => response.json()) as { arrivals: { requested: string; reached: string; notice?: string }[] };
-  expect(arrivals.at(-1)).toMatchObject({
-    requested,
-    reached: "/bundle/meadow-test-bundle-big?select=id:ef63f962db68",
-    notice: expect.stringContaining("there is no custom filter missing-filter"),
+test(name.name, { annotation: [{ type: 'scenario-id', description: '2771ea2c-ce5c-44d6-81dd-eabb2aa8f97a' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+  const { places, requested } = await test.step(sections.steps.followLinkIntoBigBundle, async () => {
+    const places = new AppPlace(page, expect);
+    const requested = "/bundle/meadow-test-bundle-big?surface=custom-filter&filter=missing-filter&select=id:ef63f962db68,key:%2Fno+such+page.md";
+    await sourceCommand(() => places.open(requested));
+    await sourceCommand(() => new BundleEditorPage(page, expect).waitForLoad("meadow-test-bundle-big"));
+    await sourceCommand(() => places.expectArrivalCallout(
+      "Opened meadow-test-bundle-big › 1 selected, but 1 of 2 selected pages no longer exists; "
+      + "Custom filter couldn't open: there is no custom filter missing-filter.×",
+    ));
+    await sourceCommand(() => places.expectCurrent("/bundle/meadow-test-bundle-big?select=id:ef63f962db68"));
+    await sourceCommand(() => addKeyFrame(callout, appPlace));
+    await sourceCommand(() => checkpoint("the app reached the bundle and the page that still exists"));
+    return { places, requested };
   });
-  await sourceCommand(() => places.dismissArrivalCallout());
-  await sourceCommand(() => checkpoint("the arrival report matches what the app reached"));
+
+  await test.step(sections.steps.checkReportSenderReadsBack, async () => {
+    const { baseUrl, capability } = testServer.getBackendConnectionForRendererTest();
+    const response = await sourceCommand(() => page.request.get(`${baseUrl}/places/arrivals`, { headers: { "x-meadow-capability": capability } }));
+    const { arrivals } = await sourceCommand(() => response.json()) as { arrivals: { requested: string; reached: string; notice?: string }[] };
+    expect(arrivals.at(-1)).toMatchObject({
+      requested,
+      reached: "/bundle/meadow-test-bundle-big?select=id:ef63f962db68",
+      notice: expect.stringContaining("there is no custom filter missing-filter"),
+    });
+    await sourceCommand(() => places.dismissArrivalCallout());
+    await sourceCommand(() => checkpoint("the arrival report matches what the app reached"));
+  });
 
   await sourceCommand(() => skipMeadowHomeStateCheck());
 });

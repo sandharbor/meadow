@@ -17,7 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, BundleEditorPage, FilterPanelComponent } from "../src/run/pages/index.js";
 import { Fixture } from "../src/run/workflows.js";
-import { sourcingReviewRedesign, filters, overrides, initialPage, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
+import { scenarioSections, sourcingReviewRedesign, filters, overrides, initialPage, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
 import { exampleBundle, exampleBundleInitialPageTitle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -28,44 +28,58 @@ const name = linkedScenarioName(conceptText`overrides filter on example bundle d
 
 const description = linkedScenarioDescription(conceptText`Apply the Overrides filter to the example bundle. The initial page's required depths
 should not count as a custom override.`);
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Establish the starting state: example bundle loaded.` },
+  enableOverrideFilter: { type: 'test', text: conceptText`Enable the override filter.` },
+  soloOverriddenPages: { type: 'test', text: conceptText`Solo the overridden pages.` },
+  switchListViewInspectWhichPagesAre: { type: 'test', text: conceptText`Switch to list view to inspect which pages are shown` },
+  thereShouldBeAtLeastOneOverride: { type: 'test', text: conceptText`There should be at least one override page (e.g. "Cognitive Biases")` },
+  initialPageMustNOTAppearDepthSetting: { type: 'test', text: conceptText`The initial page must NOT appear — its depth setting is not an override` },
+});
 const areas = scenarioAreas([bundleCuration]);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '234c4657-7b31-4f5a-9e4c-750bbbf1c5e7' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
+test(name.name, { annotation: [{ type: 'scenario-id', description: '234c4657-7b31-4f5a-9e4c-750bbbf1c5e7' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page, checkpoint, assertMeadowHomeState, addKeyFrame,
 }) => {
-  // --- Setup ---
-  const bundleList = new BundleListPage(page, expect);
-  const editor = new BundleEditorPage(page, expect);
-  const filterPanel = new FilterPanelComponent(page, expect);
+  const { editor, filterPanel } = await test.step(sections.steps.setup, async () => {
+    const bundleList = new BundleListPage(page, expect);
+    const editor = new BundleEditorPage(page, expect);
+    const filterPanel = new FilterPanelComponent(page, expect);
 
-  // Add the example bundle from the empty state
-  await sourceCommand(() => bundleList.goto());
-  await sourceCommand(() => bundleList.clickAddExampleBundleLink());
-  await sourceCommand(() => editor.waitForLoad("example-bundle"));
-  await sourceCommand(() => checkpoint("example bundle loaded"));
+    // Add the example bundle from the empty state
+    await sourceCommand(() => bundleList.goto());
+    await sourceCommand(() => bundleList.clickAddExampleBundleLink());
+    await sourceCommand(() => editor.waitForLoad("example-bundle"));
+    await sourceCommand(() => checkpoint("example bundle loaded"));
+    return { editor, filterPanel };
+  });
 
-  // --- Test start ---
-  // Enable the override filter.
-  await sourceCommand(() => filterPanel.enableFilter("Depth Override"));
-  await sourceCommand(() => addKeyFrame(filters));
-  await sourceCommand(() => checkpoint("overrides filter enabled"));
+  await test.step(sections.steps.enableOverrideFilter, async () => {
+    await sourceCommand(() => filterPanel.enableFilter("Depth Override"));
+    await sourceCommand(() => addKeyFrame(filters));
+    await sourceCommand(() => checkpoint("overrides filter enabled"));
+  });
 
-  // Solo the overridden pages.
-  await sourceCommand(() => filterPanel.clickSoloOnFilter("Depth Override"));
-  await sourceCommand(() => page.waitForTimeout(250));
+  await test.step(sections.steps.soloOverriddenPages, async () => {
+    await sourceCommand(() => filterPanel.clickSoloOnFilter("Depth Override"));
+    await sourceCommand(() => page.waitForTimeout(250));
+  });
 
-  // Switch to list view to inspect which pages are shown
-  await sourceCommand(() => editor.switchToListView());
-  await sourceCommand(() => page.waitForTimeout(250));
+  await test.step(sections.steps.switchListViewInspectWhichPagesAre, async () => {
+    await sourceCommand(() => editor.switchToListView());
+    await sourceCommand(() => page.waitForTimeout(250));
+  });
 
-  // There should be at least one override page (e.g. "Cognitive Biases")
-  const overrideCount = await sourceCommand(() => editor.getListViewPageCount());
-  expect(overrideCount).toBeGreaterThan(0);
+  await test.step(sections.steps.thereShouldBeAtLeastOneOverride, async () => {
+    const overrideCount = await sourceCommand(() => editor.getListViewPageCount());
+    expect(overrideCount).toBeGreaterThan(0);
+  });
 
-  // The initial page must NOT appear — its depth setting is not an override
-  await sourceCommand(() => editor.expectListViewRowByExactNameNotPresent(exampleBundleInitialPageTitle));
-  await sourceCommand(() => addKeyFrame(overrides));
-  await sourceCommand(() => addKeyFrame(initialPage));
-  await sourceCommand(() => checkpoint("overrides soloed without initial page"));
+  await test.step(sections.steps.initialPageMustNOTAppearDepthSetting, async () => {
+    await sourceCommand(() => editor.expectListViewRowByExactNameNotPresent(exampleBundleInitialPageTitle));
+    await sourceCommand(() => addKeyFrame(overrides));
+    await sourceCommand(() => addKeyFrame(initialPage));
+    await sourceCommand(() => checkpoint("overrides soloed without initial page"));
+  });
 
   void exampleBundle;
 

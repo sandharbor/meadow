@@ -18,7 +18,7 @@ import path from "path";
 import { test, expect } from "../src/run/test-fixtures.js";
 import { PreviewPublishModal, ChangesTab, CustomizeTab } from "../src/run/pages/index.js";
 import { Workflows, Bundle } from "../src/run/workflows.js";
-import { customize, openKnowledgeFormat, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleGeneration } from "../../../concepts/index.js";
+import { scenarioSections, customize, openKnowledgeFormat, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleGeneration } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 import { seedTrackedAndLinkedFile } from "../src/run/utils/index.js";
 import { OpenKnowledgeFormatBundle } from "./open-knowledge-format-support.js";
@@ -39,45 +39,56 @@ const name = linkedScenarioName(conceptText`OKF: auto-detect a source index page
 
 const description = linkedScenarioDescription(conceptText`Enable Open Knowledge Format with an existing source index page. Meadow should use it
 directly without treating it as a reserved-name rename.`);
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Establish the starting state: preview loaded.` },
+  enableAutomaticIndexDetection: { type: 'test', text: conceptText`Enable automatic index detection.` },
+  generateKnowledgePackage: { type: 'test', text: conceptText`Generate the knowledge package.` },
+  inspectGeneratedPackageFiles: { type: 'test', text: conceptText`Inspect the generated package files.` },
+});
 const areas = scenarioAreas([bundleGeneration]);
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'faf07c58-2ffa-4c39-9942-d575c41bb4cc' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'faf07c58-2ffa-4c39-9942-d575c41bb4cc' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   skipMeadowHomeStateCheck,
   addKeyFrame,
   testServer,
 }) => {
-  // --- Setup ---
-  const wf = new Workflows(page, expect);
-  await sourceCommand(() => wf.navigateToBigBundlePreview());
-  const modal = new PreviewPublishModal(page, expect);
-  await sourceCommand(() => checkpoint("preview loaded"));
+  const { modal } = await test.step(sections.steps.setup, async () => {
+    const wf = new Workflows(page, expect);
+    await sourceCommand(() => wf.navigateToBigBundlePreview());
+    const modal = new PreviewPublishModal(page, expect);
+    await sourceCommand(() => checkpoint("preview loaded"));
+    return { modal };
+  });
 
-  // --- Test start ---
-  // Enable automatic index detection.
-  await sourceCommand(() => modal.openCustomizeSidebar());
-  const customizeTab = new CustomizeTab(page, expect);
-  const okf = await sourceCommand(() => customizeTab.generationOptions.openOpenKnowledgeFormatSettings());
-  await sourceCommand(() => okf.expectSelectedIndex(sourceIndexPageName, "root"));
-  await sourceCommand(() => addKeyFrame(customize));
-  await sourceCommand(() => checkpoint("auto okf index page selected"));
+  const { okf } = await test.step(sections.steps.enableAutomaticIndexDetection, async () => {
+    await sourceCommand(() => modal.openCustomizeSidebar());
+    const customizeTab = new CustomizeTab(page, expect);
+    const okf = await sourceCommand(() => customizeTab.generationOptions.openOpenKnowledgeFormatSettings());
+    await sourceCommand(() => okf.expectSelectedIndex(sourceIndexPageName, "root"));
+    await sourceCommand(() => addKeyFrame(customize));
+    await sourceCommand(() => checkpoint("auto okf index page selected"));
+    return { okf };
+  });
 
-  // Generate the knowledge package.
-  await sourceCommand(() => okf.save());
+  await test.step(sections.steps.generateKnowledgePackage, async () => {
+    await sourceCommand(() => okf.save());
 
-  const changesTab = new ChangesTab(page, expect);
-  await sourceCommand(() => changesTab.waitForRegenerationComplete());
-  await sourceCommand(() => addKeyFrame(openKnowledgeFormat));
-  await sourceCommand(() => checkpoint("okf generation complete with source index page"));
+    const changesTab = new ChangesTab(page, expect);
+    await sourceCommand(() => changesTab.waitForRegenerationComplete());
+    await sourceCommand(() => addKeyFrame(openKnowledgeFormat));
+    await sourceCommand(() => checkpoint("okf generation complete with source index page"));
+  });
 
-  // Inspect the generated package files.
-  const bundleDir = path.join(testServer.configDir, "bundles", Bundle.Big);
-  const okfBundle = new OpenKnowledgeFormatBundle(bundleDir, expect);
-  await sourceCommand(() => okfBundle.expectFileToContain("index.md", "Reserved index source page."));
-  okfBundle.expectFileToBeAbsent("index-original.md");
-  void bigBundle;
+  await test.step(sections.steps.inspectGeneratedPackageFiles, async () => {
+    const bundleDir = path.join(testServer.configDir, "bundles", Bundle.Big);
+    const okfBundle = new OpenKnowledgeFormatBundle(bundleDir, expect);
+    await sourceCommand(() => okfBundle.expectFileToContain("index.md", "Reserved index source page."));
+    okfBundle.expectFileToBeAbsent("index-original.md");
+    void bigBundle;
 
-  await sourceCommand(() => checkpoint("the source index becomes the package entry page"));
+    await sourceCommand(() => checkpoint("the source index becomes the package entry page"));
+  });
 
   await sourceCommand(() => skipMeadowHomeStateCheck());
 });

@@ -710,3 +710,11 @@ export function currentVersionEntry(
 ): PresentGeneratedBundleVersionEntry | null {
   return currentGeneratedBundleVersion(loadGeneratedBundleVersionManifest(bundleDirectory));
 }
+
+
+import type { ParticipatesIn, frozenVersion, restoringFrozenVersion } from '../../../../../concepts/index.js';
+export type FrozenVersionMeadowConceptParticipations = [
+  ParticipatesIn<typeof frozenVersion, 'freeze-predecessor', typeof createNewGeneratedBundleVersion>,
+  ParticipatesIn<typeof frozenVersion, 'inspect-integrity', typeof inspectFrozenGeneratedVersionsIntegrity>,
+  ParticipatesIn<typeof restoringFrozenVersion, 'restore', typeof restoreFrozenGeneratedBundleVersion>,
+];

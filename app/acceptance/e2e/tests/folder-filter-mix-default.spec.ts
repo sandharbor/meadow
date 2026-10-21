@@ -17,7 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { FilterPanelComponent, BundleEditorPage } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { filterMixing, folderFilter, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
+import { scenarioSections, filterMixing, folderFilter, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -26,51 +26,59 @@ const name = linkedScenarioName(conceptText`hidden folders are intersected with 
 
 const description = linkedScenarioDescription(conceptText`Hide one folder and solo another. The default filter mix should combine those choices
 and show only the expected pages.`);
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Establish the starting state: the folder counts are visible before filtering.` },
+  hideSoloFolders: { type: 'test', text: conceptText`Hide and solo folders.` },
+  checkResultingList: { type: 'test', text: conceptText`Check the resulting list.` },
+});
 const areas = scenarioAreas([bundleCuration], { subAreas: [filterMixing] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '4fa68df7-a9cd-48a7-b397-a7138cb61106' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
+test(name.name, { annotation: [{ type: 'scenario-id', description: '4fa68df7-a9cd-48a7-b397-a7138cb61106' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   assertMeadowHomeState,
   addKeyFrame,
 }) => {
-  // --- Setup ---
-  const workflows = new Workflows(page, expect);
-  const editor = new BundleEditorPage(page, expect);
-  const filterPanel = new FilterPanelComponent(page, expect);
+  const { editor, filterPanel } = await test.step(sections.steps.setup, async () => {
+    const workflows = new Workflows(page, expect);
+    const editor = new BundleEditorPage(page, expect);
+    const filterPanel = new FilterPanelComponent(page, expect);
 
-  await sourceCommand(() => workflows.navigateToBigBundle());
-  await sourceCommand(() => filterPanel.enableFilter("Folders"));
-  await sourceCommand(() => filterPanel.expectFolderCount("t024", 4));
-  await sourceCommand(() => filterPanel.expectFolderCount("t023", 4));
+    await sourceCommand(() => workflows.navigateToBigBundle());
+    await sourceCommand(() => filterPanel.enableFilter("Folders"));
+    await sourceCommand(() => filterPanel.expectFolderCount("t024", 4));
+    await sourceCommand(() => filterPanel.expectFolderCount("t023", 4));
 
-  await sourceCommand(() => checkpoint("the folder counts are visible before filtering"));
+    await sourceCommand(() => checkpoint("the folder counts are visible before filtering"));
+    return { editor, filterPanel };
+  });
 
-  // --- Test start ---
-  // Hide and solo folders.
-  await sourceCommand(() => filterPanel.hideFolder("t024"));
-  await sourceCommand(() => filterPanel.soloFolder("t023"));
-  await sourceCommand(() => editor.expectGraphViewPageCount(4));
-  await sourceCommand(() => filterPanel.expectFilterGroupActive("Folders"));
-  await sourceCommand(() => filterPanel.collapseFilterGroup("Folders"));
-  await sourceCommand(() => filterPanel.expectFilterGroupActive("Folders"));
-  await sourceCommand(() => filterPanel.expectMixFiltersCustomized(false));
-  await sourceCommand(() => filterPanel.expectMixFiltersLeftAlignedWithAddCustomFilterOnRight());
+  await test.step(sections.steps.hideSoloFolders, async () => {
+    await sourceCommand(() => filterPanel.hideFolder("t024"));
+    await sourceCommand(() => filterPanel.soloFolder("t023"));
+    await sourceCommand(() => editor.expectGraphViewPageCount(4));
+    await sourceCommand(() => filterPanel.expectFilterGroupActive("Folders"));
+    await sourceCommand(() => filterPanel.collapseFilterGroup("Folders"));
+    await sourceCommand(() => filterPanel.expectFilterGroupActive("Folders"));
+    await sourceCommand(() => filterPanel.expectMixFiltersCustomized(false));
+    await sourceCommand(() => filterPanel.expectMixFiltersLeftAlignedWithAddCustomFilterOnRight());
 
-  await sourceCommand(() => filterPanel.openMixFilters());
-  await sourceCommand(() => filterPanel.expectDefaultHideAndSoloMix({
-    hides: ["Folder: t024"],
-    solos: ["Folder: t023"],
-  }));
-  await sourceCommand(() => addKeyFrame(filterMixing));
-  await sourceCommand(() => addKeyFrame(folderFilter));
-  await sourceCommand(() => checkpoint("hidden and soloed folders use the default grouped mix"));
+    await sourceCommand(() => filterPanel.openMixFilters());
+    await sourceCommand(() => filterPanel.expectDefaultHideAndSoloMix({
+      hides: ["Folder: t024"],
+      solos: ["Folder: t023"],
+    }));
+    await sourceCommand(() => addKeyFrame(filterMixing));
+    await sourceCommand(() => addKeyFrame(folderFilter));
+    await sourceCommand(() => checkpoint("hidden and soloed folders use the default grouped mix"));
+  });
 
-  // Check the resulting list.
-  await sourceCommand(() => filterPanel.closeMixFilters());
+  await test.step(sections.steps.checkResultingList, async () => {
+    await sourceCommand(() => filterPanel.closeMixFilters());
 
-  await sourceCommand(() => editor.switchToListView());
-  expect(await sourceCommand(() => editor.getListViewPageCount())).toBe(4);
-  await sourceCommand(() => checkpoint("only the soloed folder remains visible"));
+    await sourceCommand(() => editor.switchToListView());
+    expect(await sourceCommand(() => editor.getListViewPageCount())).toBe(4);
+    await sourceCommand(() => checkpoint("only the soloed folder remains visible"));
+  });
 
   void bigBundle;
 

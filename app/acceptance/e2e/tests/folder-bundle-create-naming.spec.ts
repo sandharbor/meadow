@@ -18,7 +18,7 @@ import path from "path";
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, BundleEditorPage, CreateAndEditBundleModal, PreviewPublishModal } from "../src/run/pages/index.js";
 import { Fixture } from "../src/run/workflows.js";
-import { folderBundles, bundleSlug, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundles, bundleGeneration, sourceSetupNew, bundleSourcing } from "../../../concepts/index.js";
+import { scenarioSections, folderBundles, bundleSlug, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundles, bundleGeneration, sourceSetupNew, bundleSourcing } from "../../../concepts/index.js";
 import { customBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-folder" });
@@ -28,70 +28,82 @@ const name = linkedScenarioName(conceptText`choose folders before naming a bundl
 
 const description = linkedScenarioDescription(conceptText`Select folders before naming a bundle and its home page. Check invalid source roots, an
 independently chosen slug, and the resulting preview title.`);
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Establish the starting state: the selected folder supplies the initial name.` },
+  trySourceRootOutsideSelectedFolder: { type: 'test', text: conceptText`Try a source root outside the selected folder.` },
+  nameBundleTwoFolders: { type: 'test', text: conceptText`Name a bundle with two folders.` },
+  createFolderBundle: { type: 'test', text: conceptText`Create the folder bundle.` },
+  reopenPreviewNamedBundle: { type: 'test', text: conceptText`Reopen and preview the named bundle.` },
+});
 const areas = scenarioAreas([bundles, bundleGeneration, bundleSourcing], { subAreas: [sourceSetupNew] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '0c8889cc-f2c8-4006-ba40-06d83037b3b9' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
+test(name.name, { annotation: [{ type: 'scenario-id', description: '0c8889cc-f2c8-4006-ba40-06d83037b3b9' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   testServer,
   checkpoint,
   assertMeadowHomeState,
   addKeyFrame,
 }) => {
-  // --- Setup ---
-  const bundleList = new BundleListPage(page, expect);
-  const createModal = new CreateAndEditBundleModal(page, expect);
-  const editor = new BundleEditorPage(page, expect);
-  const previewModal = new PreviewPublishModal(page, expect);
-  const sourceDir = path.join(testServer.sourceGraphsDir, "folder-structure-test");
+  const { bundleList, createModal, editor, previewModal, sourceDir } = await test.step(sections.steps.setup, async () => {
+    const bundleList = new BundleListPage(page, expect);
+    const createModal = new CreateAndEditBundleModal(page, expect);
+    const editor = new BundleEditorPage(page, expect);
+    const previewModal = new PreviewPublishModal(page, expect);
+    const sourceDir = path.join(testServer.sourceGraphsDir, "folder-structure-test");
 
-  await sourceCommand(() => bundleList.goto());
-  await sourceCommand(() => bundleList.clickCreateNewBundle());
-  await sourceCommand(() => createModal.selectFolderEntryStrategy());
-  await sourceCommand(() => createModal.expectFolderSelectionBeforeNaming());
-  await sourceCommand(() => createModal.addFolders([path.join(sourceDir, "Alpha")]));
-  expect(await sourceCommand(() => createModal.getSlugDisplayText())).toBe("alpha");
-  await sourceCommand(() => createModal.expectFolderSelectionValid());
-  await sourceCommand(() => addKeyFrame(folderBundles));
+    await sourceCommand(() => bundleList.goto());
+    await sourceCommand(() => bundleList.clickCreateNewBundle());
+    await sourceCommand(() => createModal.selectFolderEntryStrategy());
+    await sourceCommand(() => createModal.expectFolderSelectionBeforeNaming());
+    await sourceCommand(() => createModal.addFolders([path.join(sourceDir, "Alpha")]));
+    expect(await sourceCommand(() => createModal.getSlugDisplayText())).toBe("alpha");
+    await sourceCommand(() => createModal.expectFolderSelectionValid());
+    await sourceCommand(() => addKeyFrame(folderBundles));
 
-  await sourceCommand(() => checkpoint("the selected folder supplies the initial name"));
+    await sourceCommand(() => checkpoint("the selected folder supplies the initial name"));
+    return { bundleList, createModal, editor, previewModal, sourceDir };
+  });
 
-  // --- Test start ---
-  // Try a source root outside the selected folder.
-  await sourceCommand(() => createModal.changeSourceDirectory(path.join(sourceDir, "Beta")));
-  await sourceCommand(() => createModal.expectFolderOutsideRoot(path.join(sourceDir, "Alpha")));
-  await sourceCommand(() => addKeyFrame(folderBundles));
-  await sourceCommand(() => createModal.expectCreateDisabledTooltip());
-  await sourceCommand(() => addKeyFrame(folderBundles));
-  await sourceCommand(() => createModal.changeSourceDirectory(sourceDir));
-  await sourceCommand(() => createModal.expectFolderSelectionValid());
+  await test.step(sections.steps.trySourceRootOutsideSelectedFolder, async () => {
+    await sourceCommand(() => createModal.changeSourceDirectory(path.join(sourceDir, "Beta")));
+    await sourceCommand(() => createModal.expectFolderOutsideRoot(path.join(sourceDir, "Alpha")));
+    await sourceCommand(() => addKeyFrame(folderBundles));
+    await sourceCommand(() => createModal.expectCreateDisabledTooltip());
+    await sourceCommand(() => addKeyFrame(folderBundles));
+    await sourceCommand(() => createModal.changeSourceDirectory(sourceDir));
+    await sourceCommand(() => createModal.expectFolderSelectionValid());
 
-  await sourceCommand(() => checkpoint("restoring the source root makes the selection valid"));
+    await sourceCommand(() => checkpoint("restoring the source root makes the selection valid"));
+  });
 
-  // Name a bundle with two folders.
-  await sourceCommand(() => createModal.addFolders([path.join(sourceDir, "Beta")]));
-  await sourceCommand(() => createModal.fillFolderHomePageTitle("Collected Notes"));
-  expect(await sourceCommand(() => createModal.getSlugDisplayText())).toBe("collected-notes");
-  await sourceCommand(() => createModal.clickEditSlug());
-  await sourceCommand(() => createModal.fillSlug("reading-room"));
-  await sourceCommand(() => addKeyFrame(bundleSlug));
-  await sourceCommand(() => checkpoint("the home title and bundle slug are chosen independently"));
+  await test.step(sections.steps.nameBundleTwoFolders, async () => {
+    await sourceCommand(() => createModal.addFolders([path.join(sourceDir, "Beta")]));
+    await sourceCommand(() => createModal.fillFolderHomePageTitle("Collected Notes"));
+    expect(await sourceCommand(() => createModal.getSlugDisplayText())).toBe("collected-notes");
+    await sourceCommand(() => createModal.clickEditSlug());
+    await sourceCommand(() => createModal.fillSlug("reading-room"));
+    await sourceCommand(() => addKeyFrame(bundleSlug));
+    await sourceCommand(() => checkpoint("the home title and bundle slug are chosen independently"));
+  });
 
-  // Create the folder bundle.
-  await sourceCommand(() => createModal.clickCreateBundle());
-  await sourceCommand(() => editor.waitForLoad("reading-room"));
-  await sourceCommand(() => editor.expectGraphViewHasPages());
-  await sourceCommand(() => checkpoint("folder bundle created with a separate list name and home title"));
+  await test.step(sections.steps.createFolderBundle, async () => {
+    await sourceCommand(() => createModal.clickCreateBundle());
+    await sourceCommand(() => editor.waitForLoad("reading-room"));
+    await sourceCommand(() => editor.expectGraphViewHasPages());
+    await sourceCommand(() => checkpoint("folder bundle created with a separate list name and home title"));
+  });
 
-  // Reopen and preview the named bundle.
-  await sourceCommand(() => editor.clickBackToBundles());
-  await sourceCommand(() => bundleList.clickBundle("reading-room"));
-  await sourceCommand(() => editor.waitForLoad("reading-room"));
-  await sourceCommand(() => editor.trackAllReachablePages());
-  await sourceCommand(() => editor.clickPreview());
-  await sourceCommand(() => previewModal.waitForPreviewCompleteAllTracked());
-  await sourceCommand(() => previewModal.generatedBundle.expectSingleHeading("Collected Notes", 60_000));
-  await sourceCommand(() => previewModal.generatedBundle.expectStructuralChildNames(["Alpha", "Beta"]));
-  await sourceCommand(() => addKeyFrame(folderBundles));
-  await sourceCommand(() => checkpoint("published home uses the chosen title and folder order"));
+  await test.step(sections.steps.reopenPreviewNamedBundle, async () => {
+    await sourceCommand(() => editor.clickBackToBundles());
+    await sourceCommand(() => bundleList.clickBundle("reading-room"));
+    await sourceCommand(() => editor.waitForLoad("reading-room"));
+    await sourceCommand(() => editor.trackAllReachablePages());
+    await sourceCommand(() => editor.clickPreview());
+    await sourceCommand(() => previewModal.waitForPreviewComplete());
+    await sourceCommand(() => previewModal.generatedBundle.expectSingleHeading("Collected Notes", 60_000));
+    await sourceCommand(() => previewModal.generatedBundle.expectStructuralChildNames(["Alpha", "Beta"]));
+    await sourceCommand(() => addKeyFrame(folderBundles));
+    await sourceCommand(() => checkpoint("published home uses the chosen title and folder order"));
+  });
 
   void customBundle;
 

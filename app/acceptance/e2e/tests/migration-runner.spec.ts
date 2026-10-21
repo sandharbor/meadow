@@ -20,7 +20,7 @@ import YAML from "yaml";
 import { test as baseTest, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage } from "../src/run/pages/index.js";
 import { MeadowHomeMigrations } from "../src/run/utils/index.js";
-import { migration, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas } from "../../../concepts/index.js";
+import { scenarioSections, migration, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 import { bundles } from "../../../concepts/index.js";
 
@@ -55,34 +55,40 @@ const name = linkedScenarioName(conceptText`Migration runner applies an E2E-only
 
 const description = linkedScenarioDescription(conceptText`Start Meadow with a test migration installed. Verify that startup applies the migration
 and records its result.`);
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Prepare the scenario and verify its starting state.` },
+  verifyStartupMigrationOpenApp: { type: 'test', text: conceptText`Verify the startup migration and open the app.` },
+});
 const areas = scenarioAreas([]);
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'ec8d200b-55aa-49e5-894f-8c6145d1865c' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'ec8d200b-55aa-49e5-894f-8c6145d1865c' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   assertMeadowHomeState,
   addKeyFrame,
   testServer,
 }) => {
-  // --- Setup ---
-  const migrations = new MeadowHomeMigrations(testServer.configDir, expect);
-
-  // --- Test start ---
-  // Verify the startup migration and open the app.
-  await sourceCommand(() => migrations.expectCompleted(MIGRATION_ID));
-
-  const markerPath = path.join(testServer.configDir, "migration-system-e2e.yaml");
-  expect(YAML.parse(fs.readFileSync(markerPath, "utf8"))).toEqual({
-    schemaVersion: 1,
-    greeting: "migration system ready",
-    migrationRunCount: 1,
+  const { migrations } = await test.step(sections.steps.setup, async () => {
+    const migrations = new MeadowHomeMigrations(testServer.configDir, expect);
+    return { migrations };
   });
-  expect(fs.existsSync(path.join(testServer.configDir, ".meadow-migration-recovery"))).toBe(false);
 
-  const bundleList = new BundleListPage(page, expect);
-  await sourceCommand(() => bundleList.goto());
-  await sourceCommand(() => bundleList.expectHeadingVisible());
-  await sourceCommand(() => addKeyFrame(migration));
-  await sourceCommand(() => checkpoint("app ready after E2E-only startup migration"));
+  await test.step(sections.steps.verifyStartupMigrationOpenApp, async () => {
+    await sourceCommand(() => migrations.expectCompleted(MIGRATION_ID));
+
+    const markerPath = path.join(testServer.configDir, "migration-system-e2e.yaml");
+    expect(YAML.parse(fs.readFileSync(markerPath, "utf8"))).toEqual({
+      schemaVersion: 1,
+      greeting: "migration system ready",
+      migrationRunCount: 1,
+    });
+    expect(fs.existsSync(path.join(testServer.configDir, ".meadow-migration-recovery"))).toBe(false);
+
+    const bundleList = new BundleListPage(page, expect);
+    await sourceCommand(() => bundleList.goto());
+    await sourceCommand(() => bundleList.expectHeadingVisible());
+    await sourceCommand(() => addKeyFrame(migration));
+    await sourceCommand(() => checkpoint("app ready after E2E-only startup migration"));
+  });
 
   void bigBundle;
   void bundles;

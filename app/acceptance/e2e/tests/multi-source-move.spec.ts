@@ -2,7 +2,7 @@
 
 import { test, expect } from '../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, SelectedPageDetailComponent } from '../src/run/pages/index.js';
-import { sourcingReviewRedesign, sourceSnapshot, sourceMove, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewIdentity, sourceReviewWorkspace } from '../../../concepts/index.js';
+import { scenarioSections, sourcingReviewRedesign, sourceSnapshot, sourceMove, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewIdentity, sourceReviewWorkspace } from '../../../concepts/index.js';
 import { MeadowHomeBundleConfig } from '../src/run/utils/index.js';
 
 test.use({ bundleMode: 'single-file' });
@@ -12,46 +12,54 @@ const name = linkedScenarioName(conceptText`Multi-source move review preserves t
 
 const description = linkedScenarioDescription(conceptText`Move a captured page into another source and review the proposed match. Accepting the
 move should preserve its stable identity and curation.`);
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Establish the starting state: the accepted source state is established before changing files.` },
+  movePageIntoAnotherSource: { type: 'test', text: conceptText`Move the page into another source.` },
+  acceptSourceUpdate: { type: 'test', text: conceptText`Accept the source update.` },
+});
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewIdentity, sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '25840ba8-3533-4257-8e57-ecd39d614a23' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
-  // --- Setup ---
-  const list = new BundleListPage(page, expect);
-  await sourceCommand(() => list.goto());
-  await sourceCommand(() => list.clickBundle('multi-source-page'));
-  const editor = new BundleEditorPage(page, expect);
-  await sourceCommand(() => editor.waitForLoad('multi-source-page'));
-  await sourceCommand(() => editor.waitForSourceCheck());
-  const bundleConfig = new MeadowHomeBundleConfig(testServer.configDir, 'multi-source-page', expect);
-  const original = bundleConfig.requireNode({ sourceId: 'source000001', bundleNodeName: 'Inside' });
-  await sourceCommand(() => checkpoint('the accepted source state is established before changing files'));
+test(name.name, { annotation: [{ type: 'scenario-id', description: '25840ba8-3533-4257-8e57-ecd39d614a23' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
+  const { editor, bundleConfig, original } = await test.step(sections.steps.setup, async () => {
+    const list = new BundleListPage(page, expect);
+    await sourceCommand(() => list.goto());
+    await sourceCommand(() => list.clickBundle('multi-source-page'));
+    const editor = new BundleEditorPage(page, expect);
+    await sourceCommand(() => editor.waitForLoad('multi-source-page'));
+    await sourceCommand(() => editor.waitForSourceCheck());
+    const bundleConfig = new MeadowHomeBundleConfig(testServer.configDir, 'multi-source-page', expect);
+    const original = bundleConfig.requireNode({ sourceId: 'source000001', bundleNodeName: 'Inside' });
+    await sourceCommand(() => checkpoint('the accepted source state is established before changing files'));
+    return { editor, bundleConfig, original };
+  });
 
-  // --- Test start ---
-  // Move the page into another source.
-  await sourceCommand(() => sourceChanges.apply('move-between-sources', 'multi-source'));
-  await sourceCommand(() => editor.checkSourceChanges());
-  await sourceCommand(() => editor.sourceReview.open());
-  await sourceCommand(() => editor.sourceReview.expectMoveCount(1));
-  await sourceCommand(() => editor.sourceReview.expectMoveListed(original.bundleNodeId));
-  await sourceCommand(() => editor.sourceReview.expectMove('Moved', 'notes://Same/Inside.md', 'research://Moved/Inside.md'));
-  await sourceCommand(() => editor.sourceReview.confirmSuggestedIdentities());
-  await sourceCommand(() => editor.sourceReview.continueToGraph());
-  await sourceCommand(() => editor.sourceReview.orphans.expectNotListed('Inside'));
-  await sourceCommand(() => addKeyFrame(sourceMove));
-  await sourceCommand(() => checkpoint('content and link context support a move into another source'));
+  await test.step(sections.steps.movePageIntoAnotherSource, async () => {
+    await sourceCommand(() => sourceChanges.apply('move-between-sources', 'multi-source'));
+    await sourceCommand(() => editor.checkSourceChanges());
+    await sourceCommand(() => editor.sourceReview.open());
+    await sourceCommand(() => editor.sourceReview.expectMoveCount(1));
+    await sourceCommand(() => editor.sourceReview.expectMoveListed(original.bundleNodeId));
+    await sourceCommand(() => editor.sourceReview.expectMove('Moved', 'notes://Same/Inside.md', 'research://Moved/Inside.md'));
+    await sourceCommand(() => editor.sourceReview.confirmSuggestedIdentities());
+    await sourceCommand(() => editor.sourceReview.continueToGraph());
+    await sourceCommand(() => editor.sourceReview.orphans.expectNotListed('Inside'));
+    await sourceCommand(() => addKeyFrame(sourceMove));
+    await sourceCommand(() => checkpoint('content and link context support a move into another source'));
+  });
 
-  // Accept the source update.
-  await sourceCommand(() => editor.sourceReview.accept());
-  const updated = bundleConfig.findNode({ bundleNodeId: original.bundleNodeId });
-  expect(updated).toEqual({ ...original, sourceId: 'source000002', sourceGraphSubdirectory: 'Moved' });
-  await sourceCommand(() => editor.switchToListView());
-  await sourceCommand(() => editor.expectListViewLocation('file:_mw_sources/source000002/Moved/Inside.md', 'research', 'Moved'));
-  await sourceCommand(() => editor.clickListViewRowByNodeKey('file:_mw_sources/source000002/Moved/Inside.md'));
-  await sourceCommand(() => editor.switchToGraphView());
-  const details = new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect);
-  await sourceCommand(() => details.openDetails());
-  await sourceCommand(() => details.expectFolder('research://Moved'));
-  await sourceCommand(() => addKeyFrame(sourceSnapshot));
-  await sourceCommand(() => checkpoint('the moved page retains its durable identity and tracking'));
+  await test.step(sections.steps.acceptSourceUpdate, async () => {
+    await sourceCommand(() => editor.sourceReview.accept());
+    const updated = bundleConfig.findNode({ bundleNodeId: original.bundleNodeId });
+    expect(updated).toEqual({ ...original, sourceId: 'source000002', sourceGraphSubdirectory: 'Moved' });
+    await sourceCommand(() => editor.switchToListView());
+    await sourceCommand(() => editor.expectListViewLocation('file:_mw_sources/source000002/Moved/Inside.md', 'research', 'Moved'));
+    await sourceCommand(() => editor.clickListViewRowByNodeKey('file:_mw_sources/source000002/Moved/Inside.md'));
+    await sourceCommand(() => editor.switchToGraphView());
+    const details = new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect);
+    await sourceCommand(() => details.openDetails());
+    await sourceCommand(() => details.expectFolder('research://Moved'));
+    await sourceCommand(() => addKeyFrame(sourceSnapshot));
+    await sourceCommand(() => checkpoint('the moved page retains its durable identity and tracking'));
+  });
 
   await sourceCommand(() => skipMeadowHomeStateCheck());
 });

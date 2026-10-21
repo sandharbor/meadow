@@ -7,7 +7,7 @@ import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { sourcingReviewRedesign, sourceReviewCleanup, sourceReviewAcceptance, orphan, blacklist, overrides, scopeExclusion, bridgeExclusion, conceptText, conceptLink, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../../concepts/index.js';
+import { scenarioSections, sourcingReviewRedesign, sourceReviewCleanup, sourceReviewAcceptance, orphan, blacklist, overrides, scopeExclusion, bridgeExclusion, conceptText, conceptLink, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });
@@ -17,63 +17,77 @@ const name = linkedScenarioName(conceptText`Acceptance cleans unreachable config
 const description = linkedScenarioDescription(conceptText`Combine a staged ${conceptLink(bridgeExclusion.id, 'bridge exclusion')} with an externally removed leaf link. Acceptance removes both
 unreachable configurations, retains the causal blacklist, and leaves source files untouched.
 Re-expansion tracks returning pages afresh and cannot revive the cleaned page's identity or depth override.`);
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Establish the starting state: accepted configuration includes the bridge dependents and the externally linked leaf.` },
+  verifyScenarioBothExternalIntentionalDeparturesRequire: { type: 'test', text: conceptText`Verify the scenario: both external and intentional departures require cleanup on acceptance.` },
+  returningPagesAreFreshAdditionsTrackedBy: { type: 'test', text: conceptText`Returning pages are fresh additions: tracked by default, without the cleaned override.` },
+  departingTrackedAfreshNewIdentityWithoutCleaned: { type: 'test', text: conceptText`Departing is tracked afresh: a new identity, without the cleaned depth override.` },
+});
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
 
-test(name.name, { annotation: [{ type: 'scenario-id', description: '98d3a524-50f8-46a4-9213-a5404ef8c6ce' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
-  // --- Setup ---
-  const list = new BundleListPage(page, expect);
-  const editor = new BundleEditorPage(page, expect);
-  const sourcing = new SourcingWorkspacePage(page, expect);
-  await sourceCommand(() => list.goto());
-  await sourceCommand(() => list.clickBundle('sourcing-review'));
-  await sourceCommand(() => editor.waitForLoad('sourcing-review'));
-  const configPath = path.join(testServer.configDir, 'bundles/sourcing-review/config/bundle_node_config.yaml');
-  const nodes = () => YAML.parse(fs.readFileSync(configPath, 'utf8')).nodes as Array<{ bundleNodeId: string; bundleNodeName: string; listType: string; outlinksDepth?: number }>;
-  const original = nodes();
-  await sourceCommand(() => checkpoint('accepted configuration includes the bridge dependents and the externally linked leaf'));
+test(name.name, { annotation: [{ type: 'scenario-id', description: '98d3a524-50f8-46a4-9213-a5404ef8c6ce' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+  const { editor, sourcing, nodes, original } = await test.step(sections.steps.setup, async () => {
+    const list = new BundleListPage(page, expect);
+    const editor = new BundleEditorPage(page, expect);
+    const sourcing = new SourcingWorkspacePage(page, expect);
+    await sourceCommand(() => list.goto());
+    await sourceCommand(() => list.clickBundle('sourcing-review'));
+    await sourceCommand(() => editor.waitForLoad('sourcing-review'));
+    const configPath = path.join(testServer.configDir, 'bundles/sourcing-review/config/bundle_node_config.yaml');
+    const nodes = () => YAML.parse(fs.readFileSync(configPath, 'utf8')).nodes as Array<{ bundleNodeId: string; bundleNodeName: string; listType: string; outlinksDepth?: number }>;
+    const original = nodes();
+    await sourceCommand(() => checkpoint('accepted configuration includes the bridge dependents and the externally linked leaf'));
+    return { editor, sourcing, nodes, original };
+  });
 
-  // --- Test start ---
-  await sourceCommand(() => sourceChanges.apply('remove-leaf-link', 'sourcing-review-data'));
-  await sourceCommand(() => Promise.all([
-    page.waitForResponse(response => response.url().endsWith('/sourcing/scan') && response.ok()),
-    page.getByRole('button', { name: 'Refresh sources', exact: true }).click(),
-  ]));
-  await sourceCommand(() => sourcing.open());
-  await sourceCommand(() => sourcing.select('Bridge'));
-  await sourceCommand(() => sourcing.setSelectedBlacklisted(true));
-  for (const name of ['Leaf', 'Departing', 'Outside']) {
-    await sourceCommand(() => sourcing.select(name));
-    await sourceCommand(() => expect(sourcing.changeKind).toHaveText('Remove'));
-    await sourceCommand(() => sourcing.expectSelectedRemovalReason('Not reachable'));
-  }
-  expect(nodes()).toEqual(original);
-  await sourceCommand(() => expect(page.getByRole('button', { name: 'Keep in config', exact: true })).toHaveCount(0));
-  await sourceCommand(() => addKeyFrame(sourceReviewCleanup));
-  await sourceCommand(() => checkpoint('both external and intentional departures require cleanup on acceptance'));
-  await sourceCommand(() => sourcing.accept());
-  for (const name of ['Leaf', 'Departing', 'Outside']) expect(nodes().some(node => node.bundleNodeName === name)).toBe(false);
-  expect(nodes().find(node => node.bundleNodeName === 'Bridge')?.listType).toBe('blacklist');
-  for (const name of ['Leaf', 'Departing', 'Outside']) expect(fs.existsSync(path.join(testServer.sourceGraphsDir, 'sourcing-review-data', `${name}.md`))).toBe(true);
-  await sourceCommand(() => checkpoint('accepted configuration is cleaned while the blacklist and external files remain'));
+  await test.step(sections.steps.verifyScenarioBothExternalIntentionalDeparturesRequire, async () => {
+    await sourceCommand(() => sourceChanges.apply('remove-leaf-link', 'sourcing-review-data'));
+    await sourceCommand(() => Promise.all([
+      page.waitForResponse(response => response.url().endsWith('/sourcing/scan') && response.ok()),
+      page.getByRole('button', { name: 'Refresh sources', exact: true }).click(),
+    ]));
+    await sourceCommand(() => sourcing.open());
+    await sourceCommand(() => sourcing.select('Bridge'));
+    await sourceCommand(() => sourcing.setSelectedBlacklisted(true));
+    for (const name of ['Leaf', 'Departing', 'Outside']) {
+      await sourceCommand(() => sourcing.select(name));
+      await sourceCommand(() => expect(sourcing.changeKind).toHaveText('Remove'));
+      await sourceCommand(() => sourcing.expectSelectedRemovalReason('Not reachable'));
+    }
+    expect(nodes()).toEqual(original);
+    await sourceCommand(() => expect(page.getByRole('button', { name: 'Keep in config', exact: true })).toHaveCount(0));
+    await sourceCommand(() => addKeyFrame(sourceReviewCleanup));
+    await sourceCommand(() => checkpoint('both external and intentional departures require cleanup on acceptance'));
+    await sourceCommand(() => sourcing.accept());
+    for (const name of ['Leaf', 'Departing', 'Outside']) expect(nodes().some(node => node.bundleNodeName === name)).toBe(false);
+    expect(nodes().find(node => node.bundleNodeName === 'Bridge')?.listType).toBe('blacklist');
+    for (const name of ['Leaf', 'Departing', 'Outside']) expect(fs.existsSync(path.join(testServer.sourceGraphsDir, 'sourcing-review-data', `${name}.md`))).toBe(true);
+    await sourceCommand(() => checkpoint('accepted configuration is cleaned while the blacklist and external files remain'));
 
-  await sourceCommand(() => editor.switchToListView());
-  await sourceCommand(() => editor.rightClickRow('Bridge'));
-  await sourceCommand(() => page.getByRole('button', { name: 'Remove from Blacklist', exact: true }).click());
-  await sourceCommand(() => expect(sourcing.root).toBeVisible());
-  await sourceCommand(() => sourcing.expectTrackAdditions(true));
-  await sourceCommand(() => sourcing.select('Departing'));
-  await sourceCommand(() => expect(sourcing.changeKind).toHaveText('Add'));
-  // Returning pages are fresh additions: tracked by default, without the cleaned override.
-  await sourceCommand(() => expect(sourcing.selectedPage.getByText('Tracked', { exact: true })).toBeVisible());
-  await sourceCommand(() => checkpoint('returning pages are fresh additions without the cleaned override'));
-  await sourceCommand(() => sourcing.accept());
-  await sourceCommand(() => editor.switchToListView());
-  await sourceCommand(() => editor.expectListViewRowByExactNamePresent('Departing'));
-  await sourceCommand(() => editor.expectListViewRowByExactNameNotPresent('Leaf'));
-  // Departing is tracked afresh: a new identity, without the cleaned depth override.
-  const returning = nodes().find(node => node.bundleNodeName === 'Departing') as { bundleNodeId: string; outlinksDepth?: number } | undefined;
-  expect(returning?.bundleNodeId).not.toBe('100000000004');
-  expect(returning?.outlinksDepth).toBeUndefined();
-  await sourceCommand(() => checkpoint('accepted re-expansion admits returning material without resurrecting its old configuration'));
+    await sourceCommand(() => editor.switchToListView());
+    await sourceCommand(() => editor.rightClickRow('Bridge'));
+    await sourceCommand(() => page.getByRole('button', { name: 'Remove from Blacklist', exact: true }).click());
+    await sourceCommand(() => expect(sourcing.root).toBeVisible());
+    await sourceCommand(() => sourcing.expectTrackAdditions(true));
+    await sourceCommand(() => sourcing.select('Departing'));
+    await sourceCommand(() => expect(sourcing.changeKind).toHaveText('Add'));
+  });
+
+  await test.step(sections.steps.returningPagesAreFreshAdditionsTrackedBy, async () => {
+    await sourceCommand(() => expect(sourcing.selectedPage.getByText('Tracked', { exact: true })).toBeVisible());
+    await sourceCommand(() => checkpoint('returning pages are fresh additions without the cleaned override'));
+    await sourceCommand(() => sourcing.accept());
+    await sourceCommand(() => editor.switchToListView());
+    await sourceCommand(() => editor.expectListViewRowByExactNamePresent('Departing'));
+    await sourceCommand(() => editor.expectListViewRowByExactNameNotPresent('Leaf'));
+  });
+
+  await test.step(sections.steps.departingTrackedAfreshNewIdentityWithoutCleaned, async () => {
+    const returning = nodes().find(node => node.bundleNodeName === 'Departing') as { bundleNodeId: string; outlinksDepth?: number } | undefined;
+    expect(returning?.bundleNodeId).not.toBe('100000000004');
+    expect(returning?.outlinksDepth).toBeUndefined();
+    await sourceCommand(() => checkpoint('accepted re-expansion admits returning material without resurrecting its old configuration'));
+  });
+
   await sourceCommand(() => assertMeadowHomeState({ allowedUntracked: ['source_graphs/.source-changes.jsonl'], allowedModified: ['source_graphs/sourcing-review-data/Start.md'] }));
 });

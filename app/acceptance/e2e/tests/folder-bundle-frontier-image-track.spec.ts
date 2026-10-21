@@ -24,7 +24,7 @@ import {
   SelectedPageDetailComponent,
 } from "../src/run/pages/index.js";
 import { Fixture, Bundle } from "../src/run/workflows.js";
-import { sourcingReviewRedesign, frontier, htmlGeneration, tracking, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
+import { scenarioSections, sourcingReviewRedesign, frontier, htmlGeneration, tracking, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
 import { customBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-folder" });
@@ -34,48 +34,57 @@ const name = linkedScenarioName(conceptText`tracks a depth-three frontier image 
 
 const description = linkedScenarioDescription(conceptText`Find an image beyond a folder bundle's normal traversal boundary and track it. The
 tracked image should become part of the generated bundle.`);
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Establish the starting state: depth-three frontier image is available to track.` },
+  trackFrontierImage: { type: 'test', text: conceptText`Track the frontier image.` },
+  previewTrackedImage: { type: 'test', text: conceptText`Preview the tracked image.` },
+});
 const areas = scenarioAreas([bundleCuration]);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '78112a8f-5b71-4770-b9e2-e33a205bef9f' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
+test(name.name, { annotation: [{ type: 'scenario-id', description: '78112a8f-5b71-4770-b9e2-e33a205bef9f' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
   addKeyFrame,
   assertMeadowHomeState,
 }) => {
-  // --- Setup ---
-  const bundleList = new BundleListPage(page, expect);
-  const editor = new BundleEditorPage(page, expect);
-  const previewModal = new PreviewPublishModal(page, expect);
+  const { editor, previewModal, detail } = await test.step(sections.steps.setup, async () => {
+    const bundleList = new BundleListPage(page, expect);
+    const editor = new BundleEditorPage(page, expect);
+    const previewModal = new PreviewPublishModal(page, expect);
 
-  await sourceCommand(() => bundleList.goto());
-  await sourceCommand(() => bundleList.clickBundle(Bundle.FolderStructureSingle));
-  await sourceCommand(() => editor.waitForLoad(Bundle.FolderStructureSingle));
-  await sourceCommand(() => editor.switchToListView());
-  await sourceCommand(() => editor.expectListViewRowByTitleAndFileTypePresent("Frontier image", "png"));
-  await sourceCommand(() => editor.expectListViewThumbnailVisible("Frontier image", "png"));
-  await sourceCommand(() => editor.clickListViewRowByExactName("Frontier image"));
+    await sourceCommand(() => bundleList.goto());
+    await sourceCommand(() => bundleList.clickBundle(Bundle.FolderStructureSingle));
+    await sourceCommand(() => editor.waitForLoad(Bundle.FolderStructureSingle));
+    await sourceCommand(() => editor.switchToListView());
+    await sourceCommand(() => editor.expectListViewRowByTitleAndFileTypePresent("Frontier image", "png"));
+    await sourceCommand(() => editor.expectListViewThumbnailVisible("Frontier image", "png"));
+    await sourceCommand(() => editor.clickListViewRowByExactName("Frontier image"));
 
-  const detail = new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect);
-  await sourceCommand(() => detail.expectPill(Pill.FrontierImage));
-  await sourceCommand(() => detail.expectNoPill(Pill.Frontier));
-  await sourceCommand(() => detail.expectNoPill(Pill.Tracked));
-  await sourceCommand(() => detail.expectButtonEnabled(ActionButton.Track));
-  await sourceCommand(() => addKeyFrame(frontier));
-  await sourceCommand(() => checkpoint("depth-three frontier image is available to track"));
+    const detail = new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect);
+    await sourceCommand(() => detail.expectPill(Pill.FrontierImage));
+    await sourceCommand(() => detail.expectNoPill(Pill.Frontier));
+    await sourceCommand(() => detail.expectNoPill(Pill.Tracked));
+    await sourceCommand(() => detail.expectButtonEnabled(ActionButton.Track));
+    await sourceCommand(() => addKeyFrame(frontier));
+    await sourceCommand(() => checkpoint("depth-three frontier image is available to track"));
+    return { editor, previewModal, detail };
+  });
 
-  // --- Test start ---
-  // Track the frontier image.
-  await sourceCommand(() => detail.clickAction(ActionButton.Track, page));
-  await sourceCommand(() => detail.expectPill(Pill.FrontierImage));
-  await sourceCommand(() => detail.expectPill(Pill.Tracked));
-  await sourceCommand(() => addKeyFrame(tracking));
-  await sourceCommand(() => checkpoint("depth-three frontier image tracked in the folder bundle"));
+  await test.step(sections.steps.trackFrontierImage, async () => {
+    await sourceCommand(() => detail.clickAction(ActionButton.Track, page));
+    await sourceCommand(() => detail.expectPill(Pill.FrontierImage));
+    await sourceCommand(() => detail.expectPill(Pill.Tracked));
+    await sourceCommand(() => addKeyFrame(tracking));
+    await sourceCommand(() => checkpoint("depth-three frontier image tracked in the folder bundle"));
+  });
 
-  // Preview the tracked image.
-  await sourceCommand(() => editor.clickPreview());
-  await sourceCommand(() => previewModal.waitForPreviewComplete());
-  await sourceCommand(() => previewModal.generatedBundle.expectSingleHeading("Alpha", 60_000));
-  await sourceCommand(() => addKeyFrame(htmlGeneration));
-  await sourceCommand(() => checkpoint("folder preview succeeds with the tracked frontier image"));
+  await test.step(sections.steps.previewTrackedImage, async () => {
+    await sourceCommand(() => editor.clickPreview());
+    await sourceCommand(() => previewModal.waitForPreviewComplete());
+    await sourceCommand(() => previewModal.expectUntrackedPagesWarning());
+    await sourceCommand(() => previewModal.generatedBundle.expectSingleHeading("Alpha", 60_000));
+    await sourceCommand(() => addKeyFrame(htmlGeneration));
+    await sourceCommand(() => checkpoint("folder preview succeeds with the tracked frontier image"));
+  });
 
   void customBundle;
 

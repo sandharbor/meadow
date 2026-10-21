@@ -18,7 +18,7 @@ import { execSync } from "child_process";
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, BundleEditorPage } from "../src/run/pages/index.js";
 import { Fixture } from "../src/run/workflows.js";
-import { git, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundles } from "../../../concepts/index.js";
+import { scenarioSections, git, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundles } from "../../../concepts/index.js";
 import { exampleBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -29,69 +29,73 @@ const name = linkedScenarioName(conceptText`MeadowHome is a real (non-bare) git 
 
 const description = linkedScenarioDescription(conceptText`Create the example bundle and inspect MeadowHome's Git repository. It should be a normal
 working repository with the expected saved files.`);
+const sections = scenarioSections({
+  setup: { type: 'setup', text: conceptText`Establish the starting state: empty bundle list.` },
+  addExampleBundle: { type: 'test', text: conceptText`Add the example bundle.` },
+  inspectRepositorySystemGitUseSystemGit: { type: 'test', text: conceptText`Inspect the repository with system Git. Use the system \`git\` CLI (not fast_git_ops) to confirm MeadowHome is a normal repo with a working tree. fast_git_ops initializes the repo via \`gix::init_bare\`, which sets core.bare=true and makes plain \`git status\` fail with "fatal: this operation must be run in a work tree" — that's the regression this test guards against.` },
+  backendSCommitHappensAsyncAfterEditor: { type: 'test', text: conceptText`The backend's commit happens async after the editor finishes loading; retry briefly so we don't race it. Same retry budget as MeadowHomeGit.expectDirFullyCommitted.` },
+});
 const areas = scenarioAreas([bundles]);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '2288b7fe-637e-48aa-984f-762ae66da6ff' }, name.annotation, description.annotation, areas.annotation] }, async ({ sourceCommand,
+test(name.name, { annotation: [{ type: 'scenario-id', description: '2288b7fe-637e-48aa-984f-762ae66da6ff' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page, checkpoint, assertMeadowHomeState, addKeyFrame, testServer,
 }) => {
-  // --- Setup ---
-  const bundleList = new BundleListPage(page, expect);
-  const editor = new BundleEditorPage(page, expect);
+  const { bundleList, editor } = await test.step(sections.steps.setup, async () => {
+    const bundleList = new BundleListPage(page, expect);
+    const editor = new BundleEditorPage(page, expect);
 
-  // Empty-state path: no fixture, click the "add the example bundle" link
-  // in the empty bundle list, then land in the editor for example-bundle.
-  await sourceCommand(() => bundleList.goto());
-  await sourceCommand(() => checkpoint("empty bundle list"));
+    // Empty-state path: no fixture, click the "add the example bundle" link
+    // in the empty bundle list, then land in the editor for example-bundle.
+    await sourceCommand(() => bundleList.goto());
+    await sourceCommand(() => checkpoint("empty bundle list"));
+    return { bundleList, editor };
+  });
 
-  // --- Test start ---
-  // Add the example bundle.
-  await sourceCommand(() => bundleList.clickAddExampleBundleLink());
-  await sourceCommand(() => editor.waitForLoad("example-bundle"));
-  await sourceCommand(() => checkpoint("example bundle editor loaded"));
+  await test.step(sections.steps.addExampleBundle, async () => {
+    await sourceCommand(() => bundleList.clickAddExampleBundleLink());
+    await sourceCommand(() => editor.waitForLoad("example-bundle"));
+    await sourceCommand(() => checkpoint("example bundle editor loaded"));
+  });
 
-  // Inspect the repository with system Git.
-  // Use the system `git` CLI (not fast_git_ops) to confirm MeadowHome is
-  // a normal repo with a working tree. fast_git_ops initializes the repo
-  // via `gix::init_bare`, which sets core.bare=true and makes plain
-  // `git status` fail with "fatal: this operation must be run in a work
-  // tree" — that's the regression this test guards against.
-  const runRealGitStatus = () => {
-    try {
-      return execSync("git status --porcelain", {
-        cwd: testServer.configDir,
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "pipe"],
-      });
-    } catch (err) {
-      const e = err as { stderr?: Buffer | string; message: string };
-      const stderr = typeof e.stderr === "string"
-        ? e.stderr
-        : e.stderr?.toString("utf8") ?? "";
-      throw new Error(
-        `Real \`git status\` failed in MeadowHome at ${testServer.configDir}. ` +
-        `This usually means the repo was initialized as bare (core.bare=true) ` +
-        `and has no working tree.\nstderr:\n${stderr}\noriginal error: ${e.message}`,
-      );
+  const { runRealGitStatus } = await test.step(sections.steps.inspectRepositorySystemGitUseSystemGit, async () => {
+    const runRealGitStatus = () => {
+      try {
+        return execSync("git status --porcelain", {
+          cwd: testServer.configDir,
+          encoding: "utf8",
+          stdio: ["ignore", "pipe", "pipe"],
+        });
+      } catch (err) {
+        const e = err as { stderr?: Buffer | string; message: string };
+        const stderr = typeof e.stderr === "string"
+          ? e.stderr
+          : e.stderr?.toString("utf8") ?? "";
+        throw new Error(
+          `Real \`git status\` failed in MeadowHome at ${testServer.configDir}. ` +
+          `This usually means the repo was initialized as bare (core.bare=true) ` +
+          `and has no working tree.\nstderr:\n${stderr}\noriginal error: ${e.message}`,
+        );
+      }
+    };
+    return { runRealGitStatus };
+  });
+
+  await test.step(sections.steps.backendSCommitHappensAsyncAfterEditor, async () => {
+    let status = "";
+    for (let attempt = 0; attempt <= 10; attempt++) {
+      status = runRealGitStatus().trim();
+      if (status === "") break;
+      if (attempt < 10) await sourceCommand(() => new Promise((r) => setTimeout(r, 1000)));
     }
-  };
 
-  // The backend's commit happens async after the editor finishes loading;
-  // retry briefly so we don't race it. Same retry budget as
-  // MeadowHomeGit.expectDirFullyCommitted.
-  let status = "";
-  for (let attempt = 0; attempt <= 10; attempt++) {
-    status = runRealGitStatus().trim();
-    if (status === "") break;
-    if (attempt < 10) await sourceCommand(() => new Promise((r) => setTimeout(r, 1000)));
-  }
+    expect(
+      status,
+      `Expected MeadowHome to have no untracked or changed files after ` +
+      `creating the example bundle, but \`git status --porcelain\` reports:\n${status}`,
+    ).toBe("");
 
-  expect(
-    status,
-    `Expected MeadowHome to have no untracked or changed files after ` +
-    `creating the example bundle, but \`git status --porcelain\` reports:\n${status}`,
-  ).toBe("");
-
-  await sourceCommand(() => addKeyFrame(git));
-  await sourceCommand(() => checkpoint("MeadowHome clean via real git status"));
+    await sourceCommand(() => addKeyFrame(git));
+    await sourceCommand(() => checkpoint("MeadowHome clean via real git status"));
+  });
 
   void exampleBundle;
 
