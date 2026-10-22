@@ -1,6 +1,6 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 import { test, expect } from '@playwright/test';
-import { sourcingReviewRedesign } from '../../../../concepts/index.js';
+import { pendingSourceProposal } from '../../../../concepts/index.js';
 
 test('pending declarations remain inspectable without appearing as passing evidence', async ({ page }) => {
   const runId = 'pending-design-evidence';
@@ -8,7 +8,7 @@ test('pending declarations remain inspectable without appearing as passing evide
     runId,
     scenarios: [
       { slug: 'implemented-behavior', testName: 'Implemented behavior', status: 'passed', conceptIds: ['source-snapshot'] },
-      { slug: 'planned-behavior', testName: 'Planned behavior', status: 'skipped', conceptIds: ['pending-source-proposal', sourcingReviewRedesign.id],
+      { slug: 'planned-behavior', testName: 'Planned behavior', status: 'skipped', conceptIds: [pendingSourceProposal.id],
         description: 'Planned scenario, not executable evidence. Preserve the reviewed source capture.' },
     ].map(scenario => ({ ...scenario, duration: 0, bundleMode: 'single-file', executionSurface: 'browser',
       appAreaDocIds: [], bundleDocIds: [], keyFrames: [], hasIssues: false })),
@@ -24,7 +24,7 @@ test('pending declarations remain inspectable without appearing as passing evide
   await expect(notRun).toContainText('(1)');
   await expect(page.getByRole('article', { name: 'Implemented behavior', exact: true })).toContainText('PASS');
   await page.getByRole('group', { name: 'Concept filters', exact: true })
-    .getByRole('button', { name: sourcingReviewRedesign.name, exact: true }).click();
+    .getByRole('button', { name: pendingSourceProposal.name, exact: true }).click();
   await expect(planned).toBeVisible();
   await expect(page.getByRole('article', { name: 'Implemented behavior', exact: true })).toHaveCount(0);
 });

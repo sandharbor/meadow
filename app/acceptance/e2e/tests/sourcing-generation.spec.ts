@@ -8,7 +8,7 @@ import { extractMainSectionLinkPaths, extractFooterBacklinkPaths } from '../../.
 import { test, expect } from '../src/run/test-fixtures.js';
 import { BundleEditorPage, PreviewPublishModal } from '../src/run/pages/index.js';
 import { Workflows } from '../src/run/workflows.js';
-import { scenarioSections, sourcingReviewRedesign, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, bundleGeneration, sourceReviewWorkspace } from '../../../concepts/index.js';
+import { scenarioSections, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, bundleGeneration, sourceReviewWorkspace } from '../../../concepts/index.js';
 
 const slug = 'meadow-test-bundle-big';
 const originalTitle = 't003 ---- page with section to link to';

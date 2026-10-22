@@ -5,7 +5,7 @@ import path from 'node:path';
 import { test, expect } from '../../src/run/test-fixtures.js';
 import { startReportViewer } from '../../src/run/reportViewer.js';
 import { BundleListPage } from '../../src/run/pages/index.js';
-import { scenarioSections, sourcingReviewRedesign, conceptImplementationNavigation, conceptRoleValidation, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas } from '../../../../concepts/index.js';
+import { scenarioSections, conceptImplementationNavigation, conceptRoleValidation, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
 test.use({ executionSurfaces: ['browser'] });

@@ -3,7 +3,7 @@
 import { test, expect } from '../src/run/test-fixtures.js';
 import { BundleEditorPage } from '../src/run/pages/index.js';
 import { prepareSourceScenario } from '../../../shared_code/shared_dev/sourceScenario.js';
-import { scenarioSections, sourcingReviewRedesign, sourceMove, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewIdentity } from '../../../concepts/index.js';
+import { scenarioSections, sourceMove, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewIdentity } from '../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
 

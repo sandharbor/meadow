@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 import type { SourceMoveSimilarity } from '../../../../../../../contracts/types/shared/sourcing/sourcing.js';
 import { sourceFilePathToBundleNodeKey } from '../../../../shared/bundle-node/nodeKeys.js';
 import type { SourceSnapshot } from '../../../../shared/source-snapshot/sourceSnapshots.js';
+import type { ParticipatesIn, sourceIdentityMatching } from '../../../../../../../concepts/index.js';
 
 export function sourceTextProfile(contents: string) {
   const blocks = new Map<string, number>();
@@ -54,3 +55,7 @@ export function sourceMoveSimilarity({ oldPath, newPath, exact, before, after, p
     folder ? 'Identical folder contents and relative file paths' : 'Not applicable to a file.');
   return { score: criteria.reduce((sum, criterion) => sum + (criterion.score ?? 0) * criterion.weight, 0), criteria };
 }
+
+export type SourceIdentityMatchingMeadowConceptParticipations = [
+  ParticipatesIn<typeof sourceIdentityMatching, 'score-candidates', typeof sourceMoveSimilarity>,
+];

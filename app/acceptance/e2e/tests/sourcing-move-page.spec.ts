@@ -3,18 +3,18 @@
 import { test, expect } from '../src/run/test-fixtures.js';
 import { Workflows } from '../src/run/workflows.js';
 import { BundleEditorPage } from '../src/run/pages/index.js';
-import { scenarioSections, sourcingReviewRedesign, sourceMove, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewIdentity, sourceReviewWorkspace } from '../../../concepts/index.js';
+import { scenarioSections, sourceMove, sourceSnapshot, nameOnlyLink, conceptText, conceptLink, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewIdentity, sourceReviewWorkspace } from '../../../concepts/index.js';
 import { MeadowHomeBundleConfig } from '../src/run/utils/index.js';
 
 test.use({ bundleMode: 'single-file' });
 
-const name = linkedScenarioName(conceptText`Sourcing moves a nested page while preserving its identity and name-only links`);
+const name = linkedScenarioName(conceptText`Sourcing moves a nested page while preserving its identity and ${conceptLink(nameOnlyLink.id, 'name-only links')}`);
 
-const description = linkedScenarioDescription(conceptText`Move a nested page while leaving name-only links unchanged. Review and acceptance should
+const description = linkedScenarioDescription(conceptText`Move a nested page while leaving ${conceptLink(nameOnlyLink.id, 'name-only links')} unchanged. Review and acceptance should
 preserve the page's identity and working links.`);
 const sections = scenarioSections({
   setup: { type: 'setup', text: conceptText`Establish the starting state: the accepted source state is established before changing files.` },
-  moveNestedPage: { type: 'test', text: conceptText`Move the nested page.` },
+  moveNestedPage: { type: 'test', text: conceptText`Move the nested page while leaving its incoming ${conceptLink(nameOnlyLink.id, 'name-only link')} unchanged.` },
   acceptSourceUpdate: { type: 'test', text: conceptText`Accept the source update.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewIdentity, sourceReviewWorkspace] });
@@ -50,6 +50,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '53c939c8-a8c
     await sourceCommand(() => editor.switchToListView());
     await sourceCommand(() => editor.expectListViewNodeVisible('file:source-changes/moved/t001 ---- child 2.md', true));
     await sourceCommand(() => editor.expectListViewNodeVisible('file:t001/deeper/t001 ---- child 2.md', false));
+    await sourceCommand(() => addKeyFrame(nameOnlyLink));
     await sourceCommand(() => addKeyFrame(sourceSnapshot));
     await sourceCommand(() => checkpoint('the moved file remains reachable with the same identity and tracking'));
   });

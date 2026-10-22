@@ -85,7 +85,33 @@ export const sourceReviewIdentity = define({
     text`The identity modal separates Confident suggestions from Needs your input. Confident records preselect their recommended option and label it beside the radio choice; Accept all suggestions saves the remaining defaults while preserving existing decisions. Accept all suggestions remains above the scrolling records in the confident tab. The modal header uses the shared Refresh sources control to update the capture being reviewed; refresh is not a footer completion choice. Preview selection alone does not resolve an identity. Weak and competing records show the available choices without a recommendation or default, while retaining similarity and traversal evidence. The choice column retains compact dropdowns in Confident suggestions. Needs your input shows a Choose column heading in each section and directly visible Same file and New file choices. Records with multiple possible matches show a read-only Pick in the choice column and require opening details. Each candidate has a Pick radio beside its full path and evidence, followed by New file. The column marks a selected match with a checkmark or shows New file after rejection; it never offers a competing destination chooser. Single-candidate direct choices can be saved without expanding the record. Within each tab, show Changed directories and renamed, Changed directories, then Renamed. Each section aligns a compact editable identity choice in the left column with an expandable path change in the right column. Same file and New file choices can be saved without opening details; unresolved records show Choose, and competing matches require a specific destination. Multiple files sharing the same directory transition, filename edit, and guidance have a collapsed overview. Individual decisions keep that group in place and preserve its expanded state. Mixed choices appear as stacked Same file, New file, and unresolved Choose lines in the left column, each with a count badge. Changing a compact choice applies only to the files counted on that line. Expanding the overview reveals individual choices and evidence. An individual file shows its full path change with a caret to open its choices and evidence. Competing destinations remain individual records. Both tabs offer an expandable overall similarity score with each criterion’s support and contribution; unavailable criteria are visibly inapplicable. Scores express heuristic evidence, not probabilities. Remember the active tab in the App Place so checkpoints restore the inspected panel. A confirmed match appears as one comparison node with old and new locations and routes. Rejected matches become separate additions and departures.`,
     text`Identity selections and group counts update immediately while durable writes are serialized against the latest proposal revision. Further choices remain available during saving; failed writes restore confirmed choices and report the error without erasing later queued edits. Continue to graph waits for saving to complete. Reuse matching evidence while captured files, traversal routes, and configured identities are unchanged; bounded result caches invalidate when those inputs change. Build the comparison graph when leaving identity review rather than after each choice. The identity decisions item in the changes tray reopens these decisions while the proposal is pending, including after Later. Changing identity rebuilds the comparison and revalidates affected decisions. Refreshes that introduce unresolved identities require the gate again. After acceptance, historical identity decisions cannot be reopened or rewritten.`,
   ],
-  interplay: text`${link(id.sourceMove, 'Source Move')} supplies correspondence evidence; ${link(id.bundleNodeId, 'Bundle Node Identity')} identifies preserved configuration. ${link(id.pendingProposalRevalidation, 'Pending Proposal Revalidation')} handles decisions whose targets changed.`,
+  interplay: text`${link(id.sourceIdentityMatching, 'Source Identity Matching')} supplies evidence for a proposed ${link(id.sourceMove, 'Source Move')}; ${link(id.treatAsDifferentPages, 'Treat as Different Pages')} rejects that correspondence. ${link(id.bundleNodeId, 'Bundle Node Identity')} identifies preserved configuration. ${link(id.pendingProposalRevalidation, 'Pending Proposal Revalidation')} handles decisions whose targets changed.`,
+});
+
+export const sourceIdentityMatching = define({
+  id: id.sourceIdentityMatching, name: 'Source Identity Matching', kind: 'mechanism', searchFacet: true,
+  parentId: id.sourceReviewIdentity, appAreaIds: [id.bundleSourcing],
+  implementationRoles: ['score-candidates'],
+  definition: text`infer whether a source file at a new location represents the same page as a previously configured file, using inspectable evidence.`,
+  mechanics: [
+    text`Compare captured contents, substantial text blocks, filenames, incoming and outgoing links, and corroborated folder moves. Rank candidates with a weighted similarity score whose criteria and contributions can be inspected. The score expresses heuristic support rather than a probability or a final identity decision.`,
+    text`Blank contents provide no identity evidence, identical short text provides limited support, and matching filenames alone cannot establish identity. Confident suggestions can preselect Same file for explicit confirmation; weak or competing candidates require an individual choice.`,
+    text`A suggested match does not transfer configuration. The user can confirm the correspondence or choose ${link(id.treatAsDifferentPages, 'Treat as Different Pages')} even when matching evidence supports Same file.`,
+  ],
+  interplay: text`${link(id.sourceMove, 'Source Move')} represents a proposed correspondence. ${link(id.sourceReviewIdentity, 'Source Review Identity')} records the user's decision, and ${link(id.sourceReviewAcceptance, 'Proposal Acceptance')} applies it.`,
+});
+
+export const treatAsDifferentPages = define({
+  id: id.treatAsDifferentPages, name: 'Treat as Different Pages', kind: 'behavioral-rule', searchFacet: false,
+  parentId: id.sourceReviewIdentity, appAreaIds: [id.bundleSourcing],
+  implementationRoles: ['reject-match'],
+  definition: text`choosing New file rejects a proposed identity match so the old page departs and the destination enters as a separate new page.`,
+  mechanics: [
+    text`The choice overrides ${link(id.sourceIdentityMatching, 'Source Identity Matching')}, including a confident Same file suggestion. It records an identity decision in the pending proposal without changing the accepted page's saved configuration.`,
+    text`On acceptance, remove the old unreachable configuration and admit the destination as a fresh page. Do not transfer the old page's durable identity, tracking, or traversal overrides. New-page tracking follows the proposal's addition-tracking choices and sensitivity policy. This creates a new page in the bundle from the captured destination; it does not create or delete source files.`,
+    text`For example, rename a tracked source page and update its incoming links, then choose New file for the suggested rename. Before acceptance the old configuration remains; after acceptance it is removed and the renamed destination is available as a new page.`,
+  ],
+  interplay: text`${link(id.sourceReviewIdentity, 'Source Review Identity')} stages the choice. ${link(id.sourceReviewAcceptance, 'Proposal Acceptance')} applies it together with ${link(id.sourceReviewCleanup, 'Accepted Scope Cleanup')}.`,
 });
 
 export const sourceReviewAcceptance = define({
@@ -212,7 +238,7 @@ export const sourceReviewSensitivity = define({
 
 export const proposedSourceReviewConcepts = [
   pendingSourceProposal, proposalConfigurationDraft, pendingProposalRevalidation,
-  sourceReviewConfigurationMerge, sourceReviewTrigger, sourceReviewIdentity,
+  sourceReviewConfigurationMerge, sourceReviewTrigger, sourceReviewIdentity, sourceIdentityMatching, treatAsDifferentPages,
   sourceReviewAcceptance, scopeExclusion, bridgeExclusion, sourceReviewCleanup, sourceReviewWorkspace,
   sourceReviewFiltering, graphFade, sourceReviewViewState, sourceReviewSensitivity,
 ] as const;

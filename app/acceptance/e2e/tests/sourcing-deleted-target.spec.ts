@@ -6,7 +6,7 @@ import path from 'node:path';
 import { test, expect } from '../src/run/test-fixtures.js';
 import { prepareSourceScenario } from '../../../shared_code/shared_dev/sourceScenario.js';
 import { BundleEditorPage } from '../src/run/pages/index.js';
-import { scenarioSections, sourcingReviewRedesign, orphan, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../concepts/index.js';
+import { scenarioSections, orphan, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
 

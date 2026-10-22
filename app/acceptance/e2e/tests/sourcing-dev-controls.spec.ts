@@ -10,7 +10,7 @@ import { DevSourceChangesControl } from '../src/run/pages/dev-tools/SourceChange
 import { DevSavedStatesPage } from '../src/run/pages/dev-tools/SavedStatesPage.js';
 import { BundleEditorPage } from '../src/run/pages/index.js';
 import { Workflows } from '../src/run/workflows.js';
-import { scenarioSections, sourcingReviewRedesign, sourceChange, sourceSnapshot, savedState, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewIdentity } from '../../../concepts/index.js';
+import { scenarioSections, sourceChange, sourceSnapshot, savedState, conceptText, conceptLink, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewIdentity } from '../../../concepts/index.js';
 import { createBrowserLaunchUrl } from '../../../runtime/supervisor/src/runtimeClient.js';
 import { readRuntimeSessionDescriptor } from '../../../runtime/supervisor/src/sessionDescriptor.js';
 
@@ -21,7 +21,7 @@ test.use({ bundleMode: "single-file" });
 
 const name = linkedScenarioName(conceptText`Sourcing dev controls apply the same shared move to the running application`);
 
-const description = linkedScenarioDescription(conceptText`Apply a shared source change from Dev Tools to the open saved state, which is
+const description = linkedScenarioDescription(conceptText`Apply a shared ${conceptLink(sourceChange.id, 'source change')} from Dev Tools to the open saved state, which is
 this scenario's own running home. The application should review the same move
 used by the automated test, and fixture menus that share the graph agree.`);
 const sections = scenarioSections({

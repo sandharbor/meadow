@@ -8,7 +8,7 @@ import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent } from '../../src/run/pages/index.js';
 import { SourcesControl } from '../../src/run/pages/areas/bundle/sourcing/SourcesControl.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
-import { scenarioSections, sourcingReviewRedesign, sourceReviewCleanup, sourceReviewAcceptance, startingSelection, sourceMove, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace, sourceSetupEdit } from '../../../../concepts/index.js';
+import { scenarioSections, sourceReviewCleanup, sourceReviewAcceptance, startingSelection, sourceMove, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace, sourceSetupEdit } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: 'home_fixture_multi_source' });

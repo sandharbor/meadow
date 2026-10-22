@@ -21,7 +21,7 @@ import {
   PreviewPublishModal,
 } from "../src/run/pages/index.js";
 import { Fixture } from "../src/run/workflows.js";
-import { scenarioSections, sourcingReviewRedesign, blacklist, bundleConfig, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration, bundleGeneration } from "../../../concepts/index.js";
+import { scenarioSections, blacklist, bundleConfig, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration, bundleGeneration } from "../../../concepts/index.js";
 import { exampleBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });

@@ -7,7 +7,7 @@ import { BundleListPage, BundleEditorPage, FilterPanelComponent } from '../../sr
 import { SelectedPageDetailComponent } from '../../src/run/pages/areas/bundle/curation/SelectedPageDetailComponent.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { scenarioSections, sourcingReviewRedesign, sourceReviewWorkspace, sourceReviewViewState, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration, bundleSourcing } from '../../../../concepts/index.js';
+import { scenarioSections, sourceReviewWorkspace, sourceReviewViewState, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration, bundleSourcing } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });

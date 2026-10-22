@@ -5,7 +5,7 @@ import { Bundle, Fixture } from '../src/run/workflows.js';
 import {
   BundleEditorPage, BundleListPage, FilterPanelComponent, Pill, SelectedPageDetailComponent,
 } from '../src/run/pages/index.js';
-import { scenarioSections, sourcingReviewRedesign, overrides, sourceSnapshot, bundleNodeKey, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration, bundleSourcing, sourceReviewWorkspace } from '../../../concepts/index.js';
+import { scenarioSections, overrides, sourceSnapshot, bundleNodeKey, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration, bundleSourcing, sourceReviewWorkspace } from '../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.Example });

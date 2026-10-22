@@ -3,7 +3,7 @@
 import { test, expect } from '../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent } from '../src/run/pages/index.js';
 import { SourcesControl } from '../src/run/pages/areas/bundle/sourcing/SourcesControl.js';
-import { scenarioSections, sourcingReviewRedesign, bundleSource, folderFilter, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration, sourceSetupEdit, bundleSourcing } from '../../../concepts/index.js';
+import { scenarioSections, bundleSource, folderFilter, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration, sourceSetupEdit, bundleSourcing } from '../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
 test.use({ fixtureHome: 'home_fixture_multi_source' });

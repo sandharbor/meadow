@@ -95,7 +95,8 @@ export async function chooseProposalTracking(directory: string, revision: number
   return { proposal: result, skipped };
 }
 
-import type { ParticipatesIn, sourceReviewIdentity } from '../../../../../../../concepts/index.js';
+import type { ParticipatesIn, sourceReviewIdentity, treatAsDifferentPages } from '../../../../../../../concepts/index.js';
 export type ProposalDecisionsMeadowConceptParticipations = [
   ParticipatesIn<typeof sourceReviewIdentity, 'choose-identities', typeof chooseProposalIdentities>,
+  ParticipatesIn<typeof treatAsDifferentPages, 'reject-match', typeof chooseProposalIdentities>,
 ];

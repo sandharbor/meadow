@@ -6,7 +6,7 @@ import YAML from 'yaml';
 import { test, expect } from '../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent, SelectedPageDetailComponent, Pill } from '../src/run/pages/index.js';
 import { SourcesControl } from '../src/run/pages/areas/bundle/sourcing/SourcesControl.js';
-import { scenarioSections, sourcingReviewRedesign, bundleSource, frontier, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, bundleCuration, sourceReviewWorkspace, sourceSetupEdit } from '../../../concepts/index.js';
+import { scenarioSections, bundleSource, frontier, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, bundleCuration, sourceReviewWorkspace, sourceSetupEdit } from '../../../concepts/index.js';
 import type { BundleConfig } from '../../../contracts/types/shared/bundle-config/bundleConfig.js';
 
 test.use({ bundleMode: "single-file" });

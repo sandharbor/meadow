@@ -8,7 +8,7 @@ import { startDevTools } from '../src/run/devTools.js';
 import { DevSavedStatesPage } from '../src/run/pages/dev-tools/SavedStatesPage.js';
 import { BundleEditorPage } from '../src/run/pages/index.js';
 import { Workflows } from '../src/run/workflows.js';
-import { scenarioSections, sourcingReviewRedesign, checkpoint as checkpointConcept, localServices, serviceTarget, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas } from '../../../concepts/index.js';
+import { scenarioSections, checkpoint as checkpointConcept, localServices, serviceTarget, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas } from '../../../concepts/index.js';
 import { minioBucketName } from '../../../tooling/local_services/src/index.js';
 import { MinioS3 } from '../src/run/utils/MinioS3.js';
 import { getRuntimePaths } from '../../../runtime/supervisor/src/runtimePaths.js';

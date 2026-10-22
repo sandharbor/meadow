@@ -2,7 +2,7 @@
 
 import { test, expect } from "../src/run/test-fixtures.js";
 import { checkPlaceLinks, placeExamples, placesFor } from "../src/run/placeLinkCheck.js";
-import { scenarioSections, sourcingReviewRedesign, appPlace, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundles, bundleSourcing, bundleCuration, sourceReviewWorkspace, sourceReviewIdentity } from "../../../concepts/index.js";
+import { scenarioSections, appPlace, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundles, bundleSourcing, bundleCuration, sourceReviewWorkspace, sourceReviewIdentity } from "../../../concepts/index.js";
 
 test.use({ bundleMode: "single-file" });
 

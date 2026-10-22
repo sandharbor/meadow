@@ -19,7 +19,7 @@ import { sourceSensitivity } from '../src/run/utils/sourceSensitivity.js';
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleEditorPage, FilterPanelComponent } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { scenarioSections, sourcingReviewRedesign, callout, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration, bundleSourcing, sensitive } from "../../../concepts/index.js";
+import { scenarioSections, callout, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration, bundleSourcing, sensitive } from "../../../concepts/index.js";
 import { scenarioDesignPressures, preventAccidentalSharing } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 

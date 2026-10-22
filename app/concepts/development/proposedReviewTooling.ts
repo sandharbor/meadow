@@ -3,14 +3,6 @@
 import { coreConceptIds as id } from '../ids.js';
 import { conceptLink as link, conceptText as text, defineMeadowConcept as define } from '../language.js';
 
-// Temporary project filter requested for the design review; remove after that review.
-export const sourcingReviewRedesign = define({
-  id: id.sourcingReviewRedesign, name: 'Sourcing review redesign', kind: 'capability', searchFacet: true,
-  definition: text`Temporary project tag grouping the acceptance files affected by the sourcing review redesign, including its supporting report tooling.`,
-  mechanics: [text`This is a review filter, not an implementation or coverage claim. Remove the temporary association after this project review; retain each scenario's specific domain concepts.`],
-  interplay: text`The project connects ${link(id.pendingSourceProposal, 'Pending Source Proposal')}, ${link(id.sourceReviewWorkspace, 'Source Review Workspace')}, and ${link(id.conceptImplementationNavigation, 'Concept Implementation Navigation')}.`,
-});
-
 export const checkpointViewRestoration = define({
   implementationRoles: ['capture-view', 'restore-view'],
   id: id.checkpointViewRestoration, name: 'Checkpoint View Restoration', kind: 'capability', searchFacet: true,
@@ -65,4 +57,4 @@ export const areaBoundaryMap = define({
   interplay: text`${link(id.bundle, 'Bundle areas')} define the narrow-interface policy. ${link(id.conceptImplementationNavigation, 'Concept Implementation Navigation')} connects stable ideas to current code; ${link(id.sourceSnapshot, 'Source Snapshots')} and ${link(id.generationRecord, 'Generation Records')} illustrate durable data boundaries.`,
 });
 
-export const proposedReviewToolingConcepts = [sourcingReviewRedesign, checkpointViewRestoration, conceptImplementationNavigation, conceptRoleValidation, areaBoundaryMap] as const;
+export const proposedReviewToolingConcepts = [checkpointViewRestoration, conceptImplementationNavigation, conceptRoleValidation, areaBoundaryMap] as const;

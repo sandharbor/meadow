@@ -18,7 +18,7 @@ import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, BundleEditorPage } from "../src/run/pages/index.js";
 import { SelectedPageDetailComponent } from "../src/run/pages/areas/bundle/curation/SelectedPageDetailComponent.js";
 import { Fixture } from "../src/run/workflows.js";
-import { scenarioSections, sourcingReviewRedesign, initialPage, bundleConfig, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
+import { scenarioSections, initialPage, bundleConfig, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
 import { exampleBundle, exampleBundleInitialPageTitle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });

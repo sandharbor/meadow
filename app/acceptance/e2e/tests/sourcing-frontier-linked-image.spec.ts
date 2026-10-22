@@ -2,7 +2,7 @@
 import { test, expect } from '../src/run/test-fixtures.js';
 import { Workflows } from '../src/run/workflows.js';
 import { ActionButton, BundleEditorPage, FilterPanelComponent, Pill, SelectedPageDetailComponent } from '../src/run/pages/index.js';
-import { scenarioSections, sourcingReviewRedesign, frontierEmbeddedAssets, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, bundleCuration, sourceReviewWorkspace } from '../../../concepts/index.js';
+import { scenarioSections, frontierEmbeddedAssets, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, bundleCuration, sourceReviewWorkspace } from '../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
 

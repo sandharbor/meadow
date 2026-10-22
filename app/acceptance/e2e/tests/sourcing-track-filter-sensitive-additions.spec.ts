@@ -5,7 +5,7 @@ import { sourceSensitivity } from '../src/run/utils/sourceSensitivity.js';
 import { test, expect } from '../src/run/test-fixtures.js';
 import { Workflows } from '../src/run/workflows.js';
 import { BundleEditorPage, FilterPanelComponent, Pill, SelectedPageDetailComponent } from '../src/run/pages/index.js';
-import { scenarioSections, sourcingReviewRedesign, sourceSnapshot, sensitive, filterSensitivity, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../concepts/index.js';
+import { scenarioSections, sourceSnapshot, sensitive, filterSensitivity, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../concepts/index.js';
 import { scenarioDesignPressures, preventAccidentalSharing } from '../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });

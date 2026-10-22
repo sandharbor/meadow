@@ -3,7 +3,7 @@
 import { test, expect } from '../src/run/test-fixtures.js';
 import { Workflows } from '../src/run/workflows.js';
 import { BundleEditorPage, ChangesTab, PreviewPublishModal } from '../src/run/pages/index.js';
-import { scenarioSections, sourcingReviewRedesign, sourceSnapshot, sourceMove, sourceChange, changesTab as changesTabDoc, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, bundleGeneration, bundleReview, sourceReviewIdentity, sourceReviewWorkspace } from '../../../concepts/index.js';
+import { scenarioSections, sourceSnapshot, sourceMove, sourceChange, changesTab as changesTabDoc, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, bundleGeneration, bundleReview, sourceReviewIdentity, sourceReviewWorkspace } from '../../../concepts/index.js';
 import { MeadowHomeBundleConfig } from '../src/run/utils/index.js';
 
 const slug = 'meadow-test-bundle-big';

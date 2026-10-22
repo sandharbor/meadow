@@ -17,7 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleEditorPage, SelectedPageDetailComponent } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { scenarioSections, sourcingReviewRedesign, bundleConfig, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration, bundleSourcing, sourceReviewWorkspace } from "../../../concepts/index.js";
+import { scenarioSections, bundleConfig, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration, bundleSourcing, sourceReviewWorkspace } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });

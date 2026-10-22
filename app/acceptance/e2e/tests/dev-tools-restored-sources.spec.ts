@@ -7,7 +7,7 @@ import { test, expect } from '../src/run/test-fixtures.js';
 import { startDevTools } from '../src/run/devTools.js';
 import { BundleListPage, BundleEditorPage } from '../src/run/pages/index.js';
 import { SourcesControl } from '../src/run/pages/areas/bundle/sourcing/SourcesControl.js';
-import { scenarioSections, sourcingReviewRedesign, checkpoint as checkpointConcept, bundleSource, startingSelection, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace, sourceSetupEdit } from '../../../concepts/index.js';
+import { scenarioSections, checkpoint as checkpointConcept, bundleSource, startingSelection, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace, sourceSetupEdit } from '../../../concepts/index.js';
 import { getRuntimePaths } from '../../../runtime/supervisor/src/runtimePaths.js';
 import { readRuntimeSessionDescriptor } from '../../../runtime/supervisor/src/sessionDescriptor.js';
 import { postRuntimeControl, waitForRuntimeHomeRelease } from '../../../runtime/supervisor/src/runtimeClient.js';

@@ -21,7 +21,7 @@ import type {
   MutateBundleNodeCliResult,
 } from "../../../contracts/types/shared/cli/cliOperations.js";
 import { materializeCreateSafeBundleSource } from "../src/agent-evals/scenarios/createSafeBundle.js";
-import { scenarioSections, sourcingReviewRedesign, bundles, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
+import { scenarioSections, bundles, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
 import { cli } from "../../../concepts/index.js";
 import { expect, test } from "../src/run/test-fixtures.js";
 

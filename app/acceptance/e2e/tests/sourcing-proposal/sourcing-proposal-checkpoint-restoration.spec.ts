@@ -11,7 +11,7 @@ import { Fixture } from '../../src/run/workflows.js';
 import { getRuntimePaths } from '../../../../runtime/supervisor/src/runtimePaths.js';
 import { readRuntimeSessionDescriptor } from '../../../../runtime/supervisor/src/sessionDescriptor.js';
 import { postRuntimeControl, waitForRuntimeHomeRelease } from '../../../../runtime/supervisor/src/runtimeClient.js';
-import { scenarioSections, sourcingReviewRedesign, checkpointViewRestoration, sourceReviewViewState, checkpoint as checkpointConcept, appPlace, savedState, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../../concepts/index.js';
+import { scenarioSections, checkpointViewRestoration, sourceReviewViewState, checkpoint as checkpointConcept, appPlace, savedState, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview, executionSurfaces: ['dev-tools', 'browser'] });

@@ -33,6 +33,7 @@ import BoundaryMap from './BoundaryMap.tsx'
 import DocumentBrowser, { type BrowseDocument } from './DocumentBrowser.tsx'
 import ConceptExplorer from './ConceptExplorer.tsx'
 import { ScenarioText } from './ScenarioText.tsx'
+import { DocumentationControls, ScenarioDocumentation, useDocumentationOptions } from './ScenarioDocumentation.tsx'
 import type { ConceptText } from '../../../../../concepts/types.js'
 import { useScenarioReviews, ScenarioReviewMenu, ReviewLog } from './ScenarioReview.tsx'
 import { findReview } from '../../scenarioReviews.js'
@@ -64,7 +65,7 @@ import {
   type ScenarioFilterSelections,
 } from '../scenarioFilterExpression.ts'
 
-const VIEW_TABS = ['thumbs', 'list', 'videos', 'details', 'timing'] as const
+const VIEW_TABS = ['thumbs', 'list', 'videos', 'details', 'docs', 'timing'] as const
 type ViewTab = typeof VIEW_TABS[number]
 
 /** Source-change categories narrow scenarios only while Sourcing is selected. */
@@ -328,6 +329,7 @@ export default function RunDetail() {
     next.set('view', tab)
     setSearchParams(next)
   }
+  const documentation = useDocumentationOptions()
   const [showSections, setShowSections] = useState(false)
   const [mediaSize, setMediaSize] = useState<0 | 1 | 2 | 3>(0)
   const [playSpeed, setPlaySpeed] = useState(DEFAULT_PLAYBACK_SPEED_PERCENT)
@@ -664,8 +666,12 @@ export default function RunDetail() {
     ? 'list'
     : activeTab
   const availableTabs: readonly ViewTab[] = !hasBrowserScenarios && filteredScenarios.length > 0
-    ? ['list', 'details', 'timing']
+    ? ['list', 'details', 'docs', 'timing']
     : VIEW_TABS
+
+  const isDocs = displayedTab === 'docs'
+  const showDetailVideo = !isDocs || documentation.options.video
+  const documentNames = Object.fromEntries([...documentCatalog, ...allDocs].map(doc => [doc.id, doc.name]))
 
   function getKeyFrameUrl(scenario: Scenario): string | null {
     if (!scenario.keyFrames || scenario.keyFrames.length === 0) return null
@@ -1073,7 +1079,7 @@ export default function RunDetail() {
       {reviewMode === 'logs' ? <ReviewLog data={reviews.data} /> : <>
       {/* Tab bar */}
       <div className="flex flex-wrap items-center bg-neutral-100 border-b border-neutral-200 mb-4">
-        <div className="flex">
+        <div className="flex flex-wrap">
           {availableTabs.map((tab) => (
             <button
               key={tab}
@@ -1085,11 +1091,11 @@ export default function RunDetail() {
               }`}
               onClick={() => setActiveTab(tab)}
             >
-              {tab === 'thumbs' ? 'Thumbs' : tab === 'list' ? 'List' : tab === 'details' ? 'Details' : tab === 'videos' ? 'Videos' : 'Timing'}
+              {tab === 'thumbs' ? 'Thumbs' : tab === 'list' ? 'List' : tab === 'details' ? 'Details' : tab === 'videos' ? 'Videos' : tab === 'docs' ? 'Docs' : 'Timing'}
             </button>
           ))}
         </div>
-        {(displayedTab === 'thumbs' || displayedTab === 'videos' || (displayedTab === 'details' && hasBrowserScenarios)) && (
+        {(displayedTab === 'thumbs' || displayedTab === 'videos' || ((displayedTab === 'details' || (isDocs && showDetailVideo)) && hasBrowserScenarios)) && (
           <div className="ml-auto flex items-center gap-0.5 pr-2">
             {([0, 1, 2, 3] as const).map((size) => (
               <button
@@ -1118,7 +1124,7 @@ export default function RunDetail() {
         )}
       </div>
 
-      {(displayedTab === 'videos' || displayedTab === 'details') && hasBrowserScenarios && (
+      {(displayedTab === 'videos' || displayedTab === 'details' || (isDocs && showDetailVideo)) && hasBrowserScenarios && (
           <div className="mb-4 flex items-center gap-3">
             <button
               onClick={playAll}
@@ -1320,8 +1326,10 @@ export default function RunDetail() {
         Show sections
       </label>}
 
-      {/* Details tab */}
-      {displayedTab === 'details' && (
+      {isDocs && <DocumentationControls {...documentation} />}
+
+      {/* Details and Docs share scenario summaries, links, filters, and video. */}
+      {(displayedTab === 'details' || isDocs) && (
         <div className="space-y-6" style={{ '--detail-video-width': detailVideoWidth } as CSSProperties}>
           {sections.map(({ key, label, color, items: scenarios }) => (
             <div key={key}>
@@ -1336,9 +1344,9 @@ export default function RunDetail() {
                       <article
                         key={scenario.slug}
                         aria-label={name}
-                        className={`scenario-details-row grid grid-cols-[minmax(0,1fr)] gap-4 rounded-lg border border-neutral-200 bg-white p-4 ${executionSurfacesFor(scenario).some(surface => surface !== 'cli') ? 'has-video' : ''}`}
+                        className={`scenario-details-row grid grid-cols-[minmax(0,1fr)] gap-4 rounded-lg border border-neutral-200 bg-white p-4 ${showDetailVideo && executionSurfacesFor(scenario).some(surface => surface !== 'cli') ? 'has-video' : ''}`}
                       >
-                        {executionSurfacesFor(scenario).some(surface => surface !== 'cli') && (
+                        {showDetailVideo && executionSurfacesFor(scenario).some(surface => surface !== 'cli') && (
                           <div className="scenario-details-preview">
                             <ScenarioPreviewVideo
                               key={`${runId}/${scenario.slug}`}
@@ -1350,12 +1358,12 @@ export default function RunDetail() {
                           </div>
                         )}
                         <div className="min-w-0 text-sm">
-                          <div className="mb-3 flex items-start justify-between gap-3">
-                            <div className="flex min-w-0 flex-1 items-start gap-2">
+                          <div className={`mb-3 flex items-start justify-between gap-3 ${isDocs ? 'flex-wrap' : ''}`}>
+                            <div className={isDocs ? 'contents' : 'flex min-w-0 flex-1 items-start gap-2'}>
                               <StatusBadge status={scenario.status} hasIssues={scenario.hasIssues} />
                               {executionSurfacesFor(scenario).every(surface => surface === 'cli') && <span className="text-xs text-neutral-500">CLI</span>}
-                              <span className="min-w-0 font-medium text-neutral-800 [overflow-wrap:anywhere]"><ScenarioText text={name} linkedText={scenario.nameText}
-                                runId={runId!} scenarioHref={`/${runId}/${scenario.slug}`} /></span>
+                              <h2 className={`min-w-0 font-medium text-neutral-800 [overflow-wrap:anywhere] ${isDocs ? 'order-last basis-full sm:order-none sm:basis-0 sm:flex-1' : ''}`}><ScenarioText text={name} linkedText={scenario.nameText}
+                                runId={runId!} scenarioHref={`/${runId}/${scenario.slug}`} /></h2>
                               <CopyReferenceButton text={`E2E scenario ${scenario.slug}`} label="Copy scenario reference" />
                             </div>
                             <ScenarioReviewMenu runId={runId!} scenario={scenario} reviews={reviews.data} update={reviews.update} />
@@ -1370,14 +1378,14 @@ export default function RunDetail() {
                           ) : (
                             <p className="italic text-neutral-400">No description captured in this run.</p>
                           )}
-                          {showSections && Boolean(scenario.sections?.some(section => section.type !== 'setup')) && (
+                          {!isDocs && showSections && Boolean(scenario.sections?.some(section => section.type !== 'setup')) && (
                             <ol aria-label="Scenario sections" className="mt-3 list-decimal space-y-2 border-l-2 border-neutral-200 pl-6 text-neutral-700">
                               {scenario.sections!.filter(section => section.type !== 'setup').map(section => <li key={section.id} className="whitespace-pre-line pl-1 leading-relaxed [overflow-wrap:anywhere]">
                                 <ScenarioText text="" linkedText={section.text} runId={runId!} />
                               </li>)}
                             </ol>
                           )}
-                          <dl aria-label="Scenario metadata" className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px]">
+                          <dl aria-label="Scenario metadata" hidden={isDocs && !documentation.options.metadata} className={`${isDocs && !documentation.options.metadata ? 'hidden' : 'flex'} mt-3 flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px]`}>
                             <ScenarioMetadataGroup label="Interface" accent="filter-interface"
                               options={EXECUTION_SURFACE_OPTIONS.filter(surface => executionSurfacesFor(scenario).includes(surface.id)).map(surface => ({ id: surface.id, name: surface.label }))}
                               availableIds={availableSurfaceIds} selectedIds={selectedExecutionSurfaces}
@@ -1407,6 +1415,8 @@ export default function RunDetail() {
                               availableIds={visibleFacetDocIds} selectedIds={selectedDocIds}
                               onChoose={(id, action) => chooseMetadataFilter({ docIds: [id] }, action)} />
                           </dl>
+                          {isDocs && <ScenarioDocumentation key={`${runId}/${scenario.slug}`} runId={runId!} scenario={scenario.slug}
+                            sections={scenario.sections} options={documentation.options} documentNames={documentNames} />}
                         </div>
                       </article>
                     )

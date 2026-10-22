@@ -26,6 +26,7 @@ import path from "path";
 import { readConceptImplementations } from '../../../e2e/src/artifacts/conceptImplementations.js';
 import { testSourceDisplay } from '../testSourceDisplay.ts';
 import { testSourceLocations } from '../testSourceLocations.ts';
+import { scenarioDocumentation } from '../scenarioDocumentation.ts';
 import { describeTestSourceChanges } from '../../../e2e/src/artifacts/testSourceChanges.ts';
 import { sourceChangeCategoriesOf, type SourceChangeCategory } from '../../../../shared_code/shared_dev/sourceChangesTypes.ts';
 import { expandManifest } from '../../../e2e/src/artifacts/manifestEncoding.ts';
@@ -1108,6 +1109,21 @@ app.get("/api/:runId/:testSlug/manifest", (req, res) => {
     res.json(normalizeLegacyManifest(manifest));
   } else {
     res.status(404).json({ error: "No manifest found" });
+  }
+});
+
+// API: compact, captured scenario walkthrough for the Docs tab
+app.get("/api/:runId/:testSlug/documentation", (req, res) => {
+  const dir = safeScenarioDir(req.params.runId, req.params.testSlug);
+  if (!dir) return res.status(404).json({ error: "Scenario not found" });
+  const manifestPath = path.join(dir, "manifest.json");
+  if (!existsSync(manifestPath)) return res.status(404).json({ error: "No walkthrough captured in this run." });
+  try {
+    // Walkthroughs need no file blobs, state repositories, or manifest expansion.
+    const manifest = normalizeLegacyManifest(JSON.parse(readFileSync(manifestPath, "utf8")));
+    res.json(scenarioDocumentation(manifest));
+  } catch (error) {
+    res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
   }
 });
 

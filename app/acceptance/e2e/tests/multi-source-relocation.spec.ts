@@ -5,7 +5,7 @@ import { test, expect } from '../src/run/test-fixtures.js';
 import { MeadowHomeBundleConfig } from '../src/run/utils/index.js';
 import { BundleListPage, BundleEditorPage } from '../src/run/pages/index.js';
 import { SourcesControl } from '../src/run/pages/areas/bundle/sourcing/SourcesControl.js';
-import { scenarioSections, sourcingReviewRedesign, bundleSource, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceSetupEdit } from '../../../concepts/index.js';
+import { scenarioSections, bundleSource, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceSetupEdit } from '../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
 test.use({ fixtureHome: 'home_fixture_multi_source' });

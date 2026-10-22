@@ -3,7 +3,7 @@
 import path from 'node:path';
 import { test, expect } from '../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, CreateAndEditBundleModal } from '../src/run/pages/index.js';
-import { scenarioSections, sourcingReviewRedesign, bundleSource, startingSelection, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundles, bundleSourcing, sourceSetupNew } from '../../../concepts/index.js';
+import { scenarioSections, bundleSource, startingSelection, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundles, bundleSourcing, sourceSetupNew } from '../../../concepts/index.js';
 import { MeadowHomeBundleConfig } from '../src/run/utils/index.js';
 
 test.use({ bundleMode: 'mixed-starts' });
