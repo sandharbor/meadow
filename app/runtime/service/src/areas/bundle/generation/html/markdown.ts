@@ -16,6 +16,7 @@ limitations under the License.
 
 import * as yaml from 'js-yaml';
 import { BlockInfo } from './types.js';
+import { findCodeRanges, mapOutsideCode } from './markdownCode.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
 
 const FRONTMATTER_PATTERN = /^---\n[\s\S]*?\n---\n/;
@@ -40,28 +41,15 @@ export function frontmatterAsDict(markdownText: string): Record<string, unknown>
 }
 
 /**
- * Applies a regex replacement only to text outside of fenced code blocks
- * (```...```) and inline code spans (`...`). Code segments are preserved
- * verbatim.
+ * Applies a regex replacement only to text outside of code blocks and inline
+ * code spans (see markdownCode.ts). Code is preserved verbatim.
  */
 export function replaceOutsideCode(
   markdown: string,
   pattern: RegExp,
   replacer: (substring: string, ...args: string[]) => string
 ): string {
-  // Split into code and non-code segments.
-  // Fenced code blocks and inline code backticks are captured as odd-indexed parts.
-  const codePattern = /(```[\s\S]*?```|`[^`]+`)/g;
-  const parts = markdown.split(codePattern);
-
-  return parts.map((part, index) => {
-    // Odd indices are captured code segments — return unchanged
-    if (index % 2 === 1) {
-      return part;
-    }
-    // Even indices are regular text — apply replacement
-    return part.replace(pattern, replacer);
-  }).join('');
+  return mapOutsideCode(markdown, text => text.replace(pattern, replacer));
 }
 
 export function splitMarkdownBlocks(markdownText: string): BlockInfo[] {
@@ -69,33 +57,34 @@ export function splitMarkdownBlocks(markdownText: string): BlockInfo[] {
   const lines = markdownText.split('\n');
   let currentBlock: string[] = [];
   let currentType: BlockInfo['type'] | null = null;
-  let inCodeBlock = false;
 
-  for (const line of lines) {
-    // Handle code blocks
-    if (line.startsWith('```')) {
-      if (!inCodeBlock) {
-        // Start new code block
-        if (currentBlock.length > 0) {
-          blocks.push({ type: currentType!, content: currentBlock.join('\n') });
-          currentBlock = [];
-        }
-        currentType = 'code';
-        inCodeBlock = true;
-        currentBlock.push(line);
-      } else {
-        // End code block
-        currentBlock.push(line);
+  // Each code block, as the line range it covers, is kept whole.
+  const codeBlockLines: { first: number; last: number }[] = [];
+  let offset = 0;
+  const lineStarts = lines.map(line => {
+    const start = offset;
+    offset += line.length + 1;
+    return start;
+  });
+  for (const range of findCodeRanges(markdownText).filter(r => r.kind === 'block')) {
+    const first = lineStarts.indexOf(range.start);
+    let last = first;
+    while (last + 1 < lines.length && lineStarts[last + 1] < range.end) last++;
+    codeBlockLines.push({ first, last });
+  }
+
+  for (let index = 0; index < lines.length; index++) {
+    const line = lines[index];
+
+    const codeBlock = codeBlockLines.find(block => block.first === index);
+    if (codeBlock) {
+      if (currentBlock.length > 0) {
         blocks.push({ type: currentType!, content: currentBlock.join('\n') });
         currentBlock = [];
-        inCodeBlock = false;
         currentType = null;
       }
-      continue;
-    }
-
-    if (inCodeBlock) {
-      currentBlock.push(line);
+      blocks.push({ type: 'code', content: lines.slice(codeBlock.first, codeBlock.last + 1).join('\n') });
+      index = codeBlock.last;
       continue;
     }
 

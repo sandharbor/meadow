@@ -58,6 +58,7 @@ import { IMAGE_FILE_TYPES, KNOWN_FILE_TYPES } from './constants.js';
 import { encodePathForUrl } from '../../../../../../../shared_code/utils/urlUtils.js';
 import { HooksLoader } from '../utils/hooksLoader.js';
 import { frontmatterAsDict, replaceOutsideCode, splitMarkdownBlocks } from './markdown.js';
+import { blankOutCode } from './markdownCode.js';
 import { renderTransclusionToHtml } from './transclusion.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
 import { SOURCES_EXPORT_MANIFEST_FILENAME } from '../../../../shared/utils/zipUtils.js';
@@ -1182,7 +1183,7 @@ function backlinkContext(directory: string, backlink: string, thePageName: strin
   const matchingTexts = new Set(Object.entries(resolutions ?? {})
     .filter(([, value]) => value.link_resolved_target_path?.replace(/^\//, '') === `${currentPageDirectory ? `${currentPageDirectory}/` : ''}${thePageName}.md`)
     .map(([text]) => text));
-  const hasResolvedTarget = (content: string) => [...content.matchAll(/\[\[([^\]]+)\]\]|\[[^\]]*\]\(([^)]+)\)/g)]
+  const hasResolvedTarget = (content: string) => [...blankOutCode(content).matchAll(/\[\[([^\]]+)\]\]|\[[^\]]*\]\(([^)]+)\)/g)]
     .some(match => matchingTexts.has(match[1] ?? match[2]));
   if (!resolutions && currentPageDirectory) {
     namesToMatch.push(`${currentPageDirectory}/${thePageName}`);
@@ -1243,8 +1244,9 @@ function extractMatchingTableRow(content: string, namesToMatch: string[], hasRes
  */
 function extractMarkdownLinkFilenames(content: string, links: string[]): void {
   const pattern = /(?<!!)\[([^\]]+)\]\(([^)]+)\)/g;
+  const scannable = blankOutCode(content);
   let match;
-  while ((match = pattern.exec(content)) !== null) {
+  while ((match = pattern.exec(scannable)) !== null) {
     const href = match[2].trim();
     if (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('#')) continue;
     const hrefWithoutAnchor = href.split('#')[0];

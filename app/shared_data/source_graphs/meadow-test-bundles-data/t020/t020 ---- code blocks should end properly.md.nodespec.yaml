@@ -3,7 +3,9 @@ nodespecs:
     sourcing:
       isInWorkingGraph: true
       links:
-        outlinks: []
+        outlinks:
+          - linkPath: /t020 - code blocks.md
+            isInGraph: true
         inlinks:
           - linkPath: /t020 - code blocks.md
             isInGraph: true
@@ -11,7 +13,8 @@ nodespecs:
       isTracked: true
     generation:
       htmlRenderedLinks:
-        mainSectionLinks: []
+        mainSectionLinks:
+          - relativeLinkPath: ../t020 - code blocks.html
         footerSectionBacklinks:
           - relativeLinkPath: ../t020 - code blocks.html
             backlinkContexts:

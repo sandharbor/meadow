@@ -13,6 +13,8 @@ nodespecs:
         inlinks:
           - linkPath: /main page.md
             isInGraph: true
+          - linkPath: /t020/t020 ---- code blocks should end properly.md
+            isInGraph: true
     curation:
       isTracked: true
     generation:
@@ -26,11 +28,9 @@ nodespecs:
             backlinkContexts:
               - seeInContextLinkRelativePath: main page.html
                 embeddedLinks: []
-          - relativeLinkPath: t020/t020 ---- page links in code blocks should not become links.html
+          - relativeLinkPath: t020/t020 ---- code blocks should end properly.html
             backlinkContexts:
-              - seeInContextLinkRelativePath: t020/t020 ---- page links in code blocks should not become links.html
-                embeddedLinks: []
-              - seeInContextLinkRelativePath: t020/t020 ---- page links in code blocks should not become links.html
+              - seeInContextLinkRelativePath: t020/t020 ---- code blocks should end properly.html
                 embeddedLinks: []
   - bundle: meadow-test-bundle-small
     sourcing:

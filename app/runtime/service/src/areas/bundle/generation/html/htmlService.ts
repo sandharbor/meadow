@@ -23,6 +23,7 @@ import { Page } from './page.js';
 import { renderPageToHtml, renderExcalidrawPageToHtml, renderGeneratedBundleNodeToHtml, renderSimpleBacklinksHtml, CollectedSrsCard } from './htmlGenerator.js';
 import { buildExcalidrawClientEmbeddedFileData, buildExcalidrawClientLinkData, copyExcalidrawEmbeddedFiles } from './linkModificationService.js';
 import { calculateRelativePath, markdownContentToPageLinkFilenames, normalizePageTitle } from './shared.js';
+import { blankOutCode } from './markdownCode.js';
 import {
   FolderNavigationPage,
   BundleNodeConfigMap,
@@ -1066,12 +1067,15 @@ export async function generateHtmlForBundle(
           .map(targetPath => path.posix.basename(targetPath).replace(/\.(?:md|html|excalidraw)$/i, '')))]
       : markdownContentToPageLinkFilenames(content);
 
+    // Links inside code are text, not links.
+    const scannableContent = blankOutCode(content);
+
     // Also capture excalidraw embeds `![[X.excalidraw]]` as inlinks to the
     // X drawing — the markdown link extractor skips them (image-typed) but we
     // want backlinks to render on the standalone Excalidraw page.
     const excalidrawEmbedRe = /!\[\[([^\]]+)\]\]/g;
     let exMatch;
-    while (conf.fileType !== 'html' && conf.fileType !== 'svg' && (exMatch = excalidrawEmbedRe.exec(content)) !== null) {
+    while (conf.fileType !== 'html' && conf.fileType !== 'svg' && (exMatch = excalidrawEmbedRe.exec(scannableContent)) !== null) {
       const inner = exMatch[1].split('|')[0]; // strip size/alias
       if (!/\.excalidraw$/i.test(inner)) continue;
       const stripped = inner.replace(/\.excalidraw$/i, '');
@@ -1085,7 +1089,7 @@ export async function generateHtmlForBundle(
     // Also scan for standard markdown file links [text](path.md)
     const mdLinkPattern = /(?<!!)\[([^\]]+)\]\(([^)]+)\)/g;
     let mdLinkMatch;
-    while (conf.fileType !== 'html' && conf.fileType !== 'svg' && (mdLinkMatch = mdLinkPattern.exec(content)) !== null) {
+    while (conf.fileType !== 'html' && conf.fileType !== 'svg' && (mdLinkMatch = mdLinkPattern.exec(scannableContent)) !== null) {
       const href = mdLinkMatch[2].trim();
       // Skip external links and anchor-only links
       if (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('#')) continue;

@@ -17,6 +17,7 @@ limitations under the License.
 import fs from 'fs';
 import path from 'path';
 import { removeFrontmatter } from '../html/markdown.js';
+import { blankOutCode } from '../html/markdownCode.js';
 
 /**
  * Obsidian tags (per docs) generally allow:
@@ -42,79 +43,46 @@ function isAllNumeric(tagBody: string): boolean {
   return /^[0-9]+$/.test(tagBody);
 }
 
-function extractTagsFromLineOutsideWikilinks(line: string): Array<{ body: string }> {
-  const tags: Array<{ body: string }> = [];
-  TAG_BODY_RE.lastIndex = 0;
-  let match: RegExpExecArray | null;
-  while ((match = TAG_BODY_RE.exec(line)) !== null) {
-    const body = match[2];
-    if (!body || isAllNumeric(body)) continue;
-    tags.push({ body });
+interface TagOccurrence {
+  /** Offset of the tag's `#` in the content. */
+  start: number;
+  body: string;
+}
+
+/**
+ * Finds tags outside code, headings and wikilinks. Code and wikilinks are
+ * blanked out first, so the offsets refer to the original content.
+ */
+function findTags(content: string): TagOccurrence[] {
+  const tags: TagOccurrence[] = [];
+  let lineStart = 0;
+  for (const line of blankOutCode(content).split('\n')) {
+    // Skip markdown headings (avoid confusing "# Heading" for a tag)
+    if (!/^#{1,6}\s/.test(line.trimStart())) {
+      const scannable = line.replace(/\[\[[^\]]*?\]\]/g, wikilink => ' '.repeat(wikilink.length));
+      TAG_BODY_RE.lastIndex = 0;
+      let match: RegExpExecArray | null;
+      while ((match = TAG_BODY_RE.exec(scannable)) !== null) {
+        const body = match[2];
+        if (!body || isAllNumeric(body)) continue;
+        tags.push({ start: lineStart + match.index + match[1].length, body });
+      }
+    }
+    lineStart += line.length + 1;
   }
   return tags;
-}
-
-function stripInlineCodeSegments(line: string): string[] {
-  // Split by backticks; even indices are outside inline code.
-  return line.split('`').filter((_seg, idx) => idx % 2 === 0);
-}
-
-function splitOutsideWikiLinks(text: string): Array<{ type: 'text' | 'wikilink'; value: string }> {
-  const parts: Array<{ type: 'text' | 'wikilink'; value: string }> = [];
-  const re = /\[\[[^\]]*?\]\]/g;
-  let last = 0;
-  for (const m of text.matchAll(re)) {
-    const idx = m.index ?? 0;
-    if (idx > last) parts.push({ type: 'text', value: text.slice(last, idx) });
-    parts.push({ type: 'wikilink', value: m[0] });
-    last = idx + m[0].length;
-  }
-  if (last < text.length) parts.push({ type: 'text', value: text.slice(last) });
-  return parts;
 }
 
 export function extractObsidianTagsFromMarkdown(markdown: string): Map<string, string> {
   // Returns map tagKey -> exampleOriginalBody (for display)
   const tagKeyToExample = new Map<string, string>();
-  const content = removeFrontmatter(markdown);
-  const lines = content.split('\n');
-  let inCodeBlock = false;
-
-  for (const line of lines) {
-    const trimmed = line.trimStart();
-    if (trimmed.startsWith('```')) {
-      inCodeBlock = !inCodeBlock;
-      continue;
-    }
-    if (inCodeBlock) continue;
-    // Skip markdown headings (avoid confusing "# Heading" for a tag)
-    if (/^#{1,6}\s/.test(trimmed)) continue;
-
-    for (const outsideInlineCode of stripInlineCodeSegments(line)) {
-      const parts = splitOutsideWikiLinks(outsideInlineCode);
-      for (const part of parts) {
-        if (part.type !== 'text') continue;
-        for (const tag of extractTagsFromLineOutsideWikilinks(part.value)) {
-          const key = normalizeTagToKey(tag.body);
-          if (!tagKeyToExample.has(key)) {
-            tagKeyToExample.set(key, tag.body);
-          }
-        }
-      }
+  for (const tag of findTags(removeFrontmatter(markdown))) {
+    const key = normalizeTagToKey(tag.body);
+    if (!tagKeyToExample.has(key)) {
+      tagKeyToExample.set(key, tag.body);
     }
   }
-
   return tagKeyToExample;
-}
-
-function rewriteTagsInTextChunk(text: string, tagBodyToPageTitle: (tagBody: string) => string): string {
-  TAG_BODY_RE.lastIndex = 0;
-  return text.replace(TAG_BODY_RE, (full, prefix: string, body: string) => {
-    if (!body || isAllNumeric(body)) return full;
-    const pageTitle = tagBodyToPageTitle(body);
-    // Preserve original case for display, but link to normalized page title.
-    return `${prefix}[[${pageTitle}|#${body}]]`;
-  });
 }
 
 export function rewriteObsidianTagsToWikiLinks(
@@ -122,48 +90,25 @@ export function rewriteObsidianTagsToWikiLinks(
   tagBodyToPageTitle: (tagBody: string) => string
 ): string {
   const content = removeFrontmatter(markdown);
-  const lines = content.split('\n');
-  let inCodeBlock = false;
-  const out: string[] = [];
-
-  for (const line of lines) {
-    const trimmed = line.trimStart();
-    if (trimmed.startsWith('```')) {
-      inCodeBlock = !inCodeBlock;
-      out.push(line);
-      continue;
-    }
-    if (inCodeBlock) {
-      out.push(line);
-      continue;
-    }
-    if (/^#{1,6}\s/.test(trimmed)) {
-      out.push(line);
-      continue;
-    }
-
-    const segments = line.split('`');
-    for (let i = 0; i < segments.length; i++) {
-      // Only rewrite outside inline code segments (even indices)
-      if (i % 2 === 0) {
-        const parts = splitOutsideWikiLinks(segments[i]);
-        segments[i] = parts
-          .map(p => (p.type === 'text' ? rewriteTagsInTextChunk(p.value, tagBodyToPageTitle) : p.value))
-          .join('');
-      }
-    }
-    out.push(segments.join('`'));
+  let rewritten = '';
+  let cursor = 0;
+  for (const tag of findTags(content)) {
+    const pageTitle = tagBodyToPageTitle(tag.body);
+    // Preserve original case for display, but link to normalized page title.
+    rewritten += `${content.slice(cursor, tag.start)}[[${pageTitle}|#${tag.body}]]`;
+    cursor = tag.start + 1 + tag.body.length;
   }
+  rewritten += content.slice(cursor);
 
   // If original markdown had frontmatter, preserve it.
   // removeFrontmatter only removed it from `content`, so we need to stitch it back.
   if (content !== markdown) {
     const fmMatch = markdown.match(/^---\n[\s\S]*?\n---\n/);
     if (fmMatch) {
-      return fmMatch[0] + out.join('\n');
+      return fmMatch[0] + rewritten;
     }
   }
-  return out.join('\n');
+  return rewritten;
 }
 
 export function listMarkdownFilesRecursive(rootDir: string, opts?: { excludeDirNames?: Set<string> }): string[] {

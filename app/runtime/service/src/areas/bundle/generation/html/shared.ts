@@ -19,6 +19,7 @@ import he from 'he';
 import { Page } from './page.js';
 import { IMAGE_EXTENSIONS, LINK_PATTERN } from './constants.js';
 import { removeFrontmatter } from './markdown.js';
+import { blankOutCode } from './markdownCode.js';
 import { LinkInfo } from './types.js';
 import { BundleConfig } from '../../../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
 import { HooksLoader } from '../utils/hooksLoader.js';
@@ -144,14 +145,16 @@ export function linkTextToLinkInfo(link: string): LinkInfo {
   }
 }
 
+/** The wikilinks in `content`, ignoring any inside code. */
 export function markdownContentToLinks(content: string): Record<string, LinkInfo> {
   const links: Record<string, LinkInfo> = {};
+  const scannable = blankOutCode(content);
   let match;
 
   // Reset the regex to start from the beginning
   LINK_PATTERN.lastIndex = 0;
 
-  while ((match = LINK_PATTERN.exec(content)) !== null) {
+  while ((match = LINK_PATTERN.exec(scannable)) !== null) {
     const link = match[1];
     links[link] = linkTextToLinkInfo(link);
   }
