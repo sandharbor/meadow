@@ -11,7 +11,9 @@ nodespecs:
       isTracked: true
     generation:
       htmlRenderedLinks:
-        mainSectionLinks: []
+        mainSectionLinks:
+          - relativeLinkPath: "#a-heading"
+          - relativeLinkPath: "#top"
         footerSectionBacklinks:
           - relativeLinkPath: ../t018 - tags.html
             backlinkContexts:

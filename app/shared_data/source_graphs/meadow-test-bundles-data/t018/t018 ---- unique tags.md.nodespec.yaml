@@ -15,6 +15,10 @@ nodespecs:
           - relativeLinkPath: ../_mw_gen/tagpages/tag--t018-unique-a.html
           - relativeLinkPath: ../_mw_gen/tagpages/tag--t018-unique-b.html
           - relativeLinkPath: ../_mw_gen/tagpages/tag--t018-unique-c.html
+          - relativeLinkPath: ../_mw_gen/tagpages/tag--café-t018.html
+          - relativeLinkPath: ../_mw_gen/tagpages/tag--日本語-t018.html
+          - relativeLinkPath: ../_mw_gen/tagpages/tag--t018-unique-d.html
+          - relativeLinkPath: ../_mw_gen/tagpages/tag--t018-unique-e.html
         footerSectionBacklinks:
           - relativeLinkPath: ../t018 - tags.html
             backlinkContexts:

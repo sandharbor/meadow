@@ -20,7 +20,8 @@ import { createHash } from 'crypto';
 import {
   extractObsidianTagsFromMarkdown,
   listMarkdownFilesRecursive,
-  normalizeTagToKey
+  normalizeTagToKey,
+  TAG_BODY_PATTERN
 } from '../source-material/tagPages.js';
 import {
   textDocumentCodec,
@@ -29,7 +30,7 @@ import {
 
 const GUID_COMMENT_RE = /^<!--MEADOW_SR_GUID:([^>]+)-->$/;
 const SR_COMMENT_RE = /^<!--SR:[\s\S]*-->$/;
-const REWRITTEN_TAG_WIKILINK_RE = /\[\[(?:x-tagpages\/)?tag--[^\]|]+?\|#([A-Za-z0-9][A-Za-z0-9_/-]*)\]\]/g;
+const REWRITTEN_TAG_WIKILINK_RE = new RegExp(String.raw`\[\[(?:x-tagpages\/)?tag--[^\]|]+?\|#(${TAG_BODY_PATTERN})\]\]`, 'gu');
 
 export interface PreparedSrsMarkdownResult {
   matchedPageRelativePaths: Set<string>;

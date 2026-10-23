@@ -19,6 +19,7 @@ import path from 'path';
 import type { BundleNodeConfig } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundleConfigPaths.js';
 import { replaceOutsideCode } from '../html/markdown.js';
+import { TAG_BODY_PATTERN } from '../source-material/tagPages.js';
 import type { LinkResolvedInfo } from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode.js';
 import { rewritePortableSourceWikilinks, rewriteResolvedSourceUrls } from '../source-material/portableSourceLinks.js';
 import {
@@ -29,7 +30,7 @@ import {
 
 export { sanitizeMarkdownLinks };
 
-const GENERATED_TAG_WIKILINK_RE = /\[\[(?:x-tagpages\/)?tag--[^\]|]+?\|#([A-Za-z0-9][A-Za-z0-9_/-]*)\]\]/g;
+const GENERATED_TAG_WIKILINK_RE = new RegExp(String.raw`\[\[(?:x-tagpages\/)?tag--[^\]|]+?\|#(${TAG_BODY_PATTERN})\]\]`, 'gu');
 const MARKDOWN_LINK_NOT_TRACKED_REPLACEMENT = '_link not tracked_';
 
 function walkFilesRecursively(dir: string): string[] {

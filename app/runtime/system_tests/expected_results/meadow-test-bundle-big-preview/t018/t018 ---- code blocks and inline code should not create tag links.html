@@ -40,14 +40,26 @@
     </div>
     <main>
         <h1>t018 ---- code blocks and inline code should not create tag links</h1>
-        <p>This page should NOT create tag links from code blocks or inline code.
-<a id="block-6103592" class="block-anchor"></a></p>
+        <p>This page should NOT create tag links from code blocks or inline code, or from other <code class="inline-code">#</code> characters that are not tags.
+<a id="block-40ec18d" class="block-anchor"></a></p>
 <p>Inline code: <code class="inline-code">#tag-inside-code-ticks</code>
 <a id="block-4d9d85c" class="block-anchor"></a></p>
 <pre><code class="hljs language-txt">#tag-inside-fenced-code-block
 some other text
 </code></pre>
 <p><a id="block-6b11e7b" class="block-anchor"></a></p>
+<p>Each of the next three lines contains a <code class="inline-code">#</code> that belongs to something else, not to a tag. None of them should become a tag link, and the two links should keep working.
+<a id="block-4e40d06" class="block-anchor"></a></p>
+<p>A Markdown link to a heading on this page: <a href="#a-heading">the heading</a>
+<a id="block-94c1c21" class="block-anchor"></a></p>
+<p>An HTML link to the top of the page: <a href="#top">top</a>
+<a id="block-2790b87" class="block-anchor"></a></p>
+<p>An HTML entity for an apostrophe: it&#x27;s
+<a id="block-9fe9b46" class="block-anchor"></a></p>
+<h2 id="a-heading">A heading</h2>
+<p><a id="block-1713409" class="block-anchor"></a></p>
+<p>This heading is only here so the Markdown link above has something to point to.
+<a id="block-ec3f25f" class="block-anchor"></a></p>
 
     </main>
     <footer>

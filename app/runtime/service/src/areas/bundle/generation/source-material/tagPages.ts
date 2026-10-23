@@ -21,13 +21,29 @@ import { blankOutCode } from '../html/markdownCode.js';
 
 /**
  * Obsidian tags (per docs) generally allow:
- * - letters/numbers
+ * - letters and numbers in any script, and emoji
  * - underscore, hyphen
  * - forward slash for nested tags (e.g. #parent/child)
  *
+ * A tag can follow any character that cannot be part of a tag, so `(#tag)` and
+ * `**#tag**` are tags. A `#` inside a Markdown link destination, an HTML tag or
+ * an HTML entity (`](#heading)`, `href="#top"`, `&#x27;`) is not; findTags
+ * blanks those out before searching.
+ *
  * We treat tags as case-insensitive and reject tags that are all-numeric.
  */
-const TAG_BODY_RE = /(^|[^A-Za-z0-9_/-])#([A-Za-z0-9][A-Za-z0-9_/-]*)/g;
+const TAG_CHARACTERS = String.raw`\p{L}\p{M}\p{N}\p{Extended_Pictographic}`;
+/** A tag's body, without the `#`. Regexes built from it need the `u` flag. */
+export const TAG_BODY_PATTERN = String.raw`[${TAG_CHARACTERS}][${TAG_CHARACTERS}\u200d_/-]*`;
+const TAG_BODY_RE = new RegExp(String.raw`(^|[^${TAG_CHARACTERS}_/-])#(${TAG_BODY_PATTERN})`, 'gu');
+
+/** Text in which a `#` is never a tag, on a single line. */
+const NOT_TAG_TEXT = [
+  /\[\[[^\]]*?\]\]/g, // wikilinks
+  /\]\([^)]*\)/g, // Markdown link destinations
+  /<\/?[A-Za-z][^>]*>/g, // HTML tags, including their attributes
+  /&(?:#[0-9]+|#[xX][0-9a-fA-F]+|[A-Za-z][A-Za-z0-9]*);/g, // HTML entities
+];
 
 export function normalizeTagToKey(tagBody: string): string {
   return tagBody.toLowerCase();
@@ -50,8 +66,8 @@ interface TagOccurrence {
 }
 
 /**
- * Finds tags outside code, headings and wikilinks. Code and wikilinks are
- * blanked out first, so the offsets refer to the original content.
+ * Finds tags outside code, headings and NOT_TAG_TEXT. Those are blanked out
+ * first, so the offsets refer to the original content.
  */
 function findTags(content: string): TagOccurrence[] {
   const tags: TagOccurrence[] = [];
@@ -59,7 +75,7 @@ function findTags(content: string): TagOccurrence[] {
   for (const line of blankOutCode(content).split('\n')) {
     // Skip markdown headings (avoid confusing "# Heading" for a tag)
     if (!/^#{1,6}\s/.test(line.trimStart())) {
-      const scannable = line.replace(/\[\[[^\]]*?\]\]/g, wikilink => ' '.repeat(wikilink.length));
+      const scannable = NOT_TAG_TEXT.reduce((text, pattern) => text.replace(pattern, found => ' '.repeat(found.length)), line);
       TAG_BODY_RE.lastIndex = 0;
       let match: RegExpExecArray | null;
       while ((match = TAG_BODY_RE.exec(scannable)) !== null) {
