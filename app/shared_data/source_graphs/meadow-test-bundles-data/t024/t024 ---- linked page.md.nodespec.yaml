@@ -23,6 +23,12 @@ nodespecs:
             backlinkContexts:
               - seeInContextLinkRelativePath: ../t024 - markdown links.html
                 embeddedLinks: []
+              - seeInContextLinkRelativePath: ../t024 - markdown links.html
+                embeddedLinks: []
+              - seeInContextLinkRelativePath: ../t024 - markdown links.html
+                embeddedLinks: []
+              - seeInContextLinkRelativePath: ../t024 - markdown links.html
+                embeddedLinks: []
   - bundle: meadow-test-bundle-small
     sourcing:
       isInWorkingGraph: false

@@ -24,6 +24,7 @@ import { renderPageToHtml, renderExcalidrawPageToHtml, renderGeneratedBundleNode
 import { buildExcalidrawClientEmbeddedFileData, buildExcalidrawClientLinkData, copyExcalidrawEmbeddedFiles } from './linkModificationService.js';
 import { calculateRelativePath, markdownContentToPageLinkFilenames, normalizePageTitle } from './shared.js';
 import { blankOutCode } from './markdownCode.js';
+import { markdownLinkStems, referenceDefinitions } from './markedLinks.js';
 import {
   FolderNavigationPage,
   BundleNodeConfigMap,
@@ -1086,19 +1087,13 @@ export async function generateHtmlForBundle(
       }
     }
 
-    // Also scan for standard markdown file links [text](path.md)
-    const mdLinkPattern = /(?<!!)\[([^\]]+)\]\(([^)]+)\)/g;
-    let mdLinkMatch;
-    while (conf.fileType !== 'html' && conf.fileType !== 'svg' && (mdLinkMatch = mdLinkPattern.exec(scannableContent)) !== null) {
-      const href = mdLinkMatch[2].trim();
-      // Skip external links and anchor-only links
-      if (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('#')) continue;
-      // Extract the filename stem from the href (strip path and extension)
-      const hrefWithoutAnchor = href.split('#')[0];
-      const filename = hrefWithoutAnchor.split('/').pop() ?? '';
-      const stem = filename.replace(/\.[^.]+$/, '');
-      if (stem && !links.includes(stem)) {
-        links.push(stem);
+    // Also scan for Markdown links to files, in any form ([text](path.md),
+    // reference-style, titled, angle-bracketed).
+    if (conf.fileType !== 'html' && conf.fileType !== 'svg') {
+      for (const stem of markdownLinkStems(content, referenceDefinitions(content))) {
+        if (!links.includes(stem)) {
+          links.push(stem);
+        }
       }
     }
 

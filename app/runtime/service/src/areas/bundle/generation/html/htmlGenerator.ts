@@ -18,7 +18,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { createHash } from 'crypto';
-import { marked } from 'marked';
+import { marked, type Links } from 'marked';
 import markedFootnote from 'marked-footnote';
 import customHeadingId from 'marked-custom-heading-id';
 import { markedHighlight } from 'marked-highlight';
@@ -26,7 +26,14 @@ import hljs from 'highlight.js';
 import * as nodeEmoji from 'node-emoji';
 import { extendedSyntaxExtensions } from './markedExtensions.js';
 import { headingIds, markdownHrefFragment, styleBlockIds, withPageHeadingIds } from './pageAnchors.js';
-import { markdownLinks } from './markedLinks.js';
+import {
+  markdownLinkDestinations,
+  markdownLinkStems,
+  markdownLinks,
+  referenceDefinitionMarkdown,
+  referenceDefinitions,
+  withInternalLinks,
+} from './markedLinks.js';
 import handlebars from 'handlebars';
 import { Page } from './page.js';
 import {
@@ -322,137 +329,154 @@ export function renderPageToHtml(
       linkOrImageHtml(linkText, highlightDoNotLinkPageName, overrides)
     );
 
-    // Handle standard markdown file links: [text](relative/path.md) and ![alt](relative/path.png)
-    // These must be processed before marked because marked cannot handle spaces in URLs.
-    // We match both [text](href) and ![alt](href), skip external links and anchor-only links.
-    mdContent = replaceOutsideCode(mdContent, /(!?)\[([^\]]+)\]\(([^)]+)\)/g, (match: string, bang: string, text: string, href: string) => {
-      // Skip external links
-      if (href.startsWith('http://') || href.startsWith('https://')) {
-        return match;
-      }
-      // Skip anchor-only links
-      if (href.startsWith('#')) {
-        return match;
-      }
+    // Standard Markdown links that marked cannot parse: Obsidian accepts
+    // unescaped spaces in a destination, as in [text](relative/my page.md).
+    // marked renders every other form through markdownLinkHtml below.
+    mdContent = replaceOutsideCode(mdContent, /(!?)\[([^\]]+)\]\(([^)]+)\)/g, (match: string, bang: string, text: string, href: string) =>
+      markdownLinkHtml(bang === '!', text, href, highlightDoNotLinkPageName, overrides) ?? match
+    );
 
-      const effectiveLinkResolutionMap = overrides?.linkResolutionMapOverride ?? linkResolutionMap;
-      const effectivePageDir = overrides?.currentPageDirectoryOverride ?? currentPageDirectory ?? '';
-      const resolvedInfo = effectiveLinkResolutionMap?.[href];
+    return mdContent;
+  }
 
-      if (!resolvedInfo) {
-        // Link not in resolution map -- might point outside the bundle
-        const hrefLower = href.toLowerCase().split(/[?#]/)[0];
-        if (KNOWN_FILE_TYPES.some(ext => hrefLower.endsWith(`.${ext}`))) {
-          return '<span class="link-not-tracked">link not tracked</span>';
+  /**
+   * The HTML for a Markdown link or image whose destination is another file in
+   * the source graph, or null to leave it as written (external links, anchors
+   * and destinations that are not files).
+   */
+  function markdownLinkHtml(
+    isImage: boolean,
+    text: string,
+    href: string,
+    highlightDoNotLinkPageName?: string,
+    overrides?: WikiLinkOverrides,
+    title?: string | null
+  ): string | null {
+    const titleAttr = title ? ` title="${escapeHtmlAttribute(title)}"` : '';
+    // Skip external links
+    if (href.startsWith('http://') || href.startsWith('https://')) {
+      return null;
+    }
+    // Skip anchor-only links
+    if (href.startsWith('#')) {
+      return null;
+    }
+
+    const effectiveLinkResolutionMap = overrides?.linkResolutionMapOverride ?? linkResolutionMap;
+    const effectivePageDir = overrides?.currentPageDirectoryOverride ?? currentPageDirectory ?? '';
+    const resolvedInfo = effectiveLinkResolutionMap?.[href];
+
+    if (!resolvedInfo) {
+      // Link not in resolution map -- might point outside the bundle
+      const hrefLower = href.toLowerCase().split(/[?#]/)[0];
+      if (KNOWN_FILE_TYPES.some(ext => hrefLower.endsWith(`.${ext}`))) {
+        return '<span class="link-not-tracked">link not tracked</span>';
+      }
+      return null;
+    }
+
+    const resolvedPath = resolvedInfo.link_resolved_target_path ?? '';
+    const targetDir = resolvedInfo.link_resolved_target_directory ?? '';
+    const fileName = resolvedPath.split('/').pop() ?? '';
+    const extMatch = resolvedPath.match(/\.([^.]+)$/);
+    const fileType = extMatch ? extMatch[1].toLowerCase() : 'md';
+    const targetIsImage = IMAGE_FILE_TYPES.includes(fileType);
+
+    if (targetIsImage) {
+      // Copy image to output
+      const contentDir = baseContentDirectory || directory;
+      const outputDir = baseOutputFolder || outputFolder;
+      if (contentDir && outputDir) {
+        const imageSrc = targetDir
+          ? path.join(contentDir, targetDir, fileName)
+          : path.join(contentDir, fileName);
+        const imageOutputDir = targetDir
+          ? path.join(outputDir, targetDir)
+          : outputDir;
+        if (targetDir && !fs.existsSync(imageOutputDir)) {
+          fs.mkdirSync(imageOutputDir, { recursive: true });
         }
-        return match;
+        const imageDest = path.join(imageOutputDir, fileName);
+        if (fs.existsSync(imageSrc) && (fileType !== 'svg' || !fs.existsSync(imageDest))) {
+          fs.copyFileSync(imageSrc, imageDest);
+        }
       }
 
-      const resolvedPath = resolvedInfo.link_resolved_target_path ?? '';
-      const targetDir = resolvedInfo.link_resolved_target_directory ?? '';
-      const fileName = resolvedPath.split('/').pop() ?? '';
-      const extMatch = resolvedPath.match(/\.([^.]+)$/);
-      const fileType = extMatch ? extMatch[1].toLowerCase() : 'md';
-      const isImage = IMAGE_FILE_TYPES.includes(fileType);
+      const imageTargetPath = targetDir ? `${targetDir}/${fileName}` : fileName;
+      const relativeImagePath = calculateRelativePath(effectivePageDir, imageTargetPath);
+      const encodedPath = encodePathForUrl(relativeImagePath);
 
       if (isImage) {
-        // Copy image to output
-        const contentDir = baseContentDirectory || directory;
-        const outputDir = baseOutputFolder || outputFolder;
-        if (contentDir && outputDir) {
-          const imageSrc = targetDir
-            ? path.join(contentDir, targetDir, fileName)
-            : path.join(contentDir, fileName);
-          const imageOutputDir = targetDir
-            ? path.join(outputDir, targetDir)
-            : outputDir;
-          if (targetDir && !fs.existsSync(imageOutputDir)) {
-            fs.mkdirSync(imageOutputDir, { recursive: true });
-          }
-          const imageDest = path.join(imageOutputDir, fileName);
-          if (fs.existsSync(imageSrc) && (fileType !== 'svg' || !fs.existsSync(imageDest))) {
-            fs.copyFileSync(imageSrc, imageDest);
-          }
-        }
-
-        const imageTargetPath = targetDir ? `${targetDir}/${fileName}` : fileName;
-        const relativeImagePath = calculateRelativePath(effectivePageDir, imageTargetPath);
-        const encodedPath = encodePathForUrl(relativeImagePath);
-
-        if (bang === '!') {
-          // Image embed ![alt](path)
-          return `<img src="${encodedPath}" alt="${text}" />`;
-        } else {
-          // Link to image [text](path)
-          return `<a href="${encodedPath}">${text}</a>`;
-        }
+        // Image embed ![alt](path)
+        return `<img src="${encodedPath}" alt="${text}"${titleAttr} />`;
+      } else {
+        // Link to image [text](path)
+        return `<a href="${encodedPath}"${titleAttr}>${text}</a>`;
       }
+    }
 
-      // Rendered page link (Markdown or native HTML)
-      const resolvedTitle = fileName.replace(/\.(?:md|html)$/i, '');
-      const renderedPageFileType = fileType === 'html' ? 'html' : 'md';
+    // Rendered page link (Markdown or native HTML)
+    const resolvedTitle = fileName.replace(/\.(?:md|html)$/i, '');
+    const renderedPageFileType = fileType === 'html' ? 'html' : 'md';
 
-      let linkConfig = bundleNodeConfigs.find(c =>
+    let linkConfig = bundleNodeConfigs.find(c =>
+      c.bundleNodeKind === 'file' && c.bundleNodeName === resolvedTitle &&
+      (c.sourceGraphSubdirectory || '') === targetDir &&
+      (c.fileType || 'md') === renderedPageFileType &&
+      c.listType === 'whitelist'
+    );
+    if (!linkConfig) {
+      linkConfig = bundleNodeConfigs.find(c =>
         c.bundleNodeKind === 'file' && c.bundleNodeName === resolvedTitle &&
-        (c.sourceGraphSubdirectory || '') === targetDir &&
         (c.fileType || 'md') === renderedPageFileType &&
         c.listType === 'whitelist'
       );
-      if (!linkConfig) {
-        linkConfig = bundleNodeConfigs.find(c =>
-          c.bundleNodeKind === 'file' && c.bundleNodeName === resolvedTitle &&
-          (c.fileType || 'md') === renderedPageFileType &&
-          c.listType === 'whitelist'
-        );
-      }
+    }
 
-      if (!linkConfig) {
-        return '<span class="link-not-tracked">link not tracked</span>';
-      }
+    if (!linkConfig) {
+      return '<span class="link-not-tracked">link not tracked</span>';
+    }
 
-      const normalizedTitle = bundleConfig && bundleSlug
-        ? normalizePageTitle(linkConfig.bundleNodeName, bundleConfig, bundleSlug)
-        : linkConfig.bundleNodeName;
+    const normalizedTitle = bundleConfig && bundleSlug
+      ? normalizePageTitle(linkConfig.bundleNodeName, bundleConfig, bundleSlug)
+      : linkConfig.bundleNodeName;
 
-      // Highlight self-links (links back to the current page) as non-clickable
-      if (highlightDoNotLinkPageName &&
-          (bundleConfig?.sources
-            ? targetDir === effectivePageDir && resolvedTitle === highlightDoNotLinkPageName && renderedPageFileType === 'md'
-            : resolvedTitle.toLowerCase() === highlightDoNotLinkPageName.toLowerCase())) {
-        return `<span class="highlight-do-not-link">${normalizedTitle}</span>`;
-      }
+    // Highlight self-links (links back to the current page) as non-clickable
+    if (highlightDoNotLinkPageName &&
+        (bundleConfig?.sources
+          ? targetDir === effectivePageDir && resolvedTitle === highlightDoNotLinkPageName && renderedPageFileType === 'md'
+          : resolvedTitle.toLowerCase() === highlightDoNotLinkPageName.toLowerCase())) {
+      return `<span class="highlight-do-not-link">${normalizedTitle}</span>`;
+    }
 
-      // Centralised URL build: resolved-target → relative-href, gated by
-      // whitelist. Same helper that drives the wiki-link page branch.
-      const relativeUrl = resolveTrackedLinkHref({
-        resolved: resolvedInfo,
-        hostPageDirectory: effectivePageDir,
-        bundleNodeConfigs,
-        bundleConfig,
-        bundleSlug,
-        routeTable,
-        hostOutputDirectory: currentOutputDirectory,
-      });
-      if (relativeUrl === null) {
-        return '<span class="link-not-tracked">link not tracked</span>';
-      }
-
-      if (processingMode === 'each-page') {
-        const rawSuffix = href.match(/[?#].*$/)?.[0] ?? '';
-        let suffix = bundleConfig.sources || href.startsWith('source://') ? rawSuffix : '';
-        if (renderedPageFileType === 'md') {
-          const anchor = rawSuffix.split('#')[1];
-          suffix = anchor ? markdownHrefFragment(anchor) : '';
-        }
-        return `<a href="${relativeUrl}${suffix}">${text}</a>`;
-      } else if (processingMode === 'single-page') {
-        return `<a href="#${anchorNameFor(normalizedTitle)}">${text}</a>`;
-      }
-
-      return match;
+    // Centralised URL build: resolved-target → relative-href, gated by
+    // whitelist. Same helper that drives the wiki-link page branch.
+    const relativeUrl = resolveTrackedLinkHref({
+      resolved: resolvedInfo,
+      hostPageDirectory: effectivePageDir,
+      bundleNodeConfigs,
+      bundleConfig,
+      bundleSlug,
+      routeTable,
+      hostOutputDirectory: currentOutputDirectory,
     });
+    if (relativeUrl === null) {
+      return '<span class="link-not-tracked">link not tracked</span>';
+    }
 
-    return mdContent;
+    if (processingMode === 'each-page') {
+      const rawSuffix = href.match(/[?#].*$/)?.[0] ?? '';
+      let suffix = bundleConfig.sources || href.startsWith('source://') ? rawSuffix : '';
+      if (renderedPageFileType === 'md') {
+        const anchor = rawSuffix.split('#')[1];
+        suffix = anchor ? markdownHrefFragment(anchor) : '';
+      }
+      return `<a href="${relativeUrl}${suffix}"${titleAttr}>${text}</a>`;
+    } else if (processingMode === 'single-page') {
+      return `<a href="#${anchorNameFor(normalizedTitle)}"${titleAttr}>${text}</a>`;
+    }
+
+    return null;
   }
 
   function renderMarkdownFragmentToHtml(fragment: string): string {
@@ -502,7 +526,10 @@ export function renderPageToHtml(
 
   convertedContentWithAnchors = styleBlockIds(convertedContentWithAnchors, { linkable: true });
 
-  let htmlContent = withPageHeadingIds(() => marked(convertedContentWithAnchors) as string);
+  let htmlContent = withInternalLinks(
+    link => markdownLinkHtml(link.isImage, link.textHtml, link.href, undefined, undefined, link.title),
+    () => withPageHeadingIds(() => marked(convertedContentWithAnchors) as string)
+  );
 
   function createFrontmatterTable(frontmatter: Record<string, unknown>): string | null {
     if (Object.keys(frontmatter).length === 0) {
@@ -626,12 +653,16 @@ export function renderPageToHtml(
               for (const info of backlinkInfo) {
                 const anchorId = info.anchor_id;
                 const block = info.content;
-                const withFixedLinks = convertWikiLinks(block, pageName, {
+                const backlinkOverrides = {
                   linkResolutionMapOverride: backlinkResolutionMap,
                   currentPageDirectoryOverride: currentPageDirectory,
-                });
+                };
+                const withFixedLinks = convertWikiLinks(block, pageName, backlinkOverrides);
                 const withFixedLinksAndBreaks = customProcessBacklinksMarkdown(withFixedLinks, bundleSlug, bundleConfig);
-                const html = marked(withFixedLinksAndBreaks) as string;
+                const html = withInternalLinks(
+                  link => markdownLinkHtml(link.isImage, link.textHtml, link.href, pageName, backlinkOverrides, link.title),
+                  () => marked(withFixedLinksAndBreaks) as string
+                );
                 
                 // Calculate relative path for "see in context" link
                 const encodedBacklinkName = encodeURIComponent(normalizedBacklinkName);
@@ -1183,8 +1214,13 @@ function backlinkContext(directory: string, backlink: string, thePageName: strin
   const matchingTexts = new Set(Object.entries(resolutions ?? {})
     .filter(([, value]) => value.link_resolved_target_path?.replace(/^\//, '') === `${currentPageDirectory ? `${currentPageDirectory}/` : ''}${thePageName}.md`)
     .map(([text]) => text));
-  const hasResolvedTarget = (content: string) => [...blankOutCode(content).matchAll(/\[\[([^\]]+)\]\]|\[[^\]]*\]\(([^)]+)\)/g)]
-    .some(match => matchingTexts.has(match[1] ?? match[2]));
+  // Reference-style links in a block may use definitions from anywhere on the page.
+  const definitions = referenceDefinitions(mdContent);
+  const definitionMarkdown = referenceDefinitionMarkdown(definitions);
+  const hasResolvedTarget = (content: string) => [
+    ...[...blankOutCode(content).matchAll(/\[\[([^\]]+)\]\]/g)].map(match => match[1]),
+    ...markdownLinkDestinations(content, definitions),
+  ].some(text => matchingTexts.has(text));
   if (!resolutions && currentPageDirectory) {
     namesToMatch.push(`${currentPageDirectory}/${thePageName}`);
   }
@@ -1193,16 +1229,16 @@ function backlinkContext(directory: string, backlink: string, thePageName: strin
     const { anchorId, content } = stripAndReturnBlockAnchorIds(block);
     const links = markdownContentToPageLinkFilenames(content);
     // Also extract link targets from standard markdown links [text](path.md)
-    extractMarkdownLinkFilenames(content, links);
+    extractMarkdownLinkFilenames(content, links, definitions);
 
     if (resolutions ? hasResolvedTarget(content) : links.some(link => namesToMatch.includes(link))) {
       // For table blocks, extract only the matching row instead of the full table.
       // A markdown table block has lines starting with '|'.
-      const tableRow = extractMatchingTableRow(content, namesToMatch, resolutions ? hasResolvedTarget : undefined);
+      const tableRow = extractMatchingTableRow(content, namesToMatch, definitions, resolutions ? hasResolvedTarget : undefined);
       if (tableRow !== null) {
-        matchingBlockInfo.push({ anchor_id: anchorId, content: tableRow });
+        matchingBlockInfo.push({ anchor_id: anchorId, content: tableRow + definitionMarkdown });
       } else {
-        matchingBlockInfo.push({ anchor_id: anchorId, content });
+        matchingBlockInfo.push({ anchor_id: anchorId, content: content + definitionMarkdown });
       }
     }
   }
@@ -1215,7 +1251,7 @@ function backlinkContext(directory: string, backlink: string, thePageName: strin
  * row that contains a link matching one of the target names. Returns null when
  * the content is not a table.
  */
-function extractMatchingTableRow(content: string, namesToMatch: string[], hasResolvedTarget?: (content: string) => boolean): string | null {
+function extractMatchingTableRow(content: string, namesToMatch: string[], definitions: Links, hasResolvedTarget?: (content: string) => boolean): string | null {
   const lines = content.split('\n');
   // A markdown table has at least 3 lines (header, separator, data row)
   // and the separator line matches |---|
@@ -1229,7 +1265,7 @@ function extractMatchingTableRow(content: string, namesToMatch: string[], hasRes
   for (let i = 2; i < lines.length; i++) {
     const row = lines[i];
     const rowLinks = markdownContentToPageLinkFilenames(row);
-    extractMarkdownLinkFilenames(row, rowLinks);
+    extractMarkdownLinkFilenames(row, rowLinks, definitions);
     if (hasResolvedTarget ? hasResolvedTarget(row) : rowLinks.some(link => namesToMatch.includes(link))) {
       return `${headerLine}\n${separatorLine}\n${row}`;
     }
@@ -1239,20 +1275,12 @@ function extractMatchingTableRow(content: string, namesToMatch: string[], hasRes
 }
 
 /**
- * Extracts page title stems from standard markdown links [text](path.md) in content,
- * appending them to the provided links array.
+ * Extracts page title stems from Markdown links in content (any form, see
+ * markdownLinkDestinations), appending them to the provided links array.
  */
-function extractMarkdownLinkFilenames(content: string, links: string[]): void {
-  const pattern = /(?<!!)\[([^\]]+)\]\(([^)]+)\)/g;
-  const scannable = blankOutCode(content);
-  let match;
-  while ((match = pattern.exec(scannable)) !== null) {
-    const href = match[2].trim();
-    if (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('#')) continue;
-    const hrefWithoutAnchor = href.split('#')[0];
-    const filename = hrefWithoutAnchor.split('/').pop() ?? '';
-    const stem = filename.replace(/\.[^.]+$/, '');
-    if (stem && !links.includes(stem)) {
+function extractMarkdownLinkFilenames(content: string, links: string[], definitions: Links): void {
+  for (const stem of markdownLinkStems(content, definitions)) {
+    if (!links.includes(stem)) {
       links.push(stem);
     }
   }
