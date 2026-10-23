@@ -49,6 +49,15 @@ describe('html link modification', () => {
     expect(result).toBe('[Custom Title](my%20normal%20page.html)');
   });
 
+  it('should keep the alternative link name when the link also targets a heading', () => {
+    const confs: BundleNodeConfig[] = [
+      makeBundleNodeConfig('my normal page'),
+    ];
+
+    const result = linkOrImageHtml('my normal page#Some Heading|Custom Title', confs);
+    expect(result).toBe('[Custom Title](my%20normal%20page.html#some-heading)');
+  });
+
   it('should find whitelisted page in subdirectory when linkResolutionMap is unavailable', () => {
     // This tests the fallback behavior: when there's no linkResolutionMap entry,
     // the system should still find the page by title alone and use its subdirectory

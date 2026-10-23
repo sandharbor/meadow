@@ -132,13 +132,13 @@ export function linkTextToLinkInfo(link: string): LinkInfo {
       size: sizeMatch ? sizeMatch[1] : undefined
     };
   } else {
-    // [[filename|optional alternative name#optional section name]]
-    const parts = link.split('#');
-    const filenameParts = parts[0].split('|');
+    // [[filename#optional section name|optional alternative name]]
+    const [target, alternativeName] = link.split('|');
+    const parts = target.split('#');
     return {
       type: 'page',
-      filename: filenameParts[0],
-      alternative_name: filenameParts.length > 1 ? filenameParts[1] : undefined,
+      filename: parts[0],
+      alternative_name: alternativeName,
       section: parts.length > 1 ? parts[1] : undefined
     };
   }

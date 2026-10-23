@@ -17,6 +17,7 @@ nodespecs:
           - relativeLinkPath: t003 ---- page with section to link to.html#section-2
           - relativeLinkPath: t003 ---- page with section to link to.html#section-2
           - relativeLinkPath: t003 ---- page with section to link to.html#^a-block
+          - relativeLinkPath: t003 ---- page with section to link to.html#section-2
         footerSectionBacklinks:
           - relativeLinkPath: main page.html
             backlinkContexts:
