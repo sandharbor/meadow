@@ -31,6 +31,7 @@ import {
   normalizePageTitle,
 } from './shared.js';
 import { replaceOutsideCode, splitMarkdownBlocks } from './markdown.js';
+import { styleBlockIds } from './pageAnchors.js';
 import { HooksLoader } from '../utils/hooksLoader.js';
 import { replaceSrsCardsWithCustomElements } from '../render-source/srsMarkdown.js';
 
@@ -377,7 +378,8 @@ export function renderTransclusionToHtml(linkText: string, options: Transclusion
     customProcessEmbeddedMarkdown(processedMdForLinks, bundleSlug, bundleConfig),
     (fragment: string) => unwrapSingleParagraph(marked(fragment) as string)
   );
-  const innerHtml = marked(finalMd) as string;
+  // The embedded page's block ids are styled but not made into ids here.
+  const innerHtml = marked(styleBlockIds(finalMd, { linkable: false })) as string;
 
   // Build see-in-context link to the transcluded page (top-level only)
   const targetPath = resolved.directory

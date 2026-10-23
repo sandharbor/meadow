@@ -25,6 +25,7 @@ import { markedHighlight } from 'marked-highlight';
 import hljs from 'highlight.js';
 import * as nodeEmoji from 'node-emoji';
 import { extendedSyntaxExtensions } from './markedExtensions.js';
+import { headingIds, markdownHrefFragment, styleBlockIds, withPageHeadingIds } from './pageAnchors.js';
 import handlebars from 'handlebars';
 import { Page } from './page.js';
 import {
@@ -126,6 +127,8 @@ marked.use(
     }
   }),
   { renderer: markedRenderer },
+  // Registered before customHeadingId so an explicit `{#id}` still wins.
+  headingIds,
   customHeadingId(),
   markedFootnote(),
   ...extendedSyntaxExtensions
@@ -444,7 +447,12 @@ export function renderPageToHtml(
       }
 
       if (processingMode === 'each-page') {
-        const suffix = bundleConfig.sources || href.startsWith('source://') ? href.match(/[?#].*$/)?.[0] ?? '' : '';
+        const rawSuffix = href.match(/[?#].*$/)?.[0] ?? '';
+        let suffix = bundleConfig.sources || href.startsWith('source://') ? rawSuffix : '';
+        if (renderedPageFileType === 'md') {
+          const anchor = rawSuffix.split('#')[1];
+          suffix = anchor ? markdownHrefFragment(anchor) : '';
+        }
         return `<a href="${relativeUrl}${suffix}">${text}</a>`;
       } else if (processingMode === 'single-page') {
         return `<a href="#${anchorNameFor(normalizedTitle)}">${text}</a>`;
@@ -501,14 +509,9 @@ export function renderPageToHtml(
     convertedContentWithAnchors = addBlockAnchors(convertedContent, markdownForAnchors);
   }
 
-  // Style block identifiers (e.g. ^foo-bar) as small superscript text
-  convertedContentWithAnchors = replaceOutsideCode(
-    convertedContentWithAnchors,
-    / \^([a-zA-Z0-9][a-zA-Z0-9_-]*)/g,
-    (_match: string, id: string) => ` <sup class="block-id">^${id}</sup>`
-  );
+  convertedContentWithAnchors = styleBlockIds(convertedContentWithAnchors, { linkable: true });
 
-  let htmlContent = marked(convertedContentWithAnchors) as string;
+  let htmlContent = withPageHeadingIds(() => marked(convertedContentWithAnchors) as string);
 
   function createFrontmatterTable(frontmatter: Record<string, unknown>): string | null {
     if (Object.keys(frontmatter).length === 0) {

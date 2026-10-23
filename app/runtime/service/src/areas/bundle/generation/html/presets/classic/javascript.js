@@ -42,7 +42,8 @@ document.addEventListener('DOMContentLoaded', function() {
 function highlightAnchorBlock() {
     const hash = window.location.hash;
     if (hash) {
-        const anchorElement = document.querySelector(hash);
+        // getElementById, because ids such as `^a-block` are not valid CSS selectors.
+        const anchorElement = document.getElementById(decodeURIComponent(hash.slice(1)));
         if (anchorElement) {
             var elementToHighlight = null;
 

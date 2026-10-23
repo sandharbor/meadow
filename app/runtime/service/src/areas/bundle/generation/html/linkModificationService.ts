@@ -24,6 +24,7 @@ import type { LinkResolvedInfo } from '../../../../../../../contracts/types/shar
 import { encodePathForUrl } from '../../../../../../../shared_code/utils/urlUtils.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
 import { IMAGE_FILE_TYPES } from './constants.js';
+import { pageLinkFragment } from './pageAnchors.js';
 import type { BundleRouteTable } from './bundleRoutePlanner.js';
 
 interface ResolvedTarget {
@@ -783,9 +784,13 @@ export function linkOrImageHtml(
           : encodePathForUrl(`${normalizedLinkFilename}.html`);
         relativeUrl = calculateRelativePath(currentOutputDirectory, targetPath);
       }
-      const qualifiedTarget = linkText.split(/[#^|]/)[0].includes('::');
-      const heading = linkText.split('|')[0].split('#')[1];
-      const section = (bundleConfig?.sources || qualifiedTarget) && heading ? `#${encodeURIComponent(heading.trim())}` : '';
+      // A Markdown target's anchor names one of our generated heading or block
+      // ids; a native HTML page's anchor is kept exactly as written.
+      const anchor = linkText.replace(/\\\|/g, '|').split('|')[0].split('#')[1];
+      let section = '';
+      if (anchor) {
+        section = targetFileType === 'md' ? pageLinkFragment(anchor) : `#${encodeURIComponent(anchor.trim())}`;
+      }
       return `[${textToDisplayInHyperlink}](${relativeUrl}${section})`;
     } else if (processingMode === 'single-page') {
       return `<a href="#${anchorNameFor(normalizedLinkFilename)}">${textToDisplayInHyperlink}</a>`;

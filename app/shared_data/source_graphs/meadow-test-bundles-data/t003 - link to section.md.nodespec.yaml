@@ -14,7 +14,9 @@ nodespecs:
     generation:
       htmlRenderedLinks:
         mainSectionLinks:
-          - relativeLinkPath: t003 ---- page with section to link to.html
+          - relativeLinkPath: t003 ---- page with section to link to.html#section-2
+          - relativeLinkPath: t003 ---- page with section to link to.html#section-2
+          - relativeLinkPath: t003 ---- page with section to link to.html#^a-block
         footerSectionBacklinks:
           - relativeLinkPath: main page.html
             backlinkContexts:

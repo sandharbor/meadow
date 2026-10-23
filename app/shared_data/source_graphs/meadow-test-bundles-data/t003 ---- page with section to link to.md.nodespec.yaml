@@ -17,6 +17,8 @@ nodespecs:
             backlinkContexts:
               - seeInContextLinkRelativePath: t003 - link to section.html
                 embeddedLinks: []
+              - seeInContextLinkRelativePath: t003 - link to section.html
+                embeddedLinks: []
   - bundle: meadow-test-bundle-small
     sourcing:
       isInWorkingGraph: false
