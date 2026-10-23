@@ -648,7 +648,7 @@ export function renderPageToHtml(
               const backlinkPageIdent = makeBundleNodeKey(backlinkName, 'md', backlinkSourceDir);
               const backlinkResolutionMap = allLinkResolutionMaps?.get(backlinkPageIdent);
               const backlinkInfo = backlinkContext(backlinkDir, backlinkName, pageName, currentPageDirectory,
-                bundleConfig.sources ? backlinkResolutionMap : undefined);
+                backlinkResolutionMap);
 
               for (const info of backlinkInfo) {
                 const anchorId = info.anchor_id;

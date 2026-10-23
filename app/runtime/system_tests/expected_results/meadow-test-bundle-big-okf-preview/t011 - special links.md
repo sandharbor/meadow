@@ -8,6 +8,8 @@ type: Knowledge Page
 
 [test.io which looks like a filename suffix](/t011/test.io%20which%20looks%20like%20a%20filename%20suffix.md)
 
+A link whose letter case differs from the page name, which should still find the page: [T011 ---- Page Name With Special Characters -- Before Dot . And After Dot](/t011/t011%20----%20page%20name%20with%20special%20characters%20--%20before%20dot%20.%20and%20after%20dot.md)
+
 ### Links in a table with escaped aliases
 
 First, before we get into the table, let's just do one _outside_ the table:
