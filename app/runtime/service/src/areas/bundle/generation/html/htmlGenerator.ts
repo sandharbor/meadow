@@ -26,6 +26,7 @@ import hljs from 'highlight.js';
 import * as nodeEmoji from 'node-emoji';
 import { extendedSyntaxExtensions } from './markedExtensions.js';
 import { headingIds, markdownHrefFragment, styleBlockIds, withPageHeadingIds } from './pageAnchors.js';
+import { markdownLinks } from './markedLinks.js';
 import handlebars from 'handlebars';
 import { Page } from './page.js';
 import {
@@ -100,17 +101,6 @@ function getPageTemplate(): ReturnType<typeof handlebars.compile> {
 // Configure marked once at module load. marked is a singleton; calling
 // `marked.use` on every render would accumulate extensions and slow rendering
 // to a crawl on larger bundles.
-const markedRenderer = new marked.Renderer();
-markedRenderer.link = function (linkData: { href: string; title?: string | null; text: string }) {
-  const { href, title, text } = linkData;
-  const titleAttr = title ? ` title="${title}"` : '';
-  const isExternal = href && (href.startsWith('http://') || href.startsWith('https://'));
-  if (isExternal) {
-    return `<a href="${href}"${titleAttr} rel="noreferrer noopener" target="_blank">${text}</a>`;
-  }
-  return `<a href="${href}"${titleAttr}>${text}</a>`;
-};
-
 marked.setOptions({ gfm: true, breaks: false, pedantic: false });
 marked.use(
   markedHighlight({
@@ -126,7 +116,7 @@ marked.use(
       return code;
     }
   }),
-  { renderer: markedRenderer },
+  markdownLinks,
   // Registered before customHeadingId so an explicit `{#id}` still wins.
   headingIds,
   customHeadingId(),
