@@ -22,3 +22,20 @@ First, before we get into the table, let's just do one _outside_ the table:
 |----------|--------------------|----------|
 | [table test row 1 column 1](/t011/t011%20---%20table%20test%20row%201%20column%201.md) | This is a test of row 1 | [table test row 1 column 3](/t011/t011%20---%20table%20test%20row%201%20column%203.md) |
 | [table test row 2 column 1](/t011/t011%20---%20table%20test%20row%202%20column%201.md) | This is a test of row 2 | [table test row 2 column 3](/t011/t011%20---%20table%20test%20row%202%20column%203.md) |
+
+### Links in unusual places
+
+Obsidian finds a link from `[[` to the first `]]` on the same line, so these should behave as described.
+
+#### A heading that links to [the escaped-alias page](/t011/t011%20---%20pointed%20to%20by%20an%20escaped%20alias%20outside%20a%20table.md)
+
+A link whose display text has a single `]`, which is fine because the link ends at the first `]]`: [display text with a \] in it](/t011/t011%20---%20pointed%20to%20by%20an%20escaped%20alias%20outside%20a%20table.md)
+
+A link split across two lines, which is not a link, so it should stay as plain text: [[t011/t011 --- pointed to by an escaped alias
+outside a table]]
+
+A link inside an HTML block, where Markdown isn't rendered, so it should stay as plain text:
+
+<div>
+[t011 --- pointed to by an escaped alias outside a table](/t011/t011%20---%20pointed%20to%20by%20an%20escaped%20alias%20outside%20a%20table.md)
+</div>

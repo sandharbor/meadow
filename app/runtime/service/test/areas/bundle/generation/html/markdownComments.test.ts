@@ -35,4 +35,8 @@ describe('Obsidian comments', () => {
     expect(removeComments('`%%code%%` and\n```\n%%fenced%%\n```')).toBe('`%%code%%` and\n```\n%%fenced%%\n```');
     expect(removeComments('a %%hidden `code` here%% b')).toBe('a  b');
   });
+
+  it('removes a comment inside an HTML block, whose text is not meant to be published', () => {
+    expect(removeComments('<div>\n%%hidden%%\n</div>')).toBe('<div>\n\n</div>');
+  });
 });

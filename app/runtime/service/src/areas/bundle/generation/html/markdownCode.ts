@@ -36,11 +36,23 @@ limitations under the License.
 // Obsidian syntax escaped with a backslash is kept verbatim the same way: an
 // escaped wikilink or embed (`\[[Note]]`) and an escaped tag (`\#tag`). marked
 // then shows the escaped character as text.
+//
+// The passes that render Obsidian and Markdown syntax as HTML also keep an
+// HTML block as written, as CommonMark defines one, since neither marked nor
+// Obsidian renders Markdown inside it: a `<div>` line, say, through the next
+// blank line, or a `<pre>` through its `</pre>`. Other passes still read it,
+// so a comment there is still removed and a link there still scrubbed. HTML
+// blocks are recognized outside list items and block quotes.
 
 export interface CodeRange {
   start: number;
   end: number;
-  kind: 'block' | 'inline' | 'escaped';
+  kind: 'block' | 'inline' | 'escaped' | 'html';
+}
+
+export interface CodeScanOptions {
+  /** Also keep HTML blocks as written, for passes that render Markdown syntax. */
+  htmlBlocks?: boolean;
 }
 
 const FENCE_OPEN = /^((?:[ \t]*>)*)[ \t]*(`{3,}|~{3,})(.*)$/;
@@ -50,7 +62,24 @@ const LIST_ITEM = /^[ \t]{0,3}(?:[-*+]|\d{1,9}[.)])(?:[ \t]|$)/;
 const FOOTNOTE_DEFINITION = /^\[\^[^\]]+\]:/;
 const SINGLE_LINE_BLOCK = /^[ \t]{0,3}(?:#{1,6}(?:[ \t]|$)|\|)/;
 
-export function findCodeRanges(markdown: string): CodeRange[] {
+// CommonMark's HTML block start conditions 1-7, each with the line that ends
+// the block, or null when it ends before the next blank line.
+const BLOCK_TAG_NAMES = 'address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|menuitem|nav|noframes|ol|optgroup|option|p|param|search|section|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul';
+const HTML_BLOCK_STARTS: { start: RegExp; end: RegExp | null; interruptsParagraph: boolean }[] = [
+  { start: /^ {0,3}<(?:script|pre|style|textarea)(?:\s|>|$)/i, end: /<\/(?:script|pre|style|textarea)>/i, interruptsParagraph: true },
+  { start: /^ {0,3}<!--/, end: /-->/, interruptsParagraph: true },
+  { start: /^ {0,3}<\?/, end: /\?>/, interruptsParagraph: true },
+  { start: /^ {0,3}<![A-Za-z]/, end: />/, interruptsParagraph: true },
+  { start: /^ {0,3}<!\[CDATA\[/, end: /\]\]>/, interruptsParagraph: true },
+  { start: new RegExp(`^ {0,3}</?(?:${BLOCK_TAG_NAMES})(?:\\s|/?>|$)`, 'i'), end: null, interruptsParagraph: true },
+  {
+    start: /^ {0,3}(?:<[A-Za-z][A-Za-z0-9-]*(?:\s+[A-Za-z_:][\w.:-]*(?:\s*=\s*(?:[^\s"'=<>`]+|'[^']*'|"[^"]*"))?)*\s*\/?>|<\/[A-Za-z][A-Za-z0-9-]*\s*>)\s*$/,
+    end: null,
+    interruptsParagraph: false,
+  },
+];
+
+export function findCodeRanges(markdown: string, options: CodeScanOptions = {}): CodeRange[] {
   const ranges: CodeRange[] = [];
   const lines = markdown.split('\n');
   const lineStarts: number[] = [];
@@ -113,6 +142,24 @@ export function findCodeRanges(markdown: string): CodeRange[] {
       continue;
     }
 
+    const inContainer = continuesContainer && (indented || !previousBlank);
+    const html = !options.htmlBlocks || inContainer ? undefined : HTML_BLOCK_STARTS.find(kind =>
+      kind.start.test(line) && (kind.interruptsParagraph || paragraphStart === null));
+    if (html) {
+      flushParagraph();
+      let last = i;
+      if (html.end) {
+        while (last < lines.length - 1 && !html.end.test(lines[last])) last++;
+      } else {
+        while (last + 1 < lines.length && lines[last + 1].trim() !== '') last++;
+      }
+      ranges.push({ start: lineStarts[i], end: lineEnd(last), kind: 'html' });
+      i = last + 1;
+      previousBlank = false;
+      continuesContainer = false;
+      continue;
+    }
+
     if (LIST_ITEM.test(line) || FOOTNOTE_DEFINITION.test(line)) {
       continuesContainer = true;
       flushParagraph();
@@ -139,7 +186,7 @@ export function findCodeRanges(markdown: string): CodeRange[] {
 /** `\[[Note]]` and `\#tag` outside code, where the backslash is not itself escaped. */
 function findEscapedSyntax(markdown: string, code: CodeRange[]): CodeRange[] {
   const ranges: CodeRange[] = [];
-  for (const match of markdown.matchAll(/\\(?:\[\[[^\]\n]*\]\]|#)/g)) {
+  for (const match of markdown.matchAll(/\\(?:\[\[.*?\]\]|#)/g)) {
     const start = match.index;
     let backslashes = 0;
     for (let i = start - 1; i >= 0 && markdown[i] === '\\'; i--) backslashes++;
@@ -180,10 +227,10 @@ function findInlineCode(markdown: string, start: number, end: number): CodeRange
 }
 
 /** Applies `replace` to each stretch of text outside code (and escaped syntax), which is kept verbatim. */
-export function mapOutsideCode(markdown: string, replace: (text: string) => string): string {
+export function mapOutsideCode(markdown: string, replace: (text: string) => string, options: CodeScanOptions = {}): string {
   let out = '';
   let cursor = 0;
-  for (const range of findCodeRanges(markdown)) {
+  for (const range of findCodeRanges(markdown, options)) {
     out += replace(markdown.slice(cursor, range.start)) + markdown.slice(range.start, range.end);
     cursor = range.end;
   }

@@ -16,7 +16,7 @@ limitations under the License.
 
 import * as yaml from 'js-yaml';
 import { BlockInfo } from './types.js';
-import { findCodeRanges, mapOutsideCode } from './markdownCode.js';
+import { findCodeRanges, mapOutsideCode, type CodeScanOptions } from './markdownCode.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
 import { splitFrontmatter } from '../../../../shared/utils/frontmatterUtils.js';
 
@@ -133,14 +133,16 @@ export function replaceInProse(
 
 /**
  * Applies a regex replacement only to text outside of code blocks and inline
- * code spans (see markdownCode.ts). Code is preserved verbatim.
+ * code spans (see markdownCode.ts), and outside HTML blocks with `htmlBlocks`.
+ * Code is preserved verbatim.
  */
 export function replaceOutsideCode(
   markdown: string,
   pattern: RegExp,
-  replacer: (substring: string, ...args: string[]) => string
+  replacer: (substring: string, ...args: string[]) => string,
+  options: CodeScanOptions = {}
 ): string {
-  return mapOutsideCode(markdown, text => text.replace(pattern, replacer));
+  return mapOutsideCode(markdown, text => text.replace(pattern, replacer), options);
 }
 
 export function splitMarkdownBlocks(markdownText: string): BlockInfo[] {

@@ -266,7 +266,7 @@ export function renderPageToHtml(
   }
 
   function renderMeadowContainerDirective(body: string, highlightDoNotLinkPageName?: string, overrides?: WikiLinkOverrides): string {
-    const embedMatch = body.match(/!\[\[([^\]]+)\]\]/);
+    const embedMatch = body.match(/!\[\[(.*?)\]\]/);
     if (!embedMatch) {
       return body.trim();
     }
@@ -334,20 +334,22 @@ export function renderPageToHtml(
           currentPageDirectoryOverride: overrides?.currentPageDirectoryOverride ?? currentPageDirectory ?? '',
         }, link.title),
       }));
-    });
+    }, { htmlBlocks: true });
 
     // Then handle regular wiki links
     mdContent = replaceOutsideCode(mdContent, /\[\[(.*?)\]\]/g, (_match: string, linkText: string) =>
       linkText.startsWith('#')
         ? samePageLink(linkText, overrides)
-        : linkOrImageHtml(linkText, highlightDoNotLinkPageName, overrides)
+        : linkOrImageHtml(linkText, highlightDoNotLinkPageName, overrides),
+      { htmlBlocks: true }
     );
 
     // Standard Markdown links that marked cannot parse: Obsidian accepts
     // unescaped spaces in a destination, as in [text](relative/my page.md).
     // marked renders every other form through markdownLinkHtml below.
     mdContent = replaceOutsideCode(mdContent, /(!?)\[([^\]]+)\]\(([^)]+)\)/g, (match: string, bang: string, text: string, href: string) =>
-      markdownLinkHtml(bang === '!', text, href, highlightDoNotLinkPageName, overrides) ?? match
+      markdownLinkHtml(bang === '!', text, href, highlightDoNotLinkPageName, overrides) ?? match,
+      { htmlBlocks: true }
     );
 
     return mdContent;
@@ -1239,7 +1241,7 @@ function backlinkContext(directory: string, backlink: string, thePageName: strin
   const definitions = referenceDefinitions(mdContent);
   const definitionMarkdown = referenceDefinitionMarkdown(definitions);
   const hasResolvedTarget = (content: string) => [
-    ...[...blankOutCode(content).matchAll(/\[\[([^\]]+)\]\]/g)].map(match => match[1]),
+    ...[...blankOutCode(content).matchAll(/\[\[(.*?)\]\]/g)].map(match => match[1]),
     ...markdownLinkDestinations(content, definitions),
   ].some(text => matchingTexts.has(text));
   if (!resolutions && currentPageDirectory) {

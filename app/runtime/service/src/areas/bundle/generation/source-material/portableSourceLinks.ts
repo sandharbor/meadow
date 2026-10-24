@@ -36,7 +36,7 @@ export function rewriteResolvedSourceUrls(content: string, sourceOutputPath: str
 
 /** Obsidian exports use unambiguous paths within the downloaded vault. */
 export function rewritePortableSourceWikilinks(content: string, resolutions?: Record<string, LinkResolvedInfo>): string {
-  return replaceOutsideCode(content, /(!?)\[\[([^\]]+)\]\]/g, (match: string, embed: string, text: string) => {
+  return replaceOutsideCode(content, /(!?)\[\[(.*?)\]\]/g, (match: string, embed: string, text: string) => {
     const target = resolutions?.[text]?.link_resolved_target_path;
     if (!target) return match;
     let suffix = text.search(/[#^|]/);

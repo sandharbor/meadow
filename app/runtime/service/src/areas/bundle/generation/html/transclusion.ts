@@ -282,9 +282,9 @@ function convertWikiLinksInMarkdown(
   }
 
   // Images (Obsidian-style)
-  md = replaceOutsideCode(md, /!\[\[(.*?)\]\]/g, (_match: string, linkText: string) => linkOrImageHtml(linkText));
+  md = replaceOutsideCode(md, /!\[\[(.*?)\]\]/g, (_match: string, linkText: string) => linkOrImageHtml(linkText), { htmlBlocks: true });
   // Regular wiki links
-  md = replaceOutsideCode(md, /\[\[(.*?)\]\]/g, (_match: string, linkText: string) => linkOrImageHtml(linkText));
+  md = replaceOutsideCode(md, /\[\[(.*?)\]\]/g, (_match: string, linkText: string) => linkOrImageHtml(linkText), { htmlBlocks: true });
 
   return md;
 }
@@ -380,7 +380,7 @@ export function renderTransclusionToHtml(linkText: string, options: Transclusion
       visited: enclosingEmbeds,
       remainingDepth: remainingDepth - 1,
     }));
-  });
+  }, { htmlBlocks: true });
 
   // Markdown links in the embedded content resolve with the embedded page's map,
   // like its wikilinks. Those with unescaped spaces in their destination are not
@@ -391,7 +391,8 @@ export function renderTransclusionToHtml(linkText: string, options: Transclusion
     expandedMd,
     /(!?)\[([^\]]+)\]\(([^)]+)\)/g,
     (match: string, bang: string, text: string, href: string) =>
-      renderMarkdownLink({ href, textHtml: text, isImage: bang === '!' }) ?? match
+      renderMarkdownLink({ href, textHtml: text, isImage: bang === '!' }) ?? match,
+    { htmlBlocks: true }
   );
 
   // Convert remaining wiki links and images into proper markdown/HTML with final-page-relative URLs

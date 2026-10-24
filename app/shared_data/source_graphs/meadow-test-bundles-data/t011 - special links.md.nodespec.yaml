@@ -40,6 +40,8 @@ nodespecs:
           - relativeLinkPath: t011/t011 --- table test row 1 column 3.html
           - relativeLinkPath: t011/t011 --- table test row 2 column 1.html
           - relativeLinkPath: t011/t011 --- table test row 2 column 3.html
+          - relativeLinkPath: t011/t011 --- pointed to by an escaped alias outside a table.html
+          - relativeLinkPath: t011/t011 --- pointed to by an escaped alias outside a table.html
         footerSectionBacklinks:
           - relativeLinkPath: main page.html
             backlinkContexts:

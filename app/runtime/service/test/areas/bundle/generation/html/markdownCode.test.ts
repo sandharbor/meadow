@@ -15,11 +15,16 @@ limitations under the License.
 */
 
 import { describe, it, expect } from 'vitest';
-import { findCodeRanges } from '../../../../../src/areas/bundle/generation/html/markdownCode.js';
+import { findCodeRanges, type CodeScanOptions } from '../../../../../src/areas/bundle/generation/html/markdownCode.js';
 
 /** The code found in `markdown`, as the exact text of each range. */
-function codeIn(markdown: string): string[] {
-  return findCodeRanges(markdown).map(range => markdown.slice(range.start, range.end));
+function codeIn(markdown: string, options: CodeScanOptions = {}): string[] {
+  return findCodeRanges(markdown, options).map(range => markdown.slice(range.start, range.end));
+}
+
+/** The code and HTML blocks found in `markdown`, as passes that render Markdown syntax see them. */
+function keptByRendering(markdown: string): string[] {
+  return codeIn(markdown, { htmlBlocks: true });
 }
 
 describe('markdown code ranges', () => {
@@ -79,5 +84,30 @@ describe('markdown code ranges', () => {
 
   it('does not open inline code at an escaped backtick', () => {
     expect(codeIn('\\`not code\\` but `code`')).toEqual(['`code`']);
+  });
+
+  it('keeps an HTML block through the next blank line, where Markdown is not rendered', () => {
+    expect(keptByRendering('para\n<div>\n[[link]]\n</div>\n\n[[after]]')).toEqual(['<div>\n[[link]]\n</div>']);
+  });
+
+  it('keeps a pre, script, style or textarea block through its closing tag, blank lines included', () => {
+    expect(keptByRendering('<pre>\n[[link]]\n\n#tag\n</pre>\nafter')).toEqual(['<pre>\n[[link]]\n\n#tag\n</pre>']);
+  });
+
+  it('keeps an HTML comment block through its end', () => {
+    expect(keptByRendering('<!-- [[link]]\n\nstill a comment -->\nafter')).toEqual(['<!-- [[link]]\n\nstill a comment -->']);
+  });
+
+  it('starts an HTML block at a line with only an inline tag, but not within a paragraph', () => {
+    expect(keptByRendering('<span>\n[[link]]')).toEqual(['<span>\n[[link]]']);
+    expect(keptByRendering('para\n<span>\n[[link]]')).toEqual([]);
+  });
+
+  it('reads HTML blocks for every other pass', () => {
+    expect(codeIn('<div>\n[[link]]\n</div>')).toEqual([]);
+  });
+
+  it('treats a tag with text after it on the line as inline HTML in a paragraph', () => {
+    expect(keptByRendering('<span>[[link]]</span> text')).toEqual([]);
   });
 });

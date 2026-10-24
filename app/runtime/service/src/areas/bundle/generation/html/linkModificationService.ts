@@ -796,7 +796,8 @@ export function linkOrImageHtml(
           ? pageLinkFragment(anchor, readLinkedNote(baseContentDirectory || directory, resolvedInfo?.link_resolved_target_path))
           : `#${encodeURIComponent(anchor.trim())}`;
       }
-      return `[${textToDisplayInHyperlink}](${relativeUrl}${section})`;
+      // A bracket in the text would end marked's link text early.
+      return `[${textToDisplayInHyperlink.replace(/[[\]]/g, '\\$&')}](${relativeUrl}${section})`;
     } else if (processingMode === 'single-page') {
       return `<a href="#${anchorNameFor(normalizedLinkFilename)}">${textToDisplayInHyperlink}</a>`;
     }

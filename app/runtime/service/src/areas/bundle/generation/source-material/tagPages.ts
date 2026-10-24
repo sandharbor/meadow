@@ -41,7 +41,7 @@ const TAG_BODY_RE = new RegExp(String.raw`(^|[^${TAG_CHARACTERS}_/-])#(${TAG_BOD
 
 /** Text in which a `#` is never a tag, on a single line. */
 const NOT_TAG_TEXT = [
-  /\[\[[^\]]*?\]\]/g, // wikilinks
+  /\[\[.*?\]\]/g, // wikilinks
   /\]\([^)]*\)/g, // Markdown link destinations
   /<\/?[A-Za-z][^>]*>/g, // HTML tags, including their attributes
   /&(?:#[0-9]+|#[xX][0-9a-fA-F]+|[A-Za-z][A-Za-z0-9]*);/g, // HTML entities

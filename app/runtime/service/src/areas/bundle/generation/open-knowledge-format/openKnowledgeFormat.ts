@@ -65,7 +65,7 @@ export interface PrepareOpenKnowledgeFormatResult {
   logOutputPath: string | null;
 }
 
-const WIKI_LINK_OR_EMBED_PATTERN = /(!?)\[\[([^\]]+)\]\]/g;
+const WIKI_LINK_OR_EMBED_PATTERN = /(!?)\[\[(.*?)\]\]/g;
 const RESERVED_MARKDOWN_FILENAMES = new Set(['index.md', 'log.md']);
 const DEFAULT_CONCEPT_TYPE = 'Knowledge Page';
 const ROOT_INDEX_PATH = 'index.md';

@@ -257,7 +257,7 @@ function sanitizeExcalidrawMarkdownSections(
 }
 
 function wikilinkInner(text: string): string | null {
-  const match = text.match(/\[\[([^\]]+)\]\]/);
+  const match = text.match(/\[\[(.*?)\]\]/);
   return match ? match[1].trim() : null;
 }
 

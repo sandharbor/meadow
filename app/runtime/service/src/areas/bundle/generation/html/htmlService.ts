@@ -1074,7 +1074,7 @@ export async function generateHtmlForBundle(
     // Also capture excalidraw embeds `![[X.excalidraw]]` as inlinks to the
     // X drawing — the markdown link extractor skips them (image-typed) but we
     // want backlinks to render on the standalone Excalidraw page.
-    const excalidrawEmbedRe = /!\[\[([^\]]+)\]\]/g;
+    const excalidrawEmbedRe = /!\[\[(.*?)\]\]/g;
     let exMatch;
     while (conf.fileType !== 'html' && conf.fileType !== 'svg' && (exMatch = excalidrawEmbedRe.exec(scannableContent)) !== null) {
       const inner = exMatch[1].split('|')[0]; // strip size/alias

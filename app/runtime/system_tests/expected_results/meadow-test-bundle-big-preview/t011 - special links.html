@@ -80,7 +80,23 @@
 <td></td>
 </tr>
 </tbody></table>
-
+<h3 id="links-in-unusual-places">Links in unusual places</h3>
+<p><a id="block-41bc356" class="block-anchor"></a></p>
+<p>Obsidian finds a link from <code class="inline-code">[[</code> to the first <code class="inline-code">]]</code> on the same line, so these should behave as described.
+<a id="block-75c71e4" class="block-anchor"></a></p>
+<h4 id="a-heading-that-links-to-the-escaped-alias-page">A heading that links to <a href="t011/t011%20---%20pointed%20to%20by%20an%20escaped%20alias%20outside%20a%20table.html">the escaped-alias page</a></h4>
+<p><a id="block-a56c232" class="block-anchor"></a></p>
+<p>A link whose display text has a single <code class="inline-code">]</code>, which is fine because the link ends at the first <code class="inline-code">]]</code>: <a href="t011/t011%20---%20pointed%20to%20by%20an%20escaped%20alias%20outside%20a%20table.html">display text with a ] in it</a>
+<a id="block-9345bc2" class="block-anchor"></a></p>
+<p>A link split across two lines, which is not a link, so it should stay as plain text: [[t011/t011 --- pointed to by an escaped alias
+outside a table]]
+<a id="block-df5f8bd" class="block-anchor"></a></p>
+<p>A link inside an HTML block, where Markdown isn&#39;t rendered, so it should stay as plain text:
+<a id="block-c16718e" class="block-anchor"></a></p>
+<div>
+[[t011/t011 --- pointed to by an escaped alias outside a table]]
+</div>
+<a id="block-40c0156" class="block-anchor"></a>
     </main>
     <footer>
         <h2>Backlinks</h2>
