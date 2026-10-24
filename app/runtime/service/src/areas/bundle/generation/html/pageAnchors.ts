@@ -78,15 +78,17 @@ export const headingIds: MarkedExtension = {
 };
 
 /**
- * Styles block identifiers (e.g. ` ^foo-bar`) as small superscript text. With
- * `linkable`, the identifier also becomes the element's id.
+ * Styles block identifiers as small superscript text. With `linkable`, the
+ * identifier also becomes the element's id. As in Obsidian, an identifier
+ * ends its line, after a space (` ^foo-bar`) or on a line of its own after a
+ * table, list or quote; a caret elsewhere in a sentence is ordinary text.
  */
 export function styleBlockIds(markdown: string, { linkable }: { linkable: boolean }): string {
   return replaceOutsideCode(
     markdown,
-    / \^([a-zA-Z0-9][a-zA-Z0-9_-]*)/g,
-    (_match: string, id: string) => linkable
-      ? ` <sup class="block-id" id="^${id}">^${id}</sup>`
-      : ` <sup class="block-id">^${id}</sup>`
+    /(^|[ \t])\^([a-zA-Z0-9][a-zA-Z0-9_-]*)(?=[ \t]*$)/gm,
+    (_match: string, before: string, id: string) => linkable
+      ? `${before}<sup class="block-id" id="^${id}">^${id}</sup>`
+      : `${before}<sup class="block-id">^${id}</sup>`
   );
 }

@@ -46,6 +46,8 @@ import { bundleNodeConfigToKey, makeBundleNodeKey } from './types.js';
 import { BundleConfig } from '../../../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
 import { BundleNodeConfig } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import {
+  altTextAndSize,
+  imageSizeStyle,
   normalizePageTitle,
   getMdContent,
   anchorNameFor,
@@ -64,7 +66,7 @@ import type { LinkResolvedInfo } from '../../../../../../../contracts/types/shar
 import { IMAGE_FILE_TYPES, KNOWN_FILE_TYPES } from './constants.js';
 import { encodePathForUrl } from '../../../../../../../shared_code/utils/urlUtils.js';
 import { HooksLoader } from '../utils/hooksLoader.js';
-import { frontmatterAsDict, replaceOutsideCode, splitMarkdownBlocks } from './markdown.js';
+import { frontmatterAsDict, inlineFootnotesToReferences, replaceOutsideCode, splitMarkdownBlocks } from './markdown.js';
 import { blankOutCode } from './markdownCode.js';
 import { HeldEmbeds, renderTransclusionToHtml } from './transclusion.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
@@ -414,8 +416,9 @@ export function renderPageToHtml(
       const encodedPath = encodePathForUrl(relativeImagePath);
 
       if (isImage) {
-        // Image embed ![alt](path)
-        return `<img src="${encodedPath}" alt="${text}"${titleAttr} />`;
+        // Image embed ![alt](path), where the alt text may carry a size: ![alt|80](path)
+        const { alt, size } = altTextAndSize(text);
+        return `<img src="${encodedPath}" alt="${alt}"${imageSizeStyle(size)}${titleAttr} />`;
       } else {
         // Link to image [text](path)
         return `<a href="${encodedPath}"${titleAttr}>${text}</a>`;
@@ -500,7 +503,7 @@ export function renderPageToHtml(
   }
 
   // Comments were already removed when the note was read (getMdContent).
-  let convertedContent = convertWikiLinks(mdContent);
+  let convertedContent = convertWikiLinks(inlineFootnotesToReferences(mdContent));
 
   // Convert :shortcode: emoji outside code fences.
   convertedContent = replaceOutsideCode(

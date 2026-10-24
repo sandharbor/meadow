@@ -118,6 +118,8 @@
 <a id="block-388e405" class="block-anchor"></a></p>
 <p><a id="block-f70f86c" class="block-anchor"></a></p>
 <p><a id="block-f8b61b9" class="block-anchor"></a></p>
+<p>Obsidian also writes a footnote inline, where it is referenced.<sup><a id="footnote-ref-inline-1" href="#footnote-inline-1" data-footnote-ref aria-describedby="footnote-label">3</a></sup> It is numbered and listed with the others.
+<a id="block-582de76" class="block-anchor"></a></p>
 <h2 id="heading-ids">Heading IDs</h2>
 <p><a id="block-14b887b" class="block-anchor"></a></p>
 <h3 id="custom-id">My Great Heading</h3>
@@ -126,6 +128,7 @@
 <p><a id="block-6a6abfb" class="block-anchor"></a></p>
 <dl><dt>First Term</dt><dd>This is the definition of the first term.</dd></dl><p><a id="block-ca5319c" class="block-anchor"></a></p>
 <dl><dt>Second Term</dt><dd>This is one definition of the second term.</dd><dd>This is another definition of the second term.</dd></dl><p><a id="block-bfccbae" class="block-anchor"></a></p>
+<dl><dt>Third <strong>Term</strong></dt><dd>A definition with <strong>bold</strong>, <code class="inline-code">code</code>, and <a href="https://example.com/definition" rel="noreferrer noopener" target="_blank">an external link</a>, all rendered as Markdown.</dd></dl><p><a id="block-3f757c1" class="block-anchor"></a></p>
 <h2 id="strikethrough">Strikethrough</h2>
 <p><a id="block-778436b" class="block-anchor"></a></p>
 <p><del>The world is flat.</del> We now know that the world is round.
@@ -359,6 +362,19 @@
 <a id="block-542a2ca" class="block-anchor"></a></p>
 <p>A comment can contain a link. As in Obsidian, the link still counts, so the linked page lists this page among its backlinks, but the comment&#39;s text must not appear here or in that page&#39;s backlinks.
 <a id="block-50497f1" class="block-anchor"></a></p>
+<h3 id="escaping">Escaping</h3>
+<p><a id="block-9753d4a" class="block-anchor"></a></p>
+<p>A backslash before a character shows that character instead of its Markdown meaning. None of these should become a link, a tag, math, or formatting:
+<a id="block-bacd267" class="block-anchor"></a></p>
+<ul>
+<li>Not a link: [[main page]]</li>
+<li>Not an embed: ![[main page]]</li>
+<li>Not a tag: #t025-not-a-tag</li>
+<li>Not math: $5 and $10</li>
+<li>Not italic: *not italic*</li>
+<li>Not a table separator: a | b</li>
+</ul>
+<p><a id="block-6f0a62d" class="block-anchor"></a></p>
 <h3 id="latex-math">LaTeX Math</h3>
 <p><a id="block-4f8633e" class="block-anchor"></a></p>
 <p>Inline math: <span class="katex"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>E</mi><mo>=</mo><mi>m</mi><msup><mi>c</mi><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">E = mc^2</annotation></semantics></math></span>
@@ -416,6 +432,7 @@ A = \begin{pmatrix}1 &amp; 2 \\ 3 &amp; 4\end{pmatrix},\quad x \in \RR^2</annota
 <p><a id="block-387f8b5" class="block-anchor"></a></p>
 <p>A comment that is never closed hides the rest of the note, as in Obsidian. The line after this one opens such a comment, so nothing after it should appear on the page.
 <a id="block-cfc81f0" class="block-anchor"></a></p>
+<p><a id="block-32fdb1c" class="block-anchor"></a></p>
 <section class="footnotes" data-footnotes>
 <h2 id="footnote-label" class="sr-only">Footnotes</h2>
 <ol>
@@ -427,6 +444,9 @@ A = \begin{pmatrix}1 &amp; 2 \\ 3 &amp; 4\end{pmatrix},\quad x \in \RR^2</annota
 <p>Indent paragraphs to include them in the footnote.</p>
 <p><code class="inline-code">{ my code }</code></p>
 <p>Add as many paragraphs as you like. <a href="#footnote-ref-bignote" data-footnote-backref aria-label="Back to reference bignote">↩</a></p>
+</li>
+<li id="footnote-inline-1">
+<p>This footnote was written inline, inside the paragraph. <a href="#footnote-ref-inline-1" data-footnote-backref aria-label="Back to reference inline-1">↩</a></p>
 </li>
 </ol>
 </section>

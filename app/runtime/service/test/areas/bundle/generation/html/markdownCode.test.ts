@@ -69,6 +69,14 @@ describe('markdown code ranges', () => {
     expect(codeIn('- one `\n- two `')).toEqual([]);
   });
 
+  it('keeps an escaped wikilink, embed or tag verbatim', () => {
+    expect(codeIn('\\[[Note]] and !\\[[Image.png]] and \\#tag')).toEqual(['\\[[Note]]', '\\[[Image.png]]', '\\#']);
+  });
+
+  it('does not treat a wikilink after an escaped backslash as escaped', () => {
+    expect(codeIn('\\\\[[Note]]')).toEqual([]);
+  });
+
   it('does not open inline code at an escaped backtick', () => {
     expect(codeIn('\\`not code\\` but `code`')).toEqual(['`code`']);
   });

@@ -94,13 +94,20 @@ const definitionList: MarkedExtension = {
         const m = /\n:[ \t]+/.exec(src);
         return m ? m.index : undefined;
       },
-      tokenizer(src: string) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      tokenizer(this: any, src: string) {
         const match = DEF_LIST_RE.exec(src);
         if (!match) return undefined;
         const block = match[1];
 
-        // Parse term/definition groups out of the block.
-        const groups: { term: string; defs: string[] }[] = [];
+        // Parse term/definition groups out of the block. Terms and definitions
+        // are inline Markdown, so bold, code and links render as usual.
+        const groups: { term: Token[]; defs: Token[][] }[] = [];
+        const inline = (text: string) => {
+          const tokens: Token[] = [];
+          this.lexer.inline(text, tokens);
+          return tokens;
+        };
         const lines = block.split('\n');
         let i = 0;
         while (i < lines.length) {
@@ -113,11 +120,11 @@ const definitionList: MarkedExtension = {
             // Definition without a preceding term — bail out rather than guess.
             return undefined;
           }
-          const term = line;
-          const defs: string[] = [];
+          const term = inline(line);
+          const defs: Token[][] = [];
           i++;
           while (i < lines.length && /^:[ \t]+/.test(lines[i])) {
-            defs.push(lines[i].replace(/^:[ \t]+/, ''));
+            defs.push(inline(lines[i].replace(/^:[ \t]+/, '')));
             i++;
           }
           if (defs.length === 0) return undefined;
@@ -135,11 +142,13 @@ const definitionList: MarkedExtension = {
       },
       renderer(token) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const groups = (token as any).groups as { term: string; defs: string[] }[];
+        const groups = (token as any).groups as { term: Token[]; defs: Token[][] }[];
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const parser = (this as any).parser;
         const parts: string[] = ['<dl>'];
         for (const { term, defs } of groups) {
-          parts.push(`<dt>${escapeInline(term)}</dt>`);
-          for (const d of defs) parts.push(`<dd>${escapeInline(d)}</dd>`);
+          parts.push(`<dt>${parser.parseInline(term)}</dt>`);
+          for (const d of defs) parts.push(`<dd>${parser.parseInline(d)}</dd>`);
         }
         parts.push('</dl>');
         return parts.join('');
@@ -149,7 +158,7 @@ const definitionList: MarkedExtension = {
 };
 
 function escapeInline(text: string): string {
-  // Minimal escape — term/definition content is kept as-is; rely on downstream safety.
+  // Minimal escape for math that KaTeX could not render, shown as code.
   return text
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')

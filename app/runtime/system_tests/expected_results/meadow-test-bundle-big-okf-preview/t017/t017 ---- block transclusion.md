@@ -23,3 +23,7 @@ This embeds the block with identifier `key`. It should not be confused with the 
 This embeds only the second item of a list, not the whole list:
 
 ![t017 ---- block source](/t017/t017%20----%20block%20source.md#%5Esecond-item)
+
+This embeds the table whose identifier is on its own line after it:
+
+![t017 ---- block source](/t017/t017%20----%20block%20source.md#%5Ea-table)

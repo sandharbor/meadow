@@ -17,7 +17,7 @@ limitations under the License.
 import path from 'path';
 import fs from 'fs';
 import type { BundleNodeConfig } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
-import { linkTextToLinkInfo, normalizePageTitle, calculateRelativePath, escapeHtmlAttribute } from './shared.js';
+import { IMAGE_SIZE_PATTERN, imageSizeStyle, linkTextToLinkInfo, normalizePageTitle, calculateRelativePath, escapeHtmlAttribute } from './shared.js';
 import type { LinkInfo, PageNameToPage } from './types.js';
 import { BundleConfig } from '../../../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
 import type { LinkResolvedInfo } from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode.js';
@@ -166,7 +166,7 @@ function linkInfoWithResolvedTargetType(
     return {
       type: 'image',
       filename: linkInfo.filename,
-      size: linkInfo.alternative_name && /^\d+$/.test(linkInfo.alternative_name)
+      size: linkInfo.alternative_name && IMAGE_SIZE_PATTERN.test(linkInfo.alternative_name)
         ? linkInfo.alternative_name
         : undefined,
     };
@@ -490,6 +490,8 @@ export function linkOrImageHtml(
   if (linkInfo.type === 'image') {
     const originalImageFilename = linkInfo.filename;
     const sizeConstraint = linkInfo.size;
+    // Drawings and SVG frames take the width; their height follows the drawing.
+    const frameWidth = sizeConstraint?.split('x')[0];
 
     const { directory: imageSourceDir, filename: imageName } = resolveTarget(
       linkText, originalImageFilename, linkResolutionMap
@@ -594,7 +596,7 @@ export function linkOrImageHtml(
         enableOpenDedicatedPage: true,
         ...mediaEmbedOptions,
       };
-      const styleAttr = sizeConstraint ? ` style="max-width: ${sizeConstraint}px"` : '';
+      const styleAttr = frameWidth ? ` style="max-width: ${frameWidth}px"` : '';
       const drawingTitle = imageName.replace(/\.excalidraw$/i, '');
       // The standalone Excalidraw HTML lives at the *normalized* title (the
       // pageTitleNormalization hook can rename it), so the embed must point at
@@ -669,7 +671,7 @@ export function linkOrImageHtml(
         enableOpenDedicatedPage: true,
         ...mediaEmbedOptions,
       };
-      const styleAttr = sizeConstraint ? ` style="max-width: ${sizeConstraint}px"` : '';
+      const styleAttr = frameWidth ? ` style="max-width: ${frameWidth}px"` : '';
       const title = imageName.replace(/\.svg$/i, '');
       const titleAttr = escapeHtmlAttribute(`Open ${title}`);
 
@@ -692,11 +694,7 @@ export function linkOrImageHtml(
       return `<span class="meadow-svg-embed-frame${fullscreenClass}"${styleAttr}>${contentHtml}${fullscreenButton}${openHtml}</span>`;
     }
 
-    if (sizeConstraint) {
-      return `<img src="${encodedImagePath}" style="max-width: ${sizeConstraint}px" alt="${originalImageFilename}" />`;
-    } else {
-      return `<img src="${encodedImagePath}" alt="${originalImageFilename}" />`;
-    }
+    return `<img src="${encodedImagePath}"${imageSizeStyle(sizeConstraint)} alt="${originalImageFilename}" />`;
   }
 
   if (linkInfo.type === 'page') {

@@ -32,11 +32,15 @@ limitations under the License.
 //
 // Code nested inside list items and block quotes is approximated: fences are
 // recognized at any indentation, and indented code is not looked for there.
+//
+// Obsidian syntax escaped with a backslash is kept verbatim the same way: an
+// escaped wikilink or embed (`\[[Note]]`) and an escaped tag (`\#tag`). marked
+// then shows the escaped character as text.
 
 export interface CodeRange {
   start: number;
   end: number;
-  kind: 'block' | 'inline';
+  kind: 'block' | 'inline' | 'escaped';
 }
 
 const FENCE_OPEN = /^((?:[ \t]*>)*)[ \t]*(`{3,}|~{3,})(.*)$/;
@@ -127,8 +131,23 @@ export function findCodeRanges(markdown: string): CodeRange[] {
     i++;
   }
   flushParagraph();
+  ranges.push(...findEscapedSyntax(markdown, ranges));
 
   return ranges.sort((a, b) => a.start - b.start);
+}
+
+/** `\[[Note]]` and `\#tag` outside code, where the backslash is not itself escaped. */
+function findEscapedSyntax(markdown: string, code: CodeRange[]): CodeRange[] {
+  const ranges: CodeRange[] = [];
+  for (const match of markdown.matchAll(/\\(?:\[\[[^\]\n]*\]\]|#)/g)) {
+    const start = match.index;
+    let backslashes = 0;
+    for (let i = start - 1; i >= 0 && markdown[i] === '\\'; i--) backslashes++;
+    if (backslashes % 2 === 1) continue;
+    if (code.some(range => start >= range.start && start < range.end)) continue;
+    ranges.push({ start, end: start + match[0].length, kind: 'escaped' });
+  }
+  return ranges;
 }
 
 function findInlineCode(markdown: string, start: number, end: number): CodeRange[] {
@@ -160,7 +179,7 @@ function findInlineCode(markdown: string, start: number, end: number): CodeRange
   return ranges;
 }
 
-/** Applies `replace` to each stretch of text outside code; code is kept verbatim. */
+/** Applies `replace` to each stretch of text outside code (and escaped syntax), which is kept verbatim. */
 export function mapOutsideCode(markdown: string, replace: (text: string) => string): string {
   let out = '';
   let cursor = 0;
@@ -172,9 +191,9 @@ export function mapOutsideCode(markdown: string, replace: (text: string) => stri
 }
 
 /**
- * Returns the text with every code character replaced by a space (newlines
- * kept), so link and tag scanners can search it without finding code, and
- * offsets still line up with the original.
+ * Returns the text with every code character (and escaped syntax) replaced by
+ * a space, newlines kept, so link and tag scanners can search it without
+ * finding code, and offsets still line up with the original.
  */
 export function blankOutCode(markdown: string): string {
   let out = '';

@@ -24,7 +24,7 @@ limitations under the License.
 // and angle brackets by then, so every standard form of link is handled.
 
 import { Marked, type Links, type MarkedExtension, type Token } from 'marked';
-import { escapeHtmlAttribute } from './shared.js';
+import { altTextAndSize, escapeHtmlAttribute, imageSizeStyle } from './shared.js';
 import { blankOutCode } from './markdownCode.js';
 
 /** Renders an internal link or image as HTML, or returns null to render it as written. */
@@ -57,7 +57,13 @@ export const markdownLinks: MarkedExtension = {
       return `<a href="${href}"${titleAttr}${externalAttrs}>${text}</a>`;
     },
     image({ href, title, text }) {
-      return renderInternalLink?.({ href, title, textHtml: text, isImage: true }) ?? false;
+      const internal = renderInternalLink?.({ href, title, textHtml: text, isImage: true });
+      if (internal != null) return internal;
+      // Obsidian writes an image's size where its alt text goes: ![250](url), ![alt|250](url).
+      const { alt, size } = altTextAndSize(text);
+      if (!size) return false;
+      const titleAttr = title ? ` title="${escapeHtmlAttribute(title)}"` : '';
+      return `<img src="${href}" alt="${escapeHtmlAttribute(alt)}"${imageSizeStyle(size)}${titleAttr}>`;
     }
   }
 };

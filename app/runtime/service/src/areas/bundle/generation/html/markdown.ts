@@ -75,6 +75,42 @@ export function removeComments(markdown: string): string {
 }
 
 /**
+ * Rewrites Obsidian inline footnotes (`text^[note]`) as ordinary footnotes:
+ * a reference `[^inline-1]` where the note was, and its definition at the end
+ * of the note, so they are numbered and listed with the others. The note may
+ * contain brackets, such as a link, but not a blank line.
+ */
+export function inlineFootnotesToReferences(markdown: string): string {
+  const code = findCodeRanges(markdown);
+  const definitions: string[] = [];
+  let out = '';
+  let cursor = 0;
+  for (let start = markdown.indexOf('^[', cursor); start >= 0; start = markdown.indexOf('^[', cursor)) {
+    let depth = 0;
+    let end = -1;
+    for (let i = start + 1; i < markdown.length; i++) {
+      if (markdown.startsWith('\n\n', i)) break;
+      if (markdown[i] === '[') depth++;
+      if (markdown[i] === ']' && --depth === 0) {
+        end = i;
+        break;
+      }
+    }
+    if (end < 0 || code.some(range => start >= range.start && start < range.end)) {
+      out += markdown.slice(cursor, start + 2);
+      cursor = start + 2;
+      continue;
+    }
+    const label = `inline-${definitions.length + 1}`;
+    definitions.push(`[^${label}]: ${markdown.slice(start + 2, end)}`);
+    out += `${markdown.slice(cursor, start)}[^${label}]`;
+    cursor = end + 1;
+  }
+  out += markdown.slice(cursor);
+  return definitions.length ? `${out}\n\n${definitions.join('\n\n')}\n` : out;
+}
+
+/**
  * Applies a regex replacement only to text outside of code blocks and inline
  * code spans (see markdownCode.ts). Code is preserved verbatim.
  */

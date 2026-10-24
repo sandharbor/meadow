@@ -35,6 +35,9 @@ nodespecs:
           - relativeLinkPath: t006/t006 --- meadow.png
           - relativeLinkPath: t006/t006 --- meadow.png
           - relativeLinkPath: t006/t006 --- meadow.png
+          - relativeLinkPath: t006/t006 --- meadow.png
+          - relativeLinkPath: t006/t006 --- meadow.png
+          - relativeLinkPath: https://example.com/meadow-external.png
           - relativeLinkPath: t006/t006 --- page that embeds Excalidraw in another directory.html
         footerSectionBacklinks:
           - relativeLinkPath: main page.html

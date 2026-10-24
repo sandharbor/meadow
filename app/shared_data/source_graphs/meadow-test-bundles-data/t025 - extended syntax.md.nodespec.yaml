@@ -22,6 +22,9 @@ nodespecs:
           - relativeLinkPath: https://www.markdownguide.org
           - relativeLinkPath: https://www.markdownguide.org/extended-syntax/
           - relativeLinkPath: https://example.com/callout-title
+          - relativeLinkPath: https://example.com/definition
+          - relativeLinkPath: "#footnote-inline-1"
+          - relativeLinkPath: "#footnote-ref-inline-1"
         footerSectionBacklinks:
           - relativeLinkPath: main page.html
             backlinkContexts:

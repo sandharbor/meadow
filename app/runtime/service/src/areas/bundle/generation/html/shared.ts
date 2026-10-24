@@ -105,6 +105,28 @@ export function escapeHtmlAttribute(value: string): string {
   return he.escape(value);
 }
 
+/** Obsidian's image size: a width (`100`) or a width and height (`100x145`). */
+export const IMAGE_SIZE_PATTERN = /^(\d+)(?:x(\d+))?$/;
+
+/**
+ * The style attribute for an image size. A width alone is a maximum, so the
+ * image can still shrink; a width and height set both, as in Obsidian.
+ */
+export function imageSizeStyle(size: string | undefined): string {
+  const match = size ? IMAGE_SIZE_PATTERN.exec(size) : null;
+  if (!match) return '';
+  return match[2] ? ` style="width: ${match[1]}px; height: ${match[2]}px"` : ` style="max-width: ${match[1]}px"`;
+}
+
+/**
+ * Splits Markdown image alt text into the alt text and an Obsidian size:
+ * `250` or `A meadow|80`.
+ */
+export function altTextAndSize(text: string): { alt: string; size?: string } {
+  const match = /^(?:(.*)\|)?(\d+(?:x\d+)?)$/.exec(text);
+  return match ? { alt: match[1] ?? '', size: match[2] } : { alt: text };
+}
+
 export function linkTextToLinkInfo(link: string): LinkInfo {
   // Normalize escaped pipes (\|) to regular pipes (|).
   // In markdown tables, Obsidian escapes the alias pipe as \| to avoid
@@ -120,14 +142,14 @@ export function linkTextToLinkInfo(link: string): LinkInfo {
     const alias = pipe < 0 ? undefined : suffix.slice(pipe + 1);
     const section = (pipe < 0 ? suffix : suffix.slice(0, pipe)).match(/#(.*)/)?.[1];
     return IMAGE_EXTENSIONS.some(ext => filename.toLowerCase().endsWith(ext))
-      ? { type: 'image', filename, size: alias && /^\d+$/.test(alias) ? alias : undefined }
+      ? { type: 'image', filename, size: alias && IMAGE_SIZE_PATTERN.test(alias) ? alias : undefined }
       : { type: 'page', filename, alternative_name: alias, section };
   }
   const lowerLink = link.toLowerCase();
 
   // Check if it's an image
   if (IMAGE_EXTENSIONS.some(ext => lowerLink.split('|')[0].endsWith(ext))) {
-    const sizeMatch = lowerLink.match(/\|(\d+)$/);
+    const sizeMatch = lowerLink.match(/\|(\d+(?:x\d+)?)$/);
     return {
       type: 'image',
       filename: link.split('|')[0],

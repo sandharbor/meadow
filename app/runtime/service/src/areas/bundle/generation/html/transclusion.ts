@@ -30,7 +30,7 @@ import {
   linkTextToLinkInfo,
   normalizePageTitle,
 } from './shared.js';
-import { replaceOutsideCode, splitMarkdownBlocks } from './markdown.js';
+import { inlineFootnotesToReferences, replaceOutsideCode, splitMarkdownBlocks } from './markdown.js';
 import { findCodeRanges } from './markdownCode.js';
 import { styleBlockIds } from './pageAnchors.js';
 import { markdownLinks, withInternalLinks } from './markedLinks.js';
@@ -287,8 +287,15 @@ function extractBlockMarkdown(md: string, blockIdWithOptionalCaret: string): str
   const identifierLine = new RegExp(`(?:^|\\s)\\^${escapedId}[ \t]*$`);
 
   const blocks = splitMarkdownBlocks(md);
-  const match = blocks.find((b) => b.content.split('\n').some(line => identifierLine.test(line)));
-  if (!match) return '';
+  const matchIndex = blocks.findIndex((b) => b.content.split('\n').some(line => identifierLine.test(line)));
+  if (matchIndex < 0) return '';
+  const match = blocks[matchIndex];
+
+  // An identifier on a line of its own names the block before it (a table,
+  // list or quote).
+  if (identifierLine.test(match.content.trim()) && match.content.trim().startsWith('^')) {
+    return matchIndex > 0 ? blocks[matchIndex - 1].content.trim() : '';
+  }
 
   // An identifier on a list item names that item, with anything nested under
   // it, rather than the whole list.
@@ -413,7 +420,7 @@ export function renderTransclusionToHtml(linkText: string, options: Transclusion
 
   // First, recursively expand nested transclusions inside the extracted markdown.
   const nestedEmbeds = new HeldEmbeds();
-  const expandedMd = replaceOutsideCode(extractedMd, /!\[\[(.*?)\]\]/g, (_m: string, inner: string) => {
+  const expandedMd = replaceOutsideCode(inlineFootnotesToReferences(extractedMd), /!\[\[(.*?)\]\]/g, (_m: string, inner: string) => {
     if (isImageLikeWikiLink(inner, linkResolutionMapForSourcePage)) {
       return `![[${inner}]]`;
     }

@@ -33,6 +33,10 @@ nodespecs:
                 embeddedLinks:
                   - linkName: ⤢
                     linkRelativePath: t017 ---- block source.html
+              - seeInContextLinkRelativePath: t017 ---- block transclusion.html
+                embeddedLinks:
+                  - linkName: ⤢
+                    linkRelativePath: t017 ---- block source.html
           - relativeLinkPath: t017 ---- full page source.html
             backlinkContexts:
               - seeInContextLinkRelativePath: t017 ---- full page source.html
