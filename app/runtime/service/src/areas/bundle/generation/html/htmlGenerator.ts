@@ -26,6 +26,7 @@ import hljs from 'highlight.js';
 import * as nodeEmoji from 'node-emoji';
 import { extendedSyntaxExtensions } from './markedExtensions.js';
 import { headingIds, markdownHrefFragment, pageLinkFragment, styleBlockIds, withPageHeadingIds } from './pageAnchors.js';
+import { scriptFreeHtml } from './scriptRemoval.js';
 import {
   markdownLinkDestinations,
   markdownLinkStems,
@@ -128,6 +129,7 @@ marked.use(
     }
   }),
   markdownLinks,
+  scriptFreeHtml,
   // Registered before customHeadingId so an explicit `{#id}` still wins.
   headingIds,
   customHeadingId(),

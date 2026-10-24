@@ -384,6 +384,27 @@
 <li>Not a table separator: a | b</li>
 </ul>
 <p><a id="block-6f0a62d" class="block-anchor"></a></p>
+<h3 id="line-breaks">Line Breaks</h3>
+<p><a id="block-7f24eaa" class="block-anchor"></a></p>
+<p>A single line break inside a paragraph
+does not start a new line: these two lines render as one paragraph, as in standard Markdown and in Obsidian with &quot;Strict line breaks&quot; on.
+<a id="block-89ed71f" class="block-anchor"></a></p>
+<h3 id="raw-html">Raw HTML</h3>
+<p><a id="block-9435565" class="block-anchor"></a></p>
+<p>HTML in a note is kept, except what would run a script: <code class="inline-code">&lt;script&gt;</code> elements, event-handler attributes such as <code class="inline-code">onclick</code>, and <code class="inline-code">javascript:</code> addresses. Obsidian&#39;s reading view removes the same things, so the note&#39;s author never saw them run. Interactive content belongs in an HTML file, whose scripts are kept.
+<a id="block-4478b55" class="block-anchor"></a></p>
+<details><summary>Kept: a details element</summary>Its content is shown when opened.</details>
+<a id="block-a979e45" class="block-anchor"></a>
+
+<p><button>Kept: a button, without its onclick</button>
+<a id="block-7df45dd" class="block-anchor"></a></p>
+<p><a>Kept: a link&#39;s text, without its javascript: address</a>
+<a id="block-28a743c" class="block-anchor"></a></p>
+
+<p><a id="block-498cc81" class="block-anchor"></a></p>
+<iframe src="https://example.com/embedded" title="Kept: an iframe"></iframe>
+<a id="block-de182fd" class="block-anchor"></a>
+
 <h3 id="latex-math">LaTeX Math</h3>
 <p><a id="block-4f8633e" class="block-anchor"></a></p>
 <p>Inline math: <span class="katex"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>E</mi><mo>=</mo><mi>m</mi><msup><mi>c</mi><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">E = mc^2</annotation></semantics></math></span>
