@@ -10,6 +10,8 @@ type: Knowledge Page
 
 A link whose letter case differs from the page name, which should still find the page: [T011 ---- Page Name With Special Characters -- Before Dot . And After Dot](/t011/t011%20----%20page%20name%20with%20special%20characters%20--%20before%20dot%20.%20and%20after%20dot.md)
 
+A link to an alias, which should find the page whose frontmatter lists it under `aliases:` and show the alias as written (no page has this name, so Obsidian Publish falls back to aliases, in any letter case): [the page with a quote](/t011/t011%20----%20page%20name%20with%20special%20characters%20--%20single%20quote%20'%20in%20name.md)
+
 ### Links in a table with escaped aliases
 
 First, before we get into the table, let's just do one _outside_ the table:

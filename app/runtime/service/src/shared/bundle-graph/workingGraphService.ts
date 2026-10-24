@@ -52,6 +52,7 @@ import { runWorkingGraphJson } from '../utils/workingGraphUtils.js';
 interface RustLinkResolvedInfo {
   link_resolved_target_directory: string;
   link_resolved_target_path: string | null;
+  link_resolved_by_alias?: boolean;
 }
 
 interface RustNode {

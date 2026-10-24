@@ -750,9 +750,13 @@ export function linkOrImageHtml(
       logger.debug(`link '${originalLinkFilename}' normalized to '${normalizedLinkFilename}' in html output`);
     }
 
+    // A link that found its page through a frontmatter alias shows the alias
+    // as written, as `[[Page|alias]]` would.
     let textToDisplayInHyperlink = normalizedLinkFilename;
     if (linkInfo.alternative_name) {
       textToDisplayInHyperlink = linkInfo.alternative_name;
+    } else if (linkResolutionMap?.[linkText]?.link_resolved_by_alias) {
+      textToDisplayInHyperlink = originalLinkFilename;
     }
 
     if (processingMode === 'each-page') {

@@ -237,7 +237,7 @@ export function loadBundleNodeConfigMap(bundleNodeConfigFile: string): BundleNod
   return nodeConfigs;
 }
 
-type RustLinkResolvedInfo = { link_resolved_target_directory: string; link_resolved_target_path: string | null };
+type RustLinkResolvedInfo = { link_resolved_target_directory: string; link_resolved_target_path: string | null; link_resolved_by_alias?: boolean };
 type RustNode = {
   bundleNodeKey: string;
   bundleNodeId?: string;

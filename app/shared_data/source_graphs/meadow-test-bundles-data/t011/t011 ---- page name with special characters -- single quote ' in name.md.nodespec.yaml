@@ -20,6 +20,8 @@ nodespecs:
             backlinkContexts:
               - seeInContextLinkRelativePath: ../t011 - special links.html
                 embeddedLinks: []
+              - seeInContextLinkRelativePath: ../t011 - special links.html
+                embeddedLinks: []
   - bundle: meadow-test-bundle-small
     sourcing:
       isInWorkingGraph: false

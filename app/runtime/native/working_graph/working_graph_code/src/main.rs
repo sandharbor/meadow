@@ -225,6 +225,8 @@ struct SkippedPath {
 struct LinkResolvedInfo {
     link_resolved_target_directory: String,
     link_resolved_target_path: Option<String>,
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    link_resolved_by_alias: bool,
 }
 
 fn is_nodespec_sidecar(path: &Path) -> bool {
@@ -941,6 +943,7 @@ fn main() -> anyhow::Result<()> {
                             } else {
                                 Some(target)
                             },
+                            link_resolved_by_alias: link.link_resolved_by_alias,
                         },
                     )
                 })

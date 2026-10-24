@@ -1,4 +1,6 @@
 ---
+aliases:
+  - The Page With A Quote
 title: t011 ---- page name with special characters -- single quote ' in name
 type: Knowledge Page
 ---

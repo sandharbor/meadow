@@ -28,6 +28,8 @@ import type { BundleNodeTraversalDetails, BundleNodeTraversalStateSummary, Bundl
 export interface LinkResolvedInfo {
   link_resolved_target_directory: string;
   link_resolved_target_path: string | null;
+  /** No file has the link's name; a note's frontmatter alias supplied the target. */
+  link_resolved_by_alias?: boolean;
 }
 
 interface BaseBundleNode {
