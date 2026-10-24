@@ -22,9 +22,7 @@ import { setTimeout as delay, setImmediate as yieldToEventLoop } from 'timers/pr
 import { Page } from './page.js';
 import { renderPageToHtml, renderExcalidrawPageToHtml, renderGeneratedBundleNodeToHtml, renderSimpleBacklinksHtml, CollectedSrsCard } from './htmlGenerator.js';
 import { buildExcalidrawClientEmbeddedFileData, buildExcalidrawClientLinkData, copyExcalidrawEmbeddedFiles } from './linkModificationService.js';
-import { calculateRelativePath, markdownContentToPageLinkFilenames, normalizePageTitle } from './shared.js';
-import { blankOutCode } from './markdownCode.js';
-import { markdownLinkStems, referenceDefinitions } from './markedLinks.js';
+import { calculateRelativePath, normalizePageTitle } from './shared.js';
 import {
   FolderNavigationPage,
   BundleNodeConfigMap,
@@ -1029,6 +1027,11 @@ export async function generateHtmlForBundle(
       && (ft === 'md' || ft === 'html' || ft === 'svg' || ft === 'excalidraw');
     return isScannable && conf.listType === 'whitelist' && traversablePageKeys.has(pageKey);
   });
+  // Each file by its path in the source graph, which is how links name the
+  // file they resolved to.
+  const fileKeyByGraphPath = new Map(Object.keys(bundleNodeConfs).map(encodedBundleNodeKey)
+    .filter(key => bundleNodeConfs[key].bundleNodeKind === 'file')
+    .map(key => [bundleNodeKeySourceGraphPath(key), key]));
   for (const pageKey of traversableLinkScanPageKeys) {
     const conf = bundleNodeConfs[pageKey];
     const subdir = conf.sourceGraphSubdirectory || '';
@@ -1041,75 +1044,19 @@ export async function generateHtmlForBundle(
       continue;
     }
 
-    // Read the text content.
-    const content = fs.readFileSync(pageContentPath, 'utf-8');
-
-    if (bundleConfig.sources) {
-      // Resolved paths retain both the source and file type. Titles are labels,
-      // never identities for backlinks between independently named sources.
-      for (const resolved of Object.values(allLinkResolutionMaps.get(pageKey) ?? {})) {
-        const target = resolved.link_resolved_target_path;
-        if (!target || !/\.(?:md|html|excalidraw)$/i.test(target)) continue;
-        const targetKey = serializeBundleNodeKey(fileNodeKeyFromSourceGraphPath(target));
-        const inlinks = inverseLinks[targetKey] ??= [];
-        if (!inlinks.includes(pageKey)) inlinks.push(pageKey);
-      }
-      pageNameToPage[pageKey] = new Page();
-      continue;
+    // Backlinks follow each link's resolved target, which keeps the file type
+    // (and the source, in multi-source builds): a page links to the page its
+    // link found, however the link was written, and two pages that share a
+    // name are told apart. Titles are labels, never identities.
+    for (const resolved of Object.values(allLinkResolutionMaps.get(pageKey) ?? {})) {
+      const target = resolved.link_resolved_target_path;
+      if (!target || !/\.(?:md|html|excalidraw)$/i.test(target)) continue;
+      const targetKey = fileKeyByGraphPath.get(target.replace(/^\//, ''));
+      if (!targetKey) continue;
+      const inlinks = inverseLinks[targetKey] ??= [];
+      if (!inlinks.includes(pageKey)) inlinks.push(pageKey);
     }
-
-    // Native HTML and SVG use the Rust graph's resolved URL-attribute map.
-    // Markdown and Excalidraw retain the richer existing backlink-context
-    // extraction.
-    const links = conf.fileType === 'html' || conf.fileType === 'svg'
-      ? [...new Set(Object.values(allLinkResolutionMaps.get(bundleNodeConfigToKey(conf)) ?? {})
-          .map(resolved => resolved.link_resolved_target_path ?? '')
-          .filter(targetPath => /\.(?:md|html|excalidraw)$/i.test(targetPath))
-          .map(targetPath => path.posix.basename(targetPath).replace(/\.(?:md|html|excalidraw)$/i, '')))]
-      : markdownContentToPageLinkFilenames(content);
-
-    // Links inside code are text, not links.
-    const scannableContent = blankOutCode(content);
-
-    // Also capture excalidraw embeds `![[X.excalidraw]]` as inlinks to the
-    // X drawing — the markdown link extractor skips them (image-typed) but we
-    // want backlinks to render on the standalone Excalidraw page.
-    const excalidrawEmbedRe = /!\[\[(.*?)\]\]/g;
-    let exMatch;
-    while (conf.fileType !== 'html' && conf.fileType !== 'svg' && (exMatch = excalidrawEmbedRe.exec(scannableContent)) !== null) {
-      const inner = exMatch[1].split('|')[0]; // strip size/alias
-      if (!/\.excalidraw$/i.test(inner)) continue;
-      const stripped = inner.replace(/\.excalidraw$/i, '');
-      const lastSlash = stripped.lastIndexOf('/');
-      const title = lastSlash >= 0 ? stripped.slice(lastSlash + 1) : stripped;
-      if (title && !links.includes(title)) {
-        links.push(title);
-      }
-    }
-
-    // Also scan for Markdown links to files, in any form ([text](path.md),
-    // reference-style, titled, angle-bracketed).
-    if (conf.fileType !== 'html' && conf.fileType !== 'svg') {
-      for (const stem of markdownLinkStems(content, referenceDefinitions(content))) {
-        if (!links.includes(stem)) {
-          links.push(stem);
-        }
-      }
-    }
-
-    // For each link found, add the current page to the inverse_links for that target
-    for (const link of links) {
-      if (!inverseLinks[link]) {
-        inverseLinks[link] = [];
-      }
-
-      if (!inverseLinks[link].includes(conf.bundleNodeName)) {
-        inverseLinks[link].push(conf.bundleNodeName);
-      }
-    }
-
-    // Create a simple page object
-    pageNameToPage[conf.bundleNodeName] = new Page();
+    pageNameToPage[bundleConfig.sources ? pageKey : conf.bundleNodeName] = new Page();
   }
   recordStageTiming('scan_backlinks', scanLinksStart, { page_count: traversableLinkScanPageKeys.length });
 
@@ -1902,7 +1849,7 @@ export interface GenerationEmission {
 
 import { encodedBundleNodeKey } from '../../../../../../../shared_code/utils/bundleNodeKey.js';
 
-import { serializeBundleNodeKey, fileNodeKeyFromSourceGraphPath } from '../../../../../../../shared_code/utils/bundleNodeKey.js';
+import { bundleNodeKeySourceGraphPath } from '../../../../../../../shared_code/utils/bundleNodeKey.js';
 
 import { makeBundleNodeKey } from '../../../../shared/bundle-node/nodeKeys.js';
 

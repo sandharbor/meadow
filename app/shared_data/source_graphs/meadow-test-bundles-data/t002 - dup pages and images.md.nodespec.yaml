@@ -10,6 +10,8 @@ nodespecs:
             isInGraph: true
           - linkPath: /t002/t002 ---- points to extra nested dup.md
             isInGraph: true
+          - linkPath: /t002 ---- dup.md
+            isInGraph: true
           - linkPath: /t002/t002 ---- points to root png dup.md
             isInGraph: true
           - linkPath: /t002/t002 ---- points to nested png dup.md
@@ -33,6 +35,7 @@ nodespecs:
           - relativeLinkPath: t002/t002 ---- points to root dup.html
           - relativeLinkPath: t002/t002 ---- points to nested dup.html
           - relativeLinkPath: t002/t002 ---- points to extra nested dup.html
+          - relativeLinkPath: t002 ---- dup.html
           - relativeLinkPath: t002/t002 ---- points to root png dup.html
           - relativeLinkPath: t002/t002 ---- points to nested png dup.html
           - relativeLinkPath: t002 ---- points to png dup 2 with no path from root.html

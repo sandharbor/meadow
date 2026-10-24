@@ -30,8 +30,9 @@ export interface LinkInfo {
   size?: string;
 }
 
+/** Each page's node key, with the keys of the pages whose links resolved to it. */
 export interface InverseLinks {
-  [targetPage: string]: string[];
+  [targetPageKey: string]: string[];
 }
 
 export interface PageNameToPage {

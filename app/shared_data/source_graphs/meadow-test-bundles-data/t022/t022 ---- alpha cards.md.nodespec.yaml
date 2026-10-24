@@ -23,6 +23,10 @@ nodespecs:
             backlinkContexts:
               - seeInContextLinkRelativePath: ../t022 - spaced repetition.html
                 embeddedLinks: []
+          - relativeLinkPath: t022 ---- beta cards.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: t022 ---- beta cards.html
+                embeddedLinks: []
   - bundle: meadow-test-bundle-small
     sourcing:
       isInWorkingGraph: false

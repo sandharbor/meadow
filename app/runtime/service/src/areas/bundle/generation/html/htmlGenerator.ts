@@ -620,16 +620,10 @@ export function renderPageToHtml(
   // Generate backlinks HTML separately (for footer section)
   let backlinksHtml = '';
   if (processBacklinks) {
-    // Add backlinks section
-    // Try path-prefixed key first (e.g., "t011/page name") for links that
-    // include a directory path. Fall back to title-only for links without paths.
-    const pathPrefixedKey = currentPageDirectory ? `${currentPageDirectory}/${pageName}` : null;
-    const backlinkList = bundleConfig?.sources ? inverseLinks[makeBundleNodeKey(pageName, 'md', currentPageDirectory)]
-      : (pathPrefixedKey && inverseLinks[pathPrefixedKey])
-      ? inverseLinks[pathPrefixedKey]
-      : inverseLinks[pageName];
+    // Add backlinks section: the pages whose links resolved to this one.
+    const backlinkList = inverseLinks[makeBundleNodeKey(pageName, 'md', currentPageDirectory)];
     if (backlinkList) {
-      const backlinks = [...new Set(backlinkList)].sort();
+      const backlinks = sortedBacklinks(backlinkList, bundleNodeConfigs);
       if (backlinks.length > 0) {
         if (processingMode === 'each-page') {
           backlinksHtml += "<h2>Backlinks</h2>\n<ul>\n";
@@ -640,8 +634,7 @@ export function renderPageToHtml(
         for (const backlink of backlinks) {
           let shouldInclude = true;
           
-          const backlinkConfig = bundleNodeConfigs.find(config => bundleConfig?.sources
-            ? bundleNodeConfigToKey(config) === backlink : config.bundleNodeName === backlink);
+          const backlinkConfig = bundleNodeConfigs.find(config => bundleNodeConfigToKey(config) === backlink);
           if (!backlinkConfig || backlinkConfig.listType !== 'whitelist') {
             shouldInclude = false;
           }
@@ -983,6 +976,13 @@ export function renderGeneratedBundleNodeToHtml(args: {
   return outputPath;
 }
 
+/** Backlinks in page-name order, as a reader scans them; the key orders two pages with one name. */
+function sortedBacklinks(keys: string[], bundleNodeConfigs: BundleNodeConfig[]): string[] {
+  const name = (key: string) => bundleNodeConfigs.find(config => bundleNodeConfigToKey(config) === key)?.bundleNodeName ?? key;
+  const compare = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+  return [...new Set(keys)].sort((a, b) => compare(name(a), name(b)) || compare(a, b));
+}
+
 /**
  * Builds the simple backlinks `<h2>Backlinks</h2><ul>...` block used by the
  * standalone Excalidraw page. Only includes whitelisted sources; no context
@@ -998,17 +998,13 @@ export function renderSimpleBacklinksHtml(
   routeTable?: RenderOptions['routeTable'],
   currentOutputDirectory: string = currentPageDirectory,
 ): string {
-  const pathPrefixedKey = currentPageDirectory ? `${currentPageDirectory}/${pageTitle}` : null;
-  const list = bundleConfig.sources ? (inverseLinks[makeBundleNodeKey(pageTitle, 'excalidraw', currentPageDirectory)] ?? [])
-    : (pathPrefixedKey && inverseLinks[pathPrefixedKey])
-    ? inverseLinks[pathPrefixedKey]
-    : (inverseLinks[pageTitle] || []);
-  const sorted = [...new Set(list)].sort();
+  const list = inverseLinks[makeBundleNodeKey(pageTitle, 'excalidraw', currentPageDirectory)] ?? [];
+  const sorted = sortedBacklinks(list, bundleNodeConfigs);
   if (sorted.length === 0) return '';
 
   let html = '<h2>Backlinks</h2>\n<ul>\n';
   for (const backlink of sorted) {
-    const cfg = bundleNodeConfigs.find(c => bundleConfig.sources ? bundleNodeConfigToKey(c) === backlink : c.bundleNodeName === backlink);
+    const cfg = bundleNodeConfigs.find(c => bundleNodeConfigToKey(c) === backlink);
     if (!cfg || cfg.listType !== 'whitelist') continue;
     const sourceDir = cfg.sourceGraphSubdirectory || '';
     const normName = normalizePageTitle(cfg.bundleNodeName, bundleConfig, bundleSlug);

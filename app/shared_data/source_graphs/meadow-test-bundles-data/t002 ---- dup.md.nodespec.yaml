@@ -5,6 +5,8 @@ nodespecs:
       links:
         outlinks: []
         inlinks:
+          - linkPath: /t002 - dup pages and images.md
+            isInGraph: true
           - linkPath: /t002/t002 ---- points to root dup.md
             isInGraph: true
     curation:
@@ -13,6 +15,10 @@ nodespecs:
       htmlRenderedLinks:
         mainSectionLinks: []
         footerSectionBacklinks:
+          - relativeLinkPath: t002 - dup pages and images.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: t002 - dup pages and images.html
+                embeddedLinks: []
           - relativeLinkPath: t002/t002 ---- points to root dup.html
             backlinkContexts:
               - seeInContextLinkRelativePath: t002/t002 ---- points to root dup.html
