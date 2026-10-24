@@ -7,6 +7,8 @@ nodespecs:
         inlinks:
           - linkPath: /t003 - link to section.md
             isInGraph: true
+          - linkPath: /t025 - extended syntax.md
+            isInGraph: true
     curation:
       isTracked: true
     generation:
@@ -23,6 +25,8 @@ nodespecs:
                 embeddedLinks: []
               - seeInContextLinkRelativePath: t003 - link to section.html
                 embeddedLinks: []
+          - relativeLinkPath: t025 - extended syntax.html
+            backlinkContexts: []
   - bundle: meadow-test-bundle-small
     sourcing:
       isInWorkingGraph: false

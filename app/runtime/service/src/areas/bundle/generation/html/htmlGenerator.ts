@@ -499,15 +499,8 @@ export function renderPageToHtml(
     });
   }
 
+  // Comments were already removed when the note was read (getMdContent).
   let convertedContent = convertWikiLinks(mdContent);
-
-  // Strip Obsidian-style comments (%%...%%) outside code fences.
-  // Block comments: %% on its own line ... %% on its own line
-  convertedContent = replaceOutsideCode(
-    convertedContent,
-    /%%[\s\S]*?%%/g,
-    () => ''
-  );
 
   // Convert :shortcode: emoji outside code fences.
   convertedContent = replaceOutsideCode(

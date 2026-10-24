@@ -3,7 +3,9 @@ nodespecs:
     sourcing:
       isInWorkingGraph: true
       links:
-        outlinks: []
+        outlinks:
+          - linkPath: /t003 ---- page with section to link to.md
+            isInGraph: true
         inlinks:
           - linkPath: /main page.md
             isInGraph: true

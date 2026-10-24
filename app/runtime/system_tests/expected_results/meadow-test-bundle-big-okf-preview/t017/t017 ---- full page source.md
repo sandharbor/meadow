@@ -25,3 +25,5 @@ The same block embedded twice, which should appear both times:
 ![t017 ---- block source](/t017/t017%20----%20block%20source.md#%5Ef4c4d5)
 
 A Markdown link, which should lead to the section source page: [the section source](t017%20----%20section%20source.md)
+
+This sentence is followed by a comment, which must not appear here or where this page is embedded.%%A comment inside the embedded page%%

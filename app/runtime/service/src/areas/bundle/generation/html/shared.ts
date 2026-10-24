@@ -18,7 +18,7 @@ import * as fs from 'fs';
 import he from 'he';
 import { Page } from './page.js';
 import { IMAGE_EXTENSIONS, LINK_PATTERN } from './constants.js';
-import { removeFrontmatter } from './markdown.js';
+import { removeComments, removeFrontmatter } from './markdown.js';
 import { blankOutCode } from './markdownCode.js';
 import { LinkInfo } from './types.js';
 import { BundleConfig } from '../../../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
@@ -81,7 +81,8 @@ export function getMdContent(
   let mdContent = fs.readFileSync(mdPath, 'utf-8');
 
   if (!preserveFrontmatter) {
-    mdContent = removeFrontmatter(mdContent);
+    // The note as it is rendered: no frontmatter and no comments.
+    mdContent = removeComments(removeFrontmatter(mdContent));
   }
 
   // Keep trailing whitespace normalization stable for transclusions and block anchors.

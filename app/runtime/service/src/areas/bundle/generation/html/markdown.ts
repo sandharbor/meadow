@@ -40,6 +40,41 @@ export function frontmatterAsDict(markdownText: string): Record<string, unknown>
 }
 
 /**
+ * Removes Obsidian comments (`%%…%%`), as Obsidian hides them when reading a
+ * note. A comment opens outside code and may span lines; one that never closes
+ * hides the rest of the note. `\%%` is two literal percent signs.
+ */
+export function removeComments(markdown: string): string {
+  const code = findCodeRanges(markdown);
+  const inCode = (index: number) => code.some(range => index >= range.start && index < range.end);
+  const escaped = (index: number) => {
+    let backslashes = 0;
+    for (let i = index - 1; i >= 0 && markdown[i] === '\\'; i--) backslashes++;
+    return backslashes % 2 === 1;
+  };
+  const nextDelimiter = (from: number, outsideCode: boolean) => {
+    for (let i = markdown.indexOf('%%', from); i >= 0; i = markdown.indexOf('%%', i + 1)) {
+      if (escaped(i)) {
+        i++; // both percent signs of `\%%` are text
+        continue;
+      }
+      if (!outsideCode || !inCode(i)) return i;
+    }
+    return -1;
+  };
+
+  let out = '';
+  let cursor = 0;
+  for (let open = nextDelimiter(0, true); open >= 0; open = nextDelimiter(cursor, true)) {
+    const close = nextDelimiter(open + 2, false);
+    out += markdown.slice(cursor, open);
+    if (close < 0) return out;
+    cursor = close + 2;
+  }
+  return out + markdown.slice(cursor);
+}
+
+/**
  * Applies a regex replacement only to text outside of code blocks and inline
  * code spans (see markdownCode.ts). Code is preserved verbatim.
  */
