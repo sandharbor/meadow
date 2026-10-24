@@ -15,6 +15,7 @@ nodespecs:
       htmlRenderedLinks:
         mainSectionLinks:
           - relativeLinkPath: t017 ---- full page source.html
+          - relativeLinkPath: t017 ---- section source.html
         footerSectionBacklinks:
           - relativeLinkPath: ../t017 - transclusion.html
             backlinkContexts:

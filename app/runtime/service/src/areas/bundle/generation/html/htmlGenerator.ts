@@ -66,7 +66,7 @@ import { encodePathForUrl } from '../../../../../../../shared_code/utils/urlUtil
 import { HooksLoader } from '../utils/hooksLoader.js';
 import { frontmatterAsDict, replaceOutsideCode, splitMarkdownBlocks } from './markdown.js';
 import { blankOutCode } from './markdownCode.js';
-import { renderTransclusionToHtml } from './transclusion.js';
+import { HeldEmbeds, renderTransclusionToHtml } from './transclusion.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
 import { SOURCES_EXPORT_MANIFEST_FILENAME } from '../../../../shared/utils/zipUtils.js';
 import {
@@ -287,6 +287,9 @@ export function renderPageToHtml(
     });
   }
 
+  // Embeds found by convertWikiLinks; each marked() call below restores them.
+  const heldEmbeds = new HeldEmbeds();
+
   function convertWikiLinks(mdContent: string, highlightDoNotLinkPageName?: string, overrides?: WikiLinkOverrides): string {
     mdContent = replaceOutsideCode(
       mdContent,
@@ -311,7 +314,7 @@ export function renderPageToHtml(
         return '<span class="link-not-tracked">link not tracked</span>';
       }
 
-      return renderTransclusionToHtml(linkText, {
+      return heldEmbeds.hold(renderTransclusionToHtml(linkText, {
         finalPageDirectory: overrides?.currentPageDirectoryOverride ?? currentPageDirectory ?? '',
         baseContentDirectory: contentRoot,
         baseOutputFolder: outputRoot,
@@ -321,7 +324,11 @@ export function renderPageToHtml(
         linkResolutionMapForCaller: overrides?.linkResolutionMapOverride ?? linkResolutionMap,
         allLinkResolutionMaps,
         isNested: false,
-      });
+        renderMarkdownLink: (link, embeddedPageMap) => markdownLinkHtml(link.isImage, link.textHtml, link.href, undefined, {
+          linkResolutionMapOverride: embeddedPageMap,
+          currentPageDirectoryOverride: overrides?.currentPageDirectoryOverride ?? currentPageDirectory ?? '',
+        }, link.title),
+      }));
     });
 
     // Then handle regular wiki links
@@ -481,7 +488,7 @@ export function renderPageToHtml(
 
   function renderMarkdownFragmentToHtml(fragment: string): string {
     const convertedFragment = convertWikiLinks(fragment);
-    const fragmentHtml = marked(convertedFragment) as string;
+    const fragmentHtml = heldEmbeds.restore(marked(convertedFragment) as string);
     return unwrapSingleParagraph(fragmentHtml);
   }
 
@@ -528,7 +535,7 @@ export function renderPageToHtml(
 
   let htmlContent = withInternalLinks(
     link => markdownLinkHtml(link.isImage, link.textHtml, link.href, undefined, undefined, link.title),
-    () => withPageHeadingIds(() => marked(convertedContentWithAnchors) as string)
+    () => withPageHeadingIds(() => heldEmbeds.restore(marked(convertedContentWithAnchors) as string))
   );
 
   function createFrontmatterTable(frontmatter: Record<string, unknown>): string | null {
@@ -561,7 +568,7 @@ export function renderPageToHtml(
       }
       
       let valueCell = convertWikiLinks(valueStr);
-      valueCell = marked(valueCell) as string;
+      valueCell = heldEmbeds.restore(marked(valueCell) as string);
       
       if (valueCell.startsWith('<p>') && valueCell.endsWith('</p>')) {
         valueCell = valueCell.slice(3, -4);
@@ -661,7 +668,7 @@ export function renderPageToHtml(
                 const withFixedLinksAndBreaks = customProcessBacklinksMarkdown(withFixedLinks, bundleSlug, bundleConfig);
                 const html = withInternalLinks(
                   link => markdownLinkHtml(link.isImage, link.textHtml, link.href, pageName, backlinkOverrides, link.title),
-                  () => marked(withFixedLinksAndBreaks) as string
+                  () => heldEmbeds.restore(marked(withFixedLinksAndBreaks) as string)
                 );
                 
                 // Calculate relative path for "see in context" link

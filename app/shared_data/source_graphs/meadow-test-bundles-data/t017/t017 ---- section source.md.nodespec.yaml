@@ -7,12 +7,18 @@ nodespecs:
         inlinks:
           - linkPath: /t017/t017 ---- section transclusion.md
             isInGraph: true
+          - linkPath: /t017/t017 ---- full page source.md
+            isInGraph: true
     curation:
       isTracked: true
     generation:
       htmlRenderedLinks:
         mainSectionLinks: []
         footerSectionBacklinks:
+          - relativeLinkPath: t017 ---- full page source.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: t017 ---- full page source.html
+                embeddedLinks: []
           - relativeLinkPath: t017 ---- section transclusion.html
             backlinkContexts:
               - seeInContextLinkRelativePath: t017 ---- section transclusion.html

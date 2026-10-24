@@ -16,6 +16,8 @@ nodespecs:
         mainSectionLinks:
           - relativeLinkPath: t017 ---- block source.html
           - relativeLinkPath: t017 ---- block source.html
+          - relativeLinkPath: t017 ---- block source.html
+          - relativeLinkPath: t017 ---- block source.html
         footerSectionBacklinks:
           - relativeLinkPath: ../t017 - transclusion.html
             backlinkContexts:

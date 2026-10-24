@@ -34,11 +34,12 @@ let renderInternalLink: InternalLinkRenderer | undefined;
 
 /** Runs a render of a page's Markdown, during which links are offered to `renderer` first. */
 export function withInternalLinks<T>(renderer: InternalLinkRenderer, render: () => T): T {
+  const outer = renderInternalLink;
   renderInternalLink = renderer;
   try {
     return render();
   } finally {
-    renderInternalLink = undefined;
+    renderInternalLink = outer;
   }
 }
 

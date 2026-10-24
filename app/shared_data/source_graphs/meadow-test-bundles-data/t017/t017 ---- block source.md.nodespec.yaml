@@ -7,6 +7,8 @@ nodespecs:
         inlinks:
           - linkPath: /t017/t017 ---- block transclusion.md
             isInGraph: true
+          - linkPath: /t017/t017 ---- full page source.md
+            isInGraph: true
     curation:
       isTracked: true
     generation:
@@ -20,6 +22,24 @@ nodespecs:
                   - linkName: ⤢
                     linkRelativePath: t017 ---- block source.html
               - seeInContextLinkRelativePath: t017 ---- block transclusion.html
+                embeddedLinks:
+                  - linkName: ⤢
+                    linkRelativePath: t017 ---- block source.html
+              - seeInContextLinkRelativePath: t017 ---- block transclusion.html
+                embeddedLinks:
+                  - linkName: ⤢
+                    linkRelativePath: t017 ---- block source.html
+              - seeInContextLinkRelativePath: t017 ---- block transclusion.html
+                embeddedLinks:
+                  - linkName: ⤢
+                    linkRelativePath: t017 ---- block source.html
+          - relativeLinkPath: t017 ---- full page source.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: t017 ---- full page source.html
+                embeddedLinks:
+                  - linkName: ⤢
+                    linkRelativePath: t017 ---- block source.html
+              - seeInContextLinkRelativePath: t017 ---- full page source.html
                 embeddedLinks:
                   - linkName: ⤢
                     linkRelativePath: t017 ---- block source.html

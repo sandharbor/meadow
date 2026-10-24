@@ -3,7 +3,11 @@ nodespecs:
     sourcing:
       isInWorkingGraph: true
       links:
-        outlinks: []
+        outlinks:
+          - linkPath: /t017/t017 ---- block source.md
+            isInGraph: true
+          - linkPath: /t017/t017 ---- section source.md
+            isInGraph: true
         inlinks:
           - linkPath: /t017/t017 ---- full page transclusion.md
             isInGraph: true
@@ -11,7 +15,10 @@ nodespecs:
       isTracked: true
     generation:
       htmlRenderedLinks:
-        mainSectionLinks: []
+        mainSectionLinks:
+          - relativeLinkPath: t017 ---- block source.html
+          - relativeLinkPath: t017 ---- block source.html
+          - relativeLinkPath: t017 ---- section source.html
         footerSectionBacklinks:
           - relativeLinkPath: t017 ---- full page transclusion.html
             backlinkContexts:
@@ -19,6 +26,8 @@ nodespecs:
                 embeddedLinks:
                   - linkName: ⤢
                     linkRelativePath: t017 ---- full page source.html
+                  - linkName: the section source
+                    linkRelativePath: t017 ---- section source.html
   - bundle: meadow-test-bundle-small
     sourcing:
       isInWorkingGraph: false

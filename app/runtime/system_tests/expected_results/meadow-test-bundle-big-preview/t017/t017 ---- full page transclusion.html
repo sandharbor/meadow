@@ -48,6 +48,18 @@
 <p>This is the content that should be transcluded into another page.</p>
 <p>It has multiple paragraphs to make the transclusion more visible when it&#39;s implemented.</p>
 <p>This content will be embedded in its entirety when transcluded using the full page syntax.</p>
+<p>The lines below test what happens when this page is itself embedded in another page.</p>
+<p>A code block that shows embed syntax, which should stay as text:</p>
+<pre><code class="hljs language-md">![[t017 ---- section source]]
+</code></pre>
+<p>The same block embedded twice, which should appear both times:</p>
+<div class="transcluded"><div class="transcluded-content"><p>This block has a specific identifier for testing. <sup class="block-id">^f4c4d5</sup></p>
+</div></div>
+
+<div class="transcluded"><div class="transcluded-content"><p>This block has a specific identifier for testing. <sup class="block-id">^f4c4d5</sup></p>
+</div></div>
+
+<p>A Markdown link, which should lead to the section source page: <a href="t017%20----%20section%20source.html">the section source</a></p>
 </div></div>
 <a id="block-1f241d7" class="block-anchor"></a>
 

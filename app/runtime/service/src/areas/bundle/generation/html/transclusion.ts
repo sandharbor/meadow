@@ -31,10 +31,39 @@ import {
   normalizePageTitle,
 } from './shared.js';
 import { replaceOutsideCode, splitMarkdownBlocks } from './markdown.js';
+import { findCodeRanges } from './markdownCode.js';
 import { styleBlockIds } from './pageAnchors.js';
-import { markdownLinks } from './markedLinks.js';
+import { markdownLinks, withInternalLinks } from './markedLinks.js';
 import { HooksLoader } from '../utils/hooksLoader.js';
 import { replaceSrsCardsWithCustomElements } from '../render-source/srsMarkdown.js';
+
+/**
+ * Rendered embeds waiting to be put into their page. An embed is rendered to
+ * HTML as soon as it is found, but the page's remaining text passes and marked
+ * must not read that HTML as Markdown (a `[[link]]` inside the embedded
+ * note's code is text), so the page holds a placeholder and restores the HTML
+ * after marked has run.
+ */
+export class HeldEmbeds {
+  private readonly html: string[] = [];
+
+  // The placeholder is a <div>, like the embed it stands for, so marked
+  // treats the lines around it the same way.
+  hold(html: string): string {
+    return `<div data-meadow-embed="${this.html.push(html) - 1}"></div>`;
+  }
+
+  restore(rendered: string): string {
+    return rendered.replace(/<div data-meadow-embed="(\d+)"><\/div>/g, (_match, index: string) => this.html[Number(index)]);
+  }
+}
+
+export interface MarkdownLink {
+  href: string;
+  title?: string | null;
+  textHtml: string;
+  isImage: boolean;
+}
 
 export interface TransclusionOptions {
   /** Directory of the final page that will contain this transclusion (for relative URL calculation) */
@@ -55,10 +84,19 @@ export interface TransclusionOptions {
 
   /** Whether this transclusion is nested inside another transclusion */
   isNested?: boolean;
-  /** Recursion guard */
+  /**
+   * The embeds that contain this one. Embedding one of them again would be a
+   * cycle; embedding the same note twice side by side is not.
+   */
   visited?: Set<string>;
   /** Hard recursion depth limit */
   remainingDepth?: number;
+  /**
+   * Renders a Markdown link or image in the embedded content to a note of the
+   * source graph, given the embedded page's link resolution map, or returns
+   * null to leave it as written. URLs are relative to the final page.
+   */
+  renderMarkdownLink?: (link: MarkdownLink, linkResolutionMap?: Record<string, LinkResolvedInfo>) => string | null;
 }
 
 interface ResolvedPageTarget {
@@ -184,9 +222,12 @@ function extractSectionMarkdown(md: string, sectionName: string): string {
 
   const normalizedTarget = sectionName.trim();
 
+  // A line inside a code block, such as a shell `# comment`, is not a heading.
+  const codeLines = blockCodeLineIndexes(md);
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    const match = /^(#{1,6})\s+(.*)$/.exec(line.trim());
+    const match = codeLines.has(i) ? null : /^(#{1,6})\s+(.*)$/.exec(line.trim());
     if (!match) continue;
     const level = match[1].length;
     const headerText = match[2].trim();
@@ -205,7 +246,7 @@ function extractSectionMarkdown(md: string, sectionName: string): string {
   out.push(lines[startIdx]);
   for (let i = startIdx + 1; i < lines.length; i++) {
     const line = lines[i];
-    const match = /^(#{1,6})\s+/.exec(line.trim());
+    const match = codeLines.has(i) ? null : /^(#{1,6})\s+/.exec(line.trim());
     if (match) {
       const level = match[1].length;
       if (level <= startLevel) {
@@ -218,15 +259,47 @@ function extractSectionMarkdown(md: string, sectionName: string): string {
   return out.join('\n').trim();
 }
 
+/** The indexes of the lines that are inside fenced or indented code blocks. */
+function blockCodeLineIndexes(md: string): Set<number> {
+  const indexes = new Set<number>();
+  let lineStart = 0;
+  const lineStarts = md.split('\n').map(line => {
+    const start = lineStart;
+    lineStart += line.length + 1;
+    return start;
+  });
+  for (const range of findCodeRanges(md).filter(r => r.kind === 'block')) {
+    lineStarts.forEach((start, index) => {
+      if (start >= range.start && start < range.end) indexes.add(index);
+    });
+  }
+  return indexes;
+}
+
+const LIST_ITEM_LINE = /^([ \t]*)(?:[-*+]|\d{1,9}[.)])[ \t]/;
+
 function extractBlockMarkdown(md: string, blockIdWithOptionalCaret: string): string {
   const id = blockIdWithOptionalCaret.replace(/^\^/, '').trim();
   if (!id) return '';
 
-  const blocks = splitMarkdownBlocks(md);
-  const token = `^${id}`;
+  // The identifier ends its line, so `^key` is not found inside `^key-insight`.
+  const escapedId = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const identifierLine = new RegExp(`(?:^|\\s)\\^${escapedId}[ \t]*$`);
 
-  const match = blocks.find((b) => b.content.includes(token));
-  return match ? match.content.trim() : '';
+  const blocks = splitMarkdownBlocks(md);
+  const match = blocks.find((b) => b.content.split('\n').some(line => identifierLine.test(line)));
+  if (!match) return '';
+
+  // An identifier on a list item names that item, with anything nested under
+  // it, rather than the whole list.
+  const lines = match.content.split('\n');
+  const itemIndex = lines.findIndex(line => identifierLine.test(line));
+  const item = LIST_ITEM_LINE.exec(lines[itemIndex]);
+  if (!item) return match.content.trim();
+  const indent = item[1].length;
+  let last = itemIndex;
+  while (last + 1 < lines.length && /^[ \t]*/.exec(lines[last + 1])![0].length > indent) last++;
+  return lines.slice(itemIndex, last + 1).map(line => line.slice(indent)).join('\n');
 }
 
 function convertWikiLinksInMarkdown(
@@ -311,7 +384,7 @@ export function renderTransclusionToHtml(linkText: string, options: Transclusion
   if (visited.has(visitKey)) {
     return '<span class="link-not-tracked">link not tracked</span>';
   }
-  visited.add(visitKey);
+  const enclosingEmbeds = new Set([...visited, visitKey]);
 
   // Read markdown from active source-content root + page directory
   const sourceDir = resolved.directory
@@ -339,22 +412,35 @@ export function renderTransclusionToHtml(linkText: string, options: Transclusion
     allLinkResolutionMaps?.get(resolved.pageIdent) ?? undefined;
 
   // First, recursively expand nested transclusions inside the extracted markdown.
-  const expandedMd = extractedMd.replace(/!\[\[(.*?)\]\]/g, (_m: string, inner: string) => {
+  const nestedEmbeds = new HeldEmbeds();
+  const expandedMd = replaceOutsideCode(extractedMd, /!\[\[(.*?)\]\]/g, (_m: string, inner: string) => {
     if (isImageLikeWikiLink(inner, linkResolutionMapForSourcePage)) {
       return `![[${inner}]]`;
     }
-    return renderTransclusionToHtml(inner, {
+    return nestedEmbeds.hold(renderTransclusionToHtml(inner, {
       ...options,
       // The page containing this nested embed is the transcluded page, so resolve target from that page's context.
       linkResolutionMapForCaller: linkResolutionMapForSourcePage,
       isNested: true,
-      visited,
+      visited: enclosingEmbeds,
       remainingDepth: remainingDepth - 1,
-    });
+    }));
   });
 
+  // Markdown links in the embedded content resolve with the embedded page's map,
+  // like its wikilinks. Those with unescaped spaces in their destination are not
+  // links to marked, so they are rendered here; marked renders the rest.
+  const renderMarkdownLink = (link: MarkdownLink) =>
+    options.renderMarkdownLink?.(link, linkResolutionMapForSourcePage) ?? null;
+  const withSpacedMarkdownLinks = replaceOutsideCode(
+    expandedMd,
+    /(!?)\[([^\]]+)\]\(([^)]+)\)/g,
+    (match: string, bang: string, text: string, href: string) =>
+      renderMarkdownLink({ href, textHtml: text, isImage: bang === '!' }) ?? match
+  );
+
   // Convert remaining wiki links and images into proper markdown/HTML with final-page-relative URLs
-  const processedMdForLinks = convertWikiLinksInMarkdown(expandedMd, bundleNodeConfigs, {
+  const processedMdForLinks = convertWikiLinksInMarkdown(withSpacedMarkdownLinks, bundleNodeConfigs, {
     bundleConfig,
     bundleSlug,
     baseContentDirectory,
@@ -369,7 +455,9 @@ export function renderTransclusionToHtml(linkText: string, options: Transclusion
     (fragment: string) => unwrapSingleParagraph(marked(fragment) as string)
   );
   // The embedded page's block ids are styled but not made into ids here.
-  const innerHtml = marked(styleBlockIds(finalMd, { linkable: false })) as string;
+  const innerHtml = nestedEmbeds.restore(
+    withInternalLinks(renderMarkdownLink, () => marked(styleBlockIds(finalMd, { linkable: false })) as string)
+  );
 
   // Build see-in-context link to the transcluded page (top-level only)
   const targetPath = resolved.directory
