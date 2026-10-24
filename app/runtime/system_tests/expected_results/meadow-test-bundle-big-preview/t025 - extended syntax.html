@@ -292,6 +292,52 @@
 </details>
 </div>
 <p><a id="block-7c6cba8" class="block-anchor"></a></p>
+<h3 id="nested-callouts">Nested Callouts</h3>
+<p><a id="block-1575728" class="block-anchor"></a></p>
+<div class="callout callout-question">
+<div class="callout-title">Outer callout</div>
+<div class="callout-content">
+<p>The outer callout&#39;s body.</p>
+<div class="callout callout-todo">
+<div class="callout-title">Inner callout</div>
+<div class="callout-content">
+<p>The inner callout&#39;s body, one level deeper.</p>
+</div>
+</div>
+</div>
+</div>
+<p><a id="block-235cd8d" class="block-anchor"></a></p>
+<h3 id="callout-title-with-markdown">Callout Title With Markdown</h3>
+<p><a id="block-99b9308" class="block-anchor"></a></p>
+<div class="callout callout-tip">
+<div class="callout-title">A <strong>bold</strong> title with <a href="https://example.com/callout-title" rel="noreferrer noopener" target="_blank">a link</a></div>
+<div class="callout-content">
+<p>The title is rendered like other inline Markdown.</p>
+</div>
+</div>
+<p><a id="block-a8551a5" class="block-anchor"></a></p>
+<h3 id="callout-without-a-space-after-">Callout Without a Space After <code class="inline-code">&gt;</code></h3>
+<p><a id="block-9ab0837" class="block-anchor"></a></p>
+<div class="callout callout-note">
+<div class="callout-title">Note</div>
+<div class="callout-content">
+<p>A callout whose lines have no space after the <code class="inline-code">&gt;</code> is still a callout.</p>
+</div>
+</div>
+<p><a id="block-e24b2e9" class="block-anchor"></a></p>
+<h3 id="callout-type-containing-quotes">Callout Type Containing Quotes</h3>
+<p><a id="block-7df629e" class="block-anchor"></a></p>
+<p>The odd-looking callout below is deliberate. Its type, between <code class="inline-code">[!</code> and <code class="inline-code">]</code>, is the text <code class="inline-code">note&quot; data-injected=&quot;yes</code>. The type is copied into the callout&#39;s HTML <code class="inline-code">class</code> attribute, so if its quotes were not escaped they would close that attribute early and add a separate <code class="inline-code">data-injected=&quot;yes&quot;</code> attribute to the page. That is how a note could inject HTML.
+<a id="block-8bde8f8" class="block-anchor"></a></p>
+<p>Rendered correctly, the callout below has no <code class="inline-code">data-injected</code> attribute. Its title shows the type exactly as written, because a callout without a title shows its type, and it uses the default callout style, because the type is not one of the known callout types.
+<a id="block-56cee1c" class="block-anchor"></a></p>
+<div class="callout callout-note&quot; data-injected=&quot;yes">
+<div class="callout-title">Note&quot; data-injected=&quot;yes</div>
+<div class="callout-content">
+<p>Yes, this title is meant to look strange: it is the type text, shown as plain text. See the explanation above.</p>
+</div>
+</div>
+<p><a id="block-90733fd" class="block-anchor"></a></p>
 <h3 id="comments">Comments</h3>
 <p><a id="block-0c11618" class="block-anchor"></a></p>
 <p>There is a comment below this line that you will not see in the rendered output.

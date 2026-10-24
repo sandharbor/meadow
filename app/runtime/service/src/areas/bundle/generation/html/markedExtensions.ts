@@ -23,6 +23,7 @@ limitations under the License.
 
 import type { MarkedExtension, Token } from 'marked';
 import katex from 'katex';
+import { escapeHtmlAttribute } from './shared.js';
 import 'katex/contrib/mhchem';
 
 interface SimpleToken {
@@ -157,7 +158,9 @@ function escapeInline(text: string): string {
 
 // Obsidian-style callouts: > [!type] Title
 // Converts blockquotes with callout syntax into styled callout divs.
-// Supports all Obsidian callout types and their aliases.
+// Supports all Obsidian callout types and their aliases. As in any block
+// quote, the space after `>` is optional. The title is inline Markdown, and the
+// type is only a name: it is escaped wherever it appears in the HTML.
 const CALLOUT_ALIASES: Record<string, string> = {
   summary: 'abstract', tldr: 'abstract',
   hint: 'tip', important: 'tip',
@@ -175,14 +178,14 @@ const callout: MarkedExtension = {
       name: 'callout',
       level: 'block',
       start(src: string) {
-        const m = /^> \[!/.exec(src);
+        const m = /^>[ \t]?\[!/.exec(src);
         return m ? m.index : undefined;
       },
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       tokenizer(this: any, src: string) {
         // Match callout: > [!type] optional title\n followed by optional > continuation lines
         // Use [ \t]* instead of \s* so we don't accidentally consume the newline.
-        const match = /^(?:> \[!([^\]]+)\]([-+])?[ \t]*(.*?)?\n)((?:>.*\n?)*)/.exec(src);
+        const match = /^(?:>[ \t]?\[!([^\]]+)\]([-+])?[ \t]*(.*?)?(?:\n|$))((?:>.*\n?)*)/.exec(src);
         if (!match) return undefined;
 
         const rawType = match[1].toLowerCase();
@@ -192,6 +195,8 @@ const callout: MarkedExtension = {
 
         const calloutType = CALLOUT_ALIASES[rawType] || rawType;
         const title = titleText || rawType.charAt(0).toUpperCase() + rawType.slice(1);
+        const titleTokens: Token[] = [];
+        this.lexer.inline(title, titleTokens);
 
         // Strip leading > from body lines
         const bodyLines = bodyRaw.split('\n')
@@ -213,7 +218,7 @@ const callout: MarkedExtension = {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           calloutType: calloutType as any,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          title: title as any,
+          titleTokens: titleTokens as any,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           foldable: (foldMarker === '+' || foldMarker === '-') as any,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -225,15 +230,18 @@ const callout: MarkedExtension = {
         const t = token as any;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const bodyHtml = t.tokens?.length ? (this as any).parser.parse(t.tokens) : '';
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const titleHtml = (this as any).parser.parseInline(t.titleTokens);
+        const typeClass = `callout-${escapeHtmlAttribute(t.calloutType)}`;
         const foldableClass = t.foldable ? ' callout-foldable' : '';
         const openAttr = t.foldable && !t.defaultOpen ? '' : ' open';
         if (t.foldable) {
-          return `<div class="callout callout-${t.calloutType}${foldableClass}">\n` +
-            `<details${openAttr}>\n<summary class="callout-title">${escapeInline(t.title)}</summary>\n` +
+          return `<div class="callout ${typeClass}${foldableClass}">\n` +
+            `<details${openAttr}>\n<summary class="callout-title">${titleHtml}</summary>\n` +
             `<div class="callout-content">\n${bodyHtml}</div>\n</details>\n</div>\n`;
         }
-        return `<div class="callout callout-${t.calloutType}">\n` +
-          `<div class="callout-title">${escapeInline(t.title)}</div>\n` +
+        return `<div class="callout ${typeClass}">\n` +
+          `<div class="callout-title">${titleHtml}</div>\n` +
           `<div class="callout-content">\n${bodyHtml}</div>\n</div>\n`;
       }
     }

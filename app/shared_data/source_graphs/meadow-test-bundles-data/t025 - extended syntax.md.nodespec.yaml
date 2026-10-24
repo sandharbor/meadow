@@ -19,6 +19,7 @@ nodespecs:
           - relativeLinkPath: http://www.example.com
           - relativeLinkPath: https://www.markdownguide.org
           - relativeLinkPath: https://www.markdownguide.org/extended-syntax/
+          - relativeLinkPath: https://example.com/callout-title
         footerSectionBacklinks:
           - relativeLinkPath: main page.html
             backlinkContexts:
