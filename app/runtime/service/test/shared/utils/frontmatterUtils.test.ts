@@ -82,4 +82,33 @@ This is content with existing frontmatter`;
       .toThrow(/Refusing to modify malformed frontmatter/);
     expect(fs.readFileSync(testFile)).toEqual(originalContent);
   });
+
+  // Frontmatter written by other editors and platforms: Windows line endings,
+  // a byte order mark, YAML's `...` document end, or a note that is only
+  // frontmatter with no final newline.
+  test.each([
+    ['Windows line endings', '---\r\ntitle: A\r\n---\r\nBody\r\n', 'Body\r\n'],
+    ['a byte order mark', '\uFEFF---\ntitle: A\n---\nBody\n', 'Body\n'],
+    ['a `...` closing line', '---\ntitle: A\n...\nBody\n', 'Body\n'],
+    ['no newline after the closing line', '---\ntitle: A\n---', ''],
+  ])('parses frontmatter with %s', (_variant, markdown, body) => {
+    expect(FrontmatterUtils.parseFromText(markdown)).toEqual({
+      frontmatter: { title: 'A' },
+      content: body,
+      hasFrontmatter: true,
+    });
+  });
+
+  test('reads meadow-sensitive from frontmatter with Windows line endings', () => {
+    const testFile = path.join(tempDir, 'crlf.md');
+    fs.writeFileSync(testFile, '---\r\nmeadow-sensitive: true\r\n---\r\nSecret\r\n');
+    expect(FrontmatterUtils.getSensitiveProperty(testFile)).toBe(true);
+  });
+
+  test('updates frontmatter with Windows line endings in place, keeping the line endings', () => {
+    const testFile = path.join(tempDir, 'crlf.md');
+    fs.writeFileSync(testFile, '---\r\ntitle: A\r\n---\r\nBody\r\n');
+    FrontmatterUtils.updateSensitiveProperty(testFile, true);
+    expect(fs.readFileSync(testFile, 'utf-8')).toBe('---\r\nmeadow-sensitive: true\r\ntitle: A\r\n---\r\nBody\r\n');
+  });
 });

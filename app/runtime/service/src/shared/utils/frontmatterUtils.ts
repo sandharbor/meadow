@@ -28,16 +28,62 @@ interface FrontmatterParseResult {
   hasFrontmatter: boolean;
 }
 
+interface FrontmatterUpdateSource extends FrontmatterParseResult {
+  /** How the note writes the frontmatter, so an update keeps it that way. */
+  style: FrontmatterStyle;
+}
+
+interface FrontmatterStyle {
+  byteOrderMark: string;
+  lineEnding: '\n' | '\r\n';
+}
+
+export interface FrontmatterSplit extends FrontmatterStyle {
+  /** The YAML between the delimiter lines. */
+  yaml: string;
+  /** The note after the closing line. */
+  body: string;
+}
+
+/**
+ * Splits a note's leading frontmatter from its body, or returns null when it
+ * has none. Matching Obsidian and Linkrange: an optional byte order mark, a
+ * first line of `---`, and the first later line of `---` or `...` closing it.
+ * Lines may end in `\n` or `\r\n`, and the closing line may end the note. An
+ * opening line that is never closed is not frontmatter.
+ */
+export function splitFrontmatter(text: string): FrontmatterSplit | null {
+  const byteOrderMark = text.startsWith('\uFEFF') ? '\uFEFF' : '';
+  const opening = /^---(\r?\n)/.exec(text.slice(byteOrderMark.length));
+  if (!opening) return null;
+  const yamlStart = byteOrderMark.length + opening[0].length;
+  let lineStart = yamlStart;
+  while (lineStart < text.length) {
+    const newline = text.indexOf('\n', lineStart);
+    const lineEnd = newline < 0 ? text.length : newline + 1;
+    const line = text.slice(lineStart, lineEnd).replace(/\r?\n$/, '');
+    if (line === '---' || line === '...') {
+      return {
+        byteOrderMark,
+        lineEnding: opening[1] as '\n' | '\r\n',
+        yaml: text.slice(yamlStart, lineStart),
+        body: text.slice(lineEnd),
+      };
+    }
+    lineStart = lineEnd;
+  }
+  return null;
+}
+
 export class FrontmatterUtils {
-  private static readonly FRONTMATTER_PATTERN = /^---\n([\s\S]*?)\n---\n/;
   
   /**
    * Parse frontmatter from markdown text
    */
   static parseFromText(markdownText: string): FrontmatterParseResult {
-    const match = markdownText.match(this.FRONTMATTER_PATTERN);
+    const split = splitFrontmatter(markdownText);
     
-    if (!match) {
+    if (!split) {
       return {
         frontmatter: {},
         content: markdownText,
@@ -45,8 +91,8 @@ export class FrontmatterUtils {
       };
     }
     
-    const frontmatterText = match[1];
-    const contentWithoutFrontmatter = markdownText.slice(match[0].length);
+    const frontmatterText = split.yaml;
+    const contentWithoutFrontmatter = split.body;
     
     try {
       const frontmatter = yaml.load(frontmatterText) as Record<string, unknown> || {};
@@ -77,19 +123,21 @@ export class FrontmatterUtils {
     return this.parseFromText(markdownText);
   }
 
-  private static parseFromFileForUpdate(filePath: string): FrontmatterParseResult {
+  private static parseFromFileForUpdate(filePath: string): FrontmatterUpdateSource {
     if (!fs.existsSync(filePath)) throw new Error(`File does not exist: ${filePath}`);
     const markdownText = fs.readFileSync(filePath, 'utf8');
-    const match = markdownText.match(this.FRONTMATTER_PATTERN);
-    if (!match) {
-      if (markdownText.startsWith('---\n')) {
+    const split = splitFrontmatter(markdownText);
+    if (!split) {
+      if (/^\uFEFF?---\r?\n/.test(markdownText)) {
         throw new Error(`Refusing to modify malformed frontmatter in ${filePath}`);
       }
-      return { frontmatter: {}, content: markdownText, hasFrontmatter: false };
+      // A new frontmatter block follows the note's own line endings.
+      const lineEnding = markdownText.includes('\r\n') ? '\r\n' : '\n';
+      return { frontmatter: {}, content: markdownText, hasFrontmatter: false, style: { byteOrderMark: '', lineEnding } };
     }
     let parsed: unknown;
     try {
-      parsed = yaml.load(match[1]);
+      parsed = yaml.load(split.yaml);
     } catch (error) {
       throw new Error(`Refusing to modify malformed frontmatter in ${filePath}: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -98,17 +146,22 @@ export class FrontmatterUtils {
     }
     return {
       frontmatter: (parsed ?? {}) as Record<string, unknown>,
-      content: markdownText.slice(match[0].length),
+      content: split.body,
       hasFrontmatter: true,
+      style: { byteOrderMark: split.byteOrderMark, lineEnding: split.lineEnding },
     };
   }
   
   /**
    * Combine frontmatter and content back into markdown text
    */
-  static combineToText(frontmatter: Record<string, unknown>, content: string): string {
+  static combineToText(
+    frontmatter: Record<string, unknown>,
+    content: string,
+    style: FrontmatterStyle = { byteOrderMark: '', lineEnding: '\n' }
+  ): string {
     if (Object.keys(frontmatter).length === 0) {
-      return content;
+      return style.byteOrderMark + content;
     }
     
     const frontmatterYaml = yaml.dump(frontmatter, {
@@ -118,7 +171,8 @@ export class FrontmatterUtils {
       sortKeys: true
     }).trim();
     
-    return `---\n${frontmatterYaml}\n---\n${content}`;
+    const newline = style.lineEnding;
+    return `${style.byteOrderMark}---${newline}${frontmatterYaml.replace(/\n/g, newline)}${newline}---${newline}${content}`;
   }
   
   /**
@@ -138,7 +192,7 @@ export class FrontmatterUtils {
     }
     
     // Combine back to markdown text
-    const updatedMarkdown = this.combineToText(updatedFrontmatter, parseResult.content);
+    const updatedMarkdown = this.combineToText(updatedFrontmatter, parseResult.content, parseResult.style);
     
     // Write back to file
     writeDurableDocument({
@@ -178,7 +232,7 @@ export class FrontmatterUtils {
     }
     
     // Combine back to markdown text
-    const updatedMarkdown = this.combineToText(updatedFrontmatter, parseResult.content);
+    const updatedMarkdown = this.combineToText(updatedFrontmatter, parseResult.content, parseResult.style);
     
     // Write back to file
     writeDurableDocument({

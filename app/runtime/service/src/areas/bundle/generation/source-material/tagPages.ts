@@ -116,15 +116,8 @@ export function rewriteObsidianTagsToWikiLinks(
   }
   rewritten += content.slice(cursor);
 
-  // If original markdown had frontmatter, preserve it.
-  // removeFrontmatter only removed it from `content`, so we need to stitch it back.
-  if (content !== markdown) {
-    const fmMatch = markdown.match(/^---\n[\s\S]*?\n---\n/);
-    if (fmMatch) {
-      return fmMatch[0] + rewritten;
-    }
-  }
-  return rewritten;
+  // `content` is `markdown` without its frontmatter; put the frontmatter back unchanged.
+  return markdown.slice(0, markdown.length - content.length) + rewritten;
 }
 
 export function listMarkdownFilesRecursive(rootDir: string, opts?: { excludeDirNames?: Set<string> }): string[] {

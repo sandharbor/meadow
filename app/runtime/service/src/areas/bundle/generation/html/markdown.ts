@@ -18,20 +18,19 @@ import * as yaml from 'js-yaml';
 import { BlockInfo } from './types.js';
 import { findCodeRanges, mapOutsideCode } from './markdownCode.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
-
-const FRONTMATTER_PATTERN = /^---\n[\s\S]*?\n---\n/;
+import { splitFrontmatter } from '../../../../shared/utils/frontmatterUtils.js';
 
 export function removeFrontmatter(markdownText: string): string {
-  return markdownText.replace(FRONTMATTER_PATTERN, '');
+  return splitFrontmatter(markdownText)?.body ?? markdownText;
 }
 
 export function frontmatterAsDict(markdownText: string): Record<string, unknown> {
-  const match = markdownText.match(FRONTMATTER_PATTERN);
-  if (!match) {
+  const split = splitFrontmatter(markdownText);
+  if (!split) {
     return {};
   }
   
-  const frontmatterText = match[0].slice(4, -4); // Remove the --- delimiters
+  const frontmatterText = split.yaml;
   try {
     return yaml.load(frontmatterText) as Record<string, unknown> || {};
   } catch (error) {
