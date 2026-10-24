@@ -66,7 +66,7 @@ import type { LinkResolvedInfo } from '../../../../../../../contracts/types/shar
 import { IMAGE_FILE_TYPES, KNOWN_FILE_TYPES } from './constants.js';
 import { encodePathForUrl } from '../../../../../../../shared_code/utils/urlUtils.js';
 import { HooksLoader } from '../utils/hooksLoader.js';
-import { frontmatterAsDict, inlineFootnotesToReferences, replaceOutsideCode, splitMarkdownBlocks } from './markdown.js';
+import { frontmatterAsDict, inlineFootnotesToReferences, replaceInProse, replaceOutsideCode, splitMarkdownBlocks } from './markdown.js';
 import { blankOutCode } from './markdownCode.js';
 import { HeldEmbeds, renderTransclusionToHtml } from './transclusion.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
@@ -505,8 +505,8 @@ export function renderPageToHtml(
   // Comments were already removed when the note was read (getMdContent).
   let convertedContent = convertWikiLinks(inlineFootnotesToReferences(mdContent));
 
-  // Convert :shortcode: emoji outside code fences.
-  convertedContent = replaceOutsideCode(
+  // Convert :shortcode: emoji in prose (not in code, addresses or HTML tags).
+  convertedContent = replaceInProse(
     convertedContent,
     /:([a-z0-9_+-]+):/gi,
     (match: string, name: string) => (nodeEmoji.has(name) ? nodeEmoji.get(name) ?? match : match)

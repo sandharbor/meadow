@@ -24,7 +24,7 @@ limitations under the License.
 // Only a page's own headings and blocks receive ids. Transcluded content is
 // rendered without them, because those anchors belong to the embedded page.
 
-import type { MarkedExtension } from 'marked';
+import type { MarkedExtension, Token } from 'marked';
 import { replaceOutsideCode } from './markdown.js';
 
 export function headingSlug(heading: string): string {
@@ -53,25 +53,43 @@ export function markdownHrefFragment(encodedAnchor: string): string {
   }
 }
 
-let renderingPageHeadings = false;
+/** Slugs used so far on the page being rendered; undefined outside a page render. */
+let pageHeadingSlugs: Map<string, number> | undefined;
 
-/** Runs a render of the page's own Markdown, during which headings receive ids. */
+/**
+ * Runs a render of the page's own Markdown, during which headings receive ids.
+ * A heading whose slug is already used on the page gets `-1`, `-2`, … so each
+ * can be linked to; a link to the heading text reaches the first, as in
+ * Obsidian.
+ */
 export function withPageHeadingIds<T>(render: () => T): T {
-  renderingPageHeadings = true;
+  pageHeadingSlugs = new Map();
   try {
     return render();
   } finally {
-    renderingPageHeadings = false;
+    pageHeadingSlugs = undefined;
   }
+}
+
+/** A heading's text as a reader sees it: link text without its address, no markup. */
+function plainText(tokens: Token[]): string {
+  return tokens.map(token => {
+    if ('tokens' in token && token.tokens?.length) return plainText(token.tokens);
+    if (token.type === 'html' || token.type === 'image') return '';
+    return 'text' in token ? token.text : '';
+  }).join('');
 }
 
 export const headingIds: MarkedExtension = {
   renderer: {
-    heading({ tokens, depth, text }) {
-      const id = headingSlug(text);
-      if (!renderingPageHeadings || !id) {
+    heading({ tokens, depth }) {
+      const slug = headingSlug(plainText(tokens));
+      if (!pageHeadingSlugs || !slug) {
         return false;
       }
+      const repeats = pageHeadingSlugs.get(slug) ?? 0;
+      pageHeadingSlugs.set(slug, repeats + 1);
+      const id = repeats === 0 ? slug : `${slug}-${repeats}`;
       return `<h${depth} id="${id}">${this.parser.parseInline(tokens)}</h${depth}>\n`;
     }
   }

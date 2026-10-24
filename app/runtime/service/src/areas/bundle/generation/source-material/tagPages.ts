@@ -16,7 +16,9 @@ limitations under the License.
 
 import fs from 'fs';
 import path from 'path';
+import * as yaml from 'js-yaml';
 import { removeFrontmatter } from '../html/markdown.js';
+import { splitFrontmatter } from '../../../../shared/utils/frontmatterUtils.js';
 import { blankOutCode } from '../html/markdownCode.js';
 
 /**
@@ -43,6 +45,7 @@ const NOT_TAG_TEXT = [
   /\]\([^)]*\)/g, // Markdown link destinations
   /<\/?[A-Za-z][^>]*>/g, // HTML tags, including their attributes
   /&(?:#[0-9]+|#[xX][0-9a-fA-F]+|[A-Za-z][A-Za-z0-9]*);/g, // HTML entities
+  /\{#[^}\s]*\}/g, // a custom heading id: `## Heading {#id}`
 ];
 
 export function normalizeTagToKey(tagBody: string): string {
@@ -66,36 +69,58 @@ interface TagOccurrence {
 }
 
 /**
- * Finds tags outside code, headings and NOT_TAG_TEXT. Those are blanked out
- * first, so the offsets refer to the original content.
+ * Finds tags outside code and NOT_TAG_TEXT. Those are blanked out first, so
+ * the offsets refer to the original content. A heading may contain tags; its
+ * own `#` marks are followed by a space, so they are never tags.
  */
 function findTags(content: string): TagOccurrence[] {
   const tags: TagOccurrence[] = [];
   let lineStart = 0;
   for (const line of blankOutCode(content).split('\n')) {
-    // Skip markdown headings (avoid confusing "# Heading" for a tag)
-    if (!/^#{1,6}\s/.test(line.trimStart())) {
-      const scannable = NOT_TAG_TEXT.reduce((text, pattern) => text.replace(pattern, found => ' '.repeat(found.length)), line);
-      TAG_BODY_RE.lastIndex = 0;
-      let match: RegExpExecArray | null;
-      while ((match = TAG_BODY_RE.exec(scannable)) !== null) {
-        const body = match[2];
-        if (!body || isAllNumeric(body)) continue;
-        tags.push({ start: lineStart + match.index + match[1].length, body });
-      }
+    const scannable = NOT_TAG_TEXT.reduce((text, pattern) => text.replace(pattern, found => ' '.repeat(found.length)), line);
+    TAG_BODY_RE.lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = TAG_BODY_RE.exec(scannable)) !== null) {
+      const body = match[2];
+      if (!body || isAllNumeric(body)) continue;
+      tags.push({ start: lineStart + match.index + match[1].length, body });
     }
     lineStart += line.length + 1;
   }
   return tags;
 }
 
+const WHOLE_TAG = new RegExp(`^${TAG_BODY_PATTERN}$`, 'u');
+
+/**
+ * The tags in a note's `tags` frontmatter property: a list, or a string of
+ * tags separated by commas or spaces, each with or without `#`. Excalidraw
+ * drawings are skipped, since their Markdown is the drawing's data.
+ */
+function frontmatterTags(markdown: string): string[] {
+  const split = splitFrontmatter(markdown);
+  if (!split || /^excalidraw-plugin:/m.test(split.yaml)) return [];
+  let data: unknown;
+  try {
+    data = yaml.load(split.yaml);
+  } catch {
+    return [];
+  }
+  const value = data && typeof data === 'object' ? (data as Record<string, unknown>).tags : undefined;
+  const values = Array.isArray(value) ? value : typeof value === 'string' ? value.split(/[\s,]+/) : [];
+  return values
+    .map(tag => String(tag).trim().replace(/^#/, ''))
+    .filter(tag => WHOLE_TAG.test(tag) && !isAllNumeric(tag));
+}
+
 export function extractObsidianTagsFromMarkdown(markdown: string): Map<string, string> {
   // Returns map tagKey -> exampleOriginalBody (for display)
   const tagKeyToExample = new Map<string, string>();
-  for (const tag of findTags(removeFrontmatter(markdown))) {
-    const key = normalizeTagToKey(tag.body);
+  const bodies = [...frontmatterTags(markdown), ...findTags(removeFrontmatter(markdown)).map(tag => tag.body)];
+  for (const body of bodies) {
+    const key = normalizeTagToKey(body);
     if (!tagKeyToExample.has(key)) {
-      tagKeyToExample.set(key, tag.body);
+      tagKeyToExample.set(key, body);
     }
   }
   return tagKeyToExample;
@@ -115,6 +140,14 @@ export function rewriteObsidianTagsToWikiLinks(
     cursor = tag.start + 1 + tag.body.length;
   }
   rewritten += content.slice(cursor);
+
+  // Frontmatter tags do not appear in the text, so they are shown, as
+  // Obsidian shows them, as a line of tag links at the top of the note.
+  const fromFrontmatter = frontmatterTags(markdown);
+  if (fromFrontmatter.length) {
+    const links = fromFrontmatter.map(tag => `[[${tagBodyToPageTitle(tag)}|#${tag}]]`).join(' ');
+    rewritten = `${links}\n\n${rewritten}`;
+  }
 
   // `content` is `markdown` without its frontmatter; put the frontmatter back unchanged.
   return markdown.slice(0, markdown.length - content.length) + rewritten;

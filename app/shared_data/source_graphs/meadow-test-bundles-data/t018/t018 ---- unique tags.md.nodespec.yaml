@@ -19,6 +19,8 @@ nodespecs:
           - relativeLinkPath: ../_mw_gen/tagpages/tag--日本語-t018.html
           - relativeLinkPath: ../_mw_gen/tagpages/tag--t018-unique-d.html
           - relativeLinkPath: ../_mw_gen/tagpages/tag--t018-unique-e.html
+          - relativeLinkPath: ../_mw_gen/tagpages/tag--t018-heading-tag.html
+          - relativeLinkPath: ../_mw_gen/tagpages/tag--t018-frontmatter-tag.html
         footerSectionBacklinks:
           - relativeLinkPath: ../t018 - tags.html
             backlinkContexts:

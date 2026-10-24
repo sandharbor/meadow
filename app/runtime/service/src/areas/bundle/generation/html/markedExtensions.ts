@@ -368,7 +368,31 @@ const mathParenInline: MarkedExtension = {
   ]
 };
 
+// Obsidian task statuses: a list item starting with any single character
+// between brackets (`- [?]`, `- [-]`) is a completed task, like `- [x]`.
+// marked recognizes only `[ ]` and `[x]`, so this marks the others.
+const taskStatuses: MarkedExtension = {
+  walkTokens(token) {
+    if (token.type !== 'list_item' || token.task) return;
+    const first = token.tokens?.[0];
+    if (!first || !('text' in first)) return;
+    const status = /^\[([^\]\s])\] /.exec(first.text);
+    if (!status) return;
+    const prefix = status[0];
+    token.task = true;
+    token.checked = true;
+    first.text = first.text.slice(prefix.length);
+    first.raw = first.raw.replace(prefix, '');
+    const inner = 'tokens' in first ? first.tokens?.[0] : undefined;
+    if (inner && 'text' in inner) {
+      inner.text = inner.text.slice(prefix.length);
+      inner.raw = inner.raw.replace(prefix, '');
+    }
+  }
+};
+
 export const extendedSyntaxExtensions: MarkedExtension[] = [
+  taskStatuses,
   highlight,
   subscript,
   superscript,

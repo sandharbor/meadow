@@ -110,6 +110,27 @@ export function inlineFootnotesToReferences(markdown: string): string {
   return definitions.length ? `${out}\n\n${definitions.join('\n\n')}\n` : out;
 }
 
+// Text that is part of an address or an HTML tag rather than prose: a
+// Markdown link destination, an autolink or HTML tag, or a bare URL.
+const ADDRESS_OR_TAG = /\]\([^)]*\)|<[^>\n]*>|\bhttps?:\/\/[^\s<>()]+/g;
+
+/** Like replaceOutsideCode, but also leaves addresses and HTML tags as written. */
+export function replaceInProse(
+  markdown: string,
+  pattern: RegExp,
+  replacer: (substring: string, ...args: string[]) => string
+): string {
+  return mapOutsideCode(markdown, text => {
+    let out = '';
+    let cursor = 0;
+    for (const address of text.matchAll(ADDRESS_OR_TAG)) {
+      out += text.slice(cursor, address.index).replace(pattern, replacer) + address[0];
+      cursor = address.index + address[0].length;
+    }
+    return out + text.slice(cursor).replace(pattern, replacer);
+  });
+}
+
 /**
  * Applies a regex replacement only to text outside of code blocks and inline
  * code spans (see markdownCode.ts). Code is preserved verbatim.
