@@ -17,7 +17,7 @@ limitations under the License.
 import path from 'path';
 import fs from 'fs';
 import type { BundleNodeConfig } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
-import { IMAGE_SIZE_PATTERN, imageSizeStyle, linkTextToLinkInfo, normalizePageTitle, calculateRelativePath, escapeHtmlAttribute } from './shared.js';
+import { IMAGE_SIZE_PATTERN, imageSizeStyle, linkTextToLinkInfo, normalizePageTitle, calculateRelativePath, escapeHtmlAttribute, readLinkedNote } from './shared.js';
 import type { LinkInfo, PageNameToPage } from './types.js';
 import { BundleConfig } from '../../../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
 import type { LinkResolvedInfo } from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode.js';
@@ -784,10 +784,13 @@ export function linkOrImageHtml(
       }
       // A Markdown target's anchor names one of our generated heading or block
       // ids; a native HTML page's anchor is kept exactly as written.
-      const anchor = linkText.replace(/\\\|/g, '|').split('|')[0].split('#')[1];
+      const target = linkText.replace(/\\\|/g, '|').split('|')[0];
+      const anchor = target.includes('#') ? target.slice(target.indexOf('#') + 1) : '';
       let section = '';
       if (anchor) {
-        section = targetFileType === 'md' ? pageLinkFragment(anchor) : `#${encodeURIComponent(anchor.trim())}`;
+        section = targetFileType === 'md'
+          ? pageLinkFragment(anchor, readLinkedNote(baseContentDirectory || directory, resolvedInfo?.link_resolved_target_path))
+          : `#${encodeURIComponent(anchor.trim())}`;
       }
       return `[${textToDisplayInHyperlink}](${relativeUrl}${section})`;
     } else if (processingMode === 'single-page') {

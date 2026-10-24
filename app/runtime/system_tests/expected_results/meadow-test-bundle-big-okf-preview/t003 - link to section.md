@@ -9,3 +9,5 @@ The same section through a Markdown link: [Section 2](t003%20----%20page%20with%
 And a link to a specific, other, block `a-block`: [t003 ---- page with section to link to](/t003%20----%20page%20with%20section%20to%20link%20to.md#%5Ea-block)
 
 The `Section 2` Heading again, shown with the display text `the second section`: [the second section](/t003%20----%20page%20with%20section%20to%20link%20to.md#Section%202)
+
+A link through a chain of headings, `Section 2` then its subsection `Details: and notes` (Obsidian leaves the `:` out of the link): [t003 ---- page with section to link to](/t003%20----%20page%20with%20section%20to%20link%20to.md#Section%202%23Details%20and%20notes)

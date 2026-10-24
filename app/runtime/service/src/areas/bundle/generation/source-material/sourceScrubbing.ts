@@ -124,6 +124,10 @@ function isLinkSafeForSourceScrubbing(
   bundleNodeConfigsForLinks: BundleNodeConfig[],
   linkResolutionMap?: LinkResolutionMap
 ): boolean {
+  // A same-page link (`[[#Heading]]`) points into the page being published.
+  if (linkText.startsWith('#')) {
+    return true;
+  }
   if (hasOwnLinkResolution(linkResolutionMap, linkText)) {
     const resolved = linkResolutionMap?.[linkText];
     if (!resolved?.link_resolved_target_path) {

@@ -31,8 +31,7 @@ import {
   normalizePageTitle,
 } from './shared.js';
 import { inlineFootnotesToReferences, replaceOutsideCode, splitMarkdownBlocks } from './markdown.js';
-import { findCodeRanges } from './markdownCode.js';
-import { styleBlockIds } from './pageAnchors.js';
+import { findHeading, noteHeadings, styleBlockIds } from './pageAnchors.js';
 import { markdownLinks, withInternalLinks } from './markedLinks.js';
 import { HooksLoader } from '../utils/hooksLoader.js';
 import { replaceSrsCardsWithCustomElements } from '../render-source/srsMarkdown.js';
@@ -216,64 +215,13 @@ function extractFullPageMarkdown(md: string): string {
 }
 
 function extractSectionMarkdown(md: string, sectionName: string): string {
-  const lines = md.split('\n');
-  let startIdx = -1;
-  let startLevel = 0;
-
-  const normalizedTarget = sectionName.trim();
-
-  // A line inside a code block, such as a shell `# comment`, is not a heading.
-  const codeLines = blockCodeLineIndexes(md);
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const match = codeLines.has(i) ? null : /^(#{1,6})\s+(.*)$/.exec(line.trim());
-    if (!match) continue;
-    const level = match[1].length;
-    const headerText = match[2].trim();
-    if (headerText === normalizedTarget) {
-      startIdx = i;
-      startLevel = level;
-      break;
-    }
-  }
-
-  if (startIdx < 0) {
-    return '';
-  }
-
-  const out: string[] = [];
-  out.push(lines[startIdx]);
-  for (let i = startIdx + 1; i < lines.length; i++) {
-    const line = lines[i];
-    const match = codeLines.has(i) ? null : /^(#{1,6})\s+/.exec(line.trim());
-    if (match) {
-      const level = match[1].length;
-      if (level <= startLevel) {
-        break;
-      }
-    }
-    out.push(line);
-  }
-
-  return out.join('\n').trim();
-}
-
-/** The indexes of the lines that are inside fenced or indented code blocks. */
-function blockCodeLineIndexes(md: string): Set<number> {
-  const indexes = new Set<number>();
-  let lineStart = 0;
-  const lineStarts = md.split('\n').map(line => {
-    const start = lineStart;
-    lineStart += line.length + 1;
-    return start;
-  });
-  for (const range of findCodeRanges(md).filter(r => r.kind === 'block')) {
-    lineStarts.forEach((start, index) => {
-      if (start >= range.start && start < range.end) indexes.add(index);
-    });
-  }
-  return indexes;
+  // Found the way links find headings: by text, regardless of letter case and
+  // of punctuation Obsidian leaves out of links, through a chain of headings,
+  // and whether the heading is written with `#`s (closing ones too) or
+  // underlined. Only a heading at the top level of the note has a section.
+  const heading = findHeading(noteHeadings(md), sectionName.split('#'));
+  if (!heading?.section) return '';
+  return md.replace(/\r\n?/g, '\n').slice(heading.section.start, heading.section.end).trim();
 }
 
 const LIST_ITEM_LINE = /^([ \t]*)(?:[-*+]|\d{1,9}[.)])[ \t]/;

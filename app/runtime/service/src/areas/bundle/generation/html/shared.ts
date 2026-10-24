@@ -15,6 +15,7 @@ limitations under the License.
 */
 
 import * as fs from 'fs';
+import * as path from 'path';
 import he from 'he';
 import { Page } from './page.js';
 import { IMAGE_EXTENSIONS, LINK_PATTERN } from './constants.js';
@@ -25,6 +26,17 @@ import { BundleConfig } from '../../../../../../../contracts/types/shared/bundle
 import { HooksLoader } from '../utils/hooksLoader.js';
 import { logBundleDebug, logBundleWarn } from '../../../../shared/utils/logging/bundleLogger.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
+
+/**
+ * A link target's Markdown as it renders (no frontmatter or comments), for
+ * finding its headings, or undefined when it is not a readable Markdown file.
+ */
+export function readLinkedNote(contentDirectory: string | undefined, resolvedTargetPath: string | null | undefined): string | undefined {
+  if (!contentDirectory || !resolvedTargetPath || !/\.md$/i.test(resolvedTargetPath)) return undefined;
+  const filePath = path.join(contentDirectory, resolvedTargetPath.replace(/^\//, ''));
+  if (!fs.existsSync(filePath)) return undefined;
+  return removeComments(removeFrontmatter(fs.readFileSync(filePath, 'utf-8')));
+}
 
 export function normalizePageTitle(pageTitle: string, bundleConfig: BundleConfig, bundleSlug?: string): string {
   if (bundleSlug) {
@@ -158,12 +170,14 @@ export function linkTextToLinkInfo(link: string): LinkInfo {
   } else {
     // [[filename#optional section name|optional alternative name]]
     const [target, alternativeName] = link.split('|');
-    const parts = target.split('#');
+    // The note is everything before the first `#`; the rest is a block, a
+    // heading, or a chain of headings (`Heading#Subheading`).
+    const hash = target.indexOf('#');
     return {
       type: 'page',
-      filename: parts[0],
+      filename: hash < 0 ? target : target.slice(0, hash),
       alternative_name: alternativeName,
-      section: parts.length > 1 ? parts[1] : undefined
+      section: hash < 0 ? undefined : target.slice(hash + 1)
     };
   }
 }

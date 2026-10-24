@@ -25,7 +25,7 @@ import { markedHighlight } from 'marked-highlight';
 import hljs from 'highlight.js';
 import * as nodeEmoji from 'node-emoji';
 import { extendedSyntaxExtensions } from './markedExtensions.js';
-import { headingIds, markdownHrefFragment, styleBlockIds, withPageHeadingIds } from './pageAnchors.js';
+import { headingIds, markdownHrefFragment, pageLinkFragment, styleBlockIds, withPageHeadingIds } from './pageAnchors.js';
 import {
   markdownLinkDestinations,
   markdownLinkStems,
@@ -48,6 +48,7 @@ import { BundleNodeConfig } from '../../../../../../../contracts/types/shared/bu
 import {
   altTextAndSize,
   imageSizeStyle,
+  readLinkedNote,
   normalizePageTitle,
   getMdContent,
   anchorNameFor,
@@ -335,7 +336,9 @@ export function renderPageToHtml(
 
     // Then handle regular wiki links
     mdContent = replaceOutsideCode(mdContent, /\[\[(.*?)\]\]/g, (_match: string, linkText: string) =>
-      linkOrImageHtml(linkText, highlightDoNotLinkPageName, overrides)
+      linkText.startsWith('#')
+        ? samePageLink(linkText, overrides)
+        : linkOrImageHtml(linkText, highlightDoNotLinkPageName, overrides)
     );
 
     // Standard Markdown links that marked cannot parse: Obsidian accepts
@@ -346,6 +349,19 @@ export function renderPageToHtml(
     );
 
     return mdContent;
+  }
+
+  /**
+   * A same-page link (`[[#Heading]]`, `[[#^block]]`, optionally with display
+   * text) to a heading or block of this page, found among the page's own
+   * headings. In a backlink context the link belongs to another page, so its
+   * text is shown without a link there.
+   */
+  function samePageLink(linkText: string, overrides?: WikiLinkOverrides): string {
+    const [target, alias] = linkText.replace(/\\\|/g, '|').split('|');
+    const anchor = target.slice(1);
+    const label = alias ?? anchor;
+    return overrides ? label : `[${label}](${pageLinkFragment(anchor, markdownForAnchors)})`;
   }
 
   /**
@@ -479,7 +495,7 @@ export function renderPageToHtml(
       let suffix = bundleConfig.sources || href.startsWith('source://') ? rawSuffix : '';
       if (renderedPageFileType === 'md') {
         const anchor = rawSuffix.split('#')[1];
-        suffix = anchor ? markdownHrefFragment(anchor) : '';
+        suffix = anchor ? markdownHrefFragment(anchor, readLinkedNote(baseContentDirectory || directory, resolvedPath)) : '';
       }
       return `<a href="${relativeUrl}${suffix}"${titleAttr}>${text}</a>`;
     } else if (processingMode === 'single-page') {

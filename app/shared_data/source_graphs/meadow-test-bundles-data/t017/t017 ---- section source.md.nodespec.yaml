@@ -25,6 +25,14 @@ nodespecs:
                 embeddedLinks:
                   - linkName: ⤢
                     linkRelativePath: t017 ---- section source.html
+              - seeInContextLinkRelativePath: t017 ---- section transclusion.html
+                embeddedLinks:
+                  - linkName: ⤢
+                    linkRelativePath: t017 ---- section source.html
+              - seeInContextLinkRelativePath: t017 ---- section transclusion.html
+                embeddedLinks:
+                  - linkName: ⤢
+                    linkRelativePath: t017 ---- section source.html
   - bundle: meadow-test-bundle-small
     sourcing:
       isInWorkingGraph: false

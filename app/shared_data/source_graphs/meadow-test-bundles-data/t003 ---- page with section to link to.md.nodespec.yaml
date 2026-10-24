@@ -13,10 +13,14 @@ nodespecs:
       isTracked: true
     generation:
       htmlRenderedLinks:
-        mainSectionLinks: []
+        mainSectionLinks:
+          - relativeLinkPath: "#section-1"
+          - relativeLinkPath: "#^a-block"
         footerSectionBacklinks:
           - relativeLinkPath: t003 - link to section.html
             backlinkContexts:
+              - seeInContextLinkRelativePath: t003 - link to section.html
+                embeddedLinks: []
               - seeInContextLinkRelativePath: t003 - link to section.html
                 embeddedLinks: []
               - seeInContextLinkRelativePath: t003 - link to section.html
