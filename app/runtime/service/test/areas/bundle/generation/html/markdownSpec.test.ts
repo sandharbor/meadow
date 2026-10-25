@@ -36,7 +36,7 @@ const DELIBERATE: Record<string, string[]> = {
   'Scripts are removed from notes, as Obsidian\'s reading view runs none': ['cm-170', 'cm-178'],
   '`[[…]]` is a wikilink, so it takes the place of bracketed link text': ['cm-548', 'cm-559', 'cm-590'],
   'A link to a local file that is not in the bundle shows "link not tracked"':
-    ['cm-484', 'cm-573', 'cm-576', 'cm-577', 'cm-578', 'cm-579'],
+    ['cm-484', 'cm-517', 'cm-531', 'cm-573', 'cm-576', 'cm-577', 'cm-578', 'cm-579'],
 };
 
 const BUGS: Record<string, string[]> = {
@@ -51,13 +51,6 @@ const BUGS: Record<string, string[]> = {
     ['cm-126', 'cm-127', 'cm-137', 'cm-139', 'cm-237'],
   'G26d: a block anchor after a line ending in a hard break turns the break into a visible one': ['cm-226', 'cm-644', 'cm-645'],
   'G26e: a block anchor after an empty link reference definition becomes its destination': ['cm-199'],
-  'G26f: link destinations are not percent-encoded, and a quote in one ends the attribute':
-    ['cm-20', 'cm-195', 'cm-202', 'cm-206', 'cm-346', 'cm-489', 'cm-502', 'cm-504', 'cm-507'],
-  'G26g: an entity in a link title is escaped again': ['cm-32', 'cm-33', 'cm-506'],
-  'G26h: an escaped `[` becomes a space and a bracket': ['cm-17', 'cm-549', 'cm-592', 'cm-603'],
-  'G26i: `\\[ … \\]` renders as display math, which is not Obsidian syntax': ['cm-12'],
-  'G26j: the pass for links with spaces in their destination also takes links without, so an image inside a link breaks it':
-    ['cm-517', 'cm-531'],
 };
 
 interface Example { id: string; markdown: string }

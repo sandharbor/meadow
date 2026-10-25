@@ -300,8 +300,13 @@ const mathBracketBlock: MarkedExtension = {
     {
       name: 'mathBracketBlock',
       level: 'block',
+      // Display math starts a line. marked ends a paragraph wherever a block
+      // may start, and asks from the paragraph's second character on, so only
+      // a `\[` right after a line break counts: an escaped `\[` elsewhere is
+      // text.
       start(src: string) {
-        return src.indexOf('\\[');
+        const index = src.indexOf('\n\\[');
+        return index < 0 ? undefined : index + 1;
       },
       tokenizer(src: string) {
         const match = /^\\\[([\s\S]+?)\\\]/.exec(src);

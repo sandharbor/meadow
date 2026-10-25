@@ -32,7 +32,7 @@ import {
 } from './shared.js';
 import { inlineFootnotesToReferences, replaceOutsideCode, splitMarkdownBlocks } from './markdown.js';
 import { findHeading, noteHeadings, styleBlockIds } from './pageAnchors.js';
-import { markdownLinks, withInternalLinks } from './markedLinks.js';
+import { markdownLinks, SPACED_DESTINATION_LINK, withInternalLinks } from './markedLinks.js';
 import { HooksLoader } from '../utils/hooksLoader.js';
 import { replaceSrsCardsWithCustomElements } from '../render-source/srsMarkdown.js';
 
@@ -389,7 +389,7 @@ export function renderTransclusionToHtml(linkText: string, options: Transclusion
     options.renderMarkdownLink?.(link, linkResolutionMapForSourcePage) ?? null;
   const withSpacedMarkdownLinks = replaceOutsideCode(
     expandedMd,
-    /(!?)\[([^\]]+)\]\(([^)]+)\)/g,
+    SPACED_DESTINATION_LINK,
     (match: string, bang: string, text: string, href: string) =>
       renderMarkdownLink({ href, textHtml: text, isImage: bang === '!' }) ?? match,
     { htmlBlocks: true }

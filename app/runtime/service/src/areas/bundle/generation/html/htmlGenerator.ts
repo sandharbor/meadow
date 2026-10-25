@@ -33,6 +33,8 @@ import {
   markdownLinks,
   referenceDefinitionMarkdown,
   referenceDefinitions,
+  SPACED_DESTINATION_LINK,
+  titleAttribute,
   withInternalLinks,
 } from './markedLinks.js';
 import handlebars from 'handlebars';
@@ -324,7 +326,7 @@ export function createNoteRenderer(context: NoteRenderContext) {
     // Standard Markdown links that marked cannot parse: Obsidian accepts
     // unescaped spaces in a destination, as in [text](relative/my page.md).
     // marked renders every other form through markdownLinkHtml below.
-    mdContent = replaceOutsideCode(mdContent, /(!?)\[([^\]]+)\]\(([^)]+)\)/g, (match: string, bang: string, text: string, href: string) =>
+    mdContent = replaceOutsideCode(mdContent, SPACED_DESTINATION_LINK, (match: string, bang: string, text: string, href: string) =>
       markdownLinkHtml(bang === '!', text, href, highlightDoNotLinkPageName, overrides) ?? match,
       { htmlBlocks: true }
     );
@@ -358,7 +360,7 @@ export function createNoteRenderer(context: NoteRenderContext) {
     overrides?: WikiLinkOverrides,
     title?: string | null
   ): string | null {
-    const titleAttr = title ? ` title="${escapeHtmlAttribute(title)}"` : '';
+    const titleAttr = titleAttribute(title);
     // Skip external links
     if (href.startsWith('http://') || href.startsWith('https://')) {
       return null;

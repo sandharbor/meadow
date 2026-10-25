@@ -32,6 +32,28 @@ export type InternalLinkRenderer = (link: { href: string; title?: string | null;
 
 let renderInternalLink: InternalLinkRenderer | undefined;
 
+const ATTRIBUTE_ESCAPES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+
+/**
+ * A link's ` title="…"` attribute, or nothing without a title. marked leaves
+ * character references in a title as written (`&ouml;`), so they are kept
+ * rather than escaped again, as marked's own renderer does.
+ */
+export function titleAttribute(title: string | null | undefined): string {
+  if (!title) return '';
+  const escaped = title.replace(/[<>"']|&(?!(?:#\d{1,7}|#[Xx][a-fA-F0-9]{1,6}|\w+);)/g, character => ATTRIBUTE_ESCAPES[character]);
+  return ` title="${escaped}"`;
+}
+
+/** A link destination percent-encoded for an attribute, as marked writes one, or null if it cannot be. */
+export function encodedDestination(href: string): string | null {
+  try {
+    return encodeURI(href).replace(/%25/g, '%');
+  } catch {
+    return null;
+  }
+}
+
 /** Runs a render of a page's Markdown, during which links are offered to `renderer` first. */
 export function withInternalLinks<T>(renderer: InternalLinkRenderer, render: () => T): T {
   const outer = renderInternalLink;
@@ -51,10 +73,11 @@ export const markdownLinks: MarkedExtension = {
       if (internal != null) {
         return internal;
       }
-      const titleAttr = title ? ` title="${escapeHtmlAttribute(title)}"` : '';
+      const destination = encodedDestination(href);
+      if (destination === null) return text;
       const isExternal = href.startsWith('http://') || href.startsWith('https://');
       const externalAttrs = isExternal ? ' rel="noreferrer noopener" target="_blank"' : '';
-      return `<a href="${href}"${titleAttr}${externalAttrs}>${text}</a>`;
+      return `<a href="${destination}"${titleAttribute(title)}${externalAttrs}>${text}</a>`;
     },
     image({ href, title, text }) {
       const internal = renderInternalLink?.({ href, title, textHtml: text, isImage: true });
@@ -62,11 +85,19 @@ export const markdownLinks: MarkedExtension = {
       // Obsidian writes an image's size where its alt text goes: ![250](url), ![alt|250](url).
       const { alt, size } = altTextAndSize(text);
       if (!size) return false;
-      const titleAttr = title ? ` title="${escapeHtmlAttribute(title)}"` : '';
-      return `<img src="${href}" alt="${escapeHtmlAttribute(alt)}"${imageSizeStyle(size)}${titleAttr}>`;
+      const destination = encodedDestination(href);
+      if (destination === null) return false;
+      return `<img src="${destination}" alt="${escapeHtmlAttribute(alt)}"${imageSizeStyle(size)}${titleAttribute(title)}>`;
     }
   }
 };
+
+/**
+ * A link or image whose destination has a space and no quote (a quote would
+ * start a title): not a Markdown link to marked, but Obsidian accepts it, as
+ * in `[text](my page.md)`. Groups: `!` for an image, the text, the destination.
+ */
+export const SPACED_DESTINATION_LINK = /(!?)\[([^\]]+)\]\(([^)<>"'\n]*\s[^)<>"'\n]*)\)/g;
 
 // Links are found with a plain marked instance of their own: the page
 // renderer's extensions keep per-document state (footnote numbering, for one)
@@ -100,9 +131,8 @@ export function markdownLinkDestinations(markdown: string, definitions: Links = 
   const lexer = new linkScanner.Lexer(linkScanner.defaults);
   Object.assign(lexer.tokens.links, definitions);
   collectLinkDestinations(lexer.lex(markdown), destinations);
-  // A destination with a space and no quotes (a quote would start a title).
-  for (const match of blankOutCode(markdown).matchAll(/(?<!!)\[[^\]]+\]\(([^)<>"'\n]*\s[^)<>"'\n]*)\)/g)) {
-    destinations.push(match[1].trim());
+  for (const match of blankOutCode(markdown).matchAll(SPACED_DESTINATION_LINK)) {
+    if (!match[1]) destinations.push(match[3].trim());
   }
   return destinations;
 }
