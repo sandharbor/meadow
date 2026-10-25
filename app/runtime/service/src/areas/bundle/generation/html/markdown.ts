@@ -151,38 +151,42 @@ export function splitMarkdownBlocks(markdownText: string): BlockInfo[] {
   let currentBlock: string[] = [];
   let currentType: BlockInfo['type'] | null = null;
 
-  // Each code block, as the line range it covers, is kept whole.
-  const codeBlockLines: { first: number; last: number }[] = [];
+  // Each code block, and each HTML block that starts a block of its own, as
+  // the line range it covers, is kept whole. An HTML block right after a
+  // paragraph line stays with that paragraph, as a card's review comment
+  // (`<!--SR:…-->`) stays with its card.
+  const wholeBlockLines: { first: number; last: number; type: BlockInfo['type'] }[] = [];
   let offset = 0;
   const lineStarts = lines.map(line => {
     const start = offset;
     offset += line.length + 1;
     return start;
   });
-  for (const range of findCodeRanges(markdownText).filter(r => r.kind === 'block')) {
+  for (const range of findCodeRanges(markdownText, { htmlBlocks: true }).filter(r => r.kind === 'block' || r.kind === 'html')) {
     const first = lineStarts.indexOf(range.start);
     let last = first;
     while (last + 1 < lines.length && lineStarts[last + 1] < range.end) last++;
-    codeBlockLines.push({ first, last });
+    wholeBlockLines.push({ first, last, type: range.kind === 'block' ? 'code' : 'paragraph' });
   }
 
   for (let index = 0; index < lines.length; index++) {
     const line = lines[index];
 
-    const codeBlock = codeBlockLines.find(block => block.first === index);
-    if (codeBlock) {
+    const wholeBlock = wholeBlockLines.find(block => block.first === index &&
+      (block.type === 'code' || currentBlock.length === 0));
+    if (wholeBlock) {
       if (currentBlock.length > 0) {
         blocks.push({ type: currentType!, content: currentBlock.join('\n') });
         currentBlock = [];
         currentType = null;
       }
-      blocks.push({ type: 'code', content: lines.slice(codeBlock.first, codeBlock.last + 1).join('\n') });
-      index = codeBlock.last;
+      blocks.push({ type: wholeBlock.type, content: lines.slice(wholeBlock.first, wholeBlock.last + 1).join('\n') });
+      index = wholeBlock.last;
       continue;
     }
 
-    // Handle headers
-    if (line.trim().startsWith('#')) {
+    // Handle headers: `#` to `######` and a space, so a `#tag` line is text
+    if (/^ {0,3}#{1,6}(?:[ \t]|$)/.test(line)) {
       if (currentBlock.length > 0) {
         blocks.push({ type: currentType!, content: currentBlock.join('\n') });
         currentBlock = [];

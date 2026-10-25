@@ -242,10 +242,10 @@ export function mapOutsideCode(markdown: string, replace: (text: string) => stri
  * a space, newlines kept, so link and tag scanners can search it without
  * finding code, and offsets still line up with the original.
  */
-export function blankOutCode(markdown: string): string {
+export function blankOutCode(markdown: string, options: CodeScanOptions = {}): string {
   let out = '';
   let cursor = 0;
-  for (const range of findCodeRanges(markdown)) {
+  for (const range of findCodeRanges(markdown, options)) {
     out += markdown.slice(cursor, range.start) + markdown.slice(range.start, range.end).replace(/[^\n]/g, ' ');
     cursor = range.end;
   }

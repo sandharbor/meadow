@@ -69,14 +69,15 @@ interface TagOccurrence {
 }
 
 /**
- * Finds tags outside code and NOT_TAG_TEXT. Those are blanked out first, so
- * the offsets refer to the original content. A heading may contain tags; its
- * own `#` marks are followed by a space, so they are never tags.
+ * Finds tags outside code, HTML blocks, and NOT_TAG_TEXT. Those are blanked
+ * out first, so the offsets refer to the original content. A heading may
+ * contain tags; its own `#` marks are followed by a space, so they are never
+ * tags.
  */
 function findTags(content: string): TagOccurrence[] {
   const tags: TagOccurrence[] = [];
   let lineStart = 0;
-  for (const line of blankOutCode(content).split('\n')) {
+  for (const line of blankOutCode(content, { htmlBlocks: true }).split('\n')) {
     const scannable = NOT_TAG_TEXT.reduce((text, pattern) => text.replace(pattern, found => ' '.repeat(found.length)), line);
     TAG_BODY_RE.lastIndex = 0;
     let match: RegExpExecArray | null;
