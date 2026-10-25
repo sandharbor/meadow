@@ -162,68 +162,45 @@ function unwrapSingleParagraph(html: string): string {
   return match[1].trim();
 }
 
-export function renderPageToHtml(
-  directory: string,
-  pageNameToPage: PageNameToPage,
-  pageName: string,
-  outputFilename: string,
-  outputFolder: string,
-  inverseLinks: InverseLinks,
-  bundleConfig: BundleConfig,
-  bundleConfigFile: string,
-  bundleNodeConfigs: BundleNodeConfig[],
-  options: RenderOptions = {},
-  bundleSlug?: string,
-  currentPageDirectory?: string,  // The source directory of the current page
-  baseContentDirectory?: string,  // Base source-content directory for image lookups
-  baseOutputFolder?: string,  // Base generated HTML directory for image output
-  linkResolutionMap?: Record<string, LinkResolvedInfo>,  // Pre-computed link resolution map
-  allLinkResolutionMaps?: Map<EncodedBundleNodeKey, Record<string, LinkResolvedInfo>>  // All page link resolution maps for transclusion
-): { htmlPath: string | null; htmlContent: string | null; srsCards: CollectedSrsCard[] } {
+interface WikiLinkOverrides {
+  linkResolutionMapOverride?: Record<string, LinkResolvedInfo>;
+  currentPageDirectoryOverride?: string;
+  mediaEmbedOptions?: MediaEmbedOptions;
+}
+
+/** What a note's links and embeds resolve against while it is rendered. */
+export interface NoteRenderContext {
+  /** The note's own Markdown, for same-page links and block anchor ids. */
+  noteMarkdown: string;
+  pageNameToPage: PageNameToPage;
+  bundleConfig: BundleConfig;
+  bundleNodeConfigs: BundleNodeConfig[];
+  bundleSlug?: string;
+  directory: string;
+  outputFolder: string;
+  baseContentDirectory?: string;
+  baseOutputFolder?: string;
+  currentPageDirectory?: string;
+  currentOutputDirectory: string;
+  processingMode: NonNullable<RenderOptions['processingMode']>;
+  skipUninterestingLeafPages: boolean;
+  linkResolutionMap?: Record<string, LinkResolvedInfo>;
+  allLinkResolutionMaps?: Map<EncodedBundleNodeKey, Record<string, LinkResolvedInfo>>;
+  routeTable?: RenderOptions['routeTable'];
+}
+
+/**
+ * Renders a note's Markdown the way its page shows it: wikilinks, embeds and
+ * links resolved against `context`, and the body through renderBody.
+ * renderPageToHtml uses one for each page, and the Markdown spec harness one
+ * for each example.
+ */
+export function createNoteRenderer(context: NoteRenderContext) {
   const {
-    processBacklinks = true,
-    processingMode = 'each-page',
-    showBacklinkContext = false,
-    skipUninterestingLeafPages = false,
-    preserveFrontmatter = false,
-    showBreadcrumbs = false,
-    showHoverPreview = false,
-    breadcrumbPath = [],
-    breadcrumbBundleNodeIds = [],
-    routeTable,
-    currentOutputDirectory = currentPageDirectory ?? '',
-    staticAssetNames,
-    sourcesExportEnabled,
-    openKnowledgeFormatEnabled,
-    srsEnabled = false,
-    searchEnabled = false,
-    folderNavigation,
-  } = options;
-
-  const mdPath = Page.findFullFilesystemPath(directory, pageName);
-  if (!fs.existsSync(mdPath)) {
-    logger.warn(`render_page_to_html: md_path not found: ${mdPath}`);
-    return { htmlPath: null, htmlContent: null, srsCards: [] };
-  }
-
-  const rawMdContent = getMdContent(directory, pageName, true);
-  const initialMdContent = getMdContent(directory, pageName, false);
-
-  const page = pageNameToPage[bundleConfig?.sources ? makeBundleNodeKey(pageName, 'md', currentPageDirectory) : pageName];
-
-  if (skipUninterestingLeafPages && page?.isUninterestingLeafPage()) {
-    logger.debug(`Skipping ${pageName} as it is an uninteresting leaf page`);
-    return { htmlPath: null, htmlContent: null, srsCards: [] };
-  }
-
-  let mdContent = customProcessPageMarkdown(initialMdContent, bundleSlug, bundleConfig);
-  const markdownForAnchors = mdContent;
-
-  interface WikiLinkOverrides {
-    linkResolutionMapOverride?: Record<string, LinkResolvedInfo>;
-    currentPageDirectoryOverride?: string;
-    mediaEmbedOptions?: MediaEmbedOptions;
-  }
+    noteMarkdown: markdownForAnchors, pageNameToPage, bundleConfig, bundleNodeConfigs, bundleSlug, directory,
+    outputFolder, baseContentDirectory, baseOutputFolder, currentPageDirectory, currentOutputDirectory,
+    processingMode, skipUninterestingLeafPages, linkResolutionMap, allLinkResolutionMaps, routeTable,
+  } = context;
 
   function linkOrImageHtml(linkText: string, highlightDoNotLinkPageName?: string, overrides?: WikiLinkOverrides): string {
     return linkOrImageHtmlService(linkText, bundleNodeConfigs, {
@@ -515,6 +492,111 @@ export function renderPageToHtml(
     return unwrapSingleParagraph(fragmentHtml);
   }
 
+  /**
+   * The HTML for a note's body: its wikilinks, embeds, emoji, block anchors
+   * (with `blockAnchors`) and block ids, rendered by marked.
+   */
+  function renderBody(mdContent: string, blockAnchors: boolean): string {
+    // Comments were already removed when the note was read (getMdContent).
+    let convertedContent = convertWikiLinks(inlineFootnotesToReferences(mdContent));
+
+    // Convert :shortcode: emoji in prose (not in code, addresses or HTML tags).
+    convertedContent = replaceInProse(
+      convertedContent,
+      /:([a-z0-9_+-]+):/gi,
+      (match: string, name: string) => (nodeEmoji.has(name) ? nodeEmoji.get(name) ?? match : match)
+    );
+
+    if (convertedContent.startsWith('http')) {
+      const lines = convertedContent.split('\n');
+      if (lines.length > 1 && lines[1].trim() === '') {
+        const url = lines[0].trim();
+        const convertedFirstLine = `[${url}](${url})`;
+        convertedContent = convertedFirstLine + '\n' + lines.slice(1).join('\n');
+      }
+    }
+
+    let convertedContentWithAnchors = convertedContent;
+    if (blockAnchors) {
+      // Pass mdContent as the original for hashing to ensure consistency with backlink context
+      convertedContentWithAnchors = addBlockAnchors(convertedContent, markdownForAnchors);
+    }
+
+    convertedContentWithAnchors = styleBlockIds(convertedContentWithAnchors, { linkable: true });
+
+    return withInternalLinks(
+      link => markdownLinkHtml(link.isImage, link.textHtml, link.href, undefined, undefined, link.title),
+      () => withPageHeadingIds(() => heldEmbeds.restore(marked(convertedContentWithAnchors) as string))
+    );
+  }
+
+  return { convertWikiLinks, markdownLinkHtml, renderMarkdownFragmentToHtml, heldEmbeds, renderBody };
+}
+
+export function renderPageToHtml(
+  directory: string,
+  pageNameToPage: PageNameToPage,
+  pageName: string,
+  outputFilename: string,
+  outputFolder: string,
+  inverseLinks: InverseLinks,
+  bundleConfig: BundleConfig,
+  bundleConfigFile: string,
+  bundleNodeConfigs: BundleNodeConfig[],
+  options: RenderOptions = {},
+  bundleSlug?: string,
+  currentPageDirectory?: string,  // The source directory of the current page
+  baseContentDirectory?: string,  // Base source-content directory for image lookups
+  baseOutputFolder?: string,  // Base generated HTML directory for image output
+  linkResolutionMap?: Record<string, LinkResolvedInfo>,  // Pre-computed link resolution map
+  allLinkResolutionMaps?: Map<EncodedBundleNodeKey, Record<string, LinkResolvedInfo>>  // All page link resolution maps for transclusion
+): { htmlPath: string | null; htmlContent: string | null; srsCards: CollectedSrsCard[] } {
+  const {
+    processBacklinks = true,
+    processingMode = 'each-page',
+    showBacklinkContext = false,
+    skipUninterestingLeafPages = false,
+    preserveFrontmatter = false,
+    showBreadcrumbs = false,
+    showHoverPreview = false,
+    breadcrumbPath = [],
+    breadcrumbBundleNodeIds = [],
+    routeTable,
+    currentOutputDirectory = currentPageDirectory ?? '',
+    staticAssetNames,
+    sourcesExportEnabled,
+    openKnowledgeFormatEnabled,
+    srsEnabled = false,
+    searchEnabled = false,
+    folderNavigation,
+  } = options;
+
+  const mdPath = Page.findFullFilesystemPath(directory, pageName);
+  if (!fs.existsSync(mdPath)) {
+    logger.warn(`render_page_to_html: md_path not found: ${mdPath}`);
+    return { htmlPath: null, htmlContent: null, srsCards: [] };
+  }
+
+  const rawMdContent = getMdContent(directory, pageName, true);
+  const initialMdContent = getMdContent(directory, pageName, false);
+
+  const page = pageNameToPage[bundleConfig?.sources ? makeBundleNodeKey(pageName, 'md', currentPageDirectory) : pageName];
+
+  if (skipUninterestingLeafPages && page?.isUninterestingLeafPage()) {
+    logger.debug(`Skipping ${pageName} as it is an uninteresting leaf page`);
+    return { htmlPath: null, htmlContent: null, srsCards: [] };
+  }
+
+  let mdContent = customProcessPageMarkdown(initialMdContent, bundleSlug, bundleConfig);
+  const markdownForAnchors = mdContent;
+
+  const { convertWikiLinks, markdownLinkHtml, renderMarkdownFragmentToHtml, heldEmbeds, renderBody } = createNoteRenderer({
+    noteMarkdown: markdownForAnchors, pageNameToPage, bundleConfig, bundleNodeConfigs, bundleSlug, directory,
+    outputFolder, baseContentDirectory, baseOutputFolder, currentPageDirectory, currentOutputDirectory,
+    processingMode, skipUninterestingLeafPages, linkResolutionMap, allLinkResolutionMaps, routeTable,
+  });
+
+
   const collectedSrsCards: CollectedSrsCard[] = [];
   if (srsEnabled) {
     mdContent = replaceSrsCardsWithCustomElements(mdContent, renderMarkdownFragmentToHtml, (card) => {
@@ -522,37 +604,7 @@ export function renderPageToHtml(
     });
   }
 
-  // Comments were already removed when the note was read (getMdContent).
-  let convertedContent = convertWikiLinks(inlineFootnotesToReferences(mdContent));
-
-  // Convert :shortcode: emoji in prose (not in code, addresses or HTML tags).
-  convertedContent = replaceInProse(
-    convertedContent,
-    /:([a-z0-9_+-]+):/gi,
-    (match: string, name: string) => (nodeEmoji.has(name) ? nodeEmoji.get(name) ?? match : match)
-  );
-
-  if (convertedContent.startsWith('http')) {
-    const lines = convertedContent.split('\n');
-    if (lines.length > 1 && lines[1].trim() === '') {
-      const url = lines[0].trim();
-      const convertedFirstLine = `[${url}](${url})`;
-      convertedContent = convertedFirstLine + '\n' + lines.slice(1).join('\n');
-    }
-  }
-
-  let convertedContentWithAnchors = convertedContent;
-  if (showBacklinkContext) {
-    // Pass mdContent as the original for hashing to ensure consistency with backlink context
-    convertedContentWithAnchors = addBlockAnchors(convertedContent, markdownForAnchors);
-  }
-
-  convertedContentWithAnchors = styleBlockIds(convertedContentWithAnchors, { linkable: true });
-
-  let htmlContent = withInternalLinks(
-    link => markdownLinkHtml(link.isImage, link.textHtml, link.href, undefined, undefined, link.title),
-    () => withPageHeadingIds(() => heldEmbeds.restore(marked(convertedContentWithAnchors) as string))
-  );
+  let htmlContent = renderBody(mdContent, showBacklinkContext);
 
   function createFrontmatterTable(frontmatter: Record<string, unknown>): string | null {
     if (Object.keys(frontmatter).length === 0) {
