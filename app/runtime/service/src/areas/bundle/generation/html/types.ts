@@ -118,4 +118,6 @@ export interface BacklinkContext {
 export interface BlockInfo {
   type: 'header' | 'code' | 'paragraph';
   content: string;
+  /** The offset just after the block's last character in the Markdown it was split from. */
+  end: number;
 } 

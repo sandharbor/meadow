@@ -27,6 +27,7 @@ import * as nodeEmoji from 'node-emoji';
 import { extendedSyntaxExtensions } from './markedExtensions.js';
 import { headingIds, markdownHrefFragment, pageLinkFragment, styleBlockIds, withPageHeadingIds } from './pageAnchors.js';
 import { scriptFreeHtml } from './scriptRemoval.js';
+import { blockAnchorPlacement, withBlockAnchors } from './blockAnchors.js';
 import {
   markdownLinkDestinations,
   markdownLinkStems,
@@ -43,7 +44,8 @@ import {
   PageNameToPage,
   InverseLinks,
   RenderOptions,
-  BacklinkContext
+  BacklinkContext,
+  BlockInfo
 } from './types.js';
 import { bundleNodeConfigToKey, makeBundleNodeKey } from './types.js';
 import { BundleConfig } from '../../../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
@@ -132,6 +134,7 @@ marked.use(
   }),
   markdownLinks,
   scriptFreeHtml,
+  blockAnchorPlacement,
   // Registered before customHeadingId so an explicit `{#id}` still wins.
   headingIds,
   customHeadingId(),
@@ -518,17 +521,15 @@ export function createNoteRenderer(context: NoteRenderContext) {
       }
     }
 
-    let convertedContentWithAnchors = convertedContent;
-    if (blockAnchors) {
-      // Pass mdContent as the original for hashing to ensure consistency with backlink context
-      convertedContentWithAnchors = addBlockAnchors(convertedContent, markdownForAnchors);
-    }
-
-    convertedContentWithAnchors = styleBlockIds(convertedContentWithAnchors, { linkable: true });
+    const markdown = styleBlockIds(convertedContent, { linkable: true });
+    // Anchors are hashed from the note's own Markdown, as backlink contexts hash them.
+    const anchors = blockAnchors
+      ? anchoredBlocks(markdown, markdownForAnchors).map(({ block, anchor }) => ({ end: block.end, html: anchor }))
+      : [];
 
     return withInternalLinks(
       link => markdownLinkHtml(link.isImage, link.textHtml, link.href, undefined, undefined, link.title),
-      () => withPageHeadingIds(() => heldEmbeds.restore(marked(convertedContentWithAnchors) as string))
+      () => withPageHeadingIds(() => withBlockAnchors(markdown, anchors, () => heldEmbeds.restore(marked(markdown) as string)))
     );
   }
 
@@ -1213,13 +1214,6 @@ function contentToBlockId(content: string): string {
   return hash.substring(0, 7);
 }
 
-/**
- * Adds anchor IDs to each block in the markdown content.
- * @param mdContent - The content to add anchors to (may be converted with HTML links)
- * @param originalForHashing - Optional original markdown content to use for computing hashes.
- *                             If provided, hashes are computed from this content to ensure
- *                             consistency between page rendering and backlink context generation.
- */
 // Merge a footnote definition (`[^id]: ...`) with any subsequent
 // indent-continuation paragraphs so marked-footnote sees them as one block.
 // Without this, addBlockAnchors inserts anchors between them and the
@@ -1237,6 +1231,7 @@ function mergeFootnoteContinuations(
       inFootnote = true;
     } else if (inFootnote && isIndentedContinuation) {
       merged[merged.length - 1].content += '\n\n' + b.content;
+      merged[merged.length - 1].end = b.end;
     } else {
       merged.push({ ...b });
       inFootnote = false;
@@ -1245,13 +1240,20 @@ function mergeFootnoteContinuations(
   return merged;
 }
 
-function addBlockAnchors(mdContent: string, originalForHashing?: string): string {
+/**
+ * Each block of the markdown content with its anchor.
+ * @param mdContent - The content to anchor (may be converted with HTML links)
+ * @param originalForHashing - Optional original markdown content to use for computing hashes.
+ *                             If provided, hashes are computed from this content to ensure
+ *                             consistency between page rendering and backlink context generation.
+ */
+function anchoredBlocks(mdContent: string, originalForHashing?: string): { block: BlockInfo; anchor: string }[] {
   const blocks = mergeFootnoteContinuations(splitMarkdownBlocks(mdContent));
   const hashBlocks = originalForHashing
     ? mergeFootnoteContinuations(splitMarkdownBlocks(originalForHashing))
     : blocks;
   
-  const anchoredBlocks: string[] = [];
+  const anchored: { block: BlockInfo; anchor: string }[] = [];
   
   // Track hash occurrences to handle duplicates
   const hashCounts: Map<string, number> = new Map();
@@ -1268,11 +1270,15 @@ function addBlockAnchors(mdContent: string, originalForHashing?: string): string
     
     // Only append increment for duplicates (second occurrence and beyond)
     const blockId = count === 0 ? `block-${baseHash}` : `block-${baseHash}-${count + 1}`;
-    const anchor = `<a id="${blockId}" class="block-anchor"></a>`;
-    anchoredBlocks.push(`${block.content}\n${anchor}`);
+    anchored.push({ block, anchor: `<a id="${blockId}" class="block-anchor"></a>` });
   }
   
-  return anchoredBlocks.join('\n\n');
+  return anchored;
+}
+
+/** The markdown content with each block followed by its anchor, as backlink contexts read it. */
+function addBlockAnchors(mdContent: string, originalForHashing?: string): string {
+  return anchoredBlocks(mdContent, originalForHashing).map(({ block, anchor }) => `${block.content}\n${anchor}`).join('\n\n');
 }
 
 function backlinkContext(directory: string, backlink: string, thePageName: string, currentPageDirectory?: string, resolutions?: Record<string, LinkResolvedInfo>): BacklinkContext[] {

@@ -39,19 +39,7 @@ const DELIBERATE: Record<string, string[]> = {
     ['cm-484', 'cm-517', 'cm-531', 'cm-573', 'cm-576', 'cm-577', 'cm-578', 'cm-579'],
 };
 
-const BUGS: Record<string, string[]> = {
-  'G26a: block anchors, added at blank lines, split loose lists and move a list item\'s later paragraphs out of it': [
-    'cm-4', 'cm-5', 'cm-108', 'cm-109', 'cm-254', 'cm-256', 'cm-258', 'cm-262', 'cm-263', 'cm-264', 'cm-270',
-    'cm-271', 'cm-273', 'cm-274', 'cm-277', 'cm-278', 'cm-286', 'cm-287', 'cm-288', 'cm-290', 'cm-306', 'cm-307',
-    'cm-309', 'cm-311', 'cm-313', 'cm-314', 'cm-315', 'cm-316', 'cm-317', 'cm-318', 'cm-319', 'cm-321', 'cm-324',
-    'cm-325', 'cm-326',
-  ],
-  'G26b: a block anchor after a table adds an empty row to it': ['gfm-198', 'gfm-199', 'gfm-200', 'gfm-202', 'gfm-204', 'gfm-205'],
-  'G26c: a block anchor after a code fence that is not closed by its own line shows inside the code':
-    ['cm-126', 'cm-127', 'cm-137', 'cm-139', 'cm-237'],
-  'G26d: a block anchor after a line ending in a hard break turns the break into a visible one': ['cm-226', 'cm-644', 'cm-645'],
-  'G26e: a block anchor after an empty link reference definition becomes its destination': ['cm-199'],
-};
+const BUGS: Record<string, string[]> = {};
 
 interface Example { id: string; markdown: string }
 

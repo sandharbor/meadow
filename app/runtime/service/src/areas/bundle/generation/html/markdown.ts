@@ -150,6 +150,7 @@ export function splitMarkdownBlocks(markdownText: string): BlockInfo[] {
   const lines = markdownText.split('\n');
   let currentBlock: string[] = [];
   let currentType: BlockInfo['type'] | null = null;
+  let currentLast = 0;
 
   // Each code block, and each HTML block that starts a block of its own, as
   // the line range it covers, is kept whole. An HTML block right after a
@@ -162,6 +163,7 @@ export function splitMarkdownBlocks(markdownText: string): BlockInfo[] {
     offset += line.length + 1;
     return start;
   });
+  const lineEnd = (index: number) => lineStarts[index] + lines[index].length;
   for (const range of findCodeRanges(markdownText, { htmlBlocks: true }).filter(r => r.kind === 'block' || r.kind === 'html')) {
     const first = lineStarts.indexOf(range.start);
     let last = first;
@@ -176,11 +178,15 @@ export function splitMarkdownBlocks(markdownText: string): BlockInfo[] {
       (block.type === 'code' || currentBlock.length === 0));
     if (wholeBlock) {
       if (currentBlock.length > 0) {
-        blocks.push({ type: currentType!, content: currentBlock.join('\n') });
+        blocks.push({ type: currentType!, content: currentBlock.join('\n'), end: lineEnd(currentLast) });
         currentBlock = [];
         currentType = null;
       }
-      blocks.push({ type: wholeBlock.type, content: lines.slice(wholeBlock.first, wholeBlock.last + 1).join('\n') });
+      blocks.push({
+        type: wholeBlock.type,
+        content: lines.slice(wholeBlock.first, wholeBlock.last + 1).join('\n'),
+        end: lineEnd(wholeBlock.last),
+      });
       index = wholeBlock.last;
       continue;
     }
@@ -188,12 +194,12 @@ export function splitMarkdownBlocks(markdownText: string): BlockInfo[] {
     // Handle headers: `#` to `######` and a space, so a `#tag` line is text
     if (/^ {0,3}#{1,6}(?:[ \t]|$)/.test(line)) {
       if (currentBlock.length > 0) {
-        blocks.push({ type: currentType!, content: currentBlock.join('\n') });
+        blocks.push({ type: currentType!, content: currentBlock.join('\n'), end: lineEnd(currentLast) });
         currentBlock = [];
       }
       currentType = 'header';
       currentBlock.push(line);
-      blocks.push({ type: currentType, content: currentBlock.join('\n') });
+      blocks.push({ type: currentType, content: currentBlock.join('\n'), end: lineEnd(index) });
       currentBlock = [];
       currentType = null;
       continue;
@@ -205,8 +211,9 @@ export function splitMarkdownBlocks(markdownText: string): BlockInfo[] {
         currentType = 'paragraph';
       }
       currentBlock.push(line);
+      currentLast = index;
     } else if (currentBlock.length > 0) {
-      blocks.push({ type: currentType!, content: currentBlock.join('\n') });
+      blocks.push({ type: currentType!, content: currentBlock.join('\n'), end: lineEnd(currentLast) });
       currentBlock = [];
       currentType = null;
     }
@@ -214,7 +221,7 @@ export function splitMarkdownBlocks(markdownText: string): BlockInfo[] {
 
   // Add any remaining block
   if (currentBlock.length > 0) {
-    blocks.push({ type: currentType!, content: currentBlock.join('\n') });
+    blocks.push({ type: currentType!, content: currentBlock.join('\n'), end: lineEnd(currentLast) });
   }
 
   return blocks;
