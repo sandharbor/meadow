@@ -22,6 +22,7 @@ import { isImageFileType } from '../../../../../../../shared_code/utils/fileType
 import { sourceGraphPath } from '../../../../../../../shared_code/utils/bundleSourceUtils';
 import { AuthenticatedImage } from '../../../../shared/components/AuthenticatedImage';
 import ImageHoverPreview, { HOVER_IMAGE_WIDTH, HOVER_IMAGE_HEIGHT } from './ImageHoverPreview';
+import { PdfIcon } from './PdfIcon';
 import { ExcalidrawThumbnail } from './ExcalidrawThumbnail';
 import BundleNodeHoverCard from './BundleNodeHoverCard';
 import StructuralTreeRows from './StructuralTreeRows';
@@ -171,7 +172,8 @@ const ListView: React.FC<ListViewProps> = ({
   // Renders the small inline thumbnail beside a page title in the list. Excalidraw
   // drawings can't be `<img src>`'d (the on-disk file is a `.excalidraw.md` whose
   // scene has to be decompressed and rendered) — they go through the vendored
-  // renderer instead. Both paths feed the same hover-preview popup.
+  // renderer instead. A PDF shows an icon. All of them feed the same
+  // hover-preview popup.
   const renderInlineThumbnail = (page: DisplayNode) => {
     if (page.isFrontierNode) return null;
     if (page.fileType === 'excalidraw') {
@@ -187,6 +189,20 @@ const ListView: React.FC<ListViewProps> = ({
           className="w-8 h-8 rounded border border-gray-200 cursor-pointer bg-white"
           lazy
           onMouseEnter={(e) => handleImageMouseEnter(e, mdSourcePath, page.bundleNodeName)}
+          onMouseLeave={() => setHoveredImage(null)}
+        />
+      );
+    }
+    if (page.fileType === 'pdf') {
+      // A PDF shows a document icon; hovering it shows the first page.
+      const pdfPath = sourceGraphPath(page.sourceId, page.sourceGraphSubdirectory
+        ? `${page.sourceGraphSubdirectory}/${page.bundleNodeName}.pdf`
+        : `${page.bundleNodeName}.pdf`);
+      const pdfSourcePath = editorSourcePath(bundleSlug, page.underlyingNode, pdfPath, displayGraph.underlyingGraph.sourceContentView === 'live');
+      return (
+        <PdfIcon
+          className="w-8 h-8 cursor-pointer"
+          onMouseEnter={(e) => handleImageMouseEnter(e, pdfSourcePath, page.bundleNodeName)}
           onMouseLeave={() => setHoveredImage(null)}
         />
       );

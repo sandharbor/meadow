@@ -84,3 +84,23 @@ enableOpenDedicatedPage: false
 | ------------------------------------------- |
 | _link not tracked_ |
 [t006 --- page that embeds Excalidraw in another directory](/t006/t006%20---%20page%20that%20embeds%20Excalidraw%20in%20another%20directory.md)
+
+## Audio, video, and PDF
+
+Obsidian embeds audio and video with a player. These are a quarter-second tone and a fifth of a second of green, kept tiny on purpose.
+
+![t006 --- short tone.mp3](/t006/t006%20---%20short%20tone.mp3)
+
+![t006 --- short clip.mp4](/t006/t006%20---%20short%20clip.mp4)
+
+A PDF embeds as a viewer, here opened at its first page and 200 pixels high. Its links work, and one goes to a page in this bundle, so that page is in the graph too. The icon at the top right opens the PDF's own page.
+
+![t006 --- document with a link.pdf](/t006/t006%20---%20document%20with%20a%20link.pdf#page=1&height=200)
+
+A container directive can give the viewer a fullscreen button:
+
+:::meadow
+![t006 --- document with a link.pdf](/t006/t006%20---%20document%20with%20a%20link.pdf#height=160)
+
+enableFullscreenButton: true
+:::

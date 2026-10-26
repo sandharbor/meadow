@@ -6,10 +6,13 @@
     <title>t006 - embedded media</title>
     <link rel="stylesheet" href="_mw_assets/style.e123303b.css">
     <link rel="stylesheet" href="_mw_assets/meadow-svg.9c1c6573.css">
+    <link rel="stylesheet" href="_mw_assets/meadow-pdf.637d3de8.css">
     <link rel="stylesheet" href="_mw_assets/cust/search/search.d70fe96d.css">
     <script src="_mw_assets/cust/search/search.1a967b30.js" defer></script>
     <script src="_mw_assets/javascript.66216f5f.js"></script>
     <script src="_mw_assets/meadow-svg.1f40416b.js" defer></script>
+    <script src="_mw_assets/pdf-vendor.91041671.js" defer></script>
+    <script src="_mw_assets/meadow-pdf.6ece3704.js" data-meadow-pdf-worker="_mw_assets/pdf-worker.145d2dd3.js" defer></script>
     <meta name="meadow-bundle-node-id" content="87f8a32781f5">
     <meta name="meadow-generated-path" content="t006 - embedded media.html">
     <link rel="stylesheet" href="_mw_assets/versioning/version-awareness.d81da365c39f.css">
@@ -161,6 +164,22 @@ enableOpenDedicatedPage: false
 </tr>
 </tbody></table>
 <p><a id="block-0c7e505-2" class="block-anchor"></a></p>
+<h2 id="audio-video-and-pdf">Audio, video, and PDF</h2>
+<p><a id="block-7dfdf8f" class="block-anchor"></a></p>
+<p>Obsidian embeds audio and video with a player. These are a quarter-second tone and a fifth of a second of green, kept tiny on purpose.
+<a id="block-7c33543" class="block-anchor"></a></p>
+<p><audio controls src="t006/t006%20---%20short%20tone.mp3"></audio>
+<a id="block-2f05104" class="block-anchor"></a></p>
+<p><video controls src="t006/t006%20---%20short%20clip.mp4"></video>
+<a id="block-b0c06ce" class="block-anchor"></a></p>
+<p>A PDF embeds as a viewer, here opened at its first page and 200 pixels high. Its links work, and one goes to a page in this bundle, so that page is in the graph too. The icon at the top right opens the PDF&#39;s own page.
+<a id="block-0e4f8a1" class="block-anchor"></a></p>
+<p><span class="meadow-pdf-embed-frame" style="height: 200px"><span class="meadow-pdf-embed" data-meadow-pdf-src="t006/t006%20---%20document%20with%20a%20link.pdf" data-meadow-pdf-links-enabled="true" data-meadow-pdf-links="{&quot;t006%20---%20page%20linked%20from%20a%20pdf.md&quot;:{&quot;href&quot;:&quot;t006/t006%20---%20page%20linked%20from%20a%20pdf.html&quot;}}" title="t006 --- document with a link"><span class="meadow-pdf-loading">Loading PDF…</span></span><a class="meadow-pdf-open-icon meadow-pdf-open-link" href="t006/t006%20---%20document%20with%20a%20link.html" title="Open t006 --- document with a link" aria-label="Open t006 --- document with a link">⤢</a></span>
+<a id="block-8de3c77" class="block-anchor"></a></p>
+<p>A container directive can give the viewer a fullscreen button:
+<a id="block-9e43835" class="block-anchor"></a></p>
+<p><span class="meadow-pdf-embed-frame meadow-pdf-can-fullscreen" style="height: 160px"><span class="meadow-pdf-embed" data-meadow-pdf-src="t006/t006%20---%20document%20with%20a%20link.pdf" data-meadow-pdf-links-enabled="true" data-meadow-pdf-links="{&quot;t006%20---%20page%20linked%20from%20a%20pdf.md&quot;:{&quot;href&quot;:&quot;t006/t006%20---%20page%20linked%20from%20a%20pdf.html&quot;}}" title="t006 --- document with a link"><span class="meadow-pdf-loading">Loading PDF…</span></span><button type="button" class="meadow-pdf-fullscreen-btn" aria-label="Open PDF fullscreen" title="Open fullscreen">⛶</button><a class="meadow-pdf-open-icon meadow-pdf-open-link" href="t006/t006%20---%20document%20with%20a%20link.html" title="Open t006 --- document with a link" aria-label="Open t006 --- document with a link">⤢</a></span>
+<a id="block-5511611" class="block-anchor"></a></p>
 
     </main>
     <footer>

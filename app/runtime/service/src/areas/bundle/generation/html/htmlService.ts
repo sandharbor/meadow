@@ -20,7 +20,7 @@ import { fileURLToPath } from 'url';
 import { performance } from 'perf_hooks';
 import { setTimeout as delay, setImmediate as yieldToEventLoop } from 'timers/promises';
 import { Page } from './page.js';
-import { renderPageToHtml, renderExcalidrawPageToHtml, renderGeneratedBundleNodeToHtml, renderSimpleBacklinksHtml, CollectedSrsCard } from './htmlGenerator.js';
+import { renderPageToHtml, renderExcalidrawPageToHtml, renderPdfPageToHtml, renderGeneratedBundleNodeToHtml, renderSimpleBacklinksHtml, CollectedSrsCard } from './htmlGenerator.js';
 import { buildExcalidrawClientEmbeddedFileData, buildExcalidrawClientLinkData, copyExcalidrawEmbeddedFiles } from './linkModificationService.js';
 import { calculateRelativePath, normalizePageTitle } from './shared.js';
 import {
@@ -787,6 +787,24 @@ export async function generateHtmlForBundle(
     }
   }
 
+  // PDF assets (pdf.js and its worker) — only copied for bundles that
+  // include at least one PDF.
+  const bundleHasPdf = Object.values(bundleNodeConfs).some(
+    conf => conf.bundleNodeKind === 'file' && conf.fileType === 'pdf' && conf.listType === 'whitelist'
+  );
+  if (bundleHasPdf) {
+    for (const asset of ['meadow-pdf.css', 'pdf-vendor.js', 'pdf-worker.js', 'meadow-pdf.js']) {
+      const src = path.join(sharedDirectory, asset);
+      const dst = path.join(assetsDirectory, asset);
+      if (fs.existsSync(src)) {
+        fs.copyFileSync(src, dst);
+        logger.debug(`Copied ${asset} to ${dst}`);
+      } else {
+        logger.warn(`${asset} not found at ${src}`);
+      }
+    }
+  }
+
   // Interactive SVG embed assets. Ordinary SVG `<img>` embeds do not need
   // them, so only copy the runtime when a tracked Markdown page actually
   // contains a Meadow container directive for an SVG.
@@ -1012,9 +1030,10 @@ export async function generateHtmlForBundle(
     });
   }
 
-  // Build the inverse_links mappings by scanning all traversable text-content
-  // pages (Markdown, native HTML, SVG, and Excalidraw drawings). This excludes
-  // orphaned tracked pages (isTracked: true but isInWorkingGraph: false).
+  // Build the inverse_links mappings by scanning every traversable file that
+  // links to others (Markdown, native HTML, SVG, Excalidraw drawings, and
+  // PDFs). This excludes orphaned tracked pages (isTracked: true but
+  // isInWorkingGraph: false).
   const inverseLinks: InverseLinks = {};
   const pageNameToPage: PageNameToPage = {};
 
@@ -1024,7 +1043,7 @@ export async function generateHtmlForBundle(
     const conf = bundleNodeConfs[pageKey];
     const ft = conf.fileType;
     const isScannable = conf.bundleNodeKind === 'file'
-      && (ft === 'md' || ft === 'html' || ft === 'svg' || ft === 'excalidraw');
+      && (ft === 'md' || ft === 'html' || ft === 'svg' || ft === 'excalidraw' || ft === 'pdf');
     return isScannable && conf.listType === 'whitelist' && traversablePageKeys.has(pageKey);
   });
   // Each file by its path in the source graph, which is how links name the
@@ -1050,7 +1069,7 @@ export async function generateHtmlForBundle(
     // name are told apart. Titles are labels, never identities.
     for (const resolved of Object.values(allLinkResolutionMaps.get(pageKey) ?? {})) {
       const target = resolved.link_resolved_target_path;
-      if (!target || !/\.(?:md|html|excalidraw)$/i.test(target)) continue;
+      if (!target || !/\.(?:md|html|excalidraw|pdf)$/i.test(target)) continue;
       const targetKey = fileKeyByGraphPath.get(target.replace(/^\//, ''));
       if (!targetKey) continue;
       const inlinks = inverseLinks[targetKey] ??= [];
@@ -1066,6 +1085,10 @@ export async function generateHtmlForBundle(
   const traversableExcalidrawPageKeys = Object.keys(bundleNodeConfs).filter(key => {
     const conf = bundleNodeConfs[key];
     return conf.listType === 'whitelist' && conf.fileType === 'excalidraw' && traversablePageKeys.has(key);
+  });
+  const traversablePdfPageKeys = Object.keys(bundleNodeConfs).filter(key => {
+    const conf = bundleNodeConfs[key];
+    return conf.bundleNodeKind === 'file' && conf.listType === 'whitelist' && conf.fileType === 'pdf' && traversablePageKeys.has(key);
   });
   const traversableHtmlPageKeys = Object.keys(bundleNodeConfs).filter(key => {
     const conf = bundleNodeConfs[key];
@@ -1092,6 +1115,7 @@ export async function generateHtmlForBundle(
     ...traversableMdPageKeys,
     ...traversableHtmlPageKeys,
     ...traversableExcalidrawPageKeys,
+    ...traversablePdfPageKeys,
   ];
   const folderNavigationPages: FolderNavigationPage[] = generationOptions.folderNavigationEnabled
     ? [...new Map(traversableRenderablePageKeys
@@ -1196,6 +1220,7 @@ export async function generateHtmlForBundle(
     + mdRenderOrder.length
     + htmlRenderOrder.length
     + excalidrawRenderOrder.length
+    + traversablePdfPageKeys.length
     + traversableAssetPageKeys.length;
   let renderedOrSkipped = 0;
   let lastPercent = -1;
@@ -1445,6 +1470,78 @@ export async function generateHtmlForBundle(
   }
   recordStageTiming('render_native_html_pages', renderNativeHtmlStart, { page_count: htmlRenderOrder.length });
 
+  // Breadcrumbs for a standalone drawing or PDF page, built with the same
+  // lookup as renderPageToHtml.
+  const standaloneBreadcrumbHtml = (pageKey: string, outputDirectory: string): string => {
+    const conf = bundleNodeConfs[pageKey];
+    const breadcrumbPath = breadcrumbPaths[pageKey] || [];
+    const isEntryNode = conf.bundleNodeId === entryNode.bundleNodeId;
+    const showBreadcrumbs = breadcrumbsEnabled && !isEntryNode && breadcrumbPath.length > 1;
+    if (!showBreadcrumbs) return '';
+    const items: string[] = [];
+    for (let i = 0; i < breadcrumbPath.length; i++) {
+      const t = breadcrumbPath[i];
+      const isLast = i === breadcrumbPath.length - 1;
+      const normTitle = normalizePageTitle(t, bundleConfig, bundleSlug || undefined);
+      if (isLast) {
+        items.push(`<span class="breadcrumb-current">${normTitle}</span>`);
+      } else {
+        const breadcrumbKey = breadcrumbNodeKeysFor(pageKey)[i];
+        const breadcrumbNodeId = breadcrumbKey ? renderNodeByKey.get(breadcrumbKey)?.bundleNodeId : undefined;
+        const bcConf = breadcrumbNodeId
+          ? bundleNodeConfigsArrayForLinks.find(c => c.bundleNodeId === breadcrumbNodeId)
+          : bundleNodeConfigsArrayForLinks.find(c => c.bundleNodeName === t);
+        const bcDir = bcConf?.sourceGraphSubdirectory || '';
+        const encoded = encodeURIComponent(normTitle);
+        const conventionalTargetPath = bcDir ? `${bcDir}/${normTitle}.html` : `${normTitle}.html`;
+        const plannedRoute = bcConf && routePlan.routes.has(bcConf.bundleNodeId)
+          ? routeForBundleNode(bcConf, routePlan.routes)
+          : undefined;
+        const plannedTargetPath = plannedRoute !== conventionalTargetPath ? plannedRoute : undefined;
+        const targetPath = plannedTargetPath ?? (bcDir ? `${bcDir}/${encoded}.html` : `${encoded}.html`);
+        // Compute a relative href from this page's directory.
+        const fromDir = outputDirectory;
+        const fromParts = fromDir ? fromDir.split('/').filter(Boolean) : [];
+        const toParts = targetPath.split('/');
+        let common = 0;
+        while (common < fromParts.length && common < toParts.length - 1 && fromParts[common] === toParts[common]) common++;
+        const up = '../'.repeat(fromParts.length - common);
+        const relativePath = up + toParts.slice(common).join('/');
+        const relative = plannedTargetPath ? encodePathForUrl(relativePath) : relativePath;
+        items.push(`<a href="${relative}" class="breadcrumb-link">${normTitle}</a>`);
+      }
+    }
+    return `<nav class="breadcrumbs" aria-label="Breadcrumb">${items.join('<span class="breadcrumb-separator">→</span>')}</nav>`;
+  };
+
+  // Reports the start page once it is on disk, then counts a standalone page
+  // as rendered.
+  const finishStandalonePage = async (pageKey: string, htmlPath: string | null, outputRoute: string) => {
+    const conf = bundleNodeConfs[pageKey];
+    if (!startPageRenderedEmitted) {
+      const isStart = startPageKey ? pageKey === startPageKey : renderedOrSkipped === 0;
+      if (isStart && htmlPath) {
+        const fileExists = await waitForFileExists(htmlPath);
+        if (fileExists) {
+          startPageRenderedEmitted = true;
+          const relativeHtmlPath = outputRoute;
+          try {
+            options.onStartPageRendered?.({ title: conf.bundleNodeName, directory: conf.sourceGraphSubdirectory || '', relativeHtmlPath });
+          } catch (err) {
+            logger.warn(`[generateHtmlForBundle] onStartPageRendered callback threw (ignored): ${err instanceof Error ? err.message : String(err)}`);
+          }
+        } else {
+          logger.warn(`[generateHtmlForBundle] Timed out waiting for start page file to exist: ${htmlPath}`);
+        }
+      }
+    }
+
+    renderedOrSkipped += 1;
+    emitRenderProgressIfChanged();
+
+    await yieldAfterPage();
+  };
+
   const renderStandaloneExcalidrawPage = async (pageKey: string) => {
     const conf = bundleNodeConfs[pageKey];
     const subdir = conf.sourceGraphSubdirectory || '';
@@ -1464,47 +1561,7 @@ export async function generateHtmlForBundle(
 
     const normalizedOutputFilename = path.posix.basename(outputRoute, '.html');
 
-    // Build breadcrumb HTML inline using the same lookup as renderPageToHtml.
-    const breadcrumbPath = breadcrumbPaths[pageKey] || [];
-    const isEntryNode = conf.bundleNodeId === entryNode.bundleNodeId;
-    const showBreadcrumbs = breadcrumbsEnabled && !isEntryNode && breadcrumbPath.length > 1;
-    let breadcrumbHtml = '';
-    if (showBreadcrumbs) {
-      const items: string[] = [];
-      for (let i = 0; i < breadcrumbPath.length; i++) {
-        const t = breadcrumbPath[i];
-        const isLast = i === breadcrumbPath.length - 1;
-        const normTitle = normalizePageTitle(t, bundleConfig, bundleSlug || undefined);
-        if (isLast) {
-          items.push(`<span class="breadcrumb-current">${normTitle}</span>`);
-        } else {
-          const breadcrumbKey = breadcrumbNodeKeysFor(pageKey)[i];
-          const breadcrumbNodeId = breadcrumbKey ? renderNodeByKey.get(breadcrumbKey)?.bundleNodeId : undefined;
-          const bcConf = breadcrumbNodeId
-            ? bundleNodeConfigsArrayForLinks.find(c => c.bundleNodeId === breadcrumbNodeId)
-            : bundleNodeConfigsArrayForLinks.find(c => c.bundleNodeName === t);
-          const bcDir = bcConf?.sourceGraphSubdirectory || '';
-          const encoded = encodeURIComponent(normTitle);
-          const conventionalTargetPath = bcDir ? `${bcDir}/${normTitle}.html` : `${normTitle}.html`;
-          const plannedRoute = bcConf && routePlan.routes.has(bcConf.bundleNodeId)
-            ? routeForBundleNode(bcConf, routePlan.routes)
-            : undefined;
-          const plannedTargetPath = plannedRoute !== conventionalTargetPath ? plannedRoute : undefined;
-          const targetPath = plannedTargetPath ?? (bcDir ? `${bcDir}/${encoded}.html` : `${encoded}.html`);
-          // Compute a relative href from this excalidraw page's directory.
-          const fromDir = outputDirectory;
-          const fromParts = fromDir ? fromDir.split('/').filter(Boolean) : [];
-          const toParts = targetPath.split('/');
-          let common = 0;
-          while (common < fromParts.length && common < toParts.length - 1 && fromParts[common] === toParts[common]) common++;
-          const up = '../'.repeat(fromParts.length - common);
-          const relativePath = up + toParts.slice(common).join('/');
-          const relative = plannedTargetPath ? encodePathForUrl(relativePath) : relativePath;
-          items.push(`<a href="${relative}" class="breadcrumb-link">${normTitle}</a>`);
-        }
-      }
-      breadcrumbHtml = `<nav class="breadcrumbs" aria-label="Breadcrumb">${items.join('<span class="breadcrumb-separator">→</span>')}</nav>`;
-    }
+    const breadcrumbHtml = standaloneBreadcrumbHtml(pageKey, outputDirectory);
 
     const backlinksHtml = generationOptions.backlinksEnabled
       ? renderSimpleBacklinksHtml(
@@ -1584,30 +1641,77 @@ export async function generateHtmlForBundle(
       } : undefined,
     });
     if (htmlPath) emittedOutputs.claim(outputRoute, conf.bundleNodeId, 'page');
-
-    if (!startPageRenderedEmitted) {
-      const isStart = startPageKey ? pageKey === startPageKey : renderedOrSkipped === 0;
-      if (isStart && htmlPath) {
-        const fileExists = await waitForFileExists(htmlPath);
-        if (fileExists) {
-          startPageRenderedEmitted = true;
-          const relativeHtmlPath = outputRoute;
-          try {
-            options.onStartPageRendered?.({ title: conf.bundleNodeName, directory: subdir, relativeHtmlPath });
-          } catch (err) {
-            logger.warn(`[generateHtmlForBundle] onStartPageRendered callback threw (ignored): ${err instanceof Error ? err.message : String(err)}`);
-          }
-        } else {
-          logger.warn(`[generateHtmlForBundle] Timed out waiting for start page file to exist: ${htmlPath}`);
-        }
-      }
-    }
-
-    renderedOrSkipped += 1;
-    emitRenderProgressIfChanged();
-
-    await yieldAfterPage();
+    await finishStandalonePage(pageKey, htmlPath, outputRoute);
   };
+
+  const renderStandalonePdfPage = async (pageKey: string) => {
+    const conf = bundleNodeConfs[pageKey];
+    const subdir = conf.sourceGraphSubdirectory || '';
+    const outputRoute = routeForBundleNode(conf, routePlan.routes);
+    const outputDirectory = outputDirectoryForRoute(outputRoute);
+    const outputSubdir = outputDirectory
+      ? path.join(generatedHtmlDirectory, ...outputDirectory.split('/'))
+      : generatedHtmlDirectory;
+    fs.mkdirSync(outputSubdir, { recursive: true });
+    const normalizedOutputFilename = path.posix.basename(outputRoute, '.html');
+
+    const backlinksHtml = generationOptions.backlinksEnabled
+      ? renderSimpleBacklinksHtml(
+          conf.bundleNodeName,
+          subdir,
+          inverseLinks,
+          bundleNodeConfigsArrayForLinks,
+          bundleConfig,
+          bundleSlug || undefined,
+          routePlan.routes,
+          outputDirectory,
+          'pdf',
+        )
+      : '';
+
+    // The PDF itself is copied with the other native assets, at its source path.
+    const pdfFilename = canonicalPageFilename(conf.bundleNodeName, 'pdf');
+    const pdfHref = encodePathForUrl(calculateRelativePath(outputDirectory, subdir ? `${subdir}/${pdfFilename}` : pdfFilename));
+
+    // The links inside the PDF, resolved by the working graph, as for an
+    // Excalidraw drawing's links.
+    const { tracked: clientLinkMap, untracked: clientUntrackedLinks } = buildExcalidrawClientLinkData({
+      excalidrawPageIdent: bundleNodeConfigToKey(conf),
+      hostPageDirectory: outputDirectory,
+      bundleNodeConfigs: bundleNodeConfigsArrayForLinks,
+      allLinkResolutionMaps,
+      bundleConfig,
+      bundleSlug: bundleSlug || undefined,
+      routeTable: routePlan.routes,
+      hostOutputDirectory: outputDirectory,
+    });
+
+    const htmlPath = renderPdfPageToHtml({
+      outputFolder: outputSubdir,
+      outputFilename: normalizedOutputFilename,
+      pageTitle: normalizedOutputFilename,
+      currentPageDirectory: outputDirectory,
+      pdfHref,
+      clientLinkMap,
+      clientUntrackedLinks,
+      breadcrumbHtml: standaloneBreadcrumbHtml(pageKey, outputDirectory),
+      backlinksHtml,
+      staticAssetNames,
+      bundleConfig,
+      bundleSlug: bundleSlug || undefined,
+      searchEnabled: generationOptions.searchEnabled,
+      folderNavigation: generationOptions.folderNavigationEnabled ? {
+        storageKey: folderNavigationStorageKey,
+        defaultOpen: generationOptions.folderNavigationDefaultOpen,
+      } : undefined,
+    });
+    emittedOutputs.claim(outputRoute, conf.bundleNodeId, 'page');
+    await finishStandalonePage(pageKey, htmlPath, outputRoute);
+  };
+
+  if (startPageKey && traversablePdfPageKeys.includes(startPageKey) && !options.shouldCancel?.()) {
+    await renderStandalonePdfPage(startPageKey);
+  }
 
   if (startPageKey && traversableExcalidrawPageKeys.includes(startPageKey)) {
     if (options.shouldCancel?.()) {
@@ -1779,6 +1883,20 @@ export async function generateHtmlForBundle(
     await renderStandaloneExcalidrawPage(pageKey);
   }
   recordStageTiming('render_excalidraw_pages', renderExcalidrawStart, { page_count: excalidrawRenderOrder.length });
+
+  // Standalone PDF pages, each showing its PDF with pdf.js.
+  const renderPdfStart = performance.now();
+  for (const pageKey of traversablePdfPageKeys) {
+    if (pageKey === startPageKey && startPageRenderedEmitted) {
+      continue;
+    }
+    if (options.shouldCancel?.()) {
+      logger.warn('[generateHtmlForBundle] Cancel requested; stopping render loop early');
+      break;
+    }
+    await renderStandalonePdfPage(pageKey);
+  }
+  recordStageTiming('render_pdf_pages', renderPdfStart, { page_count: traversablePdfPageKeys.length });
 
   if (generationOptions.spacedRepetitionEnabled && allCollectedSrsCards.length > 0) {
     timeSync('bundle.generation.stage', { ...timingLabels, stage: 'write_srs_manifest', card_count: allCollectedSrsCards.length }, () => {

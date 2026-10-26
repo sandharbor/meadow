@@ -18,6 +18,7 @@ import { describe, expect, it } from 'vitest';
 import { render } from '@testing-library/react';
 import BundleNodeGlyph from '../../../../../src/areas/bundle/shared-sourcing-curation/components/BundleNodeGlyph';
 import type { BundleNodeKind } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig';
+import type { FileType } from '../../../../../../../contracts/types/shared/bundle-graph/FileType';
 
 const highlight = {
   color: '#14b8a6',
@@ -26,14 +27,14 @@ const highlight = {
   filterName: 'Test Filter',
 };
 
-const renderGlyph = (bundleNodeKind: BundleNodeKind) => render(
+const renderGlyph = (bundleNodeKind: BundleNodeKind, fileType: FileType = 'md') => render(
   <svg>
     <BundleNodeGlyph
       isSelected={false}
       isFrontierNode={false}
       isFrontierImageExtension={false}
       tracked
-      fileType="md"
+      fileType={fileType}
       bundleNodeKind={bundleNodeKind}
       highlights={[highlight]}
       showLabel={false}
@@ -52,5 +53,14 @@ describe('BundleNodeGlyph shapes', () => {
 
     expect(container.querySelector(`[data-node-shape="${expectedShape}"]`)).not.toBeNull();
     expect(container.querySelector(`[data-highlight-shape="${expectedShape}"]`)).not.toBeNull();
+  });
+});
+
+describe('BundleNodeGlyph indicators', () => {
+  it('marks a PDF with a document, not an image', () => {
+    const { container } = renderGlyph('file', 'pdf');
+
+    expect(container.querySelector('[data-node-indicator="pdf"]')).not.toBeNull();
+    expect(container.querySelectorAll('g')).toHaveLength(1);
   });
 });

@@ -69,7 +69,11 @@ export type NodeTypeFilterId =
   | 'gif'
   | 'svg'
   | 'webp'
+  | 'bmp'
+  | 'avif'
   | 'excalidraw'
+  | 'audio'
+  | 'video'
   | 'folder'
   | 'collection'
   | 'selected-scope-root';

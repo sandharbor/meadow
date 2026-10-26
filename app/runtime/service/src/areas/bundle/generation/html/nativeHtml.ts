@@ -21,7 +21,7 @@ import type { BundleRouteTable } from './bundleRoutePlanner.js';
 import { resolveTrackedLinkHref } from './linkModificationService.js';
 
 const URL_ATTRIBUTE_PATTERN = /\b(href|src)(\s*=\s*)(["'])(.*?)\3/gi;
-const RENDERED_PAGE_FILE_TYPES = new Set(['md', 'html', 'excalidraw']);
+const RENDERED_PAGE_FILE_TYPES = new Set(['md', 'html', 'excalidraw', 'pdf']);
 
 function resolvedFileType(resolved: LinkResolvedInfo): string | null {
   const targetPath = resolved.link_resolved_target_path;

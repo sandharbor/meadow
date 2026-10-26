@@ -90,20 +90,25 @@ function sendGeneratingPreviewPage(res: express.Response): void {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Serve the vendored Excalidraw renderer bundle so the editor frontend
-// can use the same exportToSvg + lz-string surface that the published bundle
-// uses. The bundle is the build artifact at
-// `src/areas/bundle/generation/html/shared/excalidraw-vendor.js` (refreshed via
-// `node scripts/build-excalidraw-vendor.mjs`).
-router.get('/generation/assets/excalidraw-vendor.js', (_req, res) => {
-  const bundlePath = path.join(__dirname, '..', 'html', 'shared', 'excalidraw-vendor.js');
-  if (!fs.existsSync(bundlePath)) {
-    return res.status(404).send('// excalidraw-vendor.js not found');
-  }
-  res.setHeader('Content-Type', 'application/javascript');
-  res.setHeader('Cache-Control', 'public, max-age=86400');
-  res.sendFile(bundlePath);
-});
+// Serve the vendored renderers so the editor frontend draws thumbnails with
+// the same code the published bundle uses: Excalidraw's exportToSvg +
+// lz-string, and pdf.js with its worker. They are the build artifacts in
+// `src/areas/bundle/generation/html/shared/` (refreshed via
+// `node scripts/build-excalidraw-vendor.mjs` and `node scripts/build-pdf-vendor.mjs`).
+function sendVendoredAsset(asset: string): express.RequestHandler {
+  return (_req, res) => {
+    const bundlePath = path.join(__dirname, '..', 'html', 'shared', asset);
+    if (!fs.existsSync(bundlePath)) {
+      return res.status(404).send(`// ${asset} not found`);
+    }
+    res.setHeader('Content-Type', 'application/javascript');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.sendFile(bundlePath);
+  };
+}
+router.get('/generation/assets/excalidraw-vendor.js', sendVendoredAsset('excalidraw-vendor.js'));
+router.get('/generation/assets/pdf-vendor.js', sendVendoredAsset('pdf-vendor.js'));
+router.get('/generation/assets/pdf-worker.js', sendVendoredAsset('pdf-worker.js'));
 
 router.get('/bundles/:bundleSlug/generation/open-knowledge-format/manifest', (req, res, next) => {
   try {

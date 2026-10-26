@@ -18,7 +18,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import he from 'he';
 import { Page } from './page.js';
-import { IMAGE_EXTENSIONS, LINK_PATTERN } from './constants.js';
+import { EMBEDDED_FILE_EXTENSIONS, LINK_PATTERN } from './constants.js';
 import { removeComments, removeFrontmatter } from './markdown.js';
 import { blankOutCode } from './markdownCode.js';
 import { LinkInfo } from './types.js';
@@ -153,19 +153,24 @@ export function linkTextToLinkInfo(link: string): LinkInfo {
     const pipe = suffix.indexOf('|');
     const alias = pipe < 0 ? undefined : suffix.slice(pipe + 1);
     const section = (pipe < 0 ? suffix : suffix.slice(0, pipe)).match(/#(.*)/)?.[1];
-    return IMAGE_EXTENSIONS.some(ext => filename.toLowerCase().endsWith(ext))
-      ? { type: 'image', filename, size: alias && IMAGE_SIZE_PATTERN.test(alias) ? alias : undefined }
+    return EMBEDDED_FILE_EXTENSIONS.some(ext => filename.toLowerCase().endsWith(ext))
+      ? { type: 'image', filename, size: alias && IMAGE_SIZE_PATTERN.test(alias) ? alias : undefined, fragment: section }
       : { type: 'page', filename, alternative_name: alias, section };
   }
   const lowerLink = link.toLowerCase();
+  // An embedded file is everything before its options after `#`.
+  const [beforeAlias] = link.split('|');
+  const hash = beforeAlias.indexOf('#');
+  const file = hash < 0 ? beforeAlias : beforeAlias.slice(0, hash);
 
-  // Check if it's an image
-  if (IMAGE_EXTENSIONS.some(ext => lowerLink.split('|')[0].endsWith(ext))) {
+  // Check if it's an image, audio, video, or PDF
+  if (EMBEDDED_FILE_EXTENSIONS.some(ext => file.toLowerCase().endsWith(ext))) {
     const sizeMatch = lowerLink.match(/\|(\d+(?:x\d+)?)$/);
     return {
       type: 'image',
-      filename: link.split('|')[0],
-      size: sizeMatch ? sizeMatch[1] : undefined
+      filename: file,
+      size: sizeMatch ? sizeMatch[1] : undefined,
+      ...(hash >= 0 && { fragment: beforeAlias.slice(hash + 1) }),
     };
   } else {
     // [[filename#optional section name|optional alternative name]]

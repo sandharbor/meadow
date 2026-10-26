@@ -229,13 +229,12 @@
         "bundleNodeKind": "file",
         "fileType": "md"
       },
-      "depth": 3,
-      "remaining_depth": 1,
-      "remaining_inlinks_depth": 97,
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
       "path": [
         "file:main page.md",
         "file:t002 - dup pages and images.md",
-        "file:t002/t002 ---- points to root dup.md",
         "file:t002 ---- dup.md"
       ],
       "isFrontierNode": false,
@@ -878,6 +877,36 @@
       "isFrontierImageExtension": false
     },
     {
+      "bundleNodeKey": "file:t006/t006 --- document with a link.pdf",
+      "bundleNodeId": "a250d9d0e726",
+      "bundleNodeKind": "file",
+      "label": "t006 --- document with a link",
+      "bundleNodeName": "t006 --- document with a link",
+      "sourceGraphSubdirectory": "t006",
+      "fileType": "pdf",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t006 --- document with a link",
+        "bundleNodeId": "a250d9d0e726",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t006",
+        "bundleNodeKind": "file",
+        "fileType": "pdf"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "file:main page.md",
+        "file:t006 - embedded media.md",
+        "file:t006/t006 --- document with a link.pdf"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
       "bundleNodeKey": "file:t006/t006 --- meadow-flower-petals-ani.gif",
       "bundleNodeId": "bb0a06325a33",
       "bundleNodeKind": "file",
@@ -998,6 +1027,37 @@
       "isFrontierImageExtension": false
     },
     {
+      "bundleNodeKey": "file:t006/t006 --- page linked from a pdf.md",
+      "bundleNodeId": "07627518086b",
+      "bundleNodeKind": "file",
+      "label": "t006 --- page linked from a pdf",
+      "bundleNodeName": "t006 --- page linked from a pdf",
+      "sourceGraphSubdirectory": "t006",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t006 --- page linked from a pdf",
+        "bundleNodeId": "07627518086b",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t006",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 3,
+      "remaining_depth": 1,
+      "remaining_inlinks_depth": 97,
+      "path": [
+        "file:main page.md",
+        "file:t006 - embedded media.md",
+        "file:t006/t006 --- document with a link.pdf",
+        "file:t006/t006 --- page linked from a pdf.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
       "bundleNodeKey": "file:t006/t006 --- page that embeds Excalidraw in another directory.md",
       "bundleNodeId": "40ba94eb2b84",
       "bundleNodeKind": "file",
@@ -1023,6 +1083,66 @@
         "file:main page.md",
         "file:t006 - embedded media.md",
         "file:t006/t006 --- page that embeds Excalidraw in another directory.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "file:t006/t006 --- short clip.mp4",
+      "bundleNodeId": "00ce74c1c4c8",
+      "bundleNodeKind": "file",
+      "label": "t006 --- short clip",
+      "bundleNodeName": "t006 --- short clip",
+      "sourceGraphSubdirectory": "t006",
+      "fileType": "mp4",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t006 --- short clip",
+        "bundleNodeId": "00ce74c1c4c8",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t006",
+        "bundleNodeKind": "file",
+        "fileType": "mp4"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "file:main page.md",
+        "file:t006 - embedded media.md",
+        "file:t006/t006 --- short clip.mp4"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "file:t006/t006 --- short tone.mp3",
+      "bundleNodeId": "684e5699eaf0",
+      "bundleNodeKind": "file",
+      "label": "t006 --- short tone",
+      "bundleNodeName": "t006 --- short tone",
+      "sourceGraphSubdirectory": "t006",
+      "fileType": "mp3",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t006 --- short tone",
+        "bundleNodeId": "684e5699eaf0",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t006",
+        "bundleNodeKind": "file",
+        "fileType": "mp3"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "file:main page.md",
+        "file:t006 - embedded media.md",
+        "file:t006/t006 --- short tone.mp3"
       ],
       "isFrontierNode": false,
       "isFrontierImageExtension": false
@@ -3648,6 +3768,12 @@
     },
     {
       "source": "file:t002 - dup pages and images.md",
+      "target": "file:t002 ---- dup.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "file:t002 - dup pages and images.md",
       "target": "file:t002 ---- points to png dup 2 with no path from root.md",
       "bundleEdgeKind": "semanticLink",
       "isBidirectional": false
@@ -3768,6 +3894,12 @@
     },
     {
       "source": "file:t006 - embedded media.md",
+      "target": "file:t006/t006 --- document with a link.pdf",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "file:t006 - embedded media.md",
       "target": "file:t006/t006 --- meadow-flower-petals-ani.gif",
       "bundleEdgeKind": "semanticLink",
       "isBidirectional": false
@@ -3793,6 +3925,24 @@
     {
       "source": "file:t006 - embedded media.md",
       "target": "file:t006/t006 --- page that embeds Excalidraw in another directory.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "file:t006 - embedded media.md",
+      "target": "file:t006/t006 --- short clip.mp4",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "file:t006 - embedded media.md",
+      "target": "file:t006/t006 --- short tone.mp3",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "file:t006/t006 --- document with a link.pdf",
+      "target": "file:t006/t006 --- page linked from a pdf.md",
       "bundleEdgeKind": "semanticLink",
       "isBidirectional": false
     },
@@ -4043,6 +4193,18 @@
       "isBidirectional": false
     },
     {
+      "source": "file:t017/t017 ---- full page source.md",
+      "target": "file:t017/t017 ---- block source.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "file:t017/t017 ---- full page source.md",
+      "target": "file:t017/t017 ---- section source.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
       "source": "file:t017/t017 ---- full page transclusion.md",
       "target": "file:t017/t017 ---- full page source.md",
       "bundleEdgeKind": "semanticLink",
@@ -4094,7 +4256,7 @@
       "source": "file:t020 - code blocks.md",
       "target": "file:t020/t020 ---- code blocks should end properly.md",
       "bundleEdgeKind": "semanticLink",
-      "isBidirectional": false
+      "isBidirectional": true
     },
     {
       "source": "file:t020 - code blocks.md",
@@ -4189,6 +4351,12 @@
     {
       "source": "file:t024/t024 ---- linked page.md",
       "target": "file:t024/deeper/t024 ---- deep page.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "file:t025 - extended syntax.md",
+      "target": "file:t003 ---- page with section to link to.md",
       "bundleEdgeKind": "semanticLink",
       "isBidirectional": false
     },

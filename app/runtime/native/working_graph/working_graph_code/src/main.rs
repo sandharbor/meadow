@@ -246,7 +246,22 @@ fn is_supported_source_extension(extension: &str) -> bool {
             | "gif"
             | "svg"
             | "webp"
+            | "bmp"
+            | "avif"
             | "excalidraw"
+            | "mp3"
+            | "wav"
+            | "m4a"
+            | "3gp"
+            | "flac"
+            | "ogg"
+            | "oga"
+            | "opus"
+            | "mp4"
+            | "webm"
+            | "ogv"
+            | "mov"
+            | "mkv"
     )
 }
 fn logical(file: &FileInfo) -> String {

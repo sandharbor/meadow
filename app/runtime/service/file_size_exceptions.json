@@ -20,6 +20,14 @@
       "reason": "Vendored minified Mermaid runtime served as a static asset for generated bundles.",
       "followUp": "Keep vendored runtime assets exempt or move them under a generated-assets path excluded from source line limits."
     },
+    "areas/bundle/generation/html/shared/pdf-vendor.js": {
+      "reason": "Generated vendor bundle served as a static asset for PDF rendering.",
+      "followUp": "Keep generated bundles exempt or move them under a generated-assets path excluded from source line limits."
+    },
+    "areas/bundle/generation/html/shared/pdf-worker.js": {
+      "reason": "Vendored minified pdf.js worker served as a static asset for PDF rendering.",
+      "followUp": "Keep vendored runtime assets exempt or move them under a generated-assets path excluded from source line limits."
+    },
     "areas/bundle/generation/render-source/srsMarkdown.ts": {
       "reason": "Spaced-repetition markdown transforms are generation render-source logic and exceed the line limit.",
       "followUp": "Split card parsing, GUID preparation, and render-element replacement helpers within the generation render-source area."

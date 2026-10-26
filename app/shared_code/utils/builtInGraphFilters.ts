@@ -15,6 +15,7 @@ limitations under the License.
 */
 
 import type { FileType } from '../../contracts/types/shared/bundle-graph/FileType.js';
+import { AUDIO_FILE_TYPES, VIDEO_FILE_TYPES } from './fileTypeUtils.js';
 import type {
   BuiltInGraphFilterAction,
   GraphFilterDescriptor,
@@ -120,7 +121,11 @@ export const NODE_TYPE_FILTER_DEFINITIONS: readonly NodeTypeFilterDefinition[] =
   fileTypeDefinition('gif', 'GIF', ['gif']),
   fileTypeDefinition('svg', 'SVG', ['svg']),
   fileTypeDefinition('webp', 'WebP', ['webp']),
+  fileTypeDefinition('bmp', 'BMP', ['bmp']),
+  fileTypeDefinition('avif', 'AVIF', ['avif']),
   fileTypeDefinition('excalidraw', 'Excalidraw', ['excalidraw']),
+  fileTypeDefinition('audio', 'Audio', AUDIO_FILE_TYPES),
+  fileTypeDefinition('video', 'Video', VIDEO_FILE_TYPES),
   {
     id: 'folder',
     label: 'Folder',

@@ -466,6 +466,75 @@ export class GeneratedBundleSvg {
   }
 }
 
+/** Audio, video, and PDFs embedded in a generated Meadow bundle. */
+export class GeneratedBundleMedia {
+  constructor(
+    private root: GeneratedBundleRoot,
+    private expect: Expect,
+  ) {}
+
+  private get pdfEmbedFrame() {
+    return this.root.locator(".meadow-pdf-embed-frame").first();
+  }
+
+  private get fullscreenPdfEmbedFrame() {
+    return this.root.locator(".meadow-pdf-embed-frame.meadow-pdf-can-fullscreen").first();
+  }
+
+  async expectAudioPlayer(srcFragment: string) {
+    await this.expect(this.root.locator(`audio[controls][src*="${srcFragment}"]`)).toHaveCount(1);
+  }
+
+  async expectVideoPlayer(srcFragment: string) {
+    await this.expect(this.root.locator(`video[controls][src*="${srcFragment}"]`)).toHaveCount(1);
+  }
+
+  /**
+   * Waits for each PDF viewer on the page to draw its first page. Viewers
+   * draw pages as they scroll into view, so each is brought into view first.
+   */
+  async expectPdfEmbedsRendered(count: number) {
+    const frames = this.root.locator(".meadow-pdf-embed-frame");
+    await this.expect(frames).toHaveCount(count);
+    for (let index = 0; index < count; index++) {
+      const frame = frames.nth(index);
+      await frame.scrollIntoViewIfNeeded();
+      await this.expect(frame.locator(".meadow-pdf-sheet canvas").first()).toBeVisible({ timeout: 30_000 });
+    }
+  }
+
+  async expectPdfLink(href: string) {
+    await this.expect(this.pdfEmbedFrame.locator(`a.meadow-pdf-link[href="${href}"]`)).toHaveCount(1);
+  }
+
+  async clickPdfLink(href: string) {
+    await this.pdfEmbedFrame.locator(`a.meadow-pdf-link[href="${href}"]`).click();
+  }
+
+  async openPdfFullscreen() {
+    const button = this.fullscreenPdfEmbedFrame.getByRole("button", { name: "Open PDF fullscreen" });
+    await this.fullscreenPdfEmbedFrame.scrollIntoViewIfNeeded();
+    await button.click();
+    await this.expect(this.fullscreenPdfEmbedFrame).toHaveClass(/is-fullscreen/);
+  }
+
+  async closePdfFullscreen() {
+    await this.root.locator("body").press("Escape");
+    await this.expect(this.fullscreenPdfEmbedFrame).not.toHaveClass(/is-fullscreen/);
+  }
+
+  async openPdfPage() {
+    await this.pdfEmbedFrame.locator(".meadow-pdf-open-link").click();
+  }
+
+  /** Waits for a PDF's own page to draw it. */
+  async expectStandalonePdfRendered() {
+    await this.expect(this.root.locator(".meadow-pdf-page .meadow-pdf-sheet canvas").first()).toBeVisible({
+      timeout: 30_000,
+    });
+  }
+}
+
 /** Folder navigation rendered inside a generated Meadow bundle. */
 export class GeneratedBundleFolderNavigation {
   constructor(
@@ -699,6 +768,7 @@ export class GeneratedBundle {
   readonly sources: GeneratedBundleSources;
   readonly excalidraw: GeneratedBundleExcalidraw;
   readonly svg: GeneratedBundleSvg;
+  readonly media: GeneratedBundleMedia;
   readonly folderNavigation: GeneratedBundleFolderNavigation;
 
   private constructor(
@@ -711,6 +781,7 @@ export class GeneratedBundle {
     this.sources = new GeneratedBundleSources(hostPage, root, expect);
     this.excalidraw = new GeneratedBundleExcalidraw(hostPage, root, expect);
     this.svg = new GeneratedBundleSvg(root, expect);
+    this.media = new GeneratedBundleMedia(root, expect);
     this.folderNavigation = new GeneratedBundleFolderNavigation(root, expect);
   }
 

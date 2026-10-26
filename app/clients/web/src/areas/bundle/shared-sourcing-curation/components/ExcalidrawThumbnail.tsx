@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { apiRequest, requireApiSuccess } from '../../../../shared/utils/apiClient';
+import { apiRequest } from '../../../../shared/utils/apiClient';
+import { loadVendorScript } from '../../../../shared/utils/vendorScript';
 import { logger } from '../../../../shared/utils/logger';
 
 // Renders an Excalidraw drawing as an SVG thumbnail by reusing the same
@@ -29,35 +30,8 @@ type WindowWithExcalidraw = Window & {
   };
 };
 
-let vendorLoadPromise: Promise<void> | null = null;
-
 function loadVendorBundle(vendorUrl: string): Promise<void> {
-  const w = window as WindowWithExcalidraw;
-  if (w.MeadowExcalidraw) return Promise.resolve();
-  if (vendorLoadPromise) return vendorLoadPromise;
-  vendorLoadPromise = (async () => {
-    const response = await requireApiSuccess(await apiRequest(vendorUrl, {
-      headers: { Accept: 'application/javascript' },
-    }));
-    const objectUrl = URL.createObjectURL(await response.blob());
-    const script = document.createElement('script');
-    script.src = objectUrl;
-    script.async = true;
-    try {
-      await new Promise<void>((resolve, reject) => {
-        script.onload = () => resolve();
-        script.onerror = () => reject(new Error(`Failed to execute Excalidraw vendor bundle from ${vendorUrl}`));
-        document.head.appendChild(script);
-      });
-    } finally {
-      script.remove();
-      URL.revokeObjectURL(objectUrl);
-    }
-  })().catch((error: unknown) => {
-    vendorLoadPromise = null;
-    throw error;
-  });
-  return vendorLoadPromise;
+  return loadVendorScript(vendorUrl, () => Boolean((window as WindowWithExcalidraw).MeadowExcalidraw));
 }
 
 interface ExcalidrawScene {

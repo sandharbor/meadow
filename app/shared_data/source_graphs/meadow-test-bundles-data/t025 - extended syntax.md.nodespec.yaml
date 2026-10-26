@@ -23,6 +23,7 @@ nodespecs:
           - relativeLinkPath: https://www.markdownguide.org/extended-syntax/
           - relativeLinkPath: https://example.com/callout-title
           - relativeLinkPath: https://example.com/definition
+          - relativeLinkPath: https://example.com/embedded
           - relativeLinkPath: https://example.com/camp:tent:site
           - relativeLinkPath: "#footnote-inline-1"
           - relativeLinkPath: "#footnote-ref-inline-1"

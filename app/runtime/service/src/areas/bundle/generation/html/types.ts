@@ -28,6 +28,8 @@ export interface LinkInfo {
   alternative_name?: string;
   section?: string;
   size?: string;
+  /** An embed's options after `#`, such as `page=3&height=400` for a PDF. */
+  fragment?: string;
 }
 
 /** Each page's node key, with the keys of the pages whose links resolved to it. */
@@ -95,6 +97,10 @@ export interface StaticAssetNames {
   excalidrawJs: string;
   svgCss?: string;
   svgJs?: string;
+  pdfCss?: string;
+  pdfVendorJs?: string;
+  pdfWorkerJs?: string;
+  pdfJs?: string;
   srsCss?: string;
   srsJs?: string;
   searchCss?: string;

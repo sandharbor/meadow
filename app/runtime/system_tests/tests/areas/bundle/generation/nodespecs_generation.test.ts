@@ -231,9 +231,10 @@ describe('Runtime Nodespec Generation Validation', () => {
         const relativePath = getNodespecOutputPath(sourceFile, sourceGraphDir, bundleName);
         const htmlPath = path.join(generatedHtmlFolderPath, relativePath);
 
-        // Images, PDFs, and web assets have no rendered HTML link sections.
-        // SVG is markup and can contain links; binary assets must not be decoded as text.
-        const hasRenderedMarkup = /\.(?:md|html|svg)$/i.test(sourceFile);
+        // Images and web assets have no rendered HTML link sections. SVG is
+        // markup and can contain links, and a PDF has a page of its own; other
+        // binary assets must not be decoded as text.
+        const hasRenderedMarkup = /\.(?:md|html|svg|pdf)$/i.test(sourceFile);
         if (!hasRenderedMarkup || !fs.existsSync(htmlPath)) {
           const mainLinks = bundleSpec.generation.htmlRenderedLinks?.mainSectionLinks ?? [];
           const backlinks = bundleSpec.generation.htmlRenderedLinks?.footerSectionBacklinks ?? [];

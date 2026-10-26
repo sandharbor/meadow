@@ -173,6 +173,12 @@ nodes:
     fileType: md
     bundleNodeId: 87f8a32781f5
     listType: whitelist
+  - bundleNodeName: t006 --- document with a link
+    sourceGraphSubdirectory: t006
+    bundleNodeKind: file
+    fileType: pdf
+    bundleNodeId: a250d9d0e726
+    listType: whitelist
   - bundleNodeName: t006 --- dup-linked-from-excalidraw
     sourceGraphSubdirectory: t006
     bundleNodeKind: file
@@ -221,11 +227,29 @@ nodes:
     fileType: gif
     bundleNodeId: bb0a06325a33
     listType: whitelist
+  - bundleNodeName: t006 --- page linked from a pdf
+    sourceGraphSubdirectory: t006
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 07627518086b
+    listType: whitelist
   - bundleNodeName: t006 --- page that embeds Excalidraw in another directory
     sourceGraphSubdirectory: t006
     bundleNodeKind: file
     fileType: md
     bundleNodeId: 40ba94eb2b84
+    listType: whitelist
+  - bundleNodeName: t006 --- short clip
+    sourceGraphSubdirectory: t006
+    bundleNodeKind: file
+    fileType: mp4
+    bundleNodeId: 00ce74c1c4c8
+    listType: whitelist
+  - bundleNodeName: t006 --- short tone
+    sourceGraphSubdirectory: t006
+    bundleNodeKind: file
+    fileType: mp3
+    bundleNodeId: 684e5699eaf0
     listType: whitelist
   - bundleNodeName: t007 - blacklisted
     sourceGraphSubdirectory: ""

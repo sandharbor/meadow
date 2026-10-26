@@ -20,9 +20,9 @@ limitations under the License.
  */
 
 import type { NodespecLinkSpec, NodespecLinks } from './types.js';
-import { IMAGE_EXTENSIONS } from '../../../shared_code/utils/fileTypeUtils.js';
+import { AUDIO_VIDEO_EXTENSIONS, IMAGE_EXTENSIONS } from '../../../shared_code/utils/fileTypeUtils.js';
 
-const PRESERVED_LINK_EXTENSIONS = ['.html', '.css', '.js', '.pdf', ...IMAGE_EXTENSIONS] as const;
+const PRESERVED_LINK_EXTENSIONS = ['.html', '.css', '.js', '.pdf', ...IMAGE_EXTENSIONS, ...AUDIO_VIDEO_EXTENSIONS] as const;
 
 /**
  * Result of a link check operation.

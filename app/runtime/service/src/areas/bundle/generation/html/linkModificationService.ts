@@ -23,7 +23,8 @@ import { BundleConfig } from '../../../../../../../contracts/types/shared/bundle
 import type { LinkResolvedInfo } from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode.js';
 import { encodePathForUrl } from '../../../../../../../shared_code/utils/urlUtils.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
-import { IMAGE_FILE_TYPES } from './constants.js';
+import { IMAGE_FILE_TYPES, MEDIA_FILE_TYPES } from './constants.js';
+import { AUDIO_FILE_TYPES, VIDEO_FILE_TYPES } from '../../../../../../../shared_code/utils/fileTypeUtils.js';
 import { pageLinkFragment } from './pageAnchors.js';
 import type { BundleRouteTable } from './bundleRoutePlanner.js';
 
@@ -86,7 +87,7 @@ export function resolveTrackedLinkHref(args: {
   }
 
   let urlFilename: string;
-  if (targetUrlMode === 'rendered-page' && (targetExt === 'md' || targetExt === 'html' || targetExt === 'excalidraw')) {
+  if (targetUrlMode === 'rendered-page' && (targetExt === 'md' || targetExt === 'html' || targetExt === 'excalidraw' || targetExt === 'pdf')) {
     const normalizedTitle = bundleConfig && bundleSlug
       ? normalizePageTitle(targetTitle, bundleConfig, bundleSlug)
       : targetTitle;
@@ -146,7 +147,122 @@ function isEmbeddedExcalidrawFileTarget(resolved: LinkResolvedInfo): boolean {
 
 function isResolvedImageLikeTarget(resolved: LinkResolvedInfo | undefined): boolean {
   const ext = resolved ? resolvedTargetExtension(resolved) : null;
-  return !!ext && (IMAGE_FILE_TYPES as readonly string[]).includes(ext);
+  return !!ext && ((IMAGE_FILE_TYPES as readonly string[]).includes(ext) || MEDIA_FILE_TYPES.includes(ext));
+}
+
+/**
+ * The player for an embedded audio or video file at `src`, or null for any
+ * other file. A video takes a size, as an image does.
+ */
+export function mediaEmbedHtml(fileName: string, src: string, fragment?: string, size?: string): string | null {
+  const fileType = fileName.slice(fileName.lastIndexOf('.') + 1).toLowerCase();
+  const suffix = fragment ? `#${fragment}` : '';
+  if ((AUDIO_FILE_TYPES as readonly string[]).includes(fileType)) {
+    return `<audio controls src="${src}${suffix}"></audio>`;
+  }
+  if ((VIDEO_FILE_TYPES as readonly string[]).includes(fileType)) {
+    return `<video controls src="${src}${suffix}"${imageSizeStyle(size)}></video>`;
+  }
+  return null;
+}
+
+/**
+ * The attributes the client renderer (meadow-pdf.js) reads to show a PDF with
+ * pdf.js: the file, the page to open at, and where the PDF's links go. Each
+ * link is keyed by the URI the PDF holds; tracked ones carry their href in the
+ * bundle and untracked ones show as not tracked.
+ */
+export function pdfViewerAttributes(src: string, links?: { tracked: Record<string, ExcalidrawTrackedLink>; untracked: string[] }, page?: number): string {
+  const pageAttr = page && page > 1 ? ` data-meadow-pdf-page="${page}"` : '';
+  const linksAttr = links && Object.keys(links.tracked).length > 0
+    ? ` data-meadow-pdf-links="${escapeHtmlAttribute(JSON.stringify(links.tracked))}"`
+    : '';
+  const untrackedAttr = links && links.untracked.length > 0
+    ? ` data-meadow-pdf-untracked-links="${escapeHtmlAttribute(JSON.stringify(links.untracked))}"`
+    : '';
+  const linksEnabledAttr = links ? ' data-meadow-pdf-links-enabled="true"' : '';
+  return ` data-meadow-pdf-src="${src}"${pageAttr}${linksEnabledAttr}${linksAttr}${untrackedAttr}`;
+}
+
+/**
+ * A viewer for an embedded PDF. The PDF's `page=` option opens it at that
+ * page and `height=` sets the viewer's height in pixels, as in Obsidian. By
+ * default its links work and an icon opens the PDF's own page; a Meadow
+ * container directive can turn either off or add a fullscreen button.
+ */
+export function pdfEmbedHtml(args: {
+  fileName: string;
+  src: string;
+  pageHref: string | null;
+  fragment?: string;
+  links: { tracked: Record<string, ExcalidrawTrackedLink>; untracked: string[] };
+  mediaEmbedOptions?: MediaEmbedOptions;
+}): string {
+  const embedOptions = {
+    enableEmbeddedLinks: true,
+    enableFullscreenButton: false,
+    enableOpenDedicatedPage: true,
+    ...args.mediaEmbedOptions,
+  };
+  const options = new URLSearchParams(args.fragment ?? '');
+  const height = Number(options.get('height'));
+  const page = Math.floor(Number(options.get('page')));
+  const title = args.fileName.replace(/\.pdf$/i, '');
+  const titleAttr = escapeHtmlAttribute(`Open ${title}`);
+  const viewerHtml = `<span class="meadow-pdf-embed"${pdfViewerAttributes(args.src, embedOptions.enableEmbeddedLinks ? args.links : undefined, page)} title="${escapeHtmlAttribute(title)}"><span class="meadow-pdf-loading">Loading PDF…</span></span>`;
+  const fullscreenClass = embedOptions.enableFullscreenButton ? ' meadow-pdf-can-fullscreen' : '';
+  const fullscreenButton = embedOptions.enableFullscreenButton
+    ? '<button type="button" class="meadow-pdf-fullscreen-btn" aria-label="Open PDF fullscreen" title="Open fullscreen">⛶</button>'
+    : '';
+  const openHtml = embedOptions.enableOpenDedicatedPage && args.pageHref
+    ? `<a class="meadow-pdf-open-icon meadow-pdf-open-link" href="${args.pageHref}" title="${titleAttr}" aria-label="${titleAttr}">⤢</a>`
+    : '';
+  return `<span class="meadow-pdf-embed-frame${fullscreenClass}" style="height: ${height > 0 ? height : 600}px">${viewerHtml}${fullscreenButton}${openHtml}</span>`;
+}
+
+/**
+ * The HTML for an embedded PDF found at `pdfPath` in the source graph: its
+ * viewer, with the links the working graph resolved inside it.
+ */
+export function resolvedPdfEmbedHtml(args: {
+  pdfPath: string;
+  src: string;
+  fragment?: string;
+  mediaEmbedOptions?: MediaEmbedOptions;
+  hostPageDirectory: string;
+  hostOutputDirectory?: string;
+  bundleNodeConfigs: BundleNodeConfig[];
+  allLinkResolutionMaps: Map<EncodedBundleNodeKey, Record<string, LinkResolvedInfo>> | undefined;
+  bundleConfig?: BundleConfig;
+  bundleSlug?: string;
+  routeTable?: BundleRouteTable;
+}): string {
+  const lastSlash = args.pdfPath.lastIndexOf('/');
+  const directory = lastSlash >= 0 ? args.pdfPath.slice(0, lastSlash) : '';
+  const fileName = args.pdfPath.slice(lastSlash + 1);
+  const shared = {
+    hostPageDirectory: args.hostPageDirectory,
+    hostOutputDirectory: args.hostOutputDirectory,
+    bundleNodeConfigs: args.bundleNodeConfigs,
+    bundleConfig: args.bundleConfig,
+    bundleSlug: args.bundleSlug,
+    routeTable: args.routeTable,
+  };
+  return pdfEmbedHtml({
+    fileName,
+    src: args.src,
+    pageHref: resolveTrackedLinkHref({
+      ...shared,
+      resolved: { link_resolved_target_path: args.pdfPath, link_resolved_target_directory: directory },
+    }),
+    fragment: args.fragment,
+    links: buildExcalidrawClientLinkData({
+      ...shared,
+      excalidrawPageIdent: makeBundleNodeKey(fileName.replace(/\.pdf$/i, ''), 'pdf', directory),
+      allLinkResolutionMaps: args.allLinkResolutionMaps,
+    }),
+    mediaEmbedOptions: args.mediaEmbedOptions,
+  });
 }
 
 export function isImageLikeWikiLink(
@@ -694,7 +810,24 @@ export function linkOrImageHtml(
       return `<span class="meadow-svg-embed-frame${fullscreenClass}"${styleAttr}>${contentHtml}${fullscreenButton}${openHtml}</span>`;
     }
 
-    return `<img src="${encodedImagePath}"${imageSizeStyle(sizeConstraint)} alt="${originalImageFilename}" />`;
+    if (imageName.toLowerCase().endsWith('.pdf')) {
+      return resolvedPdfEmbedHtml({
+        pdfPath: imageSourceDir ? `${imageSourceDir}/${imageName}` : imageName,
+        src: encodedImagePath,
+        fragment: linkInfo.fragment,
+        mediaEmbedOptions,
+        hostPageDirectory: currentPageDirectory,
+        hostOutputDirectory: currentOutputDirectory,
+        bundleNodeConfigs,
+        allLinkResolutionMaps,
+        bundleConfig,
+        bundleSlug,
+        routeTable,
+      });
+    }
+
+    return mediaEmbedHtml(imageName, encodedImagePath, linkInfo.fragment, sizeConstraint)
+      ?? `<img src="${encodedImagePath}"${imageSizeStyle(sizeConstraint)} alt="${originalImageFilename}" />`;
   }
 
   if (linkInfo.type === 'page') {

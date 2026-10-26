@@ -65,11 +65,14 @@ import {
 import {
   isImageLikeWikiLink,
   linkOrImageHtml as linkOrImageHtmlService,
+  mediaEmbedHtml,
+  pdfViewerAttributes,
+  resolvedPdfEmbedHtml,
   resolveTrackedLinkHref,
   type MediaEmbedOptions,
 } from './linkModificationService.js';
 import type { LinkResolvedInfo } from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode.js';
-import { IMAGE_FILE_TYPES, KNOWN_FILE_TYPES } from './constants.js';
+import { IMAGE_FILE_TYPES, KNOWN_FILE_TYPES, MEDIA_FILE_TYPES } from './constants.js';
 import { encodePathForUrl } from '../../../../../../../shared_code/utils/urlUtils.js';
 import { HooksLoader } from '../utils/hooksLoader.js';
 import { frontmatterAsDict, inlineFootnotesToReferences, replaceInProse, replaceOutsideCode, splitMarkdownBlocks } from './markdown.js';
@@ -261,7 +264,9 @@ export function createNoteRenderer(context: NoteRenderContext) {
     const isConfigurableMedia = lowerFilename.endsWith('.excalidraw')
       || lowerResolvedTargetPath.endsWith('.excalidraw')
       || lowerFilename.endsWith('.svg')
-      || lowerResolvedTargetPath.endsWith('.svg');
+      || lowerResolvedTargetPath.endsWith('.svg')
+      || lowerFilename.endsWith('.pdf')
+      || lowerResolvedTargetPath.endsWith('.pdf');
     if (!isImageLikeWikiLink(linkText, effectiveLinkResolutionMap) || !isConfigurableMedia) {
       return body.trim();
     }
@@ -391,7 +396,7 @@ export function createNoteRenderer(context: NoteRenderContext) {
     const fileName = resolvedPath.split('/').pop() ?? '';
     const extMatch = resolvedPath.match(/\.([^.]+)$/);
     const fileType = extMatch ? extMatch[1].toLowerCase() : 'md';
-    const targetIsImage = IMAGE_FILE_TYPES.includes(fileType);
+    const targetIsImage = IMAGE_FILE_TYPES.includes(fileType) || MEDIA_FILE_TYPES.includes(fileType);
 
     if (targetIsImage) {
       // Copy image to output
@@ -417,10 +422,27 @@ export function createNoteRenderer(context: NoteRenderContext) {
       const relativeImagePath = calculateRelativePath(effectivePageDir, imageTargetPath);
       const encodedPath = encodePathForUrl(relativeImagePath);
 
+      const fragment = href.includes('#') ? href.slice(href.indexOf('#') + 1) : undefined;
+      const pdfHosting = {
+        hostPageDirectory: effectivePageDir,
+        hostOutputDirectory: overrides?.currentPageDirectoryOverride ?? currentOutputDirectory,
+        bundleNodeConfigs,
+        bundleConfig,
+        bundleSlug,
+        routeTable,
+      };
       if (isImage) {
         // Image embed ![alt](path), where the alt text may carry a size: ![alt|80](path)
         const { alt, size } = altTextAndSize(text);
-        return `<img src="${encodedPath}" alt="${alt}"${imageSizeStyle(size)}${titleAttr} />`;
+        if (fileType === 'pdf') {
+          return resolvedPdfEmbedHtml({ ...pdfHosting, pdfPath: imageTargetPath, src: encodedPath, fragment, allLinkResolutionMaps });
+        }
+        return mediaEmbedHtml(fileName, encodedPath, fragment, size)
+          ?? `<img src="${encodedPath}" alt="${alt}"${imageSizeStyle(size)}${titleAttr} />`;
+      } else if (fileType === 'pdf') {
+        // A link to a PDF goes to its page, which shows it.
+        const pageHref = resolveTrackedLinkHref({ ...pdfHosting, resolved: resolvedInfo });
+        return `<a href="${pageHref ?? encodedPath}"${titleAttr}>${text}</a>`;
       } else {
         // Link to image [text](path)
         return `<a href="${encodedPath}"${titleAttr}>${text}</a>`;
@@ -845,6 +867,7 @@ export function renderPageToHtml(
   const includeCallouts = htmlContent.includes('class="callout ');
   const includeExcalidraw = htmlContent.includes('meadow-excalidraw-embed') || htmlContent.includes('meadow-excalidraw-page');
   const includeSvgEmbed = htmlContent.includes('meadow-svg-embed');
+  const includePdf = htmlContent.includes('meadow-pdf-embed');
   // Empty string means base was disabled; only pass to template if non-empty
   const styleCssRaw = staticAssetNames?.styleCss ?? 'style.css';
   const styleCss = styleCssRaw || undefined;
@@ -857,6 +880,7 @@ export function renderPageToHtml(
   const excalidrawJs = staticAssetNames?.excalidrawJs ?? 'meadow-excalidraw.js';
   const svgCss = staticAssetNames?.svgCss ?? 'meadow-svg.css';
   const svgJs = staticAssetNames?.svgJs ?? 'meadow-svg.js';
+  const pdfAssets = pdfTemplateAssets(staticAssetNames);
   const srsCss = staticAssetNames?.srsCss
     ?? `${CUSTOMIZATION_ASSETS_DIRECTORY}/${SPACED_REPETITION_ASSETS_DIRECTORY}/srs.css`;
   const srsJs = staticAssetNames?.srsJs
@@ -901,6 +925,7 @@ export function renderPageToHtml(
     include_callouts: includeCallouts,
     include_excalidraw: includeExcalidraw,
     include_svg_embed: includeSvgEmbed,
+    include_pdf: includePdf,
     style_css: styleCss,
     javascript_js: javascriptJs,
     global_style_css: globalStyleCss,
@@ -914,6 +939,7 @@ export function renderPageToHtml(
     excalidraw_js: excalidrawJs,
     svg_css: svgCss,
     svg_js: svgJs,
+    ...pdfAssets,
     srs_css: srsCss,
     srs_js: srsJs,
     search_css: searchCss,
@@ -1040,8 +1066,9 @@ function sortedBacklinks(keys: string[], bundleNodeConfigs: BundleNodeConfig[]):
 
 /**
  * Builds the simple backlinks `<h2>Backlinks</h2><ul>...` block used by the
- * standalone Excalidraw page. Only includes whitelisted sources; no context
- * blocks or "see in context" links (those add nothing for a drawing target).
+ * standalone Excalidraw and PDF pages. Only includes whitelisted sources; no
+ * context blocks or "see in context" links (those add nothing for a drawing
+ * or a PDF).
  */
 export function renderSimpleBacklinksHtml(
   pageTitle: string,
@@ -1052,8 +1079,9 @@ export function renderSimpleBacklinksHtml(
   bundleSlug?: string,
   routeTable?: RenderOptions['routeTable'],
   currentOutputDirectory: string = currentPageDirectory,
+  fileType: 'excalidraw' | 'pdf' = 'excalidraw',
 ): string {
-  const list = inverseLinks[makeBundleNodeKey(pageTitle, 'excalidraw', currentPageDirectory)] ?? [];
+  const list = inverseLinks[makeBundleNodeKey(pageTitle, fileType, currentPageDirectory)] ?? [];
   const sorted = sortedBacklinks(list, bundleNodeConfigs);
   if (sorted.length === 0) return '';
 
@@ -1082,43 +1110,21 @@ export function renderSimpleBacklinksHtml(
  * with the drawing by fetching the source markdown and calling Excalidraw's
  * own exportToSvg — same renderer the Obsidian editor uses.
  */
-export function renderExcalidrawPageToHtml(args: {
+export function renderExcalidrawPageToHtml(args: StandalonePageArgs & {
   sourceMdPath: string;
-  outputFolder: string;
-  outputFilename: string; // page-title without extension
-  pageTitle: string;
-  currentPageDirectory: string;
   drawingMdHref: string; // href the client uses to fetch the source `.excalidraw.md`
   clientLinkMap?: Record<string, import('./linkModificationService.js').ExcalidrawTrackedLink>; // server-resolved wikilinks-inside-drawing
   clientUntrackedLinks?: string[]; // wikilinks-inside-drawing whose target isn't whitelisted
   clientEmbeddedFileMap?: Record<string, string>; // embedded-file wikilinks whose source files are publishable
   clientUntrackedEmbeddedFiles?: string[]; // embedded-file wikilinks whose source files are not publishable
-  breadcrumbHtml: string;
-  backlinksHtml: string;
-  staticAssetNames?: import('./types.js').StaticAssetNames;
-  bundleConfig: BundleConfig;
-  bundleSlug?: string;
-  searchEnabled: boolean;
-  folderNavigation?: import('./types.js').FolderNavigationRenderOptions;
 }): string | null {
   const {
     sourceMdPath,
-    outputFolder,
-    outputFilename,
-    pageTitle,
-    currentPageDirectory,
     drawingMdHref,
     clientLinkMap,
     clientUntrackedLinks,
     clientEmbeddedFileMap,
     clientUntrackedEmbeddedFiles,
-    breadcrumbHtml,
-    backlinksHtml,
-    staticAssetNames,
-    bundleConfig,
-    bundleSlug,
-    searchEnabled,
-    folderNavigation,
   } = args;
 
   if (!fs.existsSync(sourceMdPath)) {
@@ -1139,6 +1145,57 @@ export function renderExcalidrawPageToHtml(args: {
     ? ` data-meadow-excalidraw-untracked-files="${escapeHtmlAttribute(JSON.stringify(clientUntrackedEmbeddedFiles))}"`
     : '';
   const bodyHtml = `<div class="meadow-excalidraw-page" data-meadow-excalidraw-src="${drawingMdHref}"${linksAttr}${untrackedAttr}${embeddedFilesAttr}${untrackedEmbeddedFilesAttr}><span class="meadow-excalidraw-loading">Loading drawing…</span></div>`;
+
+  return writeStandalonePage({ ...args, bodyHtml, includeExcalidraw: true });
+}
+
+/** The template names of the PDF viewer's assets, as hashed in `_mw_assets`. */
+function pdfTemplateAssets(staticAssetNames?: import('./types.js').StaticAssetNames) {
+  return {
+    pdf_css: staticAssetNames?.pdfCss || 'meadow-pdf.css',
+    pdf_vendor_js: staticAssetNames?.pdfVendorJs || 'pdf-vendor.js',
+    pdf_worker_js: staticAssetNames?.pdfWorkerJs || 'pdf-worker.js',
+    pdf_js: staticAssetNames?.pdfJs || 'meadow-pdf.js',
+  };
+}
+
+type StandalonePageArgs = {
+  outputFolder: string;
+  outputFilename: string; // page-title without extension
+  pageTitle: string;
+  currentPageDirectory: string;
+  breadcrumbHtml: string;
+  backlinksHtml: string;
+  staticAssetNames?: import('./types.js').StaticAssetNames;
+  bundleConfig: BundleConfig;
+  bundleSlug?: string;
+  searchEnabled: boolean;
+  folderNavigation?: import('./types.js').FolderNavigationRenderOptions;
+};
+
+/**
+ * Writes a page whose body a client renderer fills: a standalone Excalidraw
+ * drawing or PDF, with the bundle's breadcrumbs, backlinks, and navigation.
+ */
+function writeStandalonePage(args: StandalonePageArgs & {
+  bodyHtml: string;
+  includeExcalidraw?: boolean;
+  includePdf?: boolean;
+}): string {
+  const {
+    outputFolder,
+    outputFilename,
+    pageTitle,
+    currentPageDirectory,
+    breadcrumbHtml,
+    backlinksHtml,
+    staticAssetNames,
+    bundleConfig,
+    bundleSlug,
+    searchEnabled,
+    folderNavigation,
+    bodyHtml,
+  } = args;
 
   const depth = currentPageDirectory ? currentPageDirectory.split('/').filter(p => p).length : 0;
   const assetsPrefix = '../'.repeat(depth) + '_mw_assets/';
@@ -1172,7 +1229,9 @@ export function renderExcalidrawPageToHtml(args: {
     backlinks: backlinksHtml,
     include_mermaid: false,
     include_callouts: false,
-    include_excalidraw: true,
+    include_excalidraw: args.includeExcalidraw ?? false,
+    include_pdf: args.includePdf ?? false,
+    ...pdfTemplateAssets(staticAssetNames),
     style_css: styleCss,
     javascript_js: javascriptJs,
     global_style_css: globalStyleCss,
@@ -1204,9 +1263,24 @@ export function renderExcalidrawPageToHtml(args: {
     finalContent = HooksLoader.tryExecuteHtmlPostProcessing(bundleSlug, fullPageContent, pageTitle, bundleConfig);
   }
   fs.writeFileSync(htmlPath, finalContent);
-  logger.debug(`Rendered standalone Excalidraw page to HTML: ${pageTitle}`);
+  logger.debug(`Rendered standalone page to HTML: ${pageTitle}`);
 
   return htmlPath;
+}
+
+/**
+ * Renders a standalone HTML page for a PDF. The body is a viewer that the
+ * client renderer (meadow-pdf.js) fills with the PDF's pages using pdf.js,
+ * with the PDF's own links going where they resolve in the bundle.
+ */
+export function renderPdfPageToHtml(args: StandalonePageArgs & {
+  pdfHref: string; // href of the PDF file, relative to the page
+  clientLinkMap: Record<string, import('./linkModificationService.js').ExcalidrawTrackedLink>;
+  clientUntrackedLinks: string[];
+}): string {
+  const attributes = pdfViewerAttributes(args.pdfHref, { tracked: args.clientLinkMap, untracked: args.clientUntrackedLinks });
+  const bodyHtml = `<div class="meadow-pdf-embed meadow-pdf-page"${attributes}><span class="meadow-pdf-loading">Loading PDF…</span></div>`;
+  return writeStandalonePage({ ...args, bodyHtml, includePdf: true });
 }
 
 function contentToBlockId(content: string): string {

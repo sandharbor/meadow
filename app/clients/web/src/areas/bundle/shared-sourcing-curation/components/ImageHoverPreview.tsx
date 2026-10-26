@@ -18,6 +18,7 @@ import React from 'react';
 import { apiUrl } from '../../../../shared/utils/apiClient';
 import { AuthenticatedImage } from '../../../../shared/components/AuthenticatedImage';
 import { ExcalidrawThumbnail } from './ExcalidrawThumbnail';
+import { PdfThumbnail } from './PdfThumbnail';
 
 // Shared constants for hover image dimensions
 export const HOVER_IMAGE_WIDTH = 192; // w-48 in Tailwind (2x the original 96px)
@@ -38,6 +39,8 @@ const ImageHoverPreview: React.FC<ImageHoverPreviewProps> = ({
   // run through the vendored renderer; render via the Excalidraw thumbnail
   // component instead of an `<img>` when the URL points at one.
   const isExcalidraw = imagePath.split(/[?#]/)[0].toLowerCase().endsWith('.excalidraw.md');
+  // A PDF shows its first page, drawn with the vendored pdf.js.
+  const isPdf = imagePath.split(/[?#]/)[0].toLowerCase().endsWith('.pdf');
   return (
     <div
       data-testid="image-hover-preview"
@@ -50,7 +53,19 @@ const ImageHoverPreview: React.FC<ImageHoverPreviewProps> = ({
       }}
       className="bg-gray-800 text-white text-xs rounded px-2 py-1 shadow-lg"
     >
-      {isExcalidraw ? (
+      {isPdf ? (
+        <PdfThumbnail
+          pdfSourcePath={imagePath}
+          alt={title}
+          style={{
+            width: HOVER_IMAGE_WIDTH - 16,
+            height: HOVER_IMAGE_HEIGHT,
+            background: '#f3f4f6',
+            borderRadius: 4,
+            margin: '0 auto 4px',
+          }}
+        />
+      ) : isExcalidraw ? (
         <div
           style={{
             width: HOVER_IMAGE_WIDTH - 16,

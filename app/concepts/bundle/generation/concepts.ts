@@ -82,6 +82,16 @@ export const openKnowledgeFormat = define({
   interplay: text`It is a generated artifact that ${link(id.bundleSharing, "Bundle Sharing")} can deliver independently of hosted HTML.`,
 });
 
+export const pdf = define({
+  id: id.pdf, name: "PDF", kind: "artifact", searchFacet: true, appAreaIds: [id.bundleCuration, id.bundleGeneration],
+  definition: text`A PDF treated as linked graph content, shown with a vendored PDF renderer.`,
+  mechanics: [
+    text`The links inside a PDF are part of the source graph. Generation gives each PDF its own page and shows embeds as viewers whose links go where they resolve in the bundle; a Meadow container can add a fullscreen button.`,
+    text`Curation shows a PDF as a document icon whose hover preview is the first page.`,
+  ],
+  interplay: text`It is carried through ${link(id.htmlGeneration, "HTML Generation")} like ${link(id.excalidraw, "Excalidraw")} drawings, with a page of its own and backlinks.`,
+});
+
 export const sourcesExport = define({
   id: id.sourcesExport, name: "Sources Export", kind: "artifact", searchFacet: true, appAreaIds: [id.bundleGeneration, id.bundleSharing],
   definition: text`A ZIP containing the filtered and sanitized source material selected for a bundle.`,
@@ -153,5 +163,5 @@ export const generationRecord = define({
 
 export const generationConcepts = [
   customize, excalidraw, generatedBundleSearch, hooks, htmlGeneration, htmlNode,
-  images, openKnowledgeFormat, sourcesExport, svg, versioning, frozenVersion, restoringFrozenVersion, generationRecord,
+  images, openKnowledgeFormat, pdf, sourcesExport, svg, versioning, frozenVersion, restoringFrozenVersion, generationRecord,
 ] as const;

@@ -18,8 +18,9 @@ import { parse as parseHtml } from 'node-html-parser';
 
 /**
  * Extracts link paths from the main content section of an HTML page.
- * Returns both <a> href and <img> src attributes, skipping block anchors.
- * Paths are URL-decoded for comparison.
+ * Returns <a> href attributes, skipping block anchors, and the src of every
+ * embed: <img>, <audio>, <video>, <source>, and <iframe>. Paths are
+ * URL-decoded for comparison.
  */
 export function extractMainSectionLinkPaths(htmlContent: string): string[] {
   const root = parseHtml(htmlContent);
@@ -44,8 +45,8 @@ export function extractMainSectionLinkPaths(htmlContent: string): string[] {
     }
   }
 
-  // Extract <img> src attributes
-  const imgElements = mainElement.querySelectorAll('img');
+  // Extract the src of each embedded image, audio, video, or framed page
+  const imgElements = mainElement.querySelectorAll('img, audio, video, source, iframe');
   for (const img of imgElements) {
     const src = img.getAttribute('src');
     if (src) {

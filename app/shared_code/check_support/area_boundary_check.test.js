@@ -16,6 +16,15 @@ test('source discovery skips generated test workspaces and caches, including tra
   }
   assert.deepEqual(walkBoundarySources(path.join(f.directory, 'app')), [source]);
 });
+test('source discovery skips third-party renderers vendored for generated bundles, by name only', t => {
+  const f = fixture(t);
+  const shared = 'app/runtime/service/src/areas/bundle/generation/html/shared';
+  for (const name of ['excalidraw-vendor.js', 'mermaid.min.js', 'pdf-vendor.js', 'pdf-worker.js']) {
+    f.write(`${shared}/${name}`, 'import(location.href);');
+  }
+  const appScript = f.write(`${shared}/meadow-pdf.js`, 'window.MeadowPdf;');
+  assert.deepEqual(walkBoundarySources(path.join(f.directory, 'app')), [appScript]);
+});
 function fixture(t) {
   const directory = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'area-boundaries-')));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));

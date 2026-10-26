@@ -441,6 +441,19 @@ export class BundleEditorPage {
     await this.listViewThumbnail(title, fileType).hover();
   }
 
+  async hoverListViewPdfIcon(title: string) {
+    const icon = this.listViewRowByTitleAndFileType(title, "pdf").getByTestId("pdf-icon");
+    await icon.scrollIntoViewIfNeeded();
+    await icon.hover();
+  }
+
+  /** Waits for the hover preview to draw a PDF's first page. */
+  async expectPdfHoverPreviewVisible(title: string) {
+    const preview = this.page.getByTestId("image-hover-preview");
+    await this.expect(preview).toContainText(title);
+    await this.expect(preview.locator("canvas")).toBeVisible({ timeout: 30_000 });
+  }
+
   async expectImageHoverPreviewVisible(title: string) {
     const preview = this.page.getByTestId("image-hover-preview");
     await this.expect(preview).toBeVisible();

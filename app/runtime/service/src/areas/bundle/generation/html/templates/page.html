@@ -28,6 +28,9 @@
     {{#if include_svg_embed}}
     <link rel="stylesheet" href="{{ assets_prefix }}{{ svg_css }}">
     {{/if}}
+    {{#if include_pdf}}
+    <link rel="stylesheet" href="{{ assets_prefix }}{{ pdf_css }}">
+    {{/if}}
     {{#if srs_enabled}}
     <link rel="stylesheet" href="{{ assets_prefix }}{{ srs_css }}">
     {{/if}}
@@ -57,6 +60,10 @@
     {{/if}}
     {{#if include_svg_embed}}
     <script src="{{ assets_prefix }}{{ svg_js }}" defer></script>
+    {{/if}}
+    {{#if include_pdf}}
+    <script src="{{ assets_prefix }}{{ pdf_vendor_js }}" defer></script>
+    <script src="{{ assets_prefix }}{{ pdf_js }}" data-meadow-pdf-worker="{{ assets_prefix }}{{ pdf_worker_js }}" defer></script>
     {{/if}}
     {{#if srs_enabled}}
     <script type="module" src="{{ assets_prefix }}{{ srs_js }}"></script>

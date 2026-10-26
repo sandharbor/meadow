@@ -320,6 +320,44 @@
           "scope": "bundle"
         },
         {
+          "id": "node-types-filter-bmp",
+          "name": "BMP",
+          "description": "Nodes with the BMP type or role.",
+          "kind": "filter",
+          "enabled": false,
+          "applicable": true,
+          "selectorApplicationCriteria": "union",
+          "selectors": [
+            {
+              "type": "fileType",
+              "fileTypes": [
+                "bmp"
+              ]
+            }
+          ],
+          "actions": [],
+          "scope": "bundle"
+        },
+        {
+          "id": "node-types-filter-avif",
+          "name": "AVIF",
+          "description": "Nodes with the AVIF type or role.",
+          "kind": "filter",
+          "enabled": false,
+          "applicable": true,
+          "selectorApplicationCriteria": "union",
+          "selectors": [
+            {
+              "type": "fileType",
+              "fileTypes": [
+                "avif"
+              ]
+            }
+          ],
+          "actions": [],
+          "scope": "bundle"
+        },
+        {
           "id": "node-types-filter-excalidraw",
           "name": "Excalidraw",
           "description": "Nodes with the Excalidraw type or role.",
@@ -332,6 +370,55 @@
               "type": "fileType",
               "fileTypes": [
                 "excalidraw"
+              ]
+            }
+          ],
+          "actions": [],
+          "scope": "bundle"
+        },
+        {
+          "id": "node-types-filter-audio",
+          "name": "Audio",
+          "description": "Nodes with the Audio type or role.",
+          "kind": "filter",
+          "enabled": false,
+          "applicable": true,
+          "selectorApplicationCriteria": "union",
+          "selectors": [
+            {
+              "type": "fileType",
+              "fileTypes": [
+                "mp3",
+                "wav",
+                "m4a",
+                "3gp",
+                "flac",
+                "ogg",
+                "oga",
+                "opus"
+              ]
+            }
+          ],
+          "actions": [],
+          "scope": "bundle"
+        },
+        {
+          "id": "node-types-filter-video",
+          "name": "Video",
+          "description": "Nodes with the Video type or role.",
+          "kind": "filter",
+          "enabled": false,
+          "applicable": true,
+          "selectorApplicationCriteria": "union",
+          "selectors": [
+            {
+              "type": "fileType",
+              "fileTypes": [
+                "mp4",
+                "webm",
+                "ogv",
+                "mov",
+                "mkv"
               ]
             }
           ],

@@ -845,7 +845,8 @@ const GraphVis: React.FC<GraphVisProps> = ({
                   const containerRect = containerRef.current.getBoundingClientRect();
                   if (ctm) {
                     const screenPt = pt.matrixTransform(ctm);
-                    const isImage = isImageFileType(page.fileType);
+                    // Images, drawings, and PDFs preview on hover; a PDF shows its first page.
+                    const isImage = isImageFileType(page.fileType) || page.fileType === 'pdf';
                     // Excalidraw drawings live as `<title>.excalidraw.md` on disk;
                     // the hover preview component recognises that URL suffix and
                     // routes it through the vendored Excalidraw renderer instead

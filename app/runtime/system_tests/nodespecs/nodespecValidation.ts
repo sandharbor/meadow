@@ -24,13 +24,13 @@ import {
   isNodespecNotInWorkingGraph,
   isNodespecInWorkingGraph,
 } from './types.js';
-import { IMAGE_EXTENSIONS } from '../../../shared_code/utils/fileTypeUtils.js';
+import { AUDIO_VIDEO_EXTENSIONS, IMAGE_EXTENSIONS } from '../../../shared_code/utils/fileTypeUtils.js';
 
 /**
  * Valid file extensions for link paths.
  * Includes traversable text nodes and image extensions.
  */
-const VALID_LINK_EXTENSIONS = ['.md', '.html', '.css', '.js', '.pdf', ...IMAGE_EXTENSIONS] as const;
+const VALID_LINK_EXTENSIONS = ['.md', '.html', '.css', '.js', '.pdf', ...IMAGE_EXTENSIONS, ...AUDIO_VIDEO_EXTENSIONS] as const;
 
 /**
  * Built-in filter IDs that are always valid.

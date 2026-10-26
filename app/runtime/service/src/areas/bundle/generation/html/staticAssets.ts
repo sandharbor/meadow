@@ -195,6 +195,10 @@ export function hashAndRenameStaticAssets(outputDir: string, options: HashStatic
   const excalidrawJs = renameWithHashIfExists(path.join(outputDir, 'meadow-excalidraw.js')) ?? '';
   const svgCss = renameWithHashIfExists(path.join(outputDir, 'meadow-svg.css')) ?? '';
   const svgJs = renameWithHashIfExists(path.join(outputDir, 'meadow-svg.js')) ?? '';
+  const pdfCss = renameWithHashIfExists(path.join(outputDir, 'meadow-pdf.css')) ?? '';
+  const pdfVendorJs = renameWithHashIfExists(path.join(outputDir, 'pdf-vendor.js')) ?? '';
+  const pdfWorkerJs = renameWithHashIfExists(path.join(outputDir, 'pdf-worker.js')) ?? '';
+  const pdfJs = renameWithHashIfExists(path.join(outputDir, 'meadow-pdf.js')) ?? '';
 
   // Hash for the URL was computed on the raw bytes (above), so the URL stays
   // stable across compression form. Now overwrite the on-disk bytes with the
@@ -303,5 +307,5 @@ export function hashAndRenameStaticAssets(outputDir: string, options: HashStatic
     writeCompressionManifest(outputDir, { gzip: gzipPaths });
   }
 
-  return { styleCss, javascriptJs, mermaidMinJs, calloutsCss, structuralPagesCss, excalidrawCss, excalidrawVendorJs, excalidrawJs, svgCss, svgJs, srsCss, srsJs, searchCss, searchJs, hoverPreviewCss, hoverPreviewJs, folderNavigationCss, folderNavigationDataJs, folderNavigationJs, globalStyleCss, bundleStyleCss, globalJavascriptJs, bundleJavascriptJs };
+  return { styleCss, javascriptJs, mermaidMinJs, calloutsCss, structuralPagesCss, excalidrawCss, excalidrawVendorJs, excalidrawJs, svgCss, svgJs, pdfCss, pdfVendorJs, pdfWorkerJs, pdfJs, srsCss, srsJs, searchCss, searchJs, hoverPreviewCss, hoverPreviewJs, folderNavigationCss, folderNavigationDataJs, folderNavigationJs, globalStyleCss, bundleStyleCss, globalJavascriptJs, bundleJavascriptJs };
 }

@@ -8,8 +8,13 @@ const excludedFolders = new Set([
   'node_modules', 'dist', 'build', 'target', 'coverage', '.cache', '.vite', '.git',
   '.linkrange-cache', 'linkrange-source', 'config_workspace', 'scratch_config_folder', 'expected_results',
 ]);
+// Third-party renderers vendored as static assets for generated bundles. They
+// are copied to readers' browsers and never imported by app code, so their
+// minified internals are outside every app-area boundary.
+const vendoredBundleAssets = /(?:^|\/)areas\/bundle\/generation\/html\/shared\/(?:excalidraw-vendor|mermaid\.min|pdf-vendor|pdf-worker)\.js$/;
 const isTest = file => /(?:^|\/)(?:test|tests|__tests__)\/|\.(?:test|spec)\.[^.]+$/.test(file);
-const isSource = file => extensions.test(file) && !file.split(path.sep).some(part => excludedFolders.has(part));
+const isSource = file => extensions.test(file) && !vendoredBundleAssets.test(file)
+  && !file.split(path.sep).some(part => excludedFolders.has(part));
 export function walkBoundarySources(directory, seen = new Set()) {
   if (!fs.existsSync(directory)) return [];
   const real = canonical(directory);

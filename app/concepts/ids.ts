@@ -98,6 +98,7 @@ export const coreConceptIds = {
   orphan: "orphan",
   overrides: "overrides",
   paths: "paths",
+  pdf: "pdf",
   publishing: "publishing",
   publicationRevision: "publication-revision",
   s3: "s3",

@@ -170,6 +170,15 @@ const BundleNodeGlyph: React.FC<BundleNodeGlyphProps> = ({
         </g>
       )}
 
+      {/* PDF indicator icon: a page with a folded corner and a red label */}
+      {showImageIndicator && bundleNodeKind === 'file' && fileType === 'pdf' && (
+        <g transform="translate(-1.3, -1.5) scale(0.75)" data-node-indicator="pdf">
+          <path d="M0 0 H2.4 L3.4 1 V4 H0 Z" fill="none" stroke="#dc2626" strokeWidth="0.5" strokeLinejoin="round" />
+          <path d="M2.4 0 V1 H3.4" fill="none" stroke="#dc2626" strokeWidth="0.4" strokeLinejoin="round" />
+          <rect x="0.6" y="2" width="2.2" height="1.1" fill="#dc2626" />
+        </g>
+      )}
+
       {/* Label text */}
       {showLabel && (
         <text

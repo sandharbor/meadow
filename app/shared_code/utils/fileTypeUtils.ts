@@ -14,8 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-export const IMAGE_FILE_TYPES = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'excalidraw'] as const;
+export const IMAGE_FILE_TYPES = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'bmp', 'avif', 'excalidraw'] as const;
 export type ImageFileType = (typeof IMAGE_FILE_TYPES)[number];
+
+/** The audio and video formats Obsidian embeds with a player. */
+export const AUDIO_FILE_TYPES = ['mp3', 'wav', 'm4a', '3gp', 'flac', 'ogg', 'oga', 'opus'] as const;
+export const VIDEO_FILE_TYPES = ['mp4', 'webm', 'ogv', 'mov', 'mkv'] as const;
+
+/** Audio and video extensions with leading dots, for path matching */
+export const AUDIO_VIDEO_EXTENSIONS = [...AUDIO_FILE_TYPES, ...VIDEO_FILE_TYPES].map((ext) => `.${ext}` as const);
 
 /** Image extensions with leading dots, for path matching */
 export const IMAGE_EXTENSIONS = IMAGE_FILE_TYPES.map((ext) => `.${ext}` as const);

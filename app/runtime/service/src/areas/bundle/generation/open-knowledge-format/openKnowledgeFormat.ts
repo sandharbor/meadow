@@ -201,7 +201,9 @@ function convertWikiLinksToMarkdown(
     const targetOutputPath = outputPathBySourcePath.get(targetSourcePath);
     if (!targetOutputPath) return match;
 
-    const target = markdownLinkTargetFor(targetOutputPath, linkInfo.section);
+    // An embedded file keeps its viewer options, such as a PDF's `#page=2`.
+    const target = markdownLinkTargetFor(targetOutputPath, linkInfo.section)
+      + (linkInfo.fragment ? `#${encodeURI(linkInfo.fragment)}` : '');
     const label = escapeMarkdownLabel(markdownLinkLabelFor(linkText));
     return embedMarker === '!' ? `![${label}](${target})` : `[${label}](${target})`;
   }, { htmlBlocks: true });
