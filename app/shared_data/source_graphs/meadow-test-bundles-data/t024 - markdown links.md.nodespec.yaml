@@ -35,6 +35,7 @@ nodespecs:
           - relativeLinkPath: t024/t024 ---- linked page.html
           - relativeLinkPath: t024/t024 ---- linked page.html
           - relativeLinkPath: t024/t024 ---- linked page.html
+          - relativeLinkPath: t024/t024 ---- linked page.html
         footerSectionBacklinks:
           - relativeLinkPath: main page.html
             backlinkContexts:
