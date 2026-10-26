@@ -85,6 +85,22 @@ describe('html link modification', () => {
     expect(result).toBe('[nested page](some/nested/path/nested%20page.html)');
   });
 
+  it('shows a link in another letter case as written, as Obsidian does', () => {
+    const confs: BundleNodeConfig[] = [
+      makeBundleNodeConfig('my normal page'),
+    ];
+
+    const result = linkOrImageHtml('My Normal Page', confs, {
+      linkResolutionMap: {
+        'My Normal Page': {
+          link_resolved_target_directory: '',
+          link_resolved_target_path: 'my normal page.md',
+        },
+      },
+    });
+    expect(result).toBe('[My Normal Page](my%20normal%20page.html)');
+  });
+
   it('should prefer exact match with linkResolutionMap over fallback', () => {
     const confs: BundleNodeConfig[] = [
       makeBundleNodeConfig('duplicate title'),

@@ -750,12 +750,16 @@ export function linkOrImageHtml(
       logger.debug(`link '${originalLinkFilename}' normalized to '${normalizedLinkFilename}' in html output`);
     }
 
-    // A link that found its page through a frontmatter alias shows the alias
-    // as written, as `[[Page|alias]]` would.
+    // A link that found its page through a frontmatter alias, or by a name in
+    // another letter case or Unicode normalization, shows its text as written,
+    // as `[[Page|alias]]` would.
+    const writtenName = originalLinkFilename.slice(originalLinkFilename.lastIndexOf('/') + 1);
+    const folded = (name: string) => name.normalize('NFC').toLowerCase();
+    const writtenAnotherWay = writtenName !== resolvedTitle && folded(writtenName) === folded(resolvedTitle);
     let textToDisplayInHyperlink = normalizedLinkFilename;
     if (linkInfo.alternative_name) {
       textToDisplayInHyperlink = linkInfo.alternative_name;
-    } else if (linkResolutionMap?.[linkText]?.link_resolved_by_alias) {
+    } else if (linkResolutionMap?.[linkText]?.link_resolved_by_alias || writtenAnotherWay) {
       textToDisplayInHyperlink = originalLinkFilename;
     }
 
