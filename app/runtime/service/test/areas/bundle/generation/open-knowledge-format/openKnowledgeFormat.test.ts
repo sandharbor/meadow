@@ -98,6 +98,21 @@ describe('prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory', () =>
     expect(fs.readFileSync(path.join(okfDir, 'image file.png'))).toEqual(Buffer.from([1, 2, 3]));
   });
 
+  it('leaves a wikilink inside an HTML block as written, as Markdown is not rendered there', () => {
+    writeFile(scrubbedDir, 'main page.md', 'See [[connected page]].\n\n<div>\n[[connected page]]\n</div>\n');
+    writeFile(scrubbedDir, 'connected page.md', 'Connected body\n');
+
+    prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory(scrubbedDir, okfDir, {
+      bundleNodeConfigs: [pageConfig('main page'), pageConfig('connected page')],
+      entryNodeName: 'main page',
+      entrySourceGraphSubdirectory: '',
+    });
+
+    const mainPage = readFile(okfDir, 'main page.md');
+    expect(mainPage).toContain('See [connected page](/connected%20page.md).');
+    expect(mainPage).toContain('<div>\n[[connected page]]\n</div>');
+  });
+
   it('strips okf prefixes from concept frontmatter properties', () => {
     writeFile(scrubbedDir, 'main page.md', [
       '---',

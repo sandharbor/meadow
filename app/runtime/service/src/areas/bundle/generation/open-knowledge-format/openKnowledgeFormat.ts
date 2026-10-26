@@ -187,6 +187,7 @@ function convertWikiLinksToMarkdown(
 ): string {
   const linkResolutionMap = allLinkResolutionMaps?.get(pageIdentForSourcePath(sourcePath));
 
+  // A wikilink inside an HTML block is text, as Markdown is not rendered there.
   const converted = replaceOutsideCode(content, WIKI_LINK_OR_EMBED_PATTERN, (match: string, embedMarker: string, linkText: string) => {
     const linkInfo = linkTextToLinkInfo(linkText);
     const resolvedTarget = linkResolutionMap?.[linkText]?.link_resolved_target_path;
@@ -203,7 +204,7 @@ function convertWikiLinksToMarkdown(
     const target = markdownLinkTargetFor(targetOutputPath, linkInfo.section);
     const label = escapeMarkdownLabel(markdownLinkLabelFor(linkText));
     return embedMarker === '!' ? `![${label}](${target})` : `[${label}](${target})`;
-  });
+  }, { htmlBlocks: true });
   const outputPath = outputPathBySourcePath.get(sourcePath) ?? sourcePath;
   const outputPathForSource = (source: string) => outputPathBySourcePath.get(source);
   return sourceQualified

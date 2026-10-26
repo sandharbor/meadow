@@ -37,6 +37,6 @@ outside a table]]
 A link and a tag inside an HTML block, where Markdown isn't rendered, so both should stay as plain text:
 
 <div>
-[t011 --- pointed to by an escaped alias outside a table](/t011/t011%20---%20pointed%20to%20by%20an%20escaped%20alias%20outside%20a%20table.md)
+[[t011/t011 --- pointed to by an escaped alias outside a table]]
 #t011-not-a-tag-inside-html
 </div>
