@@ -27,7 +27,7 @@ import {
   restoreMarkdownLinkNotTrackedMarkers
 } from '../sources-export/sourcesExport.js';
 import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundleConfigPaths.js';
-import { rewriteResolvedSourceUrls } from '../source-material/portableSourceLinks.js';
+import { rewriteObsidianLookupLinks, rewriteResolvedSourceUrls } from '../source-material/portableSourceLinks.js';
 
 type LinkResolutionMap = Record<string, LinkResolvedInfo>;
 type AllLinkResolutionMaps = Map<EncodedBundleNodeKey, LinkResolutionMap>;
@@ -204,9 +204,11 @@ function convertWikiLinksToMarkdown(
     const label = escapeMarkdownLabel(markdownLinkLabelFor(linkText));
     return embedMarker === '!' ? `![${label}](${target})` : `[${label}](${target})`;
   });
-  if (!sourceQualified) return converted;
-  return rewriteResolvedSourceUrls(converted, outputPathBySourcePath.get(sourcePath) ?? sourcePath,
-    linkResolutionMap, source => outputPathBySourcePath.get(source), true);
+  const outputPath = outputPathBySourcePath.get(sourcePath) ?? sourcePath;
+  const outputPathForSource = (source: string) => outputPathBySourcePath.get(source);
+  return sourceQualified
+    ? rewriteResolvedSourceUrls(converted, outputPath, linkResolutionMap, outputPathForSource, true)
+    : rewriteObsidianLookupLinks(converted, sourcePath, outputPath, linkResolutionMap, outputPathForSource, true);
 }
 
 function uniquePathFor(baseOutputPath: string, occupied: Set<string>): string {

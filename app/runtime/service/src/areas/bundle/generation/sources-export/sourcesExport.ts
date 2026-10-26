@@ -21,7 +21,7 @@ import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundle
 import { replaceOutsideCode } from '../html/markdown.js';
 import { TAG_BODY_PATTERN } from '../source-material/tagPages.js';
 import type { LinkResolvedInfo } from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode.js';
-import { rewritePortableSourceWikilinks, rewriteResolvedSourceUrls } from '../source-material/portableSourceLinks.js';
+import { rewriteObsidianLookupLinks, rewritePortableSourceWikilinks, rewriteResolvedSourceUrls } from '../source-material/portableSourceLinks.js';
 import {
   HTML_LINK_NOT_TRACKED_REPLACEMENT,
   prepareScrubbedSourceDirectory,
@@ -64,12 +64,15 @@ export function restoreMarkdownLinkNotTrackedMarkers(markdown: string): string {
  * Builds the Obsidian-compatible download/export directory from the already
  * scrubbed source boundary. Generated tag pages are omitted because they are
  * HTML-navigation artifacts, and generated tag wikilinks are restored to
- * normal Obsidian `#tag` text for local use.
+ * normal Obsidian `#tag` text for local use. A multi-source export rewrites
+ * links to unambiguous paths; otherwise only Markdown links that rely on
+ * Obsidian's lookup are rewritten, so other readers find their files too.
  */
 export function prepareSourcesExportFromScrubbedSourceDirectory(
   scrubbedContentDir: string,
   exportDir: string,
-  sourceResolutionMaps?: Map<EncodedBundleNodeKey, Record<string, LinkResolvedInfo>>,
+  linkResolutionMaps?: Map<EncodedBundleNodeKey, Record<string, LinkResolvedInfo>>,
+  sourceQualified = false,
 ): void {
   if (fs.existsSync(exportDir)) {
     fs.rmSync(exportDir, { recursive: true, force: true });
@@ -90,13 +93,15 @@ export function prepareSourcesExportFromScrubbedSourceDirectory(
     }
 
     const graphPath = relativePath.replace(/\.excalidraw\.md$/, '.excalidraw').split(path.sep).join('/');
-    const resolutions = sourceResolutionMaps?.get(serializeBundleNodeKey(fileNodeKeyFromSourceGraphPath(graphPath)));
-    if (filePath.endsWith('.md') || (sourceResolutionMaps && /\.(html|svg)$/.test(filePath))) {
+    const resolutions = linkResolutionMaps?.get(serializeBundleNodeKey(fileNodeKeyFromSourceGraphPath(graphPath)));
+    if (filePath.endsWith('.md') || (sourceQualified && /\.(html|svg)$/.test(filePath))) {
       const content = fs.readFileSync(filePath, 'utf-8');
       const restored = restoreMarkdownLinkNotTrackedMarkers(restoreGeneratedTagWikilinks(content));
       fs.writeFileSync(
         outputPath,
-        sourceResolutionMaps ? rewriteResolvedSourceUrls(rewritePortableSourceWikilinks(restored, resolutions), relativePath, resolutions) : restored,
+        sourceQualified
+          ? rewriteResolvedSourceUrls(rewritePortableSourceWikilinks(restored, resolutions), relativePath, resolutions)
+          : rewriteObsidianLookupLinks(restored, graphPath, relativePath, resolutions),
         'utf-8'
       );
     } else {

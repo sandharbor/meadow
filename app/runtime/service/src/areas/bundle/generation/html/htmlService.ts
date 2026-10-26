@@ -922,7 +922,7 @@ export async function generateHtmlForBundle(
         if (fs.existsSync(legacySourcesExportOutputDir)) {
           fs.rmSync(legacySourcesExportOutputDir, { recursive: true, force: true });
         }
-        prepareSourcesExportFromScrubbedSourceDirectory(scrubbedSourceContentDirectory, sourcesExportDir, bundleConfig.sources ? allLinkResolutionMaps : undefined);
+        prepareSourcesExportFromScrubbedSourceDirectory(scrubbedSourceContentDirectory, sourcesExportDir, allLinkResolutionMaps, Boolean(bundleConfig.sources));
 
         const sourcesExportOutputDir = path.join(
           assetsDirectory,

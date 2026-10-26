@@ -130,7 +130,7 @@ export async function buildFilteredSourcesExportForBundle(bundleDirectory: strin
     allLinkResolutionMaps
   );
 
-  prepareSourcesExportFromScrubbedSourceDirectory(scrubbedSourceDir, sourcesExportDir, bundleConfig.sources ? allLinkResolutionMaps : undefined);
+  prepareSourcesExportFromScrubbedSourceDirectory(scrubbedSourceDir, sourcesExportDir, allLinkResolutionMaps, Boolean(bundleConfig.sources));
 
   return sourcesExportDir;
 }

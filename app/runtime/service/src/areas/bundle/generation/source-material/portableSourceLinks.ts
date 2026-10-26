@@ -10,12 +10,16 @@ export function exportedSourcePath(target: string): string {
   return relative.endsWith('.excalidraw') ? `${relative}.md` : relative;
 }
 
-/** URL links in downloadable material address files, including format-specific renames. */
+/**
+ * URL links in downloadable material address files, including format-specific
+ * renames. With `only`, just the links it accepts are rewritten.
+ */
 export function rewriteResolvedSourceUrls(content: string, sourceOutputPath: string, resolutions: Record<string, LinkResolvedInfo> | undefined,
-  outputPathForSource: (source: string) => string | undefined = source => source, rootRelative = false): string {
+  outputPathForSource: (source: string) => string | undefined = source => source, rootRelative = false,
+  only: (url: string, target: string) => boolean = () => true): string {
   const rewrite = (url: string) => {
     const target = resolutions?.[url]?.link_resolved_target_path;
-    if (!target) return undefined;
+    if (!target || !only(url, target)) return undefined;
     const output = outputPathForSource(exportedSourcePath(target));
     if (!output) return undefined;
     const relative = rootRelative ? `/${output}` : path.posix.relative(path.posix.dirname(sourceOutputPath), output);
@@ -32,6 +36,34 @@ export function rewriteResolvedSourceUrls(content: string, sourceOutputPath: str
       return target ? `${attribute}${assignment}${quote}${target}${quote}` : match;
     });
   return result;
+}
+
+/**
+ * Whether Obsidian finds a Markdown link's file with its lookup (as Linkrange
+ * does) rather than at the path written, read from the linking file, as other
+ * Markdown readers read it. A `./`, `../`, or `/` path reads the same anywhere.
+ */
+export function reliesOnObsidianLookup(url: string, sourcePath: string, target: string): boolean {
+  if (/^(?:\.\.?\/|\/)/.test(url)) return false;
+  const writtenPath = url.replace(/[?#].*$/, '');
+  let decoded = writtenPath;
+  try {
+    decoded = decodeURIComponent(writtenPath);
+  } catch {
+    // A malformed escape is read as written.
+  }
+  return path.posix.normalize(path.posix.join(path.posix.dirname(sourcePath), decoded)) !== exportedSourcePath(target);
+}
+
+/**
+ * Markdown links that rely on Obsidian's lookup, rewritten to their file's path
+ * so that any reader finds it. Every other link is left as written.
+ */
+export function rewriteObsidianLookupLinks(content: string, sourcePath: string, sourceOutputPath: string,
+  resolutions: Record<string, LinkResolvedInfo> | undefined,
+  outputPathForSource: (source: string) => string | undefined = source => source, rootRelative = false): string {
+  return rewriteResolvedSourceUrls(content, sourceOutputPath, resolutions, outputPathForSource, rootRelative,
+    (url, target) => reliesOnObsidianLookup(url, sourcePath, target));
 }
 
 /** Obsidian exports use unambiguous paths within the downloaded vault. */
