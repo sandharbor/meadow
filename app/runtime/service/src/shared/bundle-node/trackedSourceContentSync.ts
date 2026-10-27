@@ -80,10 +80,8 @@ export function syncTrackedSourceContent(options: {
       );
       throw new Error(`Tracked source file no longer exists: ${expected}`);
     }
-    const relativePath = path.join(
-      subdirectory,
-      canonicalPageFilename(config.bundleNodeName, config.fileType),
-    );
+    // The copy keeps the source's own name, so links resolve in it as in the source.
+    const relativePath = path.join(subdirectory, path.basename(sourcePath));
     const targetPath = path.join(targetDirectory, relativePath);
     fs.mkdirSync(path.dirname(targetPath), { recursive: true });
     copySourceFileToTrackedSnapshot(sourcePath, targetPath);

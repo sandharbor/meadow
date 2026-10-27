@@ -18,12 +18,12 @@ import fs from 'fs';
 import path from 'path';
 import LZString from 'lz-string';
 import type { BundleNodeConfig } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
-import type { FileType } from '../../../../../../../contracts/types/shared/bundle-graph/FileType.js';
 import type { LinkResolvedInfo } from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode.js';
 import { replaceOutsideCode } from '../html/markdown.js';
 import { LINK_PATTERN } from '../html/constants.js';
 import { isLinkTracked } from '../html/linkModificationService.js';
 import { bundleNodeConfigToKey } from '../../../../shared/bundle-node/nodeKeys.js';
+import { fileNodeNamesFor } from '../../../../shared/bundle-node/sourceFileNames.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
 
 type LinkResolutionMap = Record<string, LinkResolvedInfo>;
@@ -33,12 +33,6 @@ const WIKI_LINK_OR_EMBED_PATTERN = /!?\[\[(.*?)\]\]/g;
 const EXCALIDRAW_TEXT_REPLACEMENT = 'link not tracked';
 const MARKDOWN_LINK_REPLACEMENT = '_link not tracked_';
 export const HTML_LINK_NOT_TRACKED_REPLACEMENT = '<span class="link-not-tracked">link not tracked</span>';
-
-type PageFileInfo = {
-  title: string;
-  sourceGraphSubdirectory: string;
-  fileType: FileType;
-};
 
 function walkFilesRecursively(dir: string): string[] {
   if (!fs.existsSync(dir)) return [];
@@ -64,48 +58,25 @@ function relativeDirFor(relativePath: string): string {
   return dir === '.' ? '' : toPosixPath(dir);
 }
 
-function pageFileInfoForRelativePath(relativePath: string): PageFileInfo | null {
-  const sourceGraphSubdirectory = relativeDirFor(relativePath);
-  const basename = path.basename(relativePath);
-
-  if (basename.endsWith('.excalidraw.md')) {
-    return {
-      title: basename.slice(0, -'.excalidraw.md'.length),
-      sourceGraphSubdirectory,
-      fileType: 'excalidraw',
-    };
-  }
-
-  if (basename.endsWith('.md')) {
-    return {
-      title: basename.slice(0, -'.md'.length),
-      sourceGraphSubdirectory,
-      fileType: 'md',
-    };
-  }
-
-  const ext = path.extname(basename).slice(1) as FileType;
-  if (!ext) return null;
-  return {
-    title: path.basename(basename, path.extname(basename)),
-    sourceGraphSubdirectory,
-    fileType: ext,
-  };
-}
-
-function configMatchesFileInfo(config: BundleNodeConfig, info: PageFileInfo): boolean {
-  if (config.bundleNodeKind !== 'file') return false;
-  const configFileType = config.fileType || 'md';
-  return config.bundleNodeName === info.title &&
-    (config.sourceGraphSubdirectory || '') === info.sourceGraphSubdirectory &&
-    configFileType === info.fileType;
-}
-
+/**
+ * The configured file node a source file belongs to. The configuration, not
+ * the name, settles a file's type: a plain `.md` file may be a note or a
+ * drawing saved as plain Markdown.
+ */
 function findMatchingConfig(
   bundleNodeConfs: Record<EncodedBundleNodeKey, BundleNodeConfig>,
-  info: PageFileInfo
+  relativePath: string
 ): BundleNodeConfig | undefined {
-  return Object.values(bundleNodeConfs).find(conf => configMatchesFileInfo(conf, info));
+  const sourceGraphSubdirectory = relativeDirFor(relativePath);
+  const configs = Object.values(bundleNodeConfs);
+  for (const { title, fileType } of fileNodeNamesFor(path.basename(relativePath))) {
+    const match = configs.find(config => config.bundleNodeKind === 'file'
+      && config.bundleNodeName === title
+      && (config.sourceGraphSubdirectory || '') === sourceGraphSubdirectory
+      && (config.fileType || 'md') === fileType);
+    if (match) return match;
+  }
+  return undefined;
 }
 
 function pageIdentForConfig(config: BundleNodeConfig): EncodedBundleNodeKey {
@@ -475,13 +446,7 @@ export function prepareScrubbedSourceDirectory(
 
   for (const filePath of allFiles) {
     const relativePath = path.relative(sourceContentDir, filePath);
-    const fileInfo = pageFileInfoForRelativePath(relativePath);
-    if (!fileInfo) {
-      logger.debug(`Source scrubbing: skipping unsupported file ${relativePath}`);
-      continue;
-    }
-
-    const matchingConf = findMatchingConfig(bundleNodeConfs, fileInfo);
+    const matchingConf = findMatchingConfig(bundleNodeConfs, relativePath);
     if (!matchingConf) {
       logger.debug(`Source scrubbing: skipping untracked file ${relativePath}`);
       continue;
@@ -504,11 +469,12 @@ export function prepareScrubbedSourceDirectory(
       fs.mkdirSync(outputDir, { recursive: true });
     }
 
-    if (fileInfo.fileType === 'md' || fileInfo.fileType === 'excalidraw') {
+    const fileType = matchingConf.fileType || 'md';
+    if (fileType === 'md' || fileType === 'excalidraw') {
       const pageIdent = pageIdentForConfig(matchingConf);
       const linkResolutionMap = allLinkResolutionMaps?.get(pageIdent);
       const content = fs.readFileSync(filePath, 'utf-8');
-      const scrubbedContent = fileInfo.fileType === 'excalidraw'
+      const scrubbedContent = fileType === 'excalidraw'
         ? sanitizeExcalidrawSource(content, bundleNodeConfigsForLinks, linkResolutionMap, HTML_LINK_NOT_TRACKED_REPLACEMENT)
         : sanitizeMarkdownLinks(content, bundleNodeConfigsForLinks, linkResolutionMap, HTML_LINK_NOT_TRACKED_REPLACEMENT);
       fs.writeFileSync(outputPath, scrubbedContent, 'utf-8');

@@ -22,6 +22,7 @@ import { replaceOutsideCode } from '../html/markdown.js';
 import { TAG_BODY_PATTERN } from '../source-material/tagPages.js';
 import type { LinkResolvedInfo } from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode.js';
 import { rewriteObsidianLookupLinks, rewritePortableSourceWikilinks, rewriteResolvedSourceUrls } from '../source-material/portableSourceLinks.js';
+import { fileNodeKeysByCopiedPath } from '../../../../shared/bundle-node/sourceFileNames.js';
 import {
   HTML_LINK_NOT_TRACKED_REPLACEMENT,
   prepareScrubbedSourceDirectory,
@@ -73,11 +74,14 @@ export function prepareSourcesExportFromScrubbedSourceDirectory(
   exportDir: string,
   linkResolutionMaps?: Map<EncodedBundleNodeKey, Record<string, LinkResolvedInfo>>,
   sourceQualified = false,
+  bundleNodeConfigs: BundleNodeConfig[] = [],
 ): void {
   if (fs.existsSync(exportDir)) {
     fs.rmSync(exportDir, { recursive: true, force: true });
   }
   fs.mkdirSync(exportDir, { recursive: true });
+  // Each file's node, by its name in the source: a drawing may be plain `.md`.
+  const fileKeys = fileNodeKeysByCopiedPath(scrubbedContentDir, bundleNodeConfigs);
 
   for (const filePath of walkFilesRecursively(scrubbedContentDir)) {
     const relativePath = path.relative(scrubbedContentDir, filePath);
@@ -93,7 +97,8 @@ export function prepareSourcesExportFromScrubbedSourceDirectory(
     }
 
     const graphPath = relativePath.replace(/\.excalidraw\.md$/, '.excalidraw').split(path.sep).join('/');
-    const resolutions = linkResolutionMaps?.get(serializeBundleNodeKey(fileNodeKeyFromSourceGraphPath(graphPath)));
+    const resolutions = linkResolutionMaps?.get(fileKeys.get(relativePath.split(path.sep).join('/'))
+      ?? serializeBundleNodeKey(fileNodeKeyFromSourceGraphPath(graphPath)));
     if (filePath.endsWith('.md') || (sourceQualified && /\.(html|svg)$/.test(filePath))) {
       const content = fs.readFileSync(filePath, 'utf-8');
       const restored = restoreMarkdownLinkNotTrackedMarkers(restoreGeneratedTagWikilinks(content));

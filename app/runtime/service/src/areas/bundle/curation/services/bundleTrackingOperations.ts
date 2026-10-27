@@ -43,7 +43,6 @@ import {
 import { saveBundleNodeConfigDocument } from '../../../../../../../shared_code/utils/bundleNodeConfigPersistence.js';
 import { AppConfigGitUtils, GIT_AUTHORS } from '../../../../../../../shared_code/utils/appConfigGitUtils.js';
 import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundleConfigPaths.js';
-import { canonicalPageFilename } from '../../../../../../../shared_code/utils/fileTypeUtils.js';
 import {
   getBundleConfigPath,
   getBundleDirectory,
@@ -55,6 +54,7 @@ import {
   applyTrackingEvidenceFromSnapshot,
   sourceFilePathForConfig,
 } from '../../../../shared/bundle-node/trackingEvidence.js';
+import { sourceFilePathIn } from '../../../../shared/bundle-node/sourceFileNames.js';
 import { loadCustomFiltersForBundle } from '../../../../shared/custom-filters/customFilterLoader.js';
 import { selectEffectivelySensitiveNodeKeys } from '../../../../shared/bundle-graph/graphFilterService.js';
 import { loadWorkingGraph } from '../../../../shared/bundle-graph/workingGraphService.js';
@@ -156,11 +156,15 @@ export async function persistBundleNodeConfigsAtomically(options: {
     ? parseBundleNodeConfig(fs.readFileSync(configPath, 'utf8'), configPath)
     : [];
 
-  const snapshotPathFor = (config: FileBundleNodeConfig): string => path.join(
-    snapshotDirectory,
-    sourceGraphPath(config.sourceId, config.sourceGraphSubdirectory ?? ''),
-    canonicalPageFilename(config.bundleNodeName, config.fileType),
-  );
+  // A snapshot file has its source's name (a drawing may be plain `.md`);
+  // an earlier snapshot may hold the other name a drawing can have.
+  const snapshotPathFor = (config: FileBundleNodeConfig): string => sourceFilePathIn(snapshotDirectory, config);
+  const nextSnapshotPathFor = (config: FileBundleNodeConfig): string => {
+    const source = sourceFilePathIn(options.sourceDirectory, config);
+    return fs.existsSync(source)
+      ? path.join(path.dirname(sourceFilePathIn(snapshotDirectory, config)), path.basename(source))
+      : snapshotPathFor(config);
+  };
   const previousFiles = new Map(previousConfigs
     .filter((config): config is FileBundleNodeConfig => config.bundleNodeKind === 'file')
     .map(config => [config.bundleNodeId, config]));
@@ -171,11 +175,11 @@ export async function persistBundleNodeConfigsAtomically(options: {
   for (const [bundleNodeId, previous] of previousFiles) {
     const next = nextFiles.get(bundleNodeId);
     const previousPath = snapshotPathFor(previous);
-    if (!next || snapshotPathFor(next) !== previousPath) snapshotActions.set(previousPath, null);
+    if (!next || nextSnapshotPathFor(next) !== previousPath) snapshotActions.set(previousPath, null);
   }
   for (const [bundleNodeId, next] of nextFiles) {
     const previous = previousFiles.get(bundleNodeId);
-    const nextPath = snapshotPathFor(next);
+    const nextPath = nextSnapshotPathFor(next);
     if (
       !previous
       || snapshotPathFor(previous) !== nextPath

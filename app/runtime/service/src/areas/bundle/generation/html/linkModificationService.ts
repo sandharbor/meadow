@@ -646,11 +646,13 @@ export function linkOrImageHtml(
 
       if (isExcalidraw) {
         // Excalidraw drawings live on disk as `<name>.excalidraw.md` (Obsidian
-        // Excalidraw plugin format). Copy the source markdown next to the
-        // embed location so the client renderer can fetch it. The actual
-        // rendering happens in the browser via excalidraw-vendor.js +
-        // meadow-excalidraw.js.
-        const excalidrawMdSrc = `${imageSrc}.md`;
+        // Excalidraw plugin format), or as plain `<name>.md`. Copy the source
+        // markdown next to the embed location, as `<name>.excalidraw.md`, so
+        // the client renderer can fetch it. The actual rendering happens in
+        // the browser via excalidraw-vendor.js + meadow-excalidraw.js.
+        const drawingName = { bundleNodeName: imageName.replace(/\.excalidraw$/i, ''), fileType: 'excalidraw' };
+        const excalidrawMdSrc = path.join(path.dirname(imageSrc),
+          sourceFilenameIn(path.dirname(imageSrc), drawingName) ?? `${imageName}.md`);
         const excalidrawMdDest = `${imageDest}.md`;
         if (fs.existsSync(excalidrawMdSrc)) {
           fs.copyFileSync(excalidrawMdSrc, excalidrawMdDest);
@@ -948,5 +950,6 @@ function anchorNameFor(pageName: string): string {
 } 
 
 import { makeBundleNodeKey } from '../../../../shared/bundle-node/nodeKeys.js';
+import { sourceFilenameIn } from '../../../../shared/bundle-node/sourceFileNames.js';
 
 import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';

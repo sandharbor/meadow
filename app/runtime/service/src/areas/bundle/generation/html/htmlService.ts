@@ -95,6 +95,7 @@ import {
 } from '../customizationAssets.js';
 import { planBundleRoutes, routeForBundleNode } from './bundleRoutePlanner.js';
 import { canonicalPageFilename, isImageFileType } from '../../../../../../../shared_code/utils/fileTypeUtils.js';
+import { sourceFilenameIn } from '../../../../shared/bundle-node/sourceFileNames.js';
 import { rewriteNativeHtmlUrls } from './nativeHtml.js';
 import { emitVersionAwarenessAssets } from '../versioning/versionAwarenessAssets.js';
 import { sourceOutputDirectory } from '../../../../../../../shared_code/utils/bundleSourceUtils.js';
@@ -940,7 +941,7 @@ export async function generateHtmlForBundle(
         if (fs.existsSync(legacySourcesExportOutputDir)) {
           fs.rmSync(legacySourcesExportOutputDir, { recursive: true, force: true });
         }
-        prepareSourcesExportFromScrubbedSourceDirectory(scrubbedSourceContentDirectory, sourcesExportDir, allLinkResolutionMaps, Boolean(bundleConfig.sources));
+        prepareSourcesExportFromScrubbedSourceDirectory(scrubbedSourceContentDirectory, sourcesExportDir, allLinkResolutionMaps, Boolean(bundleConfig.sources), Object.values(bundleNodeConfs));
 
         const sourcesExportOutputDir = path.join(
           assetsDirectory,
@@ -1054,12 +1055,7 @@ export async function generateHtmlForBundle(
   for (const pageKey of traversableLinkScanPageKeys) {
     const conf = bundleNodeConfs[pageKey];
     const subdir = conf.sourceGraphSubdirectory || '';
-    const filename = canonicalPageFilename(conf.bundleNodeName, conf.fileType);
-    const pageContentPath = subdir
-      ? path.join(renderContentDirectory, subdir, filename)
-      : path.join(renderContentDirectory, filename);
-
-    if (!fs.existsSync(pageContentPath)) {
+    if (!sourceFilenameIn(path.join(renderContentDirectory, subdir), conf)) {
       continue;
     }
 
@@ -1547,10 +1543,9 @@ export async function generateHtmlForBundle(
     const subdir = conf.sourceGraphSubdirectory || '';
     const outputRoute = routeForBundleNode(conf, routePlan.routes);
     const outputDirectory = outputDirectoryForRoute(outputRoute);
-    // Obsidian Excalidraw drawings live on disk as `<title>.excalidraw.md`.
-    const sourceMdPath = subdir
-      ? path.join(renderContentDirectory, subdir, `${conf.bundleNodeName}.excalidraw.md`)
-      : path.join(renderContentDirectory, `${conf.bundleNodeName}.excalidraw.md`);
+    // A drawing is `<title>.excalidraw.md`, or plain `<title>.md`, in the source.
+    const drawingDirectory = path.join(renderContentDirectory, subdir);
+    const sourceMdPath = path.join(drawingDirectory, sourceFilenameIn(drawingDirectory, conf) ?? `${conf.bundleNodeName}.excalidraw.md`);
 
     const outputSubdir = outputDirectory
       ? path.join(generatedHtmlDirectory, ...outputDirectory.split('/'))

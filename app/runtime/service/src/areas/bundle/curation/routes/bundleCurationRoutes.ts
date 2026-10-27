@@ -19,7 +19,7 @@ import type { BundleConfig } from '../../../../../../../contracts/types/shared/b
 
 
 import express from 'express';
-import { join } from 'path';
+import { basename, join } from 'path';
 import YAML from 'yaml';
 import fs from 'fs';
 import {
@@ -153,7 +153,8 @@ router.post('/bundles/:bundleSlug/curation/copy-tracked-pages', (req, res, next)
         const sourceFile = sourceFileCandidateFilenames(page.title, page.fileType)
           .map(candidateFilename => join(notesDir, sourceGraphPath(page.sourceId, page.sourceGraphSubdirectory), candidateFilename))
           .find(candidatePath => fs.existsSync(candidatePath));
-        const targetFile = join(targetDir, sourceGraphPath(page.sourceId, page.sourceGraphSubdirectory), filename);
+        // The copy keeps the source's own name; a drawing may be plain `.md`.
+        const targetFile = join(targetDir, sourceGraphPath(page.sourceId, page.sourceGraphSubdirectory), sourceFile ? basename(sourceFile) : filename);
         fs.mkdirSync(join(targetFile, '..'), { recursive: true });
 
         if (sourceFile) {

@@ -24,6 +24,7 @@ import {
   recentSourcePageCandidatesWithCount
 } from '../../../../../../../shared_code/utils/sourcePageSearchUtils.js';
 import { bundleNodeConfigToKey } from '../../../../shared/bundle-node/nodeKeys.js';
+import { sourceFilePathIn } from '../../../../shared/bundle-node/sourceFileNames.js';
 import { runWorkingGraphRaw } from '../../../../shared/utils/workingGraphUtils.js';
 import { sourceGraphPath } from '../../../../../../../shared_code/utils/bundleSourceUtils.js';
 import { loadValidatedBundleNodeConfiguration } from '../../../../shared/bundle-node/bundleNodeConfigLoader.js';
@@ -59,17 +60,13 @@ export interface OpenKnowledgeFormatLogPageOptions {
   count: number;
 }
 
-function sourcePathForConfig(config: FileBundleNodeConfig): string {
-  const fileType = config.fileType || 'md';
-  const filename = fileType === 'excalidraw'
-    ? `${config.bundleNodeName}.excalidraw.md`
-    : `${config.bundleNodeName}.${fileType}`;
-  const dir = sourceGraphPath(config.sourceId, config.sourceGraphSubdirectory || '');
-  return dir ? `${dir}/${filename}` : filename;
+// A page's path in the tracked copy, by its name there (a drawing may be plain `.md`).
+function sourcePathForConfig(config: FileBundleNodeConfig, trackedContentDir: string): string {
+  return path.relative(trackedContentDir, sourceFilePathIn(trackedContentDir, config)).split(path.sep).join('/');
 }
 
 function pageInfoForConfig(config: FileBundleNodeConfig, trackedContentDir: string): SourcePageFileInfo {
-  const fullPath = sourcePathForConfig(config);
+  const fullPath = sourcePathForConfig(config, trackedContentDir);
   const absolutePath = path.join(trackedContentDir, ...fullPath.split('/'));
   let modifiedTimeMs = 0;
   if (fs.existsSync(absolutePath)) {
@@ -120,7 +117,9 @@ export async function getOpenKnowledgeFormatLogPageOptions(
   const allPages = await reachableMarkdownPages(bundleDirectory);
   const byPath = new Map(allPages.map(page => [page.fullPath, page]));
   const markdownPaths = allPages.map(page => page.fullPath);
-  const entrySourcePath = entryNode.bundleNodeKind === 'file' ? sourcePathForConfig(entryNode) : null;
+  const entrySourcePath = entryNode.bundleNodeKind === 'file'
+    ? sourcePathForConfig(entryNode, BundleConfigPaths.getTrackedPageContentDir(bundleDirectory))
+    : null;
   const defaultIndexPath = selectAutoOpenKnowledgeFormatIndexSource(
     markdownPaths,
     entrySourcePath

@@ -6,7 +6,7 @@ import type { BundleConfig } from '../../../../../../../contracts/types/shared/b
 import type { BundleNodeConfig } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundleConfigPaths.js';
 import { sourceGraphPath, sourceOutputDirectory, splitSourceGraphPath } from '../../../../../../../shared_code/utils/bundleSourceUtils.js';
-import { canonicalPageFilename } from '../../../../../../../shared_code/utils/fileTypeUtils.js';
+import { sourceFilenameIn } from '../../../../shared/bundle-node/sourceFileNames.js';
 
 /** The same mapping owns source-derived output directories in every format. */
 export function projectSourceOutputNode(node: BundleNodeConfig, config: BundleConfig): BundleNodeConfig {
@@ -51,10 +51,13 @@ export function projectTrackedSourceOutput(config: BundleConfig, nodes: BundleNo
     if (node.bundleNodeKind === 'collection') { projected.push(node); continue; }
     if (!config.sources?.some(source => source.id === node.sourceId)) continue;
     const directory = sourceGraphPath(node.sourceId, node.sourceGraphSubdirectory ?? '');
-    const relative = node.bundleNodeKind === 'file' ? path.posix.join(directory, canonicalPageFilename(node.bundleNodeName, node.fileType)) : directory;
+    // A file keeps its tracked copy's own name; a drawing may be plain `.md`.
+    const filename = node.bundleNodeKind === 'file' ? sourceFilenameIn(path.join(trackedRoot, directory), node) : '';
+    if (filename === undefined) continue;
+    const relative = path.posix.join(directory, filename);
     if (!fs.existsSync(path.join(trackedRoot, relative))) continue;
     const outputNode = projectSourceOutputNode(node, config);
-    const destination = path.join(outputRoot, outputNode.sourceGraphSubdirectory ?? '', node.bundleNodeKind === 'file' ? canonicalPageFilename(node.bundleNodeName, node.fileType) : '');
+    const destination = path.join(outputRoot, outputNode.sourceGraphSubdirectory ?? '', filename);
     fs.mkdirSync(node.bundleNodeKind === 'file' ? path.dirname(destination) : destination, { recursive: true });
     if (node.bundleNodeKind === 'file') fs.copyFileSync(path.join(trackedRoot, relative), destination);
     projected.push(outputNode);

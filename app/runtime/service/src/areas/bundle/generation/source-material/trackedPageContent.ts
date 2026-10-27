@@ -20,7 +20,6 @@ import crypto from 'crypto';
 import { sourceGraphPath } from '../../../../../../../shared_code/utils/bundleSourceUtils.js';
 import { projectTrackedSourceOutput } from './sourceOutputProjection.js';
 import { parseBundleNodeConfig } from '../../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
-import { canonicalPageFilename, sourceFileCandidateFilenames } from '../../../../../../../shared_code/utils/fileTypeUtils.js';
 import { FileBundleNodeConfig, BundleNodeConfig } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import type { BundleNodeId } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import {
@@ -46,6 +45,7 @@ import {
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
 import { invalidateWorkingGraphCache } from '../../../../shared/utils/workingGraphUtils.js';
 import { copySourceFileToTrackedSnapshot } from '../../../../shared/bundle-node/trackedSourceContentSync.js';
+import { sourceFilenameIn } from '../../../../shared/bundle-node/sourceFileNames.js';
 import {
   textDocumentCodec,
   writeDurableDocument,
@@ -122,13 +122,12 @@ export async function ensureTrackedPageContent(
   );
   for (const bundleNodeConfig of sourceBackedTrackedPages) {
     const subdir = sourceGraphPath(bundleNodeConfig.sourceId, bundleNodeConfig.sourceGraphSubdirectory || '');
-    const filename = canonicalPageFilename(bundleNodeConfig.bundleNodeName, bundleNodeConfig.fileType);
-    const relativePath = subdir ? path.join(subdir, filename) : filename;
-    // Orphan configuration is retained for source review, but its absent bytes
-    // are not generation inputs in a scoped snapshot.
-    if (sourceFileCandidateFilenames(bundleNodeConfig.bundleNodeName, bundleNodeConfig.fileType).some(candidate => fs.existsSync(path.join(sourceDirectory, subdir, candidate)))) {
-      expectedFilePaths.set(relativePath, bundleNodeConfig);
-    }
+    // Each copy keeps its source's own name (a drawing may be plain `.md`), so
+    // links resolve in the copies as they do in the source. Orphan
+    // configuration is retained for source review, but its absent bytes are
+    // not generation inputs in a scoped snapshot.
+    const filename = sourceFilenameIn(path.join(sourceDirectory, subdir), bundleNodeConfig);
+    if (filename) expectedFilePaths.set(subdir ? path.join(subdir, filename) : filename, bundleNodeConfig);
   }
 
   // Clear the target directory completely to ensure clean state
@@ -161,11 +160,7 @@ export async function ensureTrackedPageContent(
   for (const [relativePath, conf] of expectedFilePaths) {
     const fileType = conf.fileType || 'md';
 
-    const subdir = sourceGraphPath(conf.sourceId, conf.sourceGraphSubdirectory || '');
-    const sourcePath = sourceFileCandidateFilenames(conf.bundleNodeName, fileType)
-      .map(filename => subdir ? path.join(sourceDirectory, subdir, filename) : path.join(sourceDirectory, filename))
-      .find(candidatePath => fs.existsSync(candidatePath));
-
+    const sourcePath = path.join(sourceDirectory, relativePath);
     const targetPath = path.join(targetDir, relativePath);
     const targetSubdir = path.dirname(targetPath);
 
@@ -175,7 +170,7 @@ export async function ensureTrackedPageContent(
     }
 
     // Only copy if source exists
-    if (sourcePath) {
+    if (fs.existsSync(sourcePath)) {
       try {
         copySourceFileToTrackedSnapshot(sourcePath, targetPath);
         if (fileType === 'md' && generationOptions.spacedRepetitionEnabled && generationOptions.spacedRepetitionTags.length > 0) {

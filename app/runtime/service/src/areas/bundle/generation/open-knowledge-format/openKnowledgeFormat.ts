@@ -28,6 +28,7 @@ import {
 } from '../sources-export/sourcesExport.js';
 import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundleConfigPaths.js';
 import { rewriteObsidianLookupLinks, rewriteResolvedSourceUrls } from '../source-material/portableSourceLinks.js';
+import { fileNodeKeysByCopiedPath, sourceFilenameIn } from '../../../../shared/bundle-node/sourceFileNames.js';
 
 type LinkResolutionMap = Record<string, LinkResolvedInfo>;
 type AllLinkResolutionMaps = Map<EncodedBundleNodeKey, LinkResolutionMap>;
@@ -299,14 +300,16 @@ function selectConfiguredIndexSource(
   return null;
 }
 
-function buildSourcePathByTitleAndDir(bundleNodeConfigs: BundleNodeConfig[]): Map<string, string> {
+function buildSourcePathByTitleAndDir(bundleNodeConfigs: BundleNodeConfig[], scrubbedContentDir: string): Map<string, string> {
   const result = new Map<string, string>();
   for (const config of bundleNodeConfigs) {
     if (config.bundleNodeKind !== 'file') continue;
     const fileType = config.fileType || 'md';
     if (fileType !== 'md' && fileType !== 'excalidraw') continue;
     const dir = config.sourceGraphSubdirectory || '';
-    result.set(`${dir}\0${config.bundleNodeName}`, sourcePathForConfig(config));
+    // The file's name in the source, which for a drawing may be plain `.md`.
+    const filename = sourceFilenameIn(path.join(scrubbedContentDir, ...dir.split('/')), config);
+    result.set(`${dir}\0${config.bundleNodeName}`, filename ? (dir ? `${dir}/${filename}` : filename) : sourcePathForConfig(config));
   }
   return result;
 }
@@ -458,7 +461,14 @@ export function prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory(
     .map(toPosixPath)
     .filter(relativePath => relativePath.split('/')[0] !== BundleConfigPaths.TAGPAGE_SOURCE_STAGING_DIR);
   const markdownFiles = files.filter(file => file.endsWith('.md'));
-  const sourcePathByTitleAndDir = buildSourcePathByTitleAndDir(options.bundleNodeConfigs);
+  const sourcePathByTitleAndDir = buildSourcePathByTitleAndDir(options.bundleNodeConfigs, scrubbedContentDir);
+  // Each file's link map, also under the identity its name suggests, so a
+  // drawing saved as plain `.md` finds its own map.
+  const allLinkResolutionMaps = new Map(options.allLinkResolutionMaps);
+  for (const [file, key] of fileNodeKeysByCopiedPath(scrubbedContentDir, options.bundleNodeConfigs)) {
+    const map = options.allLinkResolutionMaps?.get(key);
+    if (map) allLinkResolutionMaps.set(pageIdentForSourcePath(file), map);
+  }
   const entrySourceGraphSubdirectory = options.entrySourceGraphSubdirectory || '';
   const initialSourcePath = options.entryNodeName
     ? sourcePathByTitleAndDir.get(`${entrySourceGraphSubdirectory}\0${options.entryNodeName}`) ?? null
@@ -519,7 +529,7 @@ export function prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory(
           relativePath,
           outputPathBySourcePath,
           sourcePathByTitleAndDir,
-          options.allLinkResolutionMaps, options.sourceQualified
+          allLinkResolutionMaps, options.sourceQualified
         ));
         if (relativePath === logSourcePath) {
           writeTextFile(outputDir, ROOT_LOG_PATH, logMarkdownFor(
@@ -527,7 +537,7 @@ export function prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory(
             relativePath,
             outputPathBySourcePath,
             sourcePathByTitleAndDir,
-            options.allLinkResolutionMaps, options.sourceQualified
+            allLinkResolutionMaps, options.sourceQualified
           ));
         }
         continue;
@@ -538,21 +548,21 @@ export function prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory(
           relativePath,
           outputPathBySourcePath,
           sourcePathByTitleAndDir,
-          options.allLinkResolutionMaps, options.sourceQualified
+          allLinkResolutionMaps, options.sourceQualified
         ));
         continue;
       }
 
       const outputPath = outputPathBySourcePath.get(relativePath);
       if (!outputPath) continue;
-      const output = conceptMarkdownFor(content, relativePath, outputPathBySourcePath, sourcePathByTitleAndDir, options.allLinkResolutionMaps, options.sourceQualified);
+      const output = conceptMarkdownFor(content, relativePath, outputPathBySourcePath, sourcePathByTitleAndDir, allLinkResolutionMaps, options.sourceQualified);
       writeTextFile(outputDir, outputPath, output);
     } else {
       const outputPath = outputPathBySourcePath.get(relativePath);
       if (!outputPath) continue;
       if (options.sourceQualified && /\.(html|svg)$/.test(relativePath)) {
         writeTextFile(outputDir, outputPath, rewriteResolvedSourceUrls(fs.readFileSync(sourcePath, 'utf8'), outputPath,
-          options.allLinkResolutionMaps?.get(pageIdentForSourcePath(relativePath)), source => outputPathBySourcePath.get(source), true));
+          allLinkResolutionMaps?.get(pageIdentForSourcePath(relativePath)), source => outputPathBySourcePath.get(source), true));
       } else writeBinaryFile(outputDir, outputPath, sourcePath);
     }
   }

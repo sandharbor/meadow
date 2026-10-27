@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { loadTrackingRecords, saveTrackingRecords, separateTrackingEvidence } from '../bundle-node/trackingRecords.js';
+import { sourceFilenameIn } from '../bundle-node/sourceFileNames.js';
 import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import YAML from 'yaml';
@@ -353,10 +354,15 @@ export async function captureSourceSnapshot(bundleDirectory: string, options: { 
       // when introducing snapshots, including a tracked page whose live path has moved.
       for (const node of options.context?.nodes ?? loadSourceNodeConfigs(bundleDirectory)) {
         if (node.bundleNodeKind !== 'file' || node.listType === 'blacklist') continue;
-        const relative = nodeSourcePath(node);
-        const retained = sourcePath(path.join(bundleDirectory, 'raw/tracked_page_content'), relative);
-        if (!fs.existsSync(retained) || !fs.statSync(retained).isFile()) continue;
-        const destination = sourcePath(temporary, relative);
+        // A retained copy may carry either name a drawing can have; overlay it
+        // on the source's own file, so the source keeps one file per node.
+        const retainedDirectory = path.dirname(sourcePath(path.join(bundleDirectory, 'raw/tracked_page_content'), nodeSourcePath(node)));
+        const retainedName = sourceFilenameIn(retainedDirectory, node);
+        if (!retainedName) continue;
+        const retained = path.join(retainedDirectory, retainedName);
+        if (!fs.statSync(retained).isFile()) continue;
+        const sourceDirectory = path.dirname(sourcePath(temporary, nodeSourcePath(node)));
+        const destination = path.join(sourceDirectory, sourceFilenameIn(sourceDirectory, node) ?? retainedName);
         fs.mkdirSync(path.dirname(destination), { recursive: true });
         // Source copies can inherit read-only permissions. Replace the temporary
         // file before overlaying retained bytes; never alter the source itself.

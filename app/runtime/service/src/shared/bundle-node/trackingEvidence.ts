@@ -15,15 +15,10 @@ limitations under the License.
 */
 
 import { createHash } from 'crypto';
-import { sourceGraphPath } from '../../../../../shared_code/utils/bundleSourceUtils.js';
 import fs from 'fs';
-import path from 'path';
 import type { FileBundleNodeConfig, TrackingEvidence } from '../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import { BundleConfigPaths } from '../../../../../shared_code/paths/bundleConfigPaths.js';
-import {
-  canonicalPageFilename,
-  sourceFileCandidateFilenames,
-} from '../../../../../shared_code/utils/fileTypeUtils.js';
+import { sourceFilePathIn } from './sourceFileNames.js';
 
 export function sourceContentDigest(contents: Buffer): `sha256:${string}` {
   return `sha256:${createHash('sha256').update(contents).digest('hex')}`;
@@ -33,17 +28,8 @@ export function sourceFilePathForConfig(
   sourceDirectory: string,
   config: FileBundleNodeConfig,
 ): string {
-  const subdirectory = sourceGraphPath(config.sourceId, config.sourceGraphSubdirectory ?? '');
-  const sourcePath = sourceFileCandidateFilenames(config.bundleNodeName, config.fileType)
-    .map(filename => path.join(sourceDirectory, subdirectory, filename))
-    .find(candidate => fs.existsSync(candidate));
-  if (!sourcePath) {
-    throw new Error(`Tracked source file no longer exists: ${path.join(
-      sourceDirectory,
-      subdirectory,
-      canonicalPageFilename(config.bundleNodeName, config.fileType),
-    )}`);
-  }
+  const sourcePath = sourceFilePathIn(sourceDirectory, config);
+  if (!fs.existsSync(sourcePath)) throw new Error(`Tracked source file no longer exists: ${sourcePath}`);
   return sourcePath;
 }
 
@@ -73,11 +59,7 @@ export function applyTrackingEvidenceFromSnapshot(options: {
   for (const config of options.configs) {
     const effectivelySensitive = options.effectivelySensitiveByNodeId.get(config.bundleNodeId);
     if (effectivelySensitive === undefined) continue;
-    const snapshotPath = path.join(
-      snapshotRoot,
-      sourceGraphPath(config.sourceId, config.sourceGraphSubdirectory ?? ''),
-      canonicalPageFilename(config.bundleNodeName, config.fileType),
-    );
+    const snapshotPath = sourceFilePathIn(snapshotRoot, config);
     if (!fs.existsSync(snapshotPath) || !fs.statSync(snapshotPath).isFile()) {
       throw new Error(`Tracked snapshot file is unavailable for evidence: ${snapshotPath}`);
     }
