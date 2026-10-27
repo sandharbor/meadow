@@ -363,7 +363,7 @@
   // isn't a wikilink. The returned string matches what Meadow's link layer
   // (Rust working_graph) keys its resolution map by.
   function extractWikilinkInner(text) {
-    var m = text.match(/\[\[([^\]]+)\]\]/);
+    var m = text.match(/\[\[(.*?)\]\]/);
     if (!m) return null;
     return m[1].trim();
   }

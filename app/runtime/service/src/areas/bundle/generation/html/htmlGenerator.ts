@@ -174,6 +174,7 @@ interface WikiLinkOverrides {
   linkResolutionMapOverride?: Record<string, LinkResolvedInfo>;
   currentPageDirectoryOverride?: string;
   mediaEmbedOptions?: MediaEmbedOptions;
+  embed?: boolean;
 }
 
 /** What a note's links and embeds resolve against while it is rendered. */
@@ -228,6 +229,7 @@ export function createNoteRenderer(context: NoteRenderContext) {
       mediaEmbedOptions: overrides?.mediaEmbedOptions,
       routeTable,
       currentOutputDirectory,
+      embed: overrides?.embed,
     });
   }
 
@@ -327,7 +329,7 @@ export function createNoteRenderer(context: NoteRenderContext) {
     mdContent = replaceOutsideCode(mdContent, /\[\[(.*?)\]\]/g, (_match: string, linkText: string) =>
       linkText.startsWith('#')
         ? samePageLink(linkText, overrides)
-        : linkOrImageHtml(linkText, highlightDoNotLinkPageName, overrides),
+        : linkOrImageHtml(linkText, highlightDoNotLinkPageName, { ...overrides, embed: false }),
       { htmlBlocks: true }
     );
 

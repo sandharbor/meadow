@@ -575,6 +575,8 @@ export interface LinkOrImageHtmlOptions {
   mediaEmbedOptions?: MediaEmbedOptions;
   routeTable?: BundleRouteTable;
   currentOutputDirectory?: string;
+  /** False for a wikilink written without `!`, which shows as a link. */
+  embed?: boolean;
 }
 
 export function linkOrImageHtml(
@@ -599,6 +601,7 @@ export function linkOrImageHtml(
     mediaEmbedOptions,
     routeTable,
     currentOutputDirectory = currentPageDirectory,
+    embed = true,
   } = options;
 
   const linkInfo = linkInfoWithResolvedTargetType(linkText, linkResolutionMap);
@@ -694,6 +697,41 @@ export function linkOrImageHtml(
       encodedImagePath = encodePathForUrl(calculateRelativePath(currentPageDirectory, imageTargetPath));
     }
 
+    // The standalone Excalidraw HTML lives at the *normalized* title (the
+    // pageTitleNormalization hook can rename it), so links must point at the
+    // normalized filename or they 404 when the hook is active.
+    const drawingTitle = imageName.replace(/\.excalidraw$/i, '');
+    const drawingHtmlName = bundleConfig && bundleSlug
+      ? normalizePageTitle(drawingTitle, bundleConfig, bundleSlug)
+      : drawingTitle;
+    const drawingPageHref = () => encodePathForUrl(
+      calculateRelativePath(currentPageDirectory, imageSourceDir
+        ? `${imageSourceDir}/${drawingHtmlName}.html`
+        : `${drawingHtmlName}.html`)
+    );
+
+    // A wikilink without `!` is a link, as in Obsidian: a drawing or PDF
+    // opens its page, and any other file opens the file itself.
+    if (!embed) {
+      const [target, ...alias] = linkText.replace(/\\\|/g, '|').split('|');
+      const text = alias.length > 0 ? alias.join('|') : target.slice(target.lastIndexOf('/') + 1).split('#')[0];
+      const pdfPath = imageSourceDir ? `${imageSourceDir}/${imageName}` : imageName;
+      const href = isExcalidraw
+        ? drawingPageHref()
+        : imageName.toLowerCase().endsWith('.pdf')
+          ? resolveTrackedLinkHref({
+            resolved: { link_resolved_target_path: pdfPath, link_resolved_target_directory: imageSourceDir },
+            hostPageDirectory: currentPageDirectory,
+            hostOutputDirectory: currentOutputDirectory,
+            bundleNodeConfigs,
+            bundleConfig,
+            bundleSlug,
+            routeTable,
+          }) ?? encodedImagePath
+          : encodedImagePath;
+      return `<a href="${href}">${escapeHtmlAttribute(text)}</a>`;
+    }
+
     if (isExcalidraw) {
       // Embed: an anchor link to the standalone HTML page, with a placeholder
       // container that the client renderer (meadow-excalidraw.js) fills with
@@ -715,18 +753,7 @@ export function linkOrImageHtml(
         ...mediaEmbedOptions,
       };
       const styleAttr = frameWidth ? ` style="max-width: ${frameWidth}px"` : '';
-      const drawingTitle = imageName.replace(/\.excalidraw$/i, '');
-      // The standalone Excalidraw HTML lives at the *normalized* title (the
-      // pageTitleNormalization hook can rename it), so the embed must point at
-      // the normalized filename or the link 404s when the hook is active.
-      const drawingHtmlName = bundleConfig && bundleSlug
-        ? normalizePageTitle(drawingTitle, bundleConfig, bundleSlug)
-        : drawingTitle;
-      const pageHref = encodePathForUrl(
-        calculateRelativePath(currentPageDirectory, imageSourceDir
-          ? `${imageSourceDir}/${drawingHtmlName}.html`
-          : `${drawingHtmlName}.html`)
-      );
+      const pageHref = drawingPageHref();
       const mdSrc = `${encodedImagePath}.md`;
       const titleAttr = escapeHtmlAttribute(`Open ${drawingHtmlName}`);
       const excalidrawPageIdent = makeBundleNodeKey(drawingTitle, 'excalidraw', imageSourceDir);

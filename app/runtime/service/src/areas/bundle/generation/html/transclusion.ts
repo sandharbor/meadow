@@ -269,7 +269,7 @@ function convertWikiLinksInMarkdown(
     linkResolutionMapForSourcePage?: Record<string, LinkResolvedInfo>;
   }
 ): string {
-  function linkOrImageHtml(linkText: string): string {
+  function linkOrImageHtml(linkText: string, embed: boolean): string {
     return linkOrImageHtmlService(linkText, bundleNodeConfigs, {
       bundleConfig: options.bundleConfig,
       bundleSlug: options.bundleSlug,
@@ -278,13 +278,14 @@ function convertWikiLinksInMarkdown(
       processingMode: 'each-page',
       currentPageDirectory: options.finalPageDirectory,
       linkResolutionMap: options.linkResolutionMapForSourcePage,
+      embed,
     });
   }
 
   // Images (Obsidian-style)
-  md = replaceOutsideCode(md, /!\[\[(.*?)\]\]/g, (_match: string, linkText: string) => linkOrImageHtml(linkText), { htmlBlocks: true });
+  md = replaceOutsideCode(md, /!\[\[(.*?)\]\]/g, (_match: string, linkText: string) => linkOrImageHtml(linkText, true), { htmlBlocks: true });
   // Regular wiki links
-  md = replaceOutsideCode(md, /\[\[(.*?)\]\]/g, (_match: string, linkText: string) => linkOrImageHtml(linkText), { htmlBlocks: true });
+  md = replaceOutsideCode(md, /\[\[(.*?)\]\]/g, (_match: string, linkText: string) => linkOrImageHtml(linkText, false), { htmlBlocks: true });
 
   return md;
 }

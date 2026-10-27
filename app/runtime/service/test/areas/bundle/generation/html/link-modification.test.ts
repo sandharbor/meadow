@@ -221,4 +221,36 @@ describe('html link modification', () => {
     expect(result).toContain('data-meadow-excalidraw-src="drawings/embedded%20drawing.excalidraw.md"');
     expect(result).toContain('style="max-width: 500px"');
   });
+  // Obsidian shows a wikilink without `!` as a link, whatever it points at.
+  describe('a link to a drawing, PDF or other file without !', () => {
+    const confs: BundleNodeConfig[] = [
+      makeBundleNodeConfig('Sketch', 'whitelist', { fileType: 'excalidraw', sourceGraphSubdirectory: 'drawings' }),
+      makeBundleNodeConfig('photo', 'whitelist', { fileType: 'png', sourceGraphSubdirectory: 'images' }),
+      makeBundleNodeConfig('Report', 'whitelist', { fileType: 'pdf' }),
+      makeBundleNodeConfig('song', 'whitelist', { fileType: 'mp3' }),
+    ];
+    const linkResolutionMap = {
+      'Sketch': { link_resolved_target_directory: 'drawings', link_resolved_target_path: 'drawings/Sketch.excalidraw' },
+      'photo.png': { link_resolved_target_directory: 'images', link_resolved_target_path: 'images/photo.png' },
+      'Report.pdf|the report': { link_resolved_target_directory: '', link_resolved_target_path: 'Report.pdf' },
+      'song.mp3': { link_resolved_target_directory: '', link_resolved_target_path: 'song.mp3' },
+    };
+    const asLink = (linkText: string) => linkOrImageHtml(linkText, confs, { linkResolutionMap, embed: false });
+
+    it('links a drawing to its page', () => {
+      expect(asLink('Sketch')).toBe('<a href="drawings/Sketch.html">Sketch</a>');
+    });
+
+    it('links an image to the image', () => {
+      expect(asLink('photo.png')).toBe('<a href="images/photo.png">photo.png</a>');
+    });
+
+    it('links a PDF to its page, showing the alias', () => {
+      expect(asLink('Report.pdf|the report')).toBe('<a href="Report.html">the report</a>');
+    });
+
+    it('links audio to the file', () => {
+      expect(asLink('song.mp3')).toBe('<a href="song.mp3">song.mp3</a>');
+    });
+  });
 });
