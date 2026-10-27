@@ -1,8 +1,11 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
-import { extractConceptImplementations, validateConceptImplementationRoles } from './conceptImplementations.js';
+import { extractConceptImplementations, readConceptImplementations, validateConceptImplementationRoles } from './conceptImplementations.js';
 import type { AnyMeadowConcept } from '../../../../concepts/index.js';
 
 const first = { id: 'first', implementationRoles: ['capture'] } as unknown as AnyMeadowConcept;
@@ -43,4 +46,21 @@ test('type aliases link a stable concept to an exact contract declaration', () =
   const result = read(files);
   assert.deepEqual(result.errors, []);
   assert.deepEqual(result.entries, [{ conceptId: 'first', role: 'capture', symbol: 'ImplementedContract', file: 'service/implementation.tsx', line: 2, column: 1 }]);
+});
+
+test('reading skips Rust build output and folders that vanish while other checks run', t => {
+  const app = fs.mkdtempSync(path.join(os.tmpdir(), 'meadow-concept-walk-'));
+  t.after(() => fs.rmSync(app, { recursive: true, force: true }));
+  // A malformed participation would be an error if this build output were read.
+  fs.mkdirSync(path.join(app, 'runtime/native/crate/target/debug'), { recursive: true });
+  fs.writeFileSync(path.join(app, 'runtime/native/crate/target/debug/generated.ts'), 'export type BrokenMeadowConceptParticipations = [ParticipatesIn<];');
+  // A Rust test's scratch repository can disappear between listing and reading.
+  const scratch = path.join(app, 'runtime/native/crate_test/scratch_repo');
+  fs.mkdirSync(scratch, { recursive: true });
+  const readdirSync = fs.readdirSync;
+  t.mock.method(fs, 'readdirSync', ((directory: fs.PathLike, options?: unknown) => {
+    if (directory === scratch) throw Object.assign(new Error(`ENOENT: no such file or directory, scandir '${scratch}'`), { code: 'ENOENT' });
+    return (readdirSync as (directory: fs.PathLike, options?: unknown) => unknown)(directory, options);
+  }) as typeof fs.readdirSync);
+  assert.deepEqual(readConceptImplementations(app), { entries: [], errors: [] });
 });

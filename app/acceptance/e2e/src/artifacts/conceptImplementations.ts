@@ -85,16 +85,36 @@ export function validateConceptImplementationRoles(concepts: readonly AnyMeadowC
     .map(role => `concept "${concept.id}" has no inline participant for role "${role}"`));
 }
 
-/** Do not follow extension mounts or generated trees into another source authority. */
+/** A file or folder another check removed while this one was reading. */
+const vanished = (error: unknown) => (error as NodeJS.ErrnoException).code === 'ENOENT';
+
+/**
+ * Do not follow extension mounts or generated trees into another source
+ * authority. Other checks build Rust and run its tests alongside this one, so
+ * their output folders are skipped and anything they remove mid-walk is too.
+ */
 export function readConceptImplementations(appRoot: string) {
   const sources: ImplementationSource[] = [];
   const walk = (directory: string) => {
-    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-      if (['node_modules', 'dist', '.git', 'concepts', 'meadow-extension', 'test', 'tests', 'test-results', 'fixtures', '_module'].includes(entry.name)) continue;
+    let entries: fs.Dirent[];
+    try {
+      entries = fs.readdirSync(directory, { withFileTypes: true });
+    } catch (error) {
+      if (vanished(error)) return;
+      throw error;
+    }
+    for (const entry of entries) {
+      if (['node_modules', 'dist', 'target', '.git', 'concepts', 'meadow-extension', 'test', 'tests', 'test-results', 'fixtures', '_module'].includes(entry.name)) continue;
       const file = path.join(directory, entry.name);
       if (entry.isDirectory()) walk(file);
       else if (entry.isFile() && /\.(ts|tsx)$/.test(file) && !/\.(test|spec)\./.test(file)) {
-        const text = fs.readFileSync(file, 'utf8');
+        let text: string;
+        try {
+          text = fs.readFileSync(file, 'utf8');
+        } catch (error) {
+          if (vanished(error)) continue;
+          throw error;
+        }
         if (text.includes('MeadowConceptParticipations') || text.includes('ParticipatesIn<')) sources.push({ file, text });
       }
     }
