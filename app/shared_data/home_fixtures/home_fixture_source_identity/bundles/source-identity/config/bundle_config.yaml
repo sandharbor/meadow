@@ -1,0 +1,12 @@
+bundleGuid: source-identity
+sourceDirectory: ./source_graphs/source-identity-data
+entryBundleNodeId: "200000000001"
+defaultTraversalBundleNodeId: "200000000001"
+defaultOutlinksDepth: 4
+defaultInlinksDepth: 0
+generatedBundleVersions: []
+archivedAt: null
+bundleCreatedAt: 2026-10-01T00:00:00.000Z
+bundleUpdatedAt: 2026-10-01T00:00:00.000Z
+bundleLastPublishedAt: null
+bundleNotes: ""

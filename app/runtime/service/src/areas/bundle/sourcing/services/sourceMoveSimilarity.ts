@@ -16,10 +16,11 @@ export function sourceTextProfile(contents: string) {
   return { blocks, length: contents.trim().length };
 }
 
-export function sourceMoveSimilarity({ oldPath, newPath, exact, before, after, previous, current, folder, group }: {
+export function sourceMoveSimilarity({ oldPath, newPath, exact, before, after, previous, current, folder, group, blank }: {
   oldPath: string; newPath: string; exact: boolean;
   before?: ReturnType<typeof sourceTextProfile>; after?: ReturnType<typeof sourceTextProfile>;
   previous: SourceSnapshot; current: SourceSnapshot;
+  blank?: boolean;
   folder?: boolean; group?: { anchors: number; overlap: number };
 }): SourceMoveSimilarity {
   const criteria: SourceMoveSimilarity['criteria'] = [];
@@ -39,13 +40,22 @@ export function sourceMoveSimilarity({ oldPath, newPath, exact, before, after, p
   const a = tokens(oldPath), b = tokens(newPath);
   const sameName = path.basename(oldPath) === path.basename(newPath);
   const name = sameName ? 1 : [...a].filter(token => b.has(token)).length / Math.max(a.size, b.size, 1);
-  add('filename', 'Filename', folder ? null : name, folder ? 0 : 0.15, folder ? 'Folder contents are compared instead.' : sameName ? 'Same filename' : name ? 'Shared words in the filename, excluding the extension.' : 'No filename words in common.');
+  const filename = path.basename(oldPath).toLowerCase();
+  const oldCount = previous.filenameCounts?.[filename], newCount = current.filenameCounts?.[filename];
+  const unique = oldCount === 1 && newCount === 1;
+  const incomingBefore = previous.graph?.allInlinkSources[sourceFilePathToBundleNodeKey(oldPath)] ?? [];
+  const incomingAfter = current.graph?.allInlinkSources[sourceFilePathToBundleNodeKey(newPath)] ?? [];
+  const changedIncoming = Boolean((incomingBefore.length || incomingAfter.length) && [...incomingBefore].sort().join('\0') !== [...incomingAfter].sort().join('\0'));
+  const frequency = oldCount === undefined || newCount === undefined ? 'Whole-source filename frequency was not captured for both versions.'
+    : `Filename occurs ${oldCount} time(s) before and ${newCount} time(s) after across the registered sources.`;
+  add('filename', 'Filename', folder ? null : name, folder ? 0 : blank ? unique ? changedIncoming ? 0.5 : 0.65 : 0.3 : 0.15,
+    folder ? 'Folder contents are compared instead.' : sameName ? `Same filename. ${frequency}` : name ? 'Shared words in the filename, excluding the extension.' : 'No filename words in common.');
   for (const [id, label, field] of [['incoming', 'Incoming links', 'allInlinkSources'], ['outgoing', 'Outgoing links', 'allOutlinkTargets']] as const) {
     const left = previous.graph?.[field][sourceFilePathToBundleNodeKey(oldPath)];
     const right = current.graph?.[field][sourceFilePathToBundleNodeKey(newPath)];
     const available = !folder && Boolean(previous.graph && current.graph && (left?.length || right?.length));
     const same = Boolean(left?.length && right?.length && [...left].sort().join('\0') === [...right].sort().join('\0'));
-    add(id, label, available ? Number(same) : null, folder ? 0 : 0.05, !available ? 'No comparable links recorded.' : same ? `Same ${label.toLowerCase()}` : 'The recorded link sets differ.');
+    add(id, label, available ? Number(same) : null, folder ? 0 : blank && id === 'incoming' ? 0.2 : 0.05, !available ? 'No comparable links recorded.' : same ? `Same ${label.toLowerCase()}` : 'The recorded link sets differ.');
   }
   add('folderMove', 'Shared folder move', group ? 1 : null, group && !exact ? 0.1 : 0,
     group ? `Follows the folder move shared by ${group.anchors} matched pages` : 'No corroborated folder move used for this candidate.');

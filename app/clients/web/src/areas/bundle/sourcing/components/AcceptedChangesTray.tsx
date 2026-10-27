@@ -5,9 +5,8 @@ import type { Graph } from '../../../../../../../contracts/types/shared/bundle-g
 import type { IBundleNode } from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode.js';
 import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';
 import type { SourceProposalReview } from '../../../../../../../contracts/types/areas/bundle/sourcing/sourcingProposal.js';
-import type { SourceNodeReview } from '../../../../../../../contracts/types/shared/sourcing/sourcingProposal.js';
 import { readEditorView, writeEditorView } from '../../../../shared/utils/editorViewStorage.js';
-import { sourceReviewAppearance } from '../../../../shared/utils/sourceReviewAppearance.js';
+import { sourceReviewAppearance, sourceReviewCategories } from '../../../../shared/utils/sourceReviewAppearance.js';
 import { proposalSettingsEntries, ProposalEntriesTable, TrackingChangesTable } from './ProposalSettingsSummary.js';
 import type { ProposalDialog } from './ProposalDialogs.js';
 import type { SourceOrphanExplanation } from '../../../../../../../contracts/types/shared/sourcing/sourcing.js';
@@ -21,14 +20,14 @@ type Detail = 'pages' | 'configuration' | 'settings' | 'tracking';
 const detailTitles: Record<Detail, string> = { pages: 'Page changes', configuration: 'Configuration removals', settings: 'Setting changes', tracking: 'Tracking changes' };
 type Item = { id: string; label: string; blocker?: boolean } & ({ detail: Detail } | { dialog: Exclude<ProposalDialog, null> });
 
-const pageKinds = ['added', 'moved', 'modified', 'departing'] as const satisfies readonly SourceNodeReview['kind'][];
+const pageKinds = ['added', 'moved', 'renamed', 'modified', 'departing'] as const;
 const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
 
 /** Everything Accept changes would apply, grouped as the tray presents it. */
 export function acceptedChanges(review: SourceProposalReview, graph: Graph | null, sensitiveCount: number) {
   const entries = proposalSettingsEntries(review);
   const settings = entries.filter(entry => !entry.tracking), tracking = entries.filter(entry => entry.tracking);
-  const pages = (graph?.getAllNodes() ?? []).filter(node => pageKinds.some(kind => node.sourceReview?.kind === kind));
+  const pages = (graph?.getAllNodes() ?? []).filter(node => node.sourceReview && sourceReviewCategories(node.sourceReview).some(kind => pageKinds.some(pageKind => pageKind === kind)));
   // Removing a tracked page drops its saved configuration, which untracks it.
   const removals = pages.filter(page => page.sourceReview?.orphanedConfiguration && !page.sourceReview.orphan?.removalBlockedReason)
     .map(page => ({ key: page.bundleNodeKey, name: page.bundleNodeName }));
@@ -42,7 +41,7 @@ export function acceptedChanges(review: SourceProposalReview, graph: Graph | nul
   const unlisted = graph ? review.orphans.filter(orphan => !pages.some(page => page.sourceReview?.orphan?.bundleNodeId === orphan.bundleNodeId)) : [];
   // Identity decisions come first: they are made before the graph opens.
   const items: Item[] = [
-    ...review.moves.length ? [{ id: 'identities', label: plural(review.moves.length, 'identity decision', 'identity decisions'), dialog: 'identities' as const }] : [],
+    { id: 'identities', label: 'Page identity', dialog: 'identities' },
     ...pages.length ? [{ id: 'pages', label: plural(pages.length, 'page change', 'page changes'), detail: 'pages' as const }] : [],
     ...unlisted.length ? [{ id: 'configuration', label: plural(unlisted.length, 'configuration removal', 'configuration removals'), detail: 'configuration' as const }] : [],
     ...settings.length ? [{ id: 'settings', label: plural(settings.length, 'setting change', 'setting changes'), detail: 'settings' as const }] : [],
@@ -51,7 +50,9 @@ export function acceptedChanges(review: SourceProposalReview, graph: Graph | nul
     ...review.conflicts.length ? [{ id: 'conflicts', label: `Resolve ${plural(review.conflicts.length, 'conflict', 'conflicts')}`, dialog: 'conflicts' as const, blocker: true }] : [],
     ...sensitiveCount ? [{ id: 'sensitivity', label: `Confirm ${plural(sensitiveCount, 'tracking choice', 'tracking choices')}`, dialog: 'sensitivity' as const, blocker: true }] : [],
   ];
-  return { items, pages, unlisted, settings, tracking, removals, additions };
+  // Page identity is always inspectable, including when there is nothing to accept.
+  const hasChanges = review.moves.length > 0 || items.some(item => item.id !== 'identities');
+  return { items, pages, unlisted, settings, tracking, removals, additions, hasChanges };
 }
 
 /** What Accept changes applies, attached to the Accept button so each staged change can be inspected. */
@@ -165,13 +166,13 @@ function ConfigurationRemovals({ orphans }: { orphans: SourceOrphanExplanation[]
 }
 
 function PageKindDots({ pages, inverted }: { pages: IBundleNode[]; inverted: boolean }) {
-  return <span aria-hidden="true" className="inline-flex gap-0.5">{pageKinds.filter(kind => pages.some(page => page.sourceReview?.kind === kind)).map(kind =>
+  return <span aria-hidden="true" className="inline-flex gap-0.5">{pageKinds.filter(kind => pages.some(page => page.sourceReview && sourceReviewCategories(page.sourceReview).includes(kind))).map(kind =>
     <span key={kind} className={`h-2 w-2 rounded-full ${inverted ? 'ring-1 ring-white' : ''}`} style={{ backgroundColor: sourceReviewAppearance[kind].color }} />)}</span>;
 }
 
 function PageChanges({ pages, request, onCompare, onSelect }: { pages: IBundleNode[]; request: SourcingTypeEditorOperations['request']; onCompare: (page: IBundleNode) => void; onSelect: (key: EncodedBundleNodeKey) => void }) {
   return <div className="space-y-3">{pageKinds.map(kind => {
-    const matching = pages.filter(page => page.sourceReview?.kind === kind).sort((a, b) => a.bundleNodeName.localeCompare(b.bundleNodeName));
+    const matching = pages.filter(page => page.sourceReview && sourceReviewCategories(page.sourceReview).includes(kind)).sort((a, b) => a.bundleNodeName.localeCompare(b.bundleNodeName));
     if (!matching.length) return null;
     const appearance = sourceReviewAppearance[kind];
     return <section key={kind} aria-label={appearance.label}>

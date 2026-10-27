@@ -6,6 +6,7 @@ import { SourceLineCounts, useSourceLineCounts } from '../../src/areas/bundle/sh
 import { EditorOperationsContext, useEditorOperations } from '../../src/areas/bundle/shared-sourcing-curation/types/editorOperations.js';
 import type { SourceNodeReview } from '../../../../contracts/types/shared/sourcing/sourcingProposal.js';
 import { SourceComparisonEvidence } from '../../src/areas/bundle/shared-sourcing-curation/components/SourceComparisonEvidence.js';
+import { encodedBundleNodeKey } from '../../../../shared_code/utils/bundleNodeKey.js';
 import { Graph } from '../../../../contracts/types/shared/bundle-graph/graph.js';
 import { SourceContentComparison } from '../../src/areas/bundle/shared-sourcing-curation/components/SourceContentComparison.js';
 
@@ -83,6 +84,18 @@ describe('captured source line counts', () => {
     expect(disclosure).toHaveAttribute('open');
     expect(disclosure).toHaveTextContent('An upstream change breaks the route to this page');
     expect(screen.queryByText(/Orphaned configuration|location and route/)).not.toBeInTheDocument();
+  });
+
+  it('explains a direct blacklist independently of the upstream route that also disappeared', async () => {
+    const request = vi.fn().mockResolvedValue(response('Previous leaf content', null));
+    render(<EditorOperationsContext.Provider value={{ mode: 'sourcing', request }}>
+      <SourceComparisonEvidence evidence={{ ...evidence, kind: 'departing', removalReason: 'blacklisted',
+        removalCause: { kind: 'link-removed', from: encodedBundleNodeKey('file:Start.md'), at: encodedBundleNodeKey('file:Leaf.md'), links: 0 } }} graph={new Graph()} onCompare={vi.fn()} onSelectPage={vi.fn()} />
+    </EditorOperationsContext.Provider>);
+    fireEvent.click(screen.getByText('Blacklisted'));
+    const explanation = screen.getByTestId('source-removal-explanation');
+    expect(explanation).toHaveTextContent('This page is blacklisted in the proposed configuration.');
+    expect(explanation).toHaveTextContent('no longer links to');
   });
 
   it.each([null, '', ' \n\t'])('omits See previous content when the previous page has no content (%s)', async before => {

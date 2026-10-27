@@ -11,7 +11,13 @@ export interface ProposalAdditionTracking {
   sensitiveSkipped: string[];
 }
 
+export interface SourceIdentityInspection {
+  departing: Array<{ path: string; bundleNodeId?: string; reason: string }>;
+  added: Array<{ path: string; reason: string }>;
+}
+
 export interface SourceProposalReview {
+  identityInspection?: SourceIdentityInspection;
   proposal: PendingSourceProposal;
   configuration: ProposalConfiguration;
   conflicts: ProposalConfigurationConflict[];

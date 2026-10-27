@@ -28,7 +28,7 @@ import { SensitivityBadge } from './SensitivityBadge.js';
 import { NodeFolderDetails } from './NodeFolderDetails.js';
 import { SourceComparisonEvidence } from './SourceComparisonEvidence.js';
 import { useEditorKeySet } from '../utils/useEditorViewValue.js';
-import { sourceReviewAppearance } from '../../../../shared/utils/sourceReviewAppearance.js';
+import { sourceReviewSummaryAppearance } from '../../../../shared/utils/sourceReviewAppearance.js';
 import { useLatestSelection, LatestSelectionDivider } from './LatestSelection.js';
 
 interface BundleNodeSelectionSidebarProps {
@@ -86,7 +86,7 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
   /** A route step outlined in the color of what accepting does to that page. */
   const pathStep = (stepKey: EncodedBundleNodeKey, label: string, ownerKey: EncodedBundleNodeKey) => {
     const review = graph.getNode(stepKey)?.sourceReview;
-    const appearance = review && review.kind !== 'unchanged' && review.kind !== 'frontier' ? sourceReviewAppearance[review.kind] : null;
+    const appearance = review && review.kind !== 'unchanged' && review.kind !== 'frontier' ? sourceReviewSummaryAppearance(review) : null;
     const cause = removalCause(ownerKey);
     const isBreak = cause?.at === stepKey;
     return <button

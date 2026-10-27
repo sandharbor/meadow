@@ -1,12 +1,17 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
+import type { SourceNodeReview } from '../../../../../contracts/types/shared/sourcing/sourcingProposal.js';
+
+import { sourceContentChangeDefinition, sourceSensitivityChangeDefinition, sourceConfigurationChangeDefinition, sourceMissingRemovalDefinition, sourceDisconnectedRemovalDefinition, sourceBlacklistedRemovalDefinition, sourceUnreachableRemovalDefinition } from '../../../../../shared_code/utils/sourceChangeSubtypes.js';
+
 /**
  * Shared category labels and colors for source-change highlights and selected-page evidence.
  * Labels name what accepting the proposal would do, not what happened to the source.
  */
 export const sourceReviewAppearance = {
   added: { label: 'Add', color: '#16a34a' },
-  moved: { label: 'Rename', color: '#9333ea' },
+  moved: { label: 'Move', color: '#0891b2' },
+  renamed: { label: 'Rename', color: '#9333ea' },
   modified: { label: 'Modify', color: '#2563eb' },
   departing: { label: 'Remove', color: '#dc2626' },
   unchanged: { label: 'Unchanged', color: '#737373' },
@@ -15,14 +20,32 @@ export const sourceReviewAppearance = {
 
 /** The removal explanation is identical in the filter tooltip and selected-page disclosure. */
 export const sourceRemovalReasons = {
-  'source-missing': { label: 'Source missing', description: 'Missing on disk when the proposed capture was made.' },
-  'source-disconnected': { label: 'Disconnected', description: 'Its source was removed from the proposed registry. Its files are untouched.' },
-  blacklisted: { label: 'Blacklisted', description: 'This page is blacklisted in the proposed configuration.' },
-  unreachable: { label: 'Not reachable', description: 'An upstream change breaks the route to this page: a blacklisted page, a removed link, a missing source, or traversal settings.' },
+  'source-missing': sourceMissingRemovalDefinition,
+  'source-disconnected': sourceDisconnectedRemovalDefinition,
+  blacklisted: sourceBlacklistedRemovalDefinition,
+  unreachable: sourceUnreachableRemovalDefinition,
 };
 
-/** What a Modify changes. A page can have both. */
+/** Modification subtypes share their definitions with the scenario overview. */
 export const sourceModificationKinds = {
-  source: { label: 'Source change', description: 'The captured file content differs from the accepted capture.' },
-  config: { label: 'Config change', description: 'This page’s saved settings differ, such as blacklisting or traversal depth. Tracking choices are listed separately.' },
+  source: sourceContentChangeDefinition,
+  sensitivity: sourceSensitivityChangeDefinition,
+  config: sourceConfigurationChangeDefinition,
 };
+
+/** Move and Rename are independent facts about the captured source locator. */
+export function sourceReviewCategories(review: SourceNodeReview): Array<keyof typeof sourceReviewAppearance> {
+  if (review.kind !== 'moved') return [review.kind];
+  const before = review.previousPath ?? '', after = review.proposedPath ?? '';
+  const directory = (value: string) => value.slice(0, Math.max(0, value.lastIndexOf('/')));
+  const filename = (value: string) => value.slice(value.lastIndexOf('/') + 1);
+  return [...(directory(before) !== directory(after) ? ['moved' as const] : []),
+    ...(filename(before) !== filename(after) ? ['renamed' as const] : [])];
+}
+
+/** Compact route and hover presentations retain both labels for a combined change. */
+export function sourceReviewSummaryAppearance(review: SourceNodeReview) {
+  const categories = sourceReviewCategories(review);
+  return { color: sourceReviewAppearance[categories[0] ?? review.kind].color,
+    label: categories.map(kind => sourceReviewAppearance[kind].label).join(' and ') };
+}

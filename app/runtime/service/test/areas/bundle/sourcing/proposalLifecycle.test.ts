@@ -55,6 +55,72 @@ afterEach(({ task }) => {
 });
 
 describe('captured proposal lifecycle', () => {
+  it('explains unmatched pages, accepts a manual pair, and preserves its identity through acceptance', async () => {
+    let review = await reviewSourceProposal(directory);
+    fs.renameSync(path.join(source, 'Bridge.md'), path.join(source, 'Replacement.md'));
+    fs.writeFileSync(path.join(source, 'Replacement.md'), 'Completely rewritten content with no old paragraphs.');
+    fs.writeFileSync(path.join(source, 'Start.md'), 'The source entry.\n\n[[Replacement]]');
+    await updateSourceProposalCapture(directory, review.proposal.revision, { refresh: true });
+    review = await reviewSourceProposal(directory);
+    expect(review.moves).toHaveLength(0);
+    expect(review.identityInspection?.departing).toContainEqual(expect.objectContaining({ bundleNodeId: bridgeId, path: 'Bridge.md', reason: expect.stringContaining('does not establish') }));
+    await expect(chooseProposalIdentities(directory, review.proposal.revision, { [bridgeId]: '../outside.md' })).rejects.toThrow('not available');
+    await expect(chooseProposalIdentities(directory, review.proposal.revision, { [bridgeId]: 'Start.md' })).rejects.toThrow('not available');
+    await chooseProposalIdentities(directory, review.proposal.revision, { [bridgeId]: 'Replacement.md' });
+    review = await reviewSourceProposal(directory);
+    expect(review.unresolvedIdentities).toEqual([]);
+    expect(review.moves).toContainEqual(expect.objectContaining({ bundleNodeId: bridgeId, newPath: 'Replacement.md', evidence: expect.arrayContaining(['Manually paired by you; no automatic match is implied.']) }));
+    await chooseProposalIdentities(directory, review.proposal.revision, { [bridgeId]: null });
+    review = await reviewSourceProposal(directory);
+    expect(review.moves.some(move => move.newPath === 'Replacement.md')).toBe(true);
+    await chooseProposalIdentities(directory, review.proposal.revision, { [bridgeId]: 'Replacement.md' });
+    review = await reviewSourceProposal(directory);
+    await acceptSourceProposal(directory, review.reviewToken);
+    expect(loadSourceNodeConfigs(directory).find(node => node.bundleNodeId === bridgeId)).toMatchObject({ bundleNodeName: 'Replacement', listType: 'whitelist' });
+  }, 20000);
+
+  it('invalidates a manual destination that disappears on refresh and permits pairing its new location', async () => {
+    let review = await reviewSourceProposal(directory);
+    fs.renameSync(path.join(source, 'Bridge.md'), path.join(source, 'Replacement.md'));
+    fs.writeFileSync(path.join(source, 'Replacement.md'), 'Completely different vocabulary, without shared text blocks.');
+    fs.writeFileSync(path.join(source, 'Start.md'), 'The source entry.\n\n[[Replacement]]');
+    await updateSourceProposalCapture(directory, review.proposal.revision, { refresh: true });
+    review = await reviewSourceProposal(directory);
+    await chooseProposalIdentities(directory, review.proposal.revision, { [bridgeId]: 'Replacement.md' });
+    review = await reviewSourceProposal(directory);
+    fs.renameSync(path.join(source, 'Replacement.md'), path.join(source, 'Latest.md'));
+    fs.writeFileSync(path.join(source, 'Start.md'), 'The source entry.\n\n[[Latest]]');
+    await updateSourceProposalCapture(directory, review.proposal.revision, { refresh: true });
+    review = await reviewSourceProposal(directory);
+    expect(review.moves.some(move => move.newPath === 'Replacement.md')).toBe(false);
+    expect(review.configuration.nodes.find(node => node.bundleNodeId === bridgeId)?.bundleNodeName).toBe('Bridge');
+    await expect(chooseProposalIdentities(directory, review.proposal.revision, { [bridgeId]: 'Replacement.md' })).rejects.toThrow('not available');
+    await chooseProposalIdentities(directory, review.proposal.revision, { [bridgeId]: 'Latest.md' });
+    review = await reviewSourceProposal(directory);
+    expect(review.configuration.nodes.find(node => node.bundleNodeId === bridgeId)?.bundleNodeName).toBe('Latest');
+  }, 20000);
+
+  it('suggests empty same-name moves but notices duplicate filenames outside the bundle', async () => {
+    fs.writeFileSync(path.join(source, 'Bridge.md'), '');
+    // Reinitialize the accepted content with the empty page before the move.
+    let review = await reviewSourceProposal(directory);
+    await updateSourceProposalCapture(directory, review.proposal.revision, { refresh: true });
+    review = await reviewSourceProposal(directory);
+    await acceptSourceProposal(directory, review.reviewToken);
+    fs.mkdirSync(path.join(source, 'elsewhere'));
+    fs.writeFileSync(path.join(source, 'elsewhere/Bridge.md'), 'Outside the bundle boundary.');
+    review = await reviewSourceProposal(directory);
+    fs.mkdirSync(path.join(source, 'moved'));
+    fs.renameSync(path.join(source, 'Bridge.md'), path.join(source, 'moved/Bridge.md'));
+    fs.writeFileSync(path.join(source, 'Start.md'), 'The source entry.\n\n[[moved/Bridge]]');
+    await updateSourceProposalCapture(directory, review.proposal.revision, { refresh: true });
+    review = await reviewSourceProposal(directory);
+    const move = review.moves.find(move => move.bundleNodeId === bridgeId)!;
+    expect(move.newPath).toBe('moved/Bridge.md');
+    expect(move.similarity.score).toBeLessThan(0.65);
+    expect(move.similarity.criteria.find(item => item.id === 'filename')?.detail).toContain('2 time(s) after');
+  }, 20000);
+
   // This scenario performs many durable captures and reviews while other suites run in parallel.
   it('revalidates tracking when identity choices change and restores the original identity when reconfirmed', async () => {
     let review = await reviewSourceProposal(directory);

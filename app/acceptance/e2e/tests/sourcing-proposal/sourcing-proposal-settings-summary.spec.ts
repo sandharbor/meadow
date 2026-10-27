@@ -7,7 +7,7 @@ import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { scenarioSections, proposalConfigurationDraft, sourceReviewWorkspace, tracking, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing } from '../../../../concepts/index.js';
+import { scenarioSections, sourceConfigurationChange, proposalConfigurationDraft, sourceReviewWorkspace, tracking, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });
@@ -50,6 +50,10 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'd1647330-ccf
   await test.step(sections.steps.verifyScenarioTrayUnderAcceptChangesLists, async () => {
     await sourceCommand(() => sourcing.select('Bridge'));
     await sourceCommand(() => sourcing.setSelectedOutlinkDepth(0));
+    await sourceCommand(() => filters.expandFilterGroup('Modify'));
+    await sourceCommand(() => filters.expectSourceChangeCount('Config change', 1));
+    await sourceCommand(() => sourcing.expectModificationSubtype('Config change'));
+    await sourceCommand(() => addKeyFrame(sourceConfigurationChange));
     await sourceCommand(() => sourcing.select('Reference'));
     await sourceCommand(() => sourcing.untrackSelected());
     await sourceCommand(() => filters.clickAddCustomFilter());

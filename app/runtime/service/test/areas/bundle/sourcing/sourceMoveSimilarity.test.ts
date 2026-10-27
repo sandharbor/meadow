@@ -34,6 +34,19 @@ describe('source move similarity evidence', () => {
     expect(result.criteria.find(item => item.id === 'folderMove')).toMatchObject({ score: 1, weight: 0.1 });
     expect(result.criteria.find(item => item.id === 'words')).toMatchObject({ score: 0.95, weight: 0.65 });
   });
+  it('uses whole-source uniqueness for empty names and reduces guidance when incoming links disagree', () => {
+    const compareBlank = (count?: number, incoming = ['file:Start.md']) => sourceMoveSimilarity({
+      oldPath: 'old/Unique.md', newPath: 'new/Unique.md', exact: true, blank: true,
+      before: sourceTextProfile(''), after: sourceTextProfile(''),
+      previous: { ...snapshot, filenameCounts: count === undefined ? undefined : { 'unique.md': count }, graph: { allOutlinkTargets: {}, allInlinkSources: { 'file:old/Unique.md': ['file:Start.md'] } } as SourceSnapshot['graph'] },
+      current: { ...snapshot, filenameCounts: count === undefined ? undefined : { 'unique.md': count }, graph: { allOutlinkTargets: {}, allInlinkSources: { 'file:new/Unique.md': incoming } } as SourceSnapshot['graph'] },
+    });
+    expect(compareBlank(1).score).toBeGreaterThanOrEqual(0.65);
+    expect(compareBlank(3).score).toBeLessThan(0.65);
+    expect(compareBlank().score).toBeLessThan(0.65);
+    expect(compareBlank(1, ['file:Other.md']).score).toBeLessThan(0.65);
+    expect(compareBlank(1).criteria.find(item => item.id === 'filename')?.detail).toContain('1 time(s) before and 1 time(s) after');
+  });
   it('explains folder identity through identical contents and relative paths', () => {
     const result = sourceMoveSimilarity({ oldPath: 'old', newPath: 'new', exact: true, previous: snapshot, current: snapshot, folder: true });
     expect(result.score).toBe(1);

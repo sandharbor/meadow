@@ -56,7 +56,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'c0073d98-424
     await sourceCommand(() => expect(review.sensitivityReview.getByRole('button', { name: /^(Untrack for now|Blacklist)$/ })).toHaveCount(0));
     await sourceCommand(() => review.sensitivityReview.getByRole('button', { name: 'Close', exact: true }).click());
     await sourceCommand(() => filters.disableFilter('Review existing inclusion'));
-    await sourceCommand(() => expect(review.acceptedChanges).toContainText('No changes to review'));
+    await sourceCommand(() => review.expectAcceptedChanges([]));
     await sourceCommand(() => expect(review.root.getByRole('button', { name: 'Done', exact: true })).toBeEnabled());
     expect(Object.keys(proposal.current.tracking)).toHaveLength(0);
     await sourceCommand(() => addKeyFrame(trackedNodeBecomesSensitive, filterSensitivity));

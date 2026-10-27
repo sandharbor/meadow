@@ -44,7 +44,7 @@ export class SourceMoveReview {
 
   /** Identity review explains what New file means beside the choices. */
   async showDifferentHelp() {
-    await this.expect(this.page.getByRole('dialog', { name: 'Source identities', exact: true }).getByText('removes the old file’s configuration and starts the new file fresh.', { exact: false })).toBeVisible();
+    await this.expect(this.page.getByRole('dialog', { name: 'Page identity', exact: true }).getByText('removes the old file’s configuration and starts the new file fresh.', { exact: false })).toBeVisible();
   }
 
   async expectPreviousRoute(path: string) {

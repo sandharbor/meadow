@@ -101,7 +101,7 @@ export class SourceReviewWorkspace extends SourcingWorkspacePage {
     this.reviewExpect(await previous.getAttribute('src')).not.toBe(await next.getAttribute('src'));
   }
   async expectNoLongerIncluded(path: string) { await this.selectPath(path); await this.reviewExpect(this.evidence.getByTestId('source-change-kind')).toHaveText('Remove'); }
-  async expectNoRenames() { await this.expectNoIdentityDecisions(); }
+  async expectNoRenames() { await this.expectPageIdentityAvailable(); }
   async expandDetails(path: string, activation: 'click' | 'keyboard' = 'click') {
     await this.selectPath(path);
     const button = this.root.getByRole('button', { name: /^(See content|See changes|See file content changes|See previous content)$/ });

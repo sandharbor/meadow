@@ -7,14 +7,22 @@ import { captureProposalEdit } from './proposalCapture.js';
 import { editSourceProposal } from './proposalStore.js';
 import { reviewSourceProposal } from './proposalReview.js';
 import { bundleNodeKeyFromConfig, serializeBundleNodeKey } from '../../../../../../../shared_code/utils/bundleNodeKey.js';
+import { manualSourceMove } from './sourceIdentityInspection.js';
 import { relinkSourceNode } from './sourceReview.js';
-import { loadSourceSnapshot, snapshotFilePath } from '../../../../shared/source-snapshot/sourceSnapshots.js';
+import { loadSourceSnapshot, loadSourceNodeConfigs, snapshotFilePath } from '../../../../shared/source-snapshot/sourceSnapshots.js';
 
 export async function chooseProposalIdentities(directory: string, revision: number, choices: Record<string, string | null>) {
   const review = await reviewSourceProposal(directory);
+  const before = loadSourceSnapshot(directory, review.proposal.acceptedSnapshotId);
+  const after = loadSourceSnapshot(directory, review.proposal.candidateSnapshotId);
+  const known = [...new Map([...loadSourceNodeConfigs(directory), ...review.proposal.original.nodes].map(node => [node.bundleNodeId, node])).values()];
+  const manual = globalThis.structuredClone(review.proposal.manualIdentityMatches ?? {});
   for (const [id, destination] of Object.entries(choices)) {
     if (!review.moves.some(move => move.bundleNodeId === id && (destination === null || move.newPath === destination))) {
-      throw new SourcingError('This identity is not available in the reviewed proposal.', 400);
+      if (typeof destination !== 'string' || !manualSourceMove(before, after, known, id, destination)) {
+        throw new SourcingError('This identity is not available in the reviewed proposal.', 400);
+      }
+      manual[id] = [...new Set([...(manual[id] ?? []), destination])];
     }
   }
   const destinations = Object.values({ ...review.proposal.identities, ...choices }).filter(value => value !== null);
@@ -40,7 +48,7 @@ export async function chooseProposalIdentities(directory: string, revision: numb
       if (decision.origin === 'automatic') delete proposal.tracking[key];
       else decision.identityChanged = true;
     }
-    return { ...proposal, identities: { ...proposal.identities, ...choices } };
+    return { ...proposal, manualIdentityMatches: manual, identities: { ...proposal.identities, ...choices } };
   });
 }
 

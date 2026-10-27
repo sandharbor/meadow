@@ -79,7 +79,8 @@ export async function sourceProposalComparison(directory: string, frontierDepth 
   const nodesById = firstBy(nodes, node => node.bundleNodeId);
   const nodesByKey = firstBy(nodes, node => node.bundleNodeKey);
   const correspondence = new Map(oldNodes.map(old => {
-    const destination = old.bundleNodeId && review.proposal.identities[old.bundleNodeId];
+    const choice = old.bundleNodeId && review.proposal.identities[old.bundleNodeId];
+    const destination = review.moves.some(move => move.bundleNodeId === old.bundleNodeId && move.newPath === choice) ? choice : undefined;
     const match = (old.bundleNodeId ? nodesById.get(old.bundleNodeId) : undefined)
       ?? nodes.find(node => destination && node.bundleNodeKind === old.bundleNodeKind && node.bundleNodeKind !== 'collection'
         && (graphNodeByKey(afterRaw, node.bundleNodeKey)?.sourceFile?.path ?? bundleNodeKeySourceGraphPath(node.bundleNodeKey)) === destination)

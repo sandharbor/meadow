@@ -18,6 +18,7 @@ import { parseBundleNodeConfig, stringifyBundleNodeConfig } from '../../../../..
 import { textDocumentCodec, writeDurableDocument } from '../../../../../shared_code/utils/durableDocument.js';
 import { runWorkingGraphJson, invalidateWorkingGraphCache } from '../utils/workingGraphUtils.js';
 import type { WorkingGraphRustOutput } from '../bundle-graph/workingGraphService.js';
+import { captureFilenameCounts } from './sourceFilenameCounts.js';
 import { scopeSourceSnapshot, sourceInventory, forgetLiveSourceLinks, rememberLiveSourceLinks, captureSourceAvailability } from './sourceDiscovery.js';
 import { materializedSourceTree, pruneMaterializedSourceTrees, retainAcceptedSourceTree, retainCandidateSourceTree, storeSourceTree, type SourceGitTree } from './sourceGit.js';
 import { bundleSources, LEGACY_SOURCE_ID, sourceGraphPath } from '../../../../../shared_code/utils/bundleSourceUtils.js';
@@ -30,6 +31,8 @@ export interface SnapshotFile {
 
 export interface SourceSnapshot extends SourceSnapshotSummary {
   /** Presence evidence captured for previous paths; scoped absence alone is not deletion. */
+  /** Whole-source filename frequencies captured for admitted names; absent in older snapshots. */
+  filenameCounts?: Record<string, number>;
   sourceAvailability?: Record<string, 'present' | 'missing' | 'disconnected'>;
   sources?: BundleSource[];
   /** The candidate owns its proposed registry until acceptance installs it atomically. */
@@ -334,6 +337,7 @@ export async function discoverSourceSnapshot(bundleDirectory: string, rebuildInd
       live.files[filename] = { digest, size };
     }
     const scoped = scopeSourceSnapshot(live, graph);
+    scoped.filenameCounts = captureFilenameCounts(sources.map(source => source.directory), Object.keys(scoped.files));
     rememberLiveSourceLinks(bundleDirectory, scoped.digest, graph);
     return scoped;
   } catch (error) {

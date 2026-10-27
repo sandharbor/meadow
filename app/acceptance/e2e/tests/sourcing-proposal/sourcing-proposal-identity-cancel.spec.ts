@@ -31,6 +31,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'f98553cf-a07
     await sourceCommand(() => list.goto());
     await sourceCommand(() => list.clickBundle('sourcing-review'));
     await sourceCommand(() => editor.waitForLoad('sourcing-review'));
+    await sourceCommand(() => editor.waitForSourceCheck());
     const saved = fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8');
     await sourceCommand(() => sourceChanges.apply('rename-review-pages', 'sourcing-review-data'));
     await sourceCommand(() => editor.checkSourceChanges());

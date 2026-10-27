@@ -36,6 +36,7 @@ export enum Fixture {
   Minimal = "home_fixture_minimal",
   Empty = "empty",
   Example = "home_fixture_example",
+  SourceIdentity = "home_fixture_source_identity",
   SourcingReview = "home_fixture_sourcing_review",
 }
 

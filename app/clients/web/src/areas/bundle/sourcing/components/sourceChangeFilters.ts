@@ -1,22 +1,19 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import type { SourcingTypeGraphFilter } from '../../shared-sourcing-curation/exported.js';
-import { sourceReviewAppearance, sourceRemovalReasons, sourceModificationKinds } from '../../../../shared/utils/sourceReviewAppearance.js';
+import { sourceReviewAppearance, sourceReviewCategories } from '../../../../shared/utils/sourceReviewAppearance.js';
+import { sourceChangeSubtypes } from '../../../../../../../shared_code/utils/sourceChangeSubtypes.js';
 import type { IBundleNode } from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode.js';
 
 export function sourceChangeFilters(): SourcingTypeGraphFilter[] {
   const definitions: Array<{ id: string; name: string; select: (node: IBundleNode) => boolean; color?: string; fade?: boolean; description: string; parent?: string }> = [
     { id: 'added', name: sourceReviewAppearance.added.label, color: sourceReviewAppearance.added.color, select: node => node.sourceReview?.kind === 'added', description: 'Accepting admits new material, whether tracked or untracked.' },
-    { id: 'moved', name: sourceReviewAppearance.moved.label, color: sourceReviewAppearance.moved.color, select: node => node.sourceReview?.kind === 'moved', description: 'Accepting renames or moves a page whose correspondence between its old and new identity was explicitly confirmed.' },
+    { id: 'moved', name: sourceReviewAppearance.moved.label, color: sourceReviewAppearance.moved.color, select: node => Boolean(node.sourceReview && sourceReviewCategories(node.sourceReview).includes('moved')), description: 'The confirmed page changes directory or source. Its filename may also change.' },
+    { id: 'renamed', name: sourceReviewAppearance.renamed.label, color: sourceReviewAppearance.renamed.color, select: node => Boolean(node.sourceReview && sourceReviewCategories(node.sourceReview).includes('renamed')), description: 'The confirmed page changes filename. Its directory may also change.' },
     { id: 'modified', name: sourceReviewAppearance.modified.label, color: sourceReviewAppearance.modified.color, select: node => node.sourceReview?.kind === 'modified', description: 'Accepting updates a page whose captured content or saved settings differ from what was accepted.' },
-    { id: 'modified-source', parent: 'modified', name: sourceModificationKinds.source.label, select: node => node.sourceReview?.kind === 'modified' && Boolean(node.sourceReview.modification?.source), description: sourceModificationKinds.source.description },
-    { id: 'modified-sensitivity', parent: 'modified', name: 'Sensitivity changed', select: node => Boolean(node.sourceReview?.modification?.sensitivity), description: 'A tracked node is now sensitive and its inclusion can be reviewed.' },
-    { id: 'modified-config', parent: 'modified', name: sourceModificationKinds.config.label, select: node => node.sourceReview?.kind === 'modified' && Boolean(node.sourceReview.modification?.settings.length), description: sourceModificationKinds.config.description },
+    ...sourceChangeSubtypes.filter(subtype => subtype.parent === 'modify').map(subtype => ({ id: subtype.filterId, parent: 'modified', name: subtype.label, select: (node: IBundleNode) => Boolean(node.sourceReview && subtype.matches(node.sourceReview)), description: subtype.description })),
     { id: 'departing', name: sourceReviewAppearance.departing.label, color: sourceReviewAppearance.departing.color, select: node => node.sourceReview?.kind === 'departing', description: 'Accepting removes material that is no longer included in the proposed capture because its source is missing or disconnected, it is blacklisted, or an upstream change makes it unreachable. Unreachable saved page configuration is removed at acceptance.' },
-    { id: 'missing', parent: 'departing', name: sourceRemovalReasons['source-missing'].label, select: node => node.sourceReview?.removalReason === 'source-missing', description: sourceRemovalReasons['source-missing'].description },
-    { id: 'disconnected', parent: 'departing', name: sourceRemovalReasons['source-disconnected'].label, select: node => node.sourceReview?.removalReason === 'source-disconnected', description: sourceRemovalReasons['source-disconnected'].description },
-    { id: 'blacklisted', parent: 'departing', name: sourceRemovalReasons['blacklisted'].label, select: node => node.sourceReview?.removalReason === 'blacklisted', description: sourceRemovalReasons['blacklisted'].description },
-    { id: 'unreachable', parent: 'departing', name: sourceRemovalReasons['unreachable'].label, select: node => node.sourceReview?.removalReason === 'unreachable', description: sourceRemovalReasons['unreachable'].description },
+    ...sourceChangeSubtypes.filter(subtype => subtype.parent === 'remove').map(subtype => ({ id: subtype.filterId, parent: 'departing', name: subtype.label, select: (node: IBundleNode) => Boolean(node.sourceReview && subtype.matches(node.sourceReview)), description: subtype.description })),
     { id: 'unchanged', name: 'Unchanged', fade: true, select: node => node.sourceReview?.kind === 'unchanged', description: 'Captured material is unchanged. Fade remains configured when Solo temporarily brings matching context forward.' },
   ];
   return definitions.map(item => ({ id: `source-${item.id}`, name: item.name, description: item.description, group: 'source-changes', ...(item.parent && { parentFilterId: `source-${item.parent}` }),

@@ -9,7 +9,7 @@ export class SourcingWorkspacePage {
   constructor(private page: Page, private expect: Expect) {}
   get root() { return this.page.getByTestId('sourcing-workspace'); }
   get comparison() { return this.page.getByRole('dialog', { name: 'Changes', exact: true }); }
-  get identities() { return this.page.getByRole('dialog', { name: 'Source identities', exact: true }); }
+  get identities() { return this.page.getByRole('dialog', { name: 'Page identity', exact: true }); }
 
   /** Sourcing opens from the review indicator, shown while source changes or a kept proposal are waiting. */
   async open() {
@@ -56,12 +56,36 @@ export class SourcingWorkspacePage {
   }
   get selectedPage() { return this.root.locator('[data-testid^="selected-page-"]'); }
   get evidence() { return this.root.getByRole('region', { name: 'Source review evidence', exact: true }); }
-  /** What accepting does to the selected page: Add, Rename, Modify, or Remove. */
+  /** What accepting does to the selected page: Add, Move, Rename, Modify, or Remove; Move and Rename can overlap. */
   get changeKind() { return this.evidence.getByTestId('source-change-kind'); }
   async expectNoSelectedSourceChange() {
     await this.expect(this.selectedPage).toBeVisible();
     await this.expect(this.evidence).toHaveCount(0);
     await this.expect(this.selectedPage.getByRole('button', { name: 'Details', exact: true })).toBeVisible();
+  }
+  async expectModificationSubtype(label: string) {
+    await this.expect(this.evidence.getByTestId('source-modification-kinds')).toContainText(label);
+  }
+  async expectSelectedMoveAndRename() {
+    await this.expect(this.changeKind.locator('[data-source-change-category]')).toHaveText(['Move', 'Rename']);
+  }
+  async expectIdentityEvidence(id: string, section: 'Likely renamed' | 'Choose a match', text: string) {
+    await this.showIdentity(id);
+    const row = this.identitySection(section).getByTestId(`source-move-${id}`);
+    await this.expect(row).toBeVisible();
+    await row.getByRole('button', { name: 'Details', exact: true }).click();
+    // Inspect the criteria, including conflicting links that supply zero positive evidence.
+    await row.locator('summary').filter({ hasText: /^Similarity/ }).click();
+    await this.expect(row).toContainText(text);
+    await this.expect(this.identities).toHaveCSS('opacity', '1');
+  }
+  async expectPageChangeCategories(total: number, categories: Record<string, string[]>) {
+    const panel = await this.openAcceptedChangeDetail(`${total} page changes`, 'Page changes');
+    await this.expect(panel).toHaveCSS('opacity', '1');
+    for (const [label, names] of Object.entries(categories)) {
+      const section = panel.getByRole('region', { name: label, exact: true });
+      await this.expect(section.getByTestId('accepted-page-change')).toHaveText(names);
+    }
   }
   async expectSelectedRename(before: string, after: string) {
     const change = this.evidence.getByTestId('source-path-change');
@@ -115,16 +139,16 @@ export class SourcingWorkspacePage {
     await this.expect(counts.getByText(`+${added}`, { exact: true })).toHaveCSS('color', 'rgb(5, 150, 105)');
     await this.expect(counts.getByText(`-${removed}`, { exact: true })).toHaveCSS('color', 'rgb(220, 38, 38)');
   }
-  async expectSelectedChangeSummary(name: string, kind: 'Add' | 'Rename' | 'Modify' | 'Remove') {
+  async expectSelectedChangeSummary(name: string, kind: 'Add' | 'Move' | 'Rename' | 'Modify' | 'Remove') {
     await this.expect(this.changeKind).toHaveText(kind);
     // Evidence shares the proposal's light blue; only the change name carries its category color.
-    const colors = { Add: 'rgb(22, 163, 74)', Rename: 'rgb(147, 51, 234)', Modify: 'rgb(37, 99, 235)', Remove: 'rgb(220, 38, 38)' };
+    const colors = { Add: 'rgb(22, 163, 74)', Move: 'rgb(8, 145, 178)', Rename: 'rgb(147, 51, 234)', Modify: 'rgb(37, 99, 235)', Remove: 'rgb(220, 38, 38)' };
     await this.expect(this.evidence).toHaveCSS('background-color', 'rgb(239, 246, 255)');
-    await this.expect(this.changeKind).toHaveCSS('color', colors[kind]);
+    await this.expect(this.changeKind.getByText(kind, { exact: true })).toHaveCSS('color', colors[kind]);
     const title = this.selectedPage.locator(':scope > div').first().getByText(name, { exact: true });
     const titleBox = (await title.boundingBox())!;
     this.expect((await this.evidence.boundingBox())!.y).toBeGreaterThanOrEqual(titleBox.y + titleBox.height);
-    await this.expect(this.evidence.getByRole('button', { name: kind === 'Remove' ? 'See previous content' : kind === 'Rename' ? 'See file content changes' : kind === 'Add' ? 'See content' : 'See changes', exact: true })).toBeVisible();
+    await this.expect(this.evidence.getByRole('button', { name: kind === 'Remove' ? 'See previous content' : kind === 'Rename' || kind === 'Move' ? 'See file content changes' : kind === 'Add' ? 'See content' : 'See changes', exact: true })).toBeVisible();
     if (kind === 'Add') await this.expect(this.evidence).not.toContainText('location and route');
     if (kind === 'Modify') {
       await this.expect(this.evidence).not.toContainText('location and route');
@@ -225,6 +249,7 @@ export class SourcingWorkspacePage {
   /** Bring a file's row into view, opening its group's Details when the file shares a rename with others. */
   protected async showIdentityRecord(record: Locator) {
     await this.expect(this.identities).toBeVisible();
+    await this.expect(this.identities).toHaveCSS('opacity', '1');
     const group = record.locator('xpath=ancestor::*[@data-testid="source-identity-group"]');
     if (await group.count()) {
       const details = group.getByTestId('source-identity-details').first();
@@ -325,7 +350,7 @@ export class SourcingWorkspacePage {
   /** The panel heading and its Confirm stay in place while the identity list scrolls. */
   async expectIdentityActionsStayVisibleWhenScrolling() {
     const list = this.identities.getByTestId('source-identity-list');
-    const actions = [this.identities.getByRole('heading', { name: 'Source identities', exact: true }), this.identityButton('Confirm')];
+    const actions = [this.identities.getByRole('heading', { name: 'Page identity', exact: true }), this.identityButton('Confirm')];
     const before = await Promise.all(actions.map(action => action.boundingBox()));
     this.expect(before.every(Boolean)).toBe(true);
     await list.evaluate(element => { element.scrollTop = element.scrollHeight; });
@@ -382,8 +407,9 @@ export class SourcingWorkspacePage {
   }
   /** Open identity review from its chip. */
   async openIdentities() {
-    await this.acceptedChange(/^\d+ identity decisions?$/).click();
+    await this.acceptedChange('Page identity').click();
     await this.expect(this.identities).toBeVisible();
+    await this.expect(this.identities).toHaveCSS('opacity', '1');
   }
   /** Finish identity review: Confirm when it is required, otherwise Update any edits or close it. */
   async confirmIdentities() {
@@ -427,8 +453,7 @@ export class SourcingWorkspacePage {
   acceptedChange(name: string | RegExp) { return this.acceptedChanges.getByRole('button', typeof name === 'string' ? { name, exact: true } : { name }); }
   acceptedChangeDetail(name: 'Page changes' | 'Configuration removals' | 'Setting changes' | 'Tracking changes') { return this.root.getByRole('region', { name, exact: true }); }
   async expectAcceptedChanges(labels: Array<string | RegExp>) {
-    if (labels.length) await this.expect(this.acceptedChanges.getByRole('button')).toHaveText(labels);
-    else await this.expect(this.acceptedChanges).toHaveText('No changes to review');
+    await this.expect(this.acceptedChanges.getByRole('button')).toHaveText(['Page identity', ...labels]);
     await this.expectTrayPointsAtAccept();
   }
   /** The bubble of changes sits just left of Accept changes, its tail pointing into the button. */
@@ -481,10 +506,19 @@ export class SourcingWorkspacePage {
     await this.expect(this.selectedPage).toContainText(name);
   }
   async reviewIdentities() {
-    await this.acceptedChange(/^\d+ identity decisions?$/).click();
+    await this.acceptedChange('Page identity').click();
     await this.expect(this.identities).toBeVisible();
+    await this.expect(this.identities).toHaveCSS('opacity', '1');
   }
-  async expectNoIdentityDecisions() { await this.expect(this.root.getByRole('button', { name: /^\d+ identity decisions?$/ })).toHaveCount(0); }
+  async expectUnmatchedIdentityExplanation() {
+    await this.expect(this.identities.getByRole('region', { name: 'Unmatched pages' })).toContainText('This does not establish a different identity.');
+  }
+  async pairManually(id: string, destination: string) {
+    await this.identities.getByRole('combobox', { name: 'Old page', exact: true }).selectOption(id);
+    await this.identities.getByRole('combobox', { name: 'New page', exact: true }).selectOption(destination);
+    await this.identities.getByRole('button', { name: 'Pair as same page', exact: true }).click();
+  }
+  async expectPageIdentityAvailable() { await this.expect(this.root.getByRole('button', { name: 'Page identity', exact: true })).toBeVisible(); }
   /** Choose a side for the open conflict whose title starts with the page or filter name. */
   async resolveConflict(name: string, choice: 'saved' | 'proposed') {
     const section = this.conflictReview.locator('section').filter({ has: this.page.getByRole('heading', { name: new RegExp(`^${name}(?: ·|$)`) }) });

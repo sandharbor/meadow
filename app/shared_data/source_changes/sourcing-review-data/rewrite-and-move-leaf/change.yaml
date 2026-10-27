@@ -1,0 +1,14 @@
+id: rewrite-and-move-leaf
+label: Rename and completely rewrite a page
+action: "Rename Leaf to Revised Leaf, replace its contents, and update Start's link."
+check: "Page identity explains the unmatched pages and permits manually preserving Leaf's identity."
+e2e: sourcing-proposal-manual-identity.spec.ts
+categories: [rename, modify]
+sourceGraph: sourcing-review-data
+operations:
+  - move: { from: Leaf.md, to: Revised Leaf.md }
+  - write: { path: Revised Leaf.md, contentFile: Revised Leaf.md }
+  - replaceText:
+      path: Start.md
+      before: "[[Leaf]]"
+      after: "[[Revised Leaf]]"

@@ -1,0 +1,20 @@
+id: move-rename-empty-pages
+label: Distinguish moves, renames, and empty page identities
+action: "Move one page, rename another, do both to a third, and move empty pages with unique names, common names, and changed incoming links."
+check: "Move and Rename overlap without inflating total pages; empty-page identity guidance exposes filename frequency and incoming links."
+e2e: sourcing-proposal-move-rename.spec.ts
+categories: [move, rename, modify]
+sourceGraph: source-identity-data
+operations:
+  - move: { from: Old/Move Only.md, to: New/Move Only.md }
+  - move: { from: Old/Rename Only.md, to: Old/Renamed Only.md }
+  - move: { from: Old/Both.md, to: New/Both Renamed.md }
+  - move: { from: Old/Unique Empty.md, to: New/Unique Empty.md }
+  - move: { from: Old/Common Empty.md, to: New/Common Empty.md }
+  - move: { from: Old/Changed Links Empty.md, to: New/Changed Links Empty.md }
+  - replaceText: { path: Start.md, before: "[[Rename Only]]", after: "[[Renamed Only]]" }
+  - replaceText: { path: Start.md, before: "[[Both]]", after: "[[Both Renamed]]" }
+  - replaceText: { path: Start.md, before: "[[Old/Unique Empty]]", after: "[[New/Unique Empty]]" }
+  - replaceText: { path: Start.md, before: "[[Old/Common Empty]]", after: "[[New/Common Empty]]" }
+  - replaceText: { path: Start.md, before: "[[Old/Changed Links Empty]]", after: "The empty page now has a different incoming route." }
+  - replaceText: { path: Bridge.md, before: "A bridge provides an independent incoming route for identity evidence.", after: "A bridge provides an independent incoming route for identity evidence.\n\n[[New/Changed Links Empty]]" }

@@ -5,7 +5,7 @@ import path from 'node:path';
 import { test, expect } from '../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage } from '../src/run/pages/index.js';
 import { SourcesControl } from '../src/run/pages/areas/bundle/sourcing/SourcesControl.js';
-import { scenarioSections, bundleSource, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace, sourceSetupEdit } from '../../../concepts/index.js';
+import { scenarioSections, sourceDisconnectedRemoval, bundleSource, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace, sourceSetupEdit } from '../../../concepts/index.js';
 import { MeadowHomeBundleConfig } from '../src/run/utils/index.js';
 
 test.use({ bundleMode: 'single-file' });
@@ -78,6 +78,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '5ac47ba7-f54
   await test.step(sections.steps.cleanupExplainsWhyDisconnectedSourceSFiles, async () => {
     await sourceCommand(() => editor.sourceReview.orphans.showExplanation('Study'));
     await sourceCommand(() => editor.sourceReview.orphans.expectExplanation('Study', 'Its files are untouched.'));
+    await sourceCommand(() => addKeyFrame(sourceDisconnectedRemoval));
     await sourceCommand(() => checkpoint('source removal cleans configuration at acceptance while retaining source files'));
   });
 

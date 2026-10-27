@@ -248,12 +248,12 @@ export function SourcingWorkspace({ bundleSlug, onClose, onAccepted, requestedPa
     else if (unresolvedIdentities) setIdentityRequired(true);
   }, [dialog, unresolvedIdentities]);
   // An unchanged review has nothing worth keeping, so leaving discards it; otherwise ask.
-  const exit = () => { if (changes?.items.length) setDialog('exit'); else void finish(true); };
+  const exit = () => { if (changes?.hasChanges) setDialog('exit'); else void finish(true); };
   return <SourceNamesProvider sources={graph?.sources ?? review?.configuration.bundle.sources ?? []}><section ref={root} aria-label="Sourcing workspace" data-testid="sourcing-workspace" data-orphan-count={review?.orphans.length} className="fixed inset-x-0 bottom-0 top-[28px] z-40 flex flex-col text-neutral-800">
     <header ref={bar} style={{ height: headerHeight }} className={`source-bar relative flex shrink-0 ${dialog === 'identities' && (identityRequired || unresolvedIdentities) ? 'z-40' : 'z-10'} items-center gap-3 border-b bg-blue-50 px-4 ${leaving === 'bar' ? 'source-bar-leaving' : ''}`}>
       {/* The bar's controls sit with Accept changes; the heading remains for assistive technology. */}
       <h1 className="sr-only">Page changes</h1>
-      <SourceReviewActions empty={Boolean(settled && changes && !changes.items.length)} busy={busy} blocked={blocked || !settled} loading={!settled && !leaving} acceptButton={acceptButton} onExit={exit} onAccept={() => void finish(!changes?.items.length)}
+      <SourceReviewActions empty={Boolean(settled && changes && !changes.hasChanges)} busy={busy} blocked={blocked || !settled} loading={!settled && !leaving} acceptButton={acceptButton} onExit={exit} onAccept={() => void finish(!changes?.hasChanges)}
         refresh={settled && <span className="source-bar-contents inline-flex"><RefreshSourcesButton compact refreshing={rescanning} disabled={busy || !review || rescanning}
           onClick={() => { setRescanning(true); void mutate('refresh', {}).catch(() => {}).finally(() => setRescanning(false)); }} /></span>}
         changes={settled && changes && <div className="source-bar-contents flex min-w-0"><AcceptedChangesTray changes={changes} graph={graph} bundleSlug={bundleSlug} request={operations.request}

@@ -6,7 +6,7 @@ import { test, expect } from '../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent, PreviewPublishModal } from '../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { SourcingProposalState } from '../src/run/state/SourcingProposalState.js';
-import { scenarioSections, trackedNodeBecomesSensitive, changesSinceTracking, conceptText, conceptLink,
+import { scenarioSections, sourceSensitivityChange, trackedNodeBecomesSensitive, changesSinceTracking, conceptText, conceptLink,
   linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, bundleCuration,
   bundleGeneration, sourceReviewWorkspace, scenarioDesignPressures, preventAccidentalSharing } from '../../../concepts/index.js';
 
@@ -56,6 +56,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '22e7b817-c37
     expect(pending).toHaveLength(3);
     await sourceCommand(() => expect(review.sensitivityReview).toContainText('was added and marks this node sensitive.'));
     await sourceCommand(() => filters.expectSourceChangeCount('Sensitivity changed', 3));
+    await sourceCommand(() => addKeyFrame(sourceSensitivityChange));
     await sourceCommand(() => expect(review.sensitivityReviewNodes).toHaveCount(3));
     const home = review.sensitiveTrackingNode('Notebook and research folder');
     await sourceCommand(() => expect(home.getByRole('button', { name: /^(Untrack for now|Blacklist)$/ })).toHaveCount(0));

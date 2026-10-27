@@ -41,6 +41,7 @@ import { CopyReferenceButton } from './CopyReferenceButton.tsx'
 import { ScenarioFilterPill, type ScenarioFilterAction } from './ScenarioFilterPill.tsx'
 import { categorizeScenarios, SectionHeader, StatusBadge } from './scenarioCategories.tsx'
 import { isBundleMode, BUNDLE_MODE_OPTIONS, type BundleMode } from '../../bundleModes.ts'
+import { sourceChangeSubtypes, isSourceChangeSubtypeId, type SourceChangeSubtypeId } from '../../../../../shared_code/utils/sourceChangeSubtypes.ts'
 import { SOURCE_CHANGE_CATEGORIES, type SourceChangeCategory } from '../../../../../shared_code/shared_dev/sourceChangesTypes.ts'
 import {
   EXECUTION_SURFACE_OPTIONS,
@@ -76,6 +77,7 @@ interface FilterValues {
   areaIds: string[]
   subAreaIds: string[]
   sourceChangeCategories: SourceChangeCategory[]
+  sourceChangeSubtypeIds: SourceChangeSubtypeId[]
   pressureIds: string[]
   docIds: string[]
   bundleIds: string[]
@@ -83,12 +85,12 @@ interface FilterValues {
   executionSurfaces: ExecutionSurface[]
 }
 
-const EMPTY_FILTERS: FilterValues = { areaIds: [], subAreaIds: [], sourceChangeCategories: [], pressureIds: [], docIds: [], bundleIds: [], bundleModes: [], executionSurfaces: [] }
+const EMPTY_FILTERS: FilterValues = { areaIds: [], subAreaIds: [], sourceChangeCategories: [], sourceChangeSubtypeIds: [], pressureIds: [], docIds: [], bundleIds: [], bundleModes: [], executionSurfaces: [] }
 
 /** Each filter row's values and URL parameter, in URL order. */
 const FILTER_VALUE_SECTIONS: [keyof FilterValues, ScenarioFilterSection][] = [
   ['executionSurfaces', 'surface'], ['bundleModes', 'mode'], ['areaIds', 'area'], ['subAreaIds', 'subarea'],
-  ['sourceChangeCategories', 'sourcechange'], ['docIds', 'doc'], ['pressureIds', 'pressure'], ['bundleIds', 'bundle'],
+  ['sourceChangeCategories', 'sourcechange'], ['sourceChangeSubtypeIds', 'sourcechangesubtype'], ['docIds', 'doc'], ['pressureIds', 'pressure'], ['bundleIds', 'bundle'],
 ]
 const FILTER_VALUE_KEYS = Object.fromEntries(FILTER_VALUE_SECTIONS.map(([key, section]) => [section, key])) as Record<ScenarioFilterSection, keyof FilterValues>
 
@@ -98,12 +100,13 @@ const FILTER_MIX_ALLOWED_VALUES: Partial<Record<ScenarioFilterSection, readonly 
   surface: EXECUTION_SURFACE_OPTIONS.map(option => option.id),
   mode: BUNDLE_MODE_OPTIONS.map(option => option.id),
   sourcechange: SOURCE_CHANGE_CATEGORIES,
+  sourcechangesubtype: sourceChangeSubtypes.map(subtype => subtype.id),
 }
 
 /** Rows whose own selection is ignored when listing a row's alternatives. */
 const AVAILABILITY_IGNORES: Record<ScenarioFilterSection, ScenarioFilterSection[]> = {
-  surface: ['surface'], mode: ['mode'], area: ['area', 'subarea', 'sourcechange'], subarea: ['subarea'],
-  sourcechange: ['sourcechange'], doc: [], pressure: ['pressure'], bundle: ['bundle'],
+  surface: ['surface'], mode: ['mode'], area: ['area', 'subarea', 'sourcechange', 'sourcechangesubtype'], subarea: ['subarea'],
+  sourcechange: ['sourcechange', 'sourcechangesubtype'], sourcechangesubtype: ['sourcechangesubtype'], doc: [], pressure: ['pressure'], bundle: ['bundle'],
 }
 
 interface ConceptView {
@@ -354,13 +357,15 @@ export default function RunDetail() {
   const selectedSubAreaIds = customMix ? mixSelections.subarea : selectedValues('subarea').filter(id => subAreaDocs.some(doc => doc.id === id))
   const sourcingSelected = selectedAreaIds.includes(SOURCING_AREA_ID)
   const selectedSourceChangeCategories = customMix || sourcingSelected ? selectedValues('sourcechange').filter(isSourceChangeCategory) : []
-  const showSourceChanges = sourcingSelected || selectedSourceChangeCategories.length > 0
+  const selectedSourceChangeSubtypeIds = selectedValues('sourcechangesubtype').filter(isSourceChangeSubtypeId)
+    .filter(id => customMix || sourceChangeSubtypes.some(subtype => subtype.id === id && selectedSourceChangeCategories.includes(subtype.parent)))
+  const showSourceChanges = sourcingSelected || selectedSourceChangeCategories.length > 0 || selectedSourceChangeSubtypeIds.length > 0
   const selectedBundleIds = selectedValues('bundle')
   const selectedBundles = bundleDocs.filter((d) => selectedBundleIds.includes(d.id))
   const selectedBundleModes = selectedValues('mode').filter(isBundleMode)
   const selectedExecutionSurfaces = selectedValues('surface').filter(isExecutionSurface)
   const currentFilters: FilterValues = {
-    areaIds: selectedAreaIds, subAreaIds: selectedSubAreaIds, sourceChangeCategories: selectedSourceChangeCategories, docIds: selectedDocIds, pressureIds: selectedPressureIds,
+    areaIds: selectedAreaIds, subAreaIds: selectedSubAreaIds, sourceChangeCategories: selectedSourceChangeCategories, sourceChangeSubtypeIds: selectedSourceChangeSubtypeIds, docIds: selectedDocIds, pressureIds: selectedPressureIds,
     bundleIds: selectedBundleIds, bundleModes: selectedBundleModes, executionSurfaces: selectedExecutionSurfaces,
   }
 
@@ -392,10 +397,12 @@ export default function RunDetail() {
   /** Plain rows keep only sub-areas of the selected areas, and source changes only under Sourcing. */
   const plainFilters = (next: Partial<FilterValues>): FilterValues => {
     const areaIds = next.areaIds ?? selectedAreaIds
+    const categories = areaIds.includes(SOURCING_AREA_ID) ? next.sourceChangeCategories ?? selectedSourceChangeCategories : []
     return {
       areaIds,
       subAreaIds: (next.subAreaIds ?? selectedSubAreaIds).filter(id => subAreaFitsAreas(id, areaIds)),
-      sourceChangeCategories: areaIds.includes(SOURCING_AREA_ID) ? next.sourceChangeCategories ?? selectedSourceChangeCategories : [],
+      sourceChangeCategories: categories,
+      sourceChangeSubtypeIds: (next.sourceChangeSubtypeIds ?? selectedSourceChangeSubtypeIds).filter(id => sourceChangeSubtypes.some(subtype => subtype.id === id && categories.includes(subtype.parent))),
       docIds: next.docIds ?? selectedDocIds,
       pressureIds: next.pressureIds ?? selectedPressureIds,
       bundleIds: next.bundleIds ?? selectedBundleIds,
@@ -421,7 +428,7 @@ export default function RunDetail() {
   const setFilterMix = (expression: FilterExpression | null, preserveOtherParams = false) => {
     const selections = scenarioFilterSelectionsOf(expression)
     const filters: FilterValues = {
-      areaIds: selections.area, subAreaIds: selections.subarea, sourceChangeCategories: selections.sourcechange.filter(isSourceChangeCategory),
+      areaIds: selections.area, subAreaIds: selections.subarea, sourceChangeCategories: selections.sourcechange.filter(isSourceChangeCategory), sourceChangeSubtypeIds: selections.sourcechangesubtype.filter(isSourceChangeSubtypeId),
       docIds: selections.doc, pressureIds: selections.pressure, bundleIds: selections.bundle, bundleModes: selections.mode.filter(isBundleMode),
       executionSurfaces: selections.surface.filter(isExecutionSurface),
     }
@@ -446,8 +453,10 @@ export default function RunDetail() {
     if (currentFilters.areaIds.some(id => removed('area', id))) {
       const areaIds = scenarioFilterSelectionsOf(expression).area
       expression = removeScenarioFilterTerms(expression, (section, value) => section === 'subarea' && !subAreaFitsAreas(value, areaIds)
-        || section === 'sourcechange' && !areaIds.includes(SOURCING_AREA_ID))
+        || (section === 'sourcechange' || section === 'sourcechangesubtype') && !areaIds.includes(SOURCING_AREA_ID))
     }
+    expression = removeScenarioFilterTerms(expression, (section, value) => section === 'sourcechangesubtype'
+      && sourceChangeSubtypes.some(subtype => subtype.id === value && removed('sourcechange', subtype.parent)))
     FILTER_VALUE_SECTIONS.forEach(([key, section]) => {
       (nextFilters[key] as string[]).filter(value => !(currentFilters[key] as string[]).includes(value))
         .forEach(value => { expression = addScenarioFilterTerm(expression, section, value) })
@@ -465,6 +474,7 @@ export default function RunDetail() {
       areaIds: [...new Set([...current.areaIds, ...next.areaIds ?? []])],
       subAreaIds: [...new Set([...current.subAreaIds, ...next.subAreaIds ?? []])],
       sourceChangeCategories: [...new Set([...current.sourceChangeCategories, ...next.sourceChangeCategories ?? []])],
+      sourceChangeSubtypeIds: [...new Set([...current.sourceChangeSubtypeIds, ...next.sourceChangeSubtypeIds ?? []])],
       docIds: [...new Set([...current.docIds, ...next.docIds ?? []])],
       pressureIds: [...new Set([...current.pressureIds, ...next.pressureIds ?? []])],
       bundleIds: [...new Set([...current.bundleIds, ...next.bundleIds ?? []])],
@@ -583,7 +593,8 @@ export default function RunDetail() {
       : section === 'mode' ? new Set(scenario.bundleMode ? [scenario.bundleMode] : [])
       : section === 'area' ? new Set(scenario.appAreaDocIds)
       : section === 'subarea' ? new Set(scenario.subAreaDocIds ?? [])
-      : section === 'sourcechange' ? new Set(scenario.sourceChangeCategories ?? [])
+      : section === 'sourcechange' ? new Set([...(scenario.sourceChangeCategories ?? []), ...sourceChangeSubtypes.filter(subtype => scenarioConceptIds(scenario).has(subtype.id)).map(subtype => subtype.parent)])
+      : section === 'sourcechangesubtype' ? new Set(sourceChangeSubtypes.filter(subtype => scenarioConceptIds(scenario).has(subtype.id)).map(subtype => subtype.id))
       : section === 'pressure' ? new Set(scenario.designPressureIds ?? [])
       : section === 'doc' ? scenarioConceptIds(scenario)
       : new Set(scenario.bundleDocIds)
@@ -593,7 +604,7 @@ export default function RunDetail() {
 
   const plainSelections: ScenarioFilterSelections = {
     surface: selectedExecutionSurfaces, mode: selectedBundleModes, area: selectedAreas.map(area => area.id), subarea: selectedSubAreaIds,
-    sourcechange: selectedSourceChangeCategories, doc: selectedDocIds, pressure: selectedPressureIds, bundle: selectedBundles.map(bundle => bundle.id),
+    sourcechange: selectedSourceChangeCategories, sourcechangesubtype: selectedSourceChangeSubtypeIds, doc: selectedDocIds, pressure: selectedPressureIds, bundle: selectedBundles.map(bundle => bundle.id),
   }
   const plainExpressionIgnoring = (sections: readonly ScenarioFilterSection[]) =>
     defaultScenarioFilterExpression({ ...plainSelections, ...Object.fromEntries(sections.map(section => [section, []])) })
@@ -625,6 +636,7 @@ export default function RunDetail() {
   }
   const availableSubAreaIds = availableValues('subarea')
   const availableSourceChangeCategories = availableValues('sourcechange')
+  const availableSourceChangeSubtypeIds = availableValues('sourcechangesubtype')
   const availableSurfaceIds = availableValues('surface')
   const availableBundleIds = availableValues('bundle')
   const availableModeIds = availableValues('mode')
@@ -638,6 +650,7 @@ export default function RunDetail() {
       : section === 'bundle' ? bundleDocs.find(bundle => bundle.id === value)?.name
       : section === 'pressure' ? pressures.find(pressure => pressure.id === value)?.name
       : section === 'sourcechange' ? value
+      : section === 'sourcechangesubtype' ? sourceChangeSubtypes.find(subtype => subtype.id === value)?.label
       : allDocs.find(doc => doc.id === value)?.name
     return `${SCENARIO_FILTER_SECTION_LABELS[section]}: ${name ?? value}`
   }
@@ -859,6 +872,28 @@ export default function RunDetail() {
                 })}</div>
               </div>
             </div>}
+            {area.id === SOURCING_AREA_ID && (['modify', 'remove'] as const).filter(category => selectedSourceChangeCategories.includes(category)
+              || customMix && selectedSourceChangeSubtypeIds.some(id => sourceChangeSubtypes.some(subtype => subtype.id === id && subtype.parent === category))).map(category => {
+              const options = sourceChangeSubtypes.filter(subtype => subtype.parent === category)
+              const selected = selectedSourceChangeSubtypeIds.filter(id => options.some(option => option.id === id))
+              const parentName = category === 'modify' ? 'Modify' : 'Remove'
+              return <div key={category} className="filter-section filter-areas area-subareas source-change-subtypes mb-1 rounded-md px-3 py-1.5">
+                <div className="filter-row" role="group" aria-label={`${parentName} source change subtypes`}>
+                  <span className="filter-label text-xs text-neutral-500 font-medium">Sourcing<span className="block text-[10px] font-normal text-neutral-400">Source changes → {parentName}</span></span>
+                  <div className="filter-all"><button className="filter-default text-neutral-600 px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
+                    aria-pressed={selected.length === 0} onClick={() => setFilters({ sourceChangeSubtypeIds: selectedSourceChangeSubtypeIds.filter(id => !options.some(option => option.id === id)) })}>All</button></div>
+                  <div className="filter-choices">{options.map(subtype => {
+                    const pressed = selected.includes(subtype.id), available = availableSourceChangeSubtypeIds.has(subtype.id)
+                    const doc = allDocs.find(document => document.id === subtype.id)
+                    return <span key={subtype.id} className="inline-flex items-center gap-0.5"><button key={subtype.id} aria-pressed={pressed} title={available ? subtype.description : `${subtype.description} No matching scenarios with the current filters.`}
+                      className={`px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors ${pressed ? 'bg-sky-500 text-white' : available ? 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200' : 'bg-neutral-50 text-neutral-400 hover:bg-neutral-100'}${pressed && !available ? ' opacity-60' : ''}`}
+                      onClick={() => setFilters({ sourceChangeSubtypeIds: pressed ? selectedSourceChangeSubtypeIds.filter(id => id !== subtype.id) : [...selectedSourceChangeSubtypeIds, subtype.id] })}>{subtype.label}</button>
+                      {doc && <button aria-label={`Read ${doc.name}`} title={`Read ${doc.name}`} className="px-1 text-xs text-brand-600" onClick={() => openConcept(doc)}>↗</button>}
+                    </span>
+                  })}</div>
+                </div>
+              </div>
+            })}
           </Fragment>
         })}
       </div>}

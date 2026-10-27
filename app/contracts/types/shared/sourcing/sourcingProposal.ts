@@ -99,6 +99,8 @@ export interface PendingSourceProposal {
   original: ProposalConfiguration;
   proposed: ProposalConfiguration;
   identities: Record<string, string | null>;
+  /** User-supplied correspondences remain inspectable even after choosing New file. */
+  manualIdentityMatches?: Record<string, string[]>;
   tracking: Record<string, ProposalTrackingDecision>;
   resolutions: ProposalConflictResolution[];
   /** Kept separately so discovery cannot replace the material under review. */

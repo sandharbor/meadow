@@ -2712,7 +2712,7 @@ export default function ScenarioViewer() {
                       if (step) {
                         const section = manifest.sections?.find(section => section.id === step.id)
                         if (section) return number === step.start ? <div key={i} role="region" aria-label={`Scenario section: ${section.id}`}
-                          data-source-line={number} className="my-3 border-y border-neutral-200 bg-neutral-50 py-3 pl-[46px] pr-3 font-mono whitespace-pre-wrap">
+                          data-source-line={number} className="my-3 ml-6 border-y border-neutral-200 bg-neutral-50 p-3 font-mono whitespace-pre-wrap">
                           <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-neutral-400">{section.type === 'setup' ? 'Setup' : `Section ${manifest.sections!.filter(item => item.type !== 'setup').findIndex(item => item.id === section.id) + 1}`}</div>
                           <ScenarioText text="" linkedText={section.text} runId={runId!} onOpenConcept={openConcept} />
                         </div> : null

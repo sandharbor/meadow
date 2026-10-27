@@ -76,17 +76,18 @@ export function findSourceMoves(bundleDirectory: string, previous: SourceSnapsho
   const previousRoot = lazy(() => snapshotSourceRoot(bundleDirectory, previous.id, previous));
   const currentRoot = lazy(() => snapshotSourceRoot(bundleDirectory, current.id, current));
   const isText = (filename: string) => /\.(md|html|txt)$/i.test(filename);
-  // Content is the gating criterion: a pair is scored only when its files are identical
-  // or share a substantial block. Index the missing pages by both so each candidate
-  // is compared with those pages alone, in the order a full comparison would visit them.
-  const candidateExtensions = new Set(newPaths.filter(filename => current.files[filename].size > 0).map(filename => path.extname(filename).toLowerCase()));
+  // Index content evidence and exact names separately. Filename-only suggestions
+  // require a newly admitted location; an existing namesake is not evidence of a move.
+  const candidateExtensions = new Set(newPaths.map(filename => path.extname(filename).toLowerCase()));
   const missingExtensions = new Set<string>();
+  const byName = new Map<string, number[]>();
   const byDigest = new Map<string, number[]>();
   const byBlock = new Map<string, number[]>();
   missingFiles.forEach((missing, index) => {
-    // Empty contents provide no evidence that two pages share an identity.
-    if (missing.prior.size === 0 || !candidateExtensions.has(path.extname(missing.oldPath).toLowerCase())) return;
+    const name = path.basename(missing.oldPath);
+    byName.set(name, [...(byName.get(name) ?? []), index]);
     missingExtensions.add(path.extname(missing.oldPath).toLowerCase());
+    if (missing.prior.size === 0 || !candidateExtensions.has(path.extname(missing.oldPath).toLowerCase())) return;
     byDigest.set(missing.prior.digest, [...(byDigest.get(missing.prior.digest) ?? []), index]);
     if (!isText(missing.oldPath)) return;
     missing.profile = sourceTextProfile(fs.readFileSync(sourcePath(previousRoot(), missing.oldPath), 'utf8'));
@@ -94,19 +95,23 @@ export function findSourceMoves(bundleDirectory: string, previous: SourceSnapsho
   });
   for (const newPath of newPaths) {
     const file = current.files[newPath];
-    if (file.size === 0 || !missingExtensions.has(path.extname(newPath).toLowerCase())) continue;
+    if (!missingExtensions.has(path.extname(newPath).toLowerCase())) continue;
     const candidateProfile = isText(newPath) ? sourceTextProfile(fs.readFileSync(sourcePath(currentRoot(), newPath), 'utf8')) : undefined;
-    const related = new Set(byDigest.get(file.digest));
+    const named = previous.files[equivalentSnapshotPath(current, previous, newPath)] ? [] : byName.get(path.basename(newPath)) ?? [];
+    const related = new Set([...(byDigest.get(file.digest) ?? []), ...named]);
     for (const block of candidateProfile?.blocks.keys() ?? []) for (const index of byBlock.get(block) ?? []) related.add(index);
     for (const index of [...related].sort((a, b) => a - b)) {
       const missing = missingFiles[index];
       const { node, oldPath, prior } = missing;
       if (path.extname(oldPath).toLowerCase() !== path.extname(newPath).toLowerCase()) continue;
       const exact = prior.digest === file.digest;
-      if (isText(oldPath) && (!missing.profile!.length || !candidateProfile?.length)) continue;
-      const similarity = sourceMoveSimilarity({ oldPath, newPath, exact, before: missing.profile, after: candidateProfile, previous, current });
+      const sameName = path.basename(oldPath) === path.basename(newPath);
+      const blank = isText(oldPath) && !(missing.profile?.length ?? prior.size) && !candidateProfile?.length;
+      if ((!prior.size || !file.size) && !(sameName && isText(oldPath))) continue;
+      if (isText(oldPath) && (!missing.profile?.length || !candidateProfile?.length) && !sameName) continue;
+      const similarity = sourceMoveSimilarity({ oldPath, newPath, exact, before: missing.profile ?? (blank ? sourceTextProfile('') : undefined), after: candidateProfile, previous, current, blank });
       const content = similarity.criteria.find(criterion => criterion.id === (exact ? 'contents' : 'blocks'))!;
-      if ((content.score ?? 0) < 0.45 || similarity.score < 0.5) continue;
+      if (!sameName && ((content.score ?? 0) < 0.45 || similarity.score < 0.5)) continue;
       const evidence = similarity.criteria.filter(criterion => (criterion.score ?? 0) > 0 && criterion.weight > 0).map(criterion => criterion.detail);
       const score = similarity.score;
       const results = resultsByNode.get(node.bundleNodeId) ?? [];

@@ -10,6 +10,8 @@
  *   all(area:bundle/sourcing, area:bundle/review, any(sourcechange:rename))
  */
 
+import { sourceChangeSubtypes } from '../../../../shared_code/utils/sourceChangeSubtypes.ts'
+
 import {
   comparableFilterExpression,
   createFilterExpressionGroupId,
@@ -21,7 +23,7 @@ import {
 } from '../../../../contracts/types/shared/curation/filterExpression.ts'
 
 /** Row keys, matching the plain URL parameter for each filter row. */
-export const SCENARIO_FILTER_SECTIONS = ['surface', 'mode', 'area', 'subarea', 'sourcechange', 'doc', 'pressure', 'bundle'] as const
+export const SCENARIO_FILTER_SECTIONS = ['surface', 'mode', 'area', 'subarea', 'sourcechange', 'sourcechangesubtype', 'doc', 'pressure', 'bundle'] as const
 export type ScenarioFilterSection = typeof SCENARIO_FILTER_SECTIONS[number]
 export type ScenarioFilterSelections = Record<ScenarioFilterSection, string[]>
 
@@ -31,6 +33,7 @@ export const SCENARIO_FILTER_SECTION_LABELS: Record<ScenarioFilterSection, strin
   area: 'Area',
   subarea: 'Sub-area',
   sourcechange: 'Source change',
+  sourcechangesubtype: 'Source change subtype',
   doc: 'Concept',
   pressure: 'Design pressure',
   bundle: 'Bundle',
@@ -48,7 +51,7 @@ export const EVERYTHING_KEYWORD = 'everything'
 const ROOT_GROUP_ID = 'scenario-filters'
 
 export function emptyScenarioFilterSelections(): ScenarioFilterSelections {
-  return { surface: [], mode: [], area: [], subarea: [], sourcechange: [], doc: [], pressure: [], bundle: [] }
+  return { surface: [], mode: [], area: [], subarea: [], sourcechange: [], sourcechangesubtype: [], doc: [], pressure: [], bundle: [] }
 }
 
 const isSection = (value: string): value is ScenarioFilterSection => (SCENARIO_FILTER_SECTIONS as readonly string[]).includes(value)
@@ -86,8 +89,19 @@ function sectionGroup(section: ScenarioFilterSection, values: string[], id: stri
 /** The plain pill behavior: every row with a selection must match one of its pills. */
 export function defaultScenarioFilterExpression(selections: ScenarioFilterSelections): FilterExpression | null {
   const children = SCENARIO_FILTER_SECTIONS
-    .filter(section => selections[section].length > 0)
-    .map(section => sectionGroup(section, selections[section], `section-${section}`))
+    .filter(section => selections[section].length > 0 && (section !== 'sourcechangesubtype' || !selections.sourcechange.length))
+    .map(section => {
+      if (section !== 'sourcechange' || !selections.sourcechangesubtype.length) return sectionGroup(section, selections[section], `section-${section}`)
+      // Subtypes refine their own parent branch, rather than requiring all selected parent types at once.
+      return { type: 'group' as const, id: 'section-sourcechange', operator: 'union' as const,
+        children: selections.sourcechange.map(category => {
+          const ids = selections.sourcechangesubtype.filter(id => sourceChangeSubtypes.some(subtype => subtype.id === id && subtype.parent === category))
+          const parent = scenarioFilterTerm('sourcechange', category)
+          return ids.length ? { type: 'group' as const, id: `sourcechange-${category}`, operator: 'intersection' as const,
+            children: [parent, sectionGroup('sourcechangesubtype', ids, `subtypes-${category}`)] } : parent
+        }),
+      }
+    })
   return children.length > 0 ? { type: 'group', id: ROOT_GROUP_ID, operator: 'intersection', children } : null
 }
 

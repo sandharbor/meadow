@@ -8,7 +8,7 @@ import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { scenarioSections, sourceReviewWorkspace, sourceReviewFiltering, sourceReviewAcceptance, orphan, sourceMove, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing } from '../../../../concepts/index.js';
+import { scenarioSections, sourceContentChange, sourceMissingRemoval, sourceUnreachableRemoval, sourceReviewWorkspace, sourceReviewFiltering, sourceReviewAcceptance, orphan, sourceMove, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });
@@ -53,7 +53,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'cf10d7e1-184
     await sourceCommand(() => sourcing.select('Leaf'));
     await sourceCommand(() => sourcing.expectSelectedChangeSummary('Leaf', 'Remove'));
     await sourceCommand(() => sourcing.expectRemovedLineCount(4));
-    await sourceCommand(() => addKeyFrame(sourceReviewWorkspace));
+    await sourceCommand(() => addKeyFrame(sourceMissingRemoval));
     await sourceCommand(() => sourcing.seePreviousContent('Excluding this page has no effect on any other page.'));
     await sourceCommand(() => sourcing.closeComparison());
     await sourceCommand(() => sourcing.expectSelectedRemovalReason('Source missing'));
@@ -62,11 +62,11 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'cf10d7e1-184
     await sourceCommand(() => sourcing.select('Departing'));
     await sourceCommand(() => sourcing.expectSelectedRemovalReason('Not reachable'));
     await sourceCommand(() => sourcing.expectSelectedRoute(['Start', 'Bridge', 'Departing']));
-    await sourceCommand(() => addKeyFrame(sourceReviewWorkspace));
+    await sourceCommand(() => addKeyFrame(sourceUnreachableRemoval));
     await sourceCommand(() => sourcing.select('Bridge'));
     await sourceCommand(() => sourcing.expectSelectedChangeSummary('Bridge', 'Modify'));
     await sourceCommand(() => sourcing.expectSelectedLineCounts(1, 1));
-    await sourceCommand(() => addKeyFrame(sourceReviewWorkspace));
+    await sourceCommand(() => addKeyFrame(sourceContentChange));
     await sourceCommand(() => sourcing.compare('Bridge'));
     await sourceCommand(() => sourcing.expectAddedContent('The route to Departing is no longer included.'));
     await sourceCommand(() => checkpoint('captured evidence distinguishes a missing file from the removed route'));

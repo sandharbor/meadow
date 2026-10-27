@@ -61,6 +61,10 @@ html, body {
   background-color: var(--filter-background);
 }
 
+.source-change-subtypes {
+  margin-left: 2rem;
+}
+
 .filter-row {
   display: grid;
   grid-template-columns: clamp(5.5rem, 12vw, 8rem) 5rem minmax(0, 1fr);

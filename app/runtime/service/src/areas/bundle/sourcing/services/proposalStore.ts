@@ -59,6 +59,10 @@ export function validateSourceProposal(value: unknown): asserts value is Pending
     || !isPlainObject(value.identities) || Object.values(value.identities).some(destination => destination !== null && typeof destination !== 'string')
     || !isPlainObject(value.tracking) || !Array.isArray(value.resolutions)
     || (value.trackAdditions !== undefined && typeof value.trackAdditions !== 'boolean')) throw new SourcingError('Invalid pending source proposal');
+  if (value.manualIdentityMatches !== undefined && (!isPlainObject(value.manualIdentityMatches)
+    || Object.values(value.manualIdentityMatches).some(paths => !Array.isArray(paths) || paths.some(item => typeof item !== 'string')))) {
+    throw new SourcingError('Invalid manual identity matches');
+  }
   validateProposalConfiguration(value.original);
   validateProposalConfiguration(value.proposed);
   for (const decision of Object.values(value.tracking)) {

@@ -3,7 +3,7 @@
 import type { SourceNodeReview, SourceRemovalCause, SourceSettingChange } from '../../../../../../../contracts/types/shared/sourcing/sourcingProposal.js';
 import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';
 import type { Graph } from '../../../../../../../contracts/types/shared/bundle-graph/graph.js';
-import { sourceReviewAppearance, sourceRemovalReasons, sourceModificationKinds } from '../../../../shared/utils/sourceReviewAppearance.js';
+import { sourceReviewAppearance, sourceReviewCategories, sourceRemovalReasons, sourceModificationKinds } from '../../../../shared/utils/sourceReviewAppearance.js';
 import { SourceLineCounts, useSourceLineCounts } from './SourceLineCounts.js';
 import { SourcePathChange } from '../../../../shared/components/SourcePathChange.js';
 import { SourceOrphanSentence } from './SourceOrphanDiagnosis.js';
@@ -44,7 +44,7 @@ function RemovalCause({ cause, graph, onSelect }: { cause: SourceRemovalCause; g
 
 export function SourceComparisonEvidence({ evidence, graph, onCompare, onSelectPage }: { evidence: SourceNodeReview; graph: Graph; onCompare: () => void; onSelectPage: SelectPage }) {
   const route = (keys: SourceNodeReview['previousRoute']) => keys.map(key => graph.getNode(key)?.bundleNodeName ?? key).join(' → ') || 'Not included';
-  const appearance = sourceReviewAppearance[evidence.kind];
+  const categories = sourceReviewCategories(evidence);
   const content = useSourceLineCounts(evidence, useEditorOperations().request);
   const removed = evidence.kind === 'departing';
   const reason = sourceRemovalReasons[evidence.removalReason ?? 'unreachable'];
@@ -55,14 +55,14 @@ export function SourceComparisonEvidence({ evidence, graph, onCompare, onSelectP
   const compareLabel = evidence.kind === 'frontier' || settingsOnly || (removed && !content?.hasPreviousContent) ? null
     : removed ? 'See previous content' : added ? 'See content' : renamed ? 'See file content changes' : 'See changes';
   return <section aria-label="Source review evidence" className="my-3 space-y-2 rounded border border-blue-200 bg-blue-50 p-3 text-xs">
-    <div className="flex items-center gap-2 font-semibold"><span data-testid="source-change-kind" style={{ color: appearance.color }}>{appearance.label}</span>
+    <div className="flex items-center gap-2 font-semibold"><span data-testid="source-change-kind" className="inline-flex gap-2">{categories.map(kind => <span key={kind} data-source-change-category={kind} style={{ color: sourceReviewAppearance[kind].color }}>{sourceReviewAppearance[kind].label}</span>)}</span>
       <span className="ml-auto flex items-center gap-2"><SourceLineCounts counts={content?.counts} removed={removed} />
         {compareLabel && <button type="button" aria-label={compareLabel} title={compareLabel} onClick={onCompare}
           className="inline-flex items-center gap-1 rounded border border-blue-200 bg-white px-1.5 py-0.5 font-medium text-neutral-700 hover:border-blue-300 hover:bg-blue-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-700">
           <svg aria-hidden="true" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 10s3-6 8-6 8 6 8 6-3 6-8 6-8-6-8-6z" /><circle cx="10" cy="10" r="2.5" /></svg>View
         </button>}</span></div>
     {evidence.kind === 'modified' && evidence.modification && <div data-testid="source-modification-kinds" className="space-y-0.5 text-neutral-600">
-      {evidence.modification.sensitivity && <p>Sensitivity changed after tracking</p>}
+      {evidence.modification.sensitivity && <p>{sourceModificationKinds.sensitivity.label}</p>}
       {evidence.modification.source && <p>{sourceModificationKinds.source.label}</p>}
       {evidence.modification.settings.length > 0 && <p>{sourceModificationKinds.config.label}: {evidence.modification.settings.map(describeSetting).join(', ')}</p>}
     </div>}
@@ -74,7 +74,8 @@ export function SourceComparisonEvidence({ evidence, graph, onCompare, onSelectP
           {reason.label}
         </summary>
         <div data-testid="source-removal-explanation" className="mt-1.5 pl-3.5">
-          {evidence.removalCause ? <RemovalCause cause={evidence.removalCause} graph={graph} onSelect={onSelectPage} />
+          {evidence.removalReason === 'blacklisted' ? <><p>{reason.description}</p>{evidence.removalCause && <RemovalCause cause={evidence.removalCause} graph={graph} onSelect={onSelectPage} />}</>
+            : evidence.removalCause ? <RemovalCause cause={evidence.removalCause} graph={graph} onSelect={onSelectPage} />
             : evidence.orphan?.diagnosis ? <SourceOrphanSentence orphan={evidence.orphan} pill={path => <PathPill path={path} graph={graph} onSelect={onSelectPage} />} />
             : <p>{reason.description}</p>}
         </div>

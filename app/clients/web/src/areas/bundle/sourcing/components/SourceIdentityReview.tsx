@@ -1,5 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
+import { SourceIdentityInspection } from './SourceIdentityInspection.js';
+import type { SourceIdentityInspection as Inspection } from '../../../../../../../contracts/types/areas/bundle/sourcing/sourcingProposal.js';
 import { useId, useState, type ReactNode } from 'react';
 import type { SourceMoveCandidate } from '../../../../../../../contracts/types/shared/sourcing/sourcing.js';
 import { sourceIdentityRecommendations } from './sourceIdentityRecommendations.js';
@@ -137,8 +139,8 @@ function IdentitySection({ title, note, decided = false, records, choices, busy,
  * graph; likely renames follow, already set to their suggested choice. Files decided before this visit are listed
  * last as already decided, still changeable. Only sections with files are shown.
  */
-export function SourceIdentityReview({ moves, choices, busy, previouslyDecided = new Set(), choose, compare }: {
-  moves: SourceMoveCandidate[]; choices: Choices; busy: boolean; previouslyDecided?: ReadonlySet<string>; choose: Choose; compare: Compare;
+export function SourceIdentityReview({ inspection, moves, choices, busy, previouslyDecided = new Set(), choose, compare }: {
+  inspection?: Inspection; moves: SourceMoveCandidate[]; choices: Choices; busy: boolean; previouslyDecided?: ReadonlySet<string>; choose: Choose; compare: Compare;
 }) {
   const records = sourceIdentityRecommendations(moves, choices);
   const open = records.filter(record => !previouslyDecided.has(record.id)), decided = records.filter(record => previouslyDecided.has(record.id));
@@ -150,5 +152,6 @@ export function SourceIdentityReview({ moves, choices, busy, previouslyDecided =
       records={likely} choices={choices} busy={busy} choose={choose} compare={compare} />}
     {decided.length > 0 && <IdentitySection decided title="Already decided" note="You decided these earlier. Change any that need it."
       records={decided} choices={choices} busy={busy} choose={choose} compare={compare} />}
+    {inspection && <SourceIdentityInspection inspection={inspection} moves={moves} choices={choices} busy={busy} choose={choose} />}
   </div>;
 }

@@ -99,18 +99,18 @@ export function ProposalDialogs({ dialog, review, busy, close, later, discard, m
     {/* Identity review opens from its chip. While identities are unresolved the graph cannot open, so the panel
         is modal: the rest of the screen dims and only Cancel or Confirm leave it. The bar stays above the
         dimming, so its refresh still updates the proposal. */}
-    {dialog === 'identities' && <ChipPanel anchor='[data-change-item="identities"]' label="Source identities" role="dialog" modal={required}
+    {dialog === 'identities' && <ChipPanel anchor='[data-change-item="identities"]' label="Page identity" role="dialog" modal={required}
       afterChipFade={required} onDismiss={close}
       className="h-[min(70vh,44rem)] w-[min(48rem,calc(100vw-2rem))]">
       <header className="flex shrink-0 items-center gap-3 rounded-t-lg border-b border-neutral-100 px-5 py-3">
-        <h2 className="text-lg font-semibold">Source identities</h2>
+        <h2 className="text-lg font-semibold">Page identity</h2>
       </header>
       <div className="flex min-h-0 flex-1 flex-col px-5 py-4">
         <div className="mb-4 shrink-0 space-y-1">
-          <p>Some files that were part of this bundle are gone, and new files look like them.</p>
+          <p>Inspect suggested matches and unmatched pages, or pair the old and new locations yourself.</p>
           <p className="text-sm text-neutral-600"><strong className="font-semibold text-neutral-800">Same file</strong> keeps the file’s tracking and settings. <strong className="font-semibold text-neutral-800">New file</strong> removes the old file’s configuration and starts the new file fresh.</p>
         </div>
-        <SourceIdentityReview moves={review.moves} choices={shownChoices} busy={identityBusy || confirming} previouslyDecided={previouslyDecided}
+        <SourceIdentityReview inspection={review.identityInspection} moves={review.moves} choices={shownChoices} busy={identityBusy || confirming} previouslyDecided={previouslyDecided}
           choose={required ? chooseIdentities : choices => setDraft(current => ({ ...current, ...choices }))} compare={move => onIdentityComparison(JSON.stringify([move.bundleNodeId, move.newPath]))} />
       </div>
       <footer className="flex shrink-0 flex-wrap items-center justify-end gap-3 border-t border-neutral-100 px-5 py-3">

@@ -6,6 +6,7 @@ import { sameProposalValue } from '../../../../../../../shared_code/utils/propos
 import { bundleNodeKeyFromConfig, serializeBundleNodeKey } from '../../../../../../../shared_code/utils/bundleNodeKey.js';
 import { sourcingQueryPrepareProposalTracking } from '../../curation/exported.js';
 import { relinkSourceNode, explainSourceOrphans } from './sourceReview.js';
+import { inspectSourceIdentities, manualSourceMove } from './sourceIdentityInspection.js';
 import { proposalMoveEvidence } from './proposalMoveEvidence.js';
 import { beginSourceProposal, loadProposalConfiguration, sourceProposalConfigurationReview, saveSourceProposal } from './proposalStore.js';
 import { availableSnapshotGraph, loadSourceSnapshotManifest, missingSnapshotRoles, sha256, snapshotSummary, SourcingError,
@@ -41,6 +42,12 @@ export async function reviewSourceProposal(directory: string): Promise<SourcePro
     const moves = proposalMoveEvidence(directory, { ...accepted, graph: beforeGraph }, { ...candidate, graph: beforeIdentity }, knownIdentities)
       .map(move => ({ ...move, contentChanged: Boolean(accepted.files[move.oldPath] && candidate.files[move.newPath]
         && accepted.files[move.oldPath].digest !== candidate.files[move.newPath].digest) }));
+    for (const [id, paths] of Object.entries(proposal.manualIdentityMatches ?? {})) for (const destination of paths) {
+      if (moves.some(move => move.bundleNodeId === id && move.newPath === destination)) continue;
+      const manual = manualSourceMove({ ...accepted, graph: beforeGraph }, { ...candidate, graph: beforeIdentity }, knownIdentities, id, destination);
+      if (manual) moves.push({ ...manual, contentChanged: Boolean(manual.contentChanged) });
+    }
+    const identityInspection = inspectSourceIdentities(accepted, candidate, knownIdentities, moves);
     const unresolvedIdentities = [...new Set(moves.map(move => move.bundleNodeId))].filter(id => {
       const choice = proposal.identities[id];
       return choice !== null && !moves.some(move => move.bundleNodeId === id && move.newPath === choice);
@@ -59,7 +66,7 @@ export async function reviewSourceProposal(directory: string): Promise<SourcePro
     if (!missingRequiredEntries.length && !unresolvedIdentities.length) {
       const identities = Object.fromEntries(knownIdentities.filter(node => node.bundleNodeKind !== 'collection').map(node => {
         const destination = proposal.identities[node.bundleNodeId];
-        const located = typeof destination === 'string' ? relinkSourceNode(node, destination, candidate.sources) : node;
+        const located = typeof destination === 'string' && moves.some(move => move.bundleNodeId === node.bundleNodeId && move.newPath === destination) ? relinkSourceNode(node, destination, candidate.sources) : node;
         return [serializeBundleNodeKey(bundleNodeKeyFromConfig(located)), node.bundleNodeId];
       }));
       const prepare = (decisions: PendingSourceProposal['tracking']) => sourcingQueryPrepareProposalTracking(directory, candidate.id, configuration, decisions, identities);
@@ -91,7 +98,7 @@ export async function reviewSourceProposal(directory: string): Promise<SourcePro
     const pendingIdentityIds = new Set(moves.filter(move => proposal.identities[move.bundleNodeId] !== null).map(move => move.bundleNodeId));
     const orphans = explainSourceOrphans(directory, candidate, afterGraph, configuration.nodes, configuration.bundle, true)
       .filter(orphan => !pendingIdentityIds.has(orphan.bundleNodeId));
-    return { proposal, configuration, conflicts, moves, orphans, unresolvedIdentities, missingRequiredEntries, trackingTargets, additionTracking,
+    return { proposal, configuration, conflicts, moves, identityInspection, orphans, unresolvedIdentities, missingRequiredEntries, trackingTargets, additionTracking,
       accepted: snapshotSummary(accepted), candidate: snapshotSummary(candidate), reviewToken: proposalReviewToken(directory, proposal) };
   });
 }

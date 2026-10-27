@@ -60,7 +60,13 @@ export function proposalEditorOperations(context: Context): SourcingTypeEditorOp
       const controls = new Set(review.proposal.proposed.nodes.filter(node => node.listType === 'blacklist').map(node => node.bundleNodeId));
       const represented = new Set(context.graph()?.getAllNodes().filter(node => node.sourceReview?.kind !== 'departing' || (node.bundleNodeId && controls.has(node.bundleNodeId))).flatMap(node => node.bundleNodeId ? [node.bundleNodeId] : []));
       const departing = new Set(context.graph()?.getAllNodes().filter(node => node.sourceReview?.kind === 'departing' && !(node.bundleNodeId && controls.has(node.bundleNodeId))).flatMap(node => node.bundleNodeId ? [node.bundleNodeId] : []));
-      draft.nodes = [...draft.nodes.filter(node => !represented.has(node.bundleNodeId)), ...body.configs.filter(node => !departing.has(node.bundleNodeId))];
+      const requested = new Map(body.configs.map(node => [node.bundleNodeId, node]));
+      // Departing pages retain their saved configuration. An explicit blacklist is still
+      // an editable boundary choice; copying unrelated display fields would erase that protection.
+      const retained = draft.nodes.filter(node => !represented.has(node.bundleNodeId)).map(node =>
+        departing.has(node.bundleNodeId) && requested.get(node.bundleNodeId)?.listType === 'blacklist'
+          ? { ...node, listType: 'blacklist' as const } : node);
+      draft.nodes = [...retained, ...body.configs.filter(node => !departing.has(node.bundleNodeId))];
       await context.configure(draft);
       return response({ success: true });
     }

@@ -88,6 +88,25 @@ describe('source identity review', () => {
     expect(actions.choose).toHaveBeenCalledExactlyOnceWith({ weak: 'weak-new.md' });
   });
 
+  it('explains unmatched pages and lets the person pair them without a suggested match', () => {
+    const actions = callbacks();
+    render(<SourceIdentityReview moves={[]} choices={{}} busy={false} {...actions} inspection={{
+      departing: [{ path: 'old.md', bundleNodeId: 'old', reason: 'No shared content. This does not establish a different identity.' }],
+      added: [{ path: 'rewritten.md', reason: 'No matching filename or shared content.' }],
+    }} />);
+    expect(screen.getByText(/does not establish a different identity/)).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Pair as same page' })).toBeDisabled();
+    fireEvent.change(screen.getByRole('combobox', { name: 'Old page' }), { target: { value: 'old' } });
+    fireEvent.change(screen.getByRole('combobox', { name: 'New page' }), { target: { value: 'rewritten.md' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Pair as same page' }));
+    expect(actions.choose).toHaveBeenCalledExactlyOnceWith({ old: 'rewritten.md' });
+  });
+
+  it('explains when there are no identities to match', () => {
+    render(<SourceIdentityReview moves={[]} choices={{}} busy={false} {...callbacks()} inspection={{ departing: [], added: [] }} />);
+    expect(screen.getByText('No added or removed pages need identity matching in this proposal.')).toBeVisible();
+  });
+
   it('counts the uncertain files still to choose and the suggestions Confirm applies', () => {
     const moves = [move('a'), move('b'), move('weak', 0.55), move('other', 0.55)];
     expect(identityConfirmation(moves, {})).toEqual({ remaining: 2, defaults: { a: 'a-new.md', b: 'b-new.md' } });

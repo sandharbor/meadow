@@ -86,7 +86,7 @@ sub-area selections combine with other report filters. Expanded scenario
 metadata shows Starts with, Areas, each area's declared sub-areas, then Concepts.
 Source Setup - New and Source Setup - Edit precede Source Review Identity and
 Source Review Workspace within Sourcing;
-Custom Filtering and Filter Mixing are sub-areas of Curation. A sub-area keeps
+Custom Filtering and Filter Mixing are sub-areas of Curation. Source-change subtype definitions live in separate shared files with type-only implementation links from their canonical concept documents. Scenarios link the specific subtype they assert and capture its evidence with addKeyFrame. The run overview nests Modify and Remove subtype rows under selected source-change categories, using captured concept associations rather than inferring coverage from titles or current code. A sub-area keeps
 its canonical concept definition and documentation.
 
 ## Scenario areas

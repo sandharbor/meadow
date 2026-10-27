@@ -28,6 +28,7 @@ export * from "./bundle/nodeIdentity.js";
 export * from "./bundle/bundles/concepts.js";
 export * from "./bundle/sourcing/concepts.js";
 export * from "./bundle/sourcing/proposedReview.js";
+export * from "./bundle/sourcing/sourceChanges.js";
 export * from "./bundle/curation/concepts.js";
 export * from "./bundle/generation/concepts.js";
 export * from "./bundle/review/concepts.js";
@@ -42,6 +43,7 @@ import { applicationConcepts } from "./application/concepts.js";
 import { appAreaConcepts } from "./bundle/appAreas.js";
 import { bundleCollectionConcepts } from "./bundle/bundles/concepts.js";
 import { sourcingConcepts } from "./bundle/sourcing/concepts.js";
+import { sourceChangeTypeConcepts } from "./bundle/sourcing/sourceChanges.js";
 import { proposedSourceReviewConcepts } from "./bundle/sourcing/proposedReview.js";
 import { curationConcepts } from "./bundle/curation/concepts.js";
 import { generationConcepts } from "./bundle/generation/concepts.js";
@@ -58,6 +60,7 @@ export const acceptanceConcepts = [
   ...bundleCollectionConcepts,
   ...sourcingConcepts,
   ...proposedSourceReviewConcepts,
+  ...sourceChangeTypeConcepts,
   ...curationConcepts,
   ...generationConcepts,
   ...reviewConcepts,

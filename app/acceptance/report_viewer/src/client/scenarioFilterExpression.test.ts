@@ -48,6 +48,20 @@ describe('scenario filter mixes', () => {
     expect(formatScenarioFilterExpression(parse(formatScenarioFilterExpression(expression)))).toBe(formatScenarioFilterExpression(expression))
   })
 
+  it('refines each source-change parent independently and round-trips the subtype choices', () => {
+    const expression = defaultScenarioFilterExpression({ ...emptyScenarioFilterSelections(),
+      sourcechange: ['modify', 'remove', 'rename'], sourcechangesubtype: ['source-configuration-change', 'source-removal-missing'],
+    })!;
+    expect(scenarioMatchesFilterExpression(expression, scenario({ sourcechange: ['modify'], sourcechangesubtype: ['source-configuration-change'] }))).toBe(true);
+    expect(scenarioMatchesFilterExpression(expression, scenario({ sourcechange: ['remove'], sourcechangesubtype: ['source-removal-missing'] }))).toBe(true);
+    expect(scenarioMatchesFilterExpression(expression, scenario({ sourcechange: ['modify'], sourcechangesubtype: ['source-content-change'] }))).toBe(false);
+    expect(scenarioMatchesFilterExpression(expression, scenario({ sourcechange: ['remove'], sourcechangesubtype: ['source-removal-unreachable'] }))).toBe(false);
+    expect(scenarioMatchesFilterExpression(expression, scenario({ sourcechange: ['rename'] }))).toBe(true);
+    expect(scenarioMatchesFilterExpression(expression, scenario({ sourcechange: ['modify'] }))).toBe(false);
+    expect(isDefaultScenarioFilterExpression(parse(formatScenarioFilterExpression(expression)))).toBe(true);
+    expect(scenarioFilterSelectionsOf(parse(formatScenarioFilterExpression(expression))).sourcechangesubtype).toEqual(['source-configuration-change', 'source-removal-missing']);
+  });
+
   it('can require every pill within a row', () => {
     const expression = parse('all(area:bundle/sourcing, area:bundle/review, sourcechange:rename)')
     expect(scenarioMatchesFilterExpression(expression, renamedSourcingReview)).toBe(true)

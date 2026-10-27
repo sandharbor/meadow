@@ -1,0 +1,68 @@
+{
+  "nodes": [
+    {
+      "bundleNodeName": "Start",
+      "bundleNodeId": "200000000001",
+      "listType": "whitelist",
+      "bundleNodeKind": "file",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md"
+    },
+    {
+      "bundleNodeName": "Bridge",
+      "bundleNodeId": "200000000002",
+      "listType": "whitelist",
+      "bundleNodeKind": "file",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md"
+    },
+    {
+      "bundleNodeName": "Move Only",
+      "bundleNodeId": "200000000003",
+      "listType": "whitelist",
+      "bundleNodeKind": "file",
+      "sourceGraphSubdirectory": "Old",
+      "fileType": "md"
+    },
+    {
+      "bundleNodeName": "Rename Only",
+      "bundleNodeId": "200000000004",
+      "listType": "whitelist",
+      "bundleNodeKind": "file",
+      "sourceGraphSubdirectory": "Old",
+      "fileType": "md"
+    },
+    {
+      "bundleNodeName": "Both",
+      "bundleNodeId": "200000000005",
+      "listType": "whitelist",
+      "bundleNodeKind": "file",
+      "sourceGraphSubdirectory": "Old",
+      "fileType": "md"
+    },
+    {
+      "bundleNodeName": "Unique Empty",
+      "bundleNodeId": "200000000006",
+      "listType": "whitelist",
+      "bundleNodeKind": "file",
+      "sourceGraphSubdirectory": "Old",
+      "fileType": "md"
+    },
+    {
+      "bundleNodeName": "Common Empty",
+      "bundleNodeId": "200000000007",
+      "listType": "whitelist",
+      "bundleNodeKind": "file",
+      "sourceGraphSubdirectory": "Old",
+      "fileType": "md"
+    },
+    {
+      "bundleNodeName": "Changed Links Empty",
+      "bundleNodeId": "200000000008",
+      "listType": "whitelist",
+      "bundleNodeKind": "file",
+      "sourceGraphSubdirectory": "Old",
+      "fileType": "md"
+    }
+  ]
+}

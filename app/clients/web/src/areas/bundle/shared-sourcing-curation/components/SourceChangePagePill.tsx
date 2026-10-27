@@ -2,7 +2,7 @@
 
 import type { Graph } from '../../../../../../../contracts/types/shared/bundle-graph/graph.js';
 import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';
-import { sourceReviewAppearance, sourceRemovalReasons } from '../../../../shared/utils/sourceReviewAppearance.js';
+import { sourceReviewSummaryAppearance, sourceRemovalReasons } from '../../../../shared/utils/sourceReviewAppearance.js';
 import { bundleNodeKeySourceGraphPath } from '../../../../../../../shared_code/utils/bundleNodeKey.js';
 import { useSourcePath } from '../../../../shared/components/SourceNames.js';
 
@@ -10,7 +10,7 @@ import { useSourcePath } from '../../../../shared/components/SourceNames.js';
 export function SourceChangePagePill({ bundleNodeKey, graph, onSelect }: { bundleNodeKey: EncodedBundleNodeKey; graph: Graph; onSelect: (key: EncodedBundleNodeKey) => void }) {
   const page = graph.getNode(bundleNodeKey);
   const review = page?.sourceReview;
-  const appearance = review && review.kind !== 'unchanged' && review.kind !== 'frontier' ? sourceReviewAppearance[review.kind] : null;
+  const appearance = review && review.kind !== 'unchanged' && review.kind !== 'frontier' ? sourceReviewSummaryAppearance(review) : null;
   const path = useSourcePath(review?.previousPath ?? review?.proposedPath ?? bundleNodeKeySourceGraphPath(bundleNodeKey));
   const change = appearance && [appearance.label, review?.removalReason && sourceRemovalReasons[review.removalReason].label].filter(Boolean).join(' · ');
   const name = page?.bundleNodeName ?? path.split('/').pop() ?? bundleNodeKey;
