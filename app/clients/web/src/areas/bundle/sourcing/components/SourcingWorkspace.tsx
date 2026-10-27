@@ -2,7 +2,7 @@
 
 import { logger } from '../../../../shared/utils/logger';
 import type { SnapshotTrackingOutcome } from '../../../../../../../contracts/types/shared/curation/curationTracking.js';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { SourcingComponentEditor, useSourcingStateFilters } from '../../shared-sourcing-curation/exported.js';
 import { Graph, type IEdge, type IBundleNode } from '../../../../../../../contracts/types/shared/bundle-graph/graph.js';
 import type { SourceProposalReview } from '../../../../../../../contracts/types/areas/bundle/sourcing/sourcingProposal.js';
@@ -197,8 +197,9 @@ export function SourcingWorkspace({ bundleSlug, onClose, onAccepted, requestedPa
   const hasReview = Boolean(review);
   const hasGraph = Boolean(graph);
   useEffect(() => { logger.debug(`[editor-mode] workspace ready=${ready} review=${hasReview} graph=${hasGraph} leaving=${leaving}`); }, [ready, hasReview, hasGraph, leaving]);
-  useEffect(() => { onReadyChange?.(ready); }, [ready, onReadyChange]);
-  useEffect(() => () => onReadyChange?.(false), [onReadyChange]);
+  // Readiness is reported before paint, so the editor hands over in the same task that shows review's own views.
+  useLayoutEffect(() => { onReadyChange?.(ready); }, [ready, onReadyChange]);
+  useLayoutEffect(() => () => onReadyChange?.(false), [onReadyChange]);
   /** The Page changes group collapses, then the bar slides away over the restored editor, then the workspace closes. */
   // Each step follows the previous animation's end rather than a timer, so it completes on the page's own timeline.
   const bar = useRef<HTMLElement>(null);

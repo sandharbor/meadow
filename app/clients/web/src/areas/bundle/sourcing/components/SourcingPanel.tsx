@@ -1,7 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import { logger } from '../../../../shared/utils/logger';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useEditorMode, useIsSurfaceRequested, useLinkedSurface } from '../../../../shared/places/placeContext.js';
 import type { SnapshotTrackingOutcome } from '../../../../../../../contracts/types/shared/curation/curationTracking.js';
@@ -24,7 +24,8 @@ export function SourcingPanel({ bundleSlug, onAccepted, sourceChangeTrigger = 0,
   const [ready, setReady] = useState(false);
   const [placeParameters, setPlaceParameters] = useState<Readonly<Record<string, string>>>({});
   const [requestedParameters, setRequestedParameters] = useState<Readonly<Record<string, string>>>({});
-  useEffect(() => { logger.debug(`[editor-mode] panel open=${open} ready=${ready}`); onModeChange?.(open && ready); }, [open, ready, onModeChange]);
+  // Reported before paint, so the editor never shows its own views beside the workspace's.
+  useLayoutEffect(() => { logger.debug(`[editor-mode] panel open=${open} ready=${ready}`); onModeChange?.(open && ready); }, [open, ready, onModeChange]);
   const { review, busy, setBusy, background, noChanges, error, setError, scan } = useSourceStatus(bundleSlug, onPendingChanges);
   const requested = useIsSurfaceRequested();
   const openRef = useRef(open);

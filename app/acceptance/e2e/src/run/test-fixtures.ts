@@ -1525,12 +1525,20 @@ export const test = base.extend<{
     const codeRevision = execSync("git rev-parse HEAD", { cwd: REPO_ROOT, encoding: "utf8" }).trim();
     const uncommittedCode = Boolean(execSync("git status --porcelain", { cwd: REPO_ROOT, encoding: "utf8" }).trim());
     const uncommittedLogPath = path.join(artifactDir, "meadowHome-uncommitted.jsonl");
+    const checkpointRepo = path.join(artifactDir, CHECKPOINT_REPO_DIRECTORY);
+
+    // Rerunning a scenario under the same run id reuses its artifact directory.
+    // Start this execution's checkpoints over, so checkpoint N is always the
+    // Nth one captured here and never an earlier execution's.
+    rmSync(checkpointRepo, { recursive: true, force: true });
+    rmSync(uncommittedLogPath, { force: true });
 
     let minioStateRepo: string | null = null;
     let minioTimelinePath: string | null = null;
 
     if (minioEndpoint) {
       minioStateRepo = path.join(artifactDir, "minio-state-repo");
+      rmSync(minioStateRepo, { recursive: true, force: true });
       minioTimelinePath = path.join(minioStateRepo, "timeline.jsonl");
       const objectsDir = path.join(minioStateRepo, "objects");
       mkdirSync(objectsDir, { recursive: true });
@@ -1623,7 +1631,7 @@ export const test = base.extend<{
       // Services partition, so Dev Tools can open (fork) this exact moment.
       await captureCheckpoint({
         ...screen,
-        repo: path.join(artifactDir, CHECKPOINT_REPO_DIRECTORY),
+        repo: checkpointRepo,
         homeDirectory: checkpointHome,
         parts: testServer.localServices.parts,
         containers: testServer.localServices.containers,
