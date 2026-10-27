@@ -33,6 +33,8 @@ export interface LinkResolvedInfo {
 }
 
 interface BaseBundleNode {
+  /** Transient runtime decisions, bound to the captured graph's exact command inputs. */
+  commandFilterResults?: Record<string, import('../curation/customFilters.js').CommandFilterNodeResult>;
   sourceReview?: import('../sourcing/sourcingProposal.js').SourceNodeReview;
   bundleNodeKey: EncodedBundleNodeKey;
   bundleNodeId?: BundleNodeId;

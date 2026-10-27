@@ -236,6 +236,7 @@ const handleWorkingGraphRequest: express.RequestHandler = (req, res, next) => {
     }
 
     res.json({
+      commandFilters: loaded.commandFilters,
       nodes,
       edges: resultEdges,
       allInlinkSources,

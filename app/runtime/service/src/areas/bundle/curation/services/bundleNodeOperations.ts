@@ -138,7 +138,7 @@ function resolveNode(nodes: IBundleNode[], locator: BundleNodeLocator): IBundleN
   );
 }
 
-async function loadContext(slug: string, locator: BundleNodeLocator): Promise<NodeContext> {
+async function loadContext(slug: string, locator: BundleNodeLocator, requireSensitivity = false): Promise<NodeContext> {
   const loaded = await loadWorkingGraph({ bundleSlug: slug });
   if (loaded.draftNodes) {
     throw new BundleNodeOperationError(
@@ -159,6 +159,8 @@ async function loadContext(slug: string, locator: BundleNodeLocator): Promise<No
     effectivelySensitive: selectEffectivelySensitiveNodeKeys(
       graph,
       loadCustomFiltersForBundle(slug),
+      !requireSensitivity,
+      new Set([resolveNode(loaded.nodes, locator).bundleNodeKey]),
     ),
   };
 }
@@ -417,7 +419,7 @@ export async function mutateBundleNode(
   locator: BundleNodeLocator,
   mutation: BundleNodeMutation,
 ): Promise<MutateBundleNodeCliResult> {
-  let context = await loadContext(slug, locator);
+  let context = await loadContext(slug, locator, mutation.operation === 'track' || mutation.operation === 'set-depths');
   let configs = [...context.loaded.committedNodes];
   let changed = false;
   let resultLocator = locator;

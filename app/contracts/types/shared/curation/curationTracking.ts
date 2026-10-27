@@ -11,4 +11,4 @@ export interface SnapshotTrackingOutcome {
   error?: string;
 }
 
-export type TrackingSensitivity = 'source' | 'filter';
+export type TrackingSensitivity = 'source' | 'filter' | 'incomplete';

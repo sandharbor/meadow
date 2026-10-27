@@ -41,11 +41,13 @@ import {
 } from '../bundle-config/bundleConfigPaths.js';
 import { currentSourceContentDigest } from '../bundle-node/trackingEvidence.js';
 import { loadCustomFiltersForBundle } from '../custom-filters/customFilterLoader.js';
-import { selectEffectivelySensitiveNodeKeys } from '../bundle-graph/graphFilterService.js';
+import { CommandFilterIncompleteError, selectEffectivelySensitiveNodeKeys } from '../bundle-graph/graphFilterService.js';
 import { loadWorkingGraph } from '../bundle-graph/workingGraphService.js';
 import { appPlacePath } from '../../../../../contracts/places/index.js';
 
 import type { CustomFilterConfig } from '../../../../../contracts/types/shared/curation/customFilters.js';
+
+const pendingPolicyChanges = new Map<string, { filterId: string; event: 'created' | 'enabled' | 'edited'; previousFilters: CustomFilterConfig[] }>();
 
 const REVIEW_REQUEST_ID_PATTERN = /^bbr_[a-f0-9]{24}$/;
 
@@ -163,7 +165,11 @@ export function describeSensitivityCause(filter: CustomFilterConfig, cause?: { f
 export async function assessBundleBoundary(slug: string, policyChange?: { filterId: string; event: 'created' | 'enabled' | 'edited'; previousFilters: CustomFilterConfig[] }): Promise<{
   reviewRequest: BundleBoundaryReviewRequest | null;
   reviewRequired: boolean;
+  assessmentIncomplete?: string;
 }> {
+  const policyChangeRequest = policyChange !== undefined;
+  if (policyChange) pendingPolicyChanges.set(slug, policyChange);
+  policyChange ??= pendingPolicyChanges.get(slug);
   const loaded = await loadWorkingGraph({ bundleSlug: slug });
   if (loaded.draftNodes) throw new Error('Save or undo pending curation changes before generation');
   applySensitiveFromApiData(loaded.nodes);
@@ -172,20 +178,23 @@ export async function assessBundleBoundary(slug: string, policyChange?: { filter
   loaded.nodes.forEach(node => graph.addNode(node));
   loaded.edges.forEach(edge => graph.addEdge(edge));
   graph.setLinkSourceData(loaded.allInlinkSources, loaded.allOutlinkTargets);
-  const effectivelySensitive = selectEffectivelySensitiveNodeKeys(
-    graph,
-    loadCustomFiltersForBundle(slug),
-  );
+  let effectivelySensitive: Set<IBundleNode['bundleNodeKey']>;
+  try { effectivelySensitive = selectEffectivelySensitiveNodeKeys(graph, loadCustomFiltersForBundle(slug), false, new Set(loaded.nodes.filter(node => node.tracked).map(node => node.bundleNodeKey))); }
+  catch (error) {
+    if (error instanceof CommandFilterIncompleteError && policyChangeRequest) return { reviewRequest: null, reviewRequired: true, assessmentIncomplete: error.message };
+    throw error;
+  }
+  pendingPolicyChanges.delete(slug);
   const sourceDirectory = acceptedSourceRoot(getBundleDirectory(slug));
   if (!sourceDirectory) throw new Error(`Bundle '${slug}' has no source directory`);
 
   const findings: BundleBoundaryFinding[] = [];
   const nodesById = new Map(loaded.nodes.flatMap(node => node.bundleNodeId ? [[node.bundleNodeId, node] as const] : []));
   const records = loadTrackingRecords(getBundleDirectory(slug));
-  const previousSensitivity = policyChange ? selectEffectivelySensitiveNodeKeys(graph, policyChange.previousFilters) : undefined;
+  const previousSensitivity = policyChange ? selectEffectivelySensitiveNodeKeys(graph, policyChange.previousFilters, true) : undefined;
   let recordedCause = false;
   const filters = loadCustomFiltersForBundle(slug).filter(filter => filter.enabled && filter.actions.some(action => action.type === 'mark_sensitive'));
-  const matches = filters.map(filter => ({ filter, keys: selectEffectivelySensitiveNodeKeys(graph, [filter]) }));
+  const matches = filters.map(filter => ({ filter, keys: selectEffectivelySensitiveNodeKeys(graph, [filter], true) }));
   for (const config of loaded.committedNodes) {
     if (config.listType !== 'whitelist') continue;
     const node = nodesById.get(config.bundleNodeId) ?? loaded.nodes.find(candidate => nodeConfigMatchesNode(

@@ -37,6 +37,7 @@ export interface IEdge {
 }
 
 export class Graph {
+  commandFilters: import('../curation/customFilters.js').CommandFilterExecution[] = [];
   sources: BundleSource[] = [];
   sourceDiagnostics: SourceReferenceDiagnostic[] = [];
   ignoredSourceNames: string[] = [];

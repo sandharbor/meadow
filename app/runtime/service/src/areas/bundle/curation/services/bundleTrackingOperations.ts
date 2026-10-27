@@ -293,6 +293,8 @@ export async function trackingEvidenceDecisionsForNewFiles(
   const effectivelySensitive = selectEffectivelySensitiveNodeKeys(
     graph,
     loadCustomFiltersForBundle(slug),
+    false,
+    new Set(loaded.nodes.filter(node => newFileConfigs.some(config => config.bundleNodeId === node.bundleNodeId)).map(node => node.bundleNodeKey)),
   );
 
   const decisions = new Map<string, boolean>();
@@ -333,6 +335,8 @@ export async function trackBundleNodes(
   const effectivelySensitive = selectEffectivelySensitiveNodeKeys(
     graph,
     loadCustomFiltersForBundle(slug),
+    false,
+    new Set(options.mode === 'all-safe' ? loaded.nodes.filter(node => !node.tracked).map(node => node.bundleNodeKey) : options.nodeKeys),
   );
 
   const orderedNodes = [...loaded.nodes].sort(compareNodes);

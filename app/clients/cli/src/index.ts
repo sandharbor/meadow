@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import { isFilterManagementHelp, runFilterManagement, showFilterManagementHelp } from './filterCommands.js';
 import { execFile } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -403,6 +404,7 @@ in command-line order. Run 'meadow bundle filters <bundle-slug>' to discover IDs
 }
 
 function showBundleFiltersHelp(): void {
+  showFilterManagementHelp();
   console.log(`Usage:
   meadow bundle filters <bundle-slug>
 
@@ -892,7 +894,8 @@ async function main(): Promise<void> {
     return;
   }
 
-  const isHelpRequest = args.includes("--help") || args.includes("-h");
+  const isHelpRequest = args[0] === "bundle" && args[1] === "filters"
+    ? isFilterManagementHelp(args.slice(2)) : args.includes("--help") || args.includes("-h");
   const isRuntimeCommand = (
     args[0] === "open"
   ) || (
@@ -1082,6 +1085,10 @@ responses declare whether their returned command actions can resolve headlessly.
   if (args[0] === "bundle" && args[1] === "filters") {
     if (args[2] === "--help" || args[2] === "-h") {
       showBundleFiltersHelp();
+      return;
+    }
+    if (args.length > 3) {
+      await runFilterManagement(args.slice(2), (pathname, method, body) => requestJson(resolveSession(), pathname, method, body));
       return;
     }
     if (args.length !== 3 || args[2].trim().length === 0) {

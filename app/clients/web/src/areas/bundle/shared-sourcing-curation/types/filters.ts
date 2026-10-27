@@ -68,6 +68,7 @@ export interface IFolderFilterState {
 export type INodeTypeFilterState = IFolderFilterState;
 
 export interface IFilter {
+  hasCommandSelector?: boolean;
   group?: 'source-changes';
   parentFilterId?: string;
   id: string;
@@ -102,13 +103,13 @@ export interface IFilterState {
 }
 
 // Wrapper for createCustomBundleNodeSelector that uses the frontend logger
-export const createCustomBundleNodeSelector = (config: CustomBundleNodeSelectorConfig): INormalBundleNodeSelector => {
-  return createCustomBundleNodeSelectorBase(config, (msg, error) => logger.warn(msg, error));
+export const createCustomBundleNodeSelector = (config: CustomBundleNodeSelectorConfig, filterId = ''): INormalBundleNodeSelector => {
+  return createCustomBundleNodeSelectorBase(config, (msg, error) => logger.warn(msg, error), filterId);
 };
 
 // Convert custom filter config to IFilter
 export const customFilterToIFilter = (customFilter: CustomFilterConfig): IFilter => {
-  const bundleNodeSelectors = customFilter.selectors.map(createCustomBundleNodeSelector);
+  const bundleNodeSelectors = customFilter.selectors.map(selector => createCustomBundleNodeSelector(selector, customFilter.id));
   
   const actions = customFilter.actions.map(action => {
     switch (action.type) {
@@ -130,6 +131,7 @@ export const customFilterToIFilter = (customFilter: CustomFilterConfig): IFilter
   return {
     id: `custom-${customFilter.id}`,
     name: customFilter.name,
+    hasCommandSelector: customFilter.selectors.some(selector => selector.field === 'command'),
     bundleNodeSelectors,
     selectorApplicationCriteria: customFilter.selectorApplicationCriteria,
     actions,

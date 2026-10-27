@@ -65,7 +65,7 @@ export const callout = defineMeadowConcept({
 export const filters = defineMeadowConcept({
   id: coreConceptIds.filters,
   name: "Custom Filtering",
-  aliases: ["Custom Filter", "Custom Filters", "Filters", "Filter"],
+  aliases: ["Command Selector", "Command Filter", "Custom Filter", "Custom Filters", "Filters", "Filter"],
   kind: "mechanism",
   searchFacet: false,
   appAreaIds: curationArea,
@@ -73,6 +73,10 @@ export const filters = defineMeadowConcept({
   definition: conceptText`The curation feature for creating and managing reusable rules that select and optionally act on matching pages.`,
   mechanics: [
     conceptText`An enabled filter appears in matching nodes' hover explanations even without a Highlight action. The explanation shows its highlight color when present and + sensitive when its Mark Sensitive action applies. Saving an edited filter immediately updates the node presentation.`,
+    conceptText`A Command Selector passes deterministic batches of candidate nodes and initial-node context to an external program through versioned JSON. The Runtime schedules real subprocesses, validates exactly one boolean decision per node, and shares those decisions with Curation, source review and the CLI. Defaults are four nodes per batch and four simultaneous invocations.`,
+    conceptText`Command evaluation starts automatically and reconciles captured input changes. Exact successful invocations, including their batch peers, are cached locally across reopening and Runtime restarts. Actions and display names do not invalidate classification. Rerun bypasses cached decisions; external dependencies and remote model changes require that explicit refresh.`,
+    conceptText`Progress distinguishes cached completion, pending, running and failed nodes. Pause stops new batches while active batches finish. Errors retain bounded diagnostics and affected nodes; repair the program and rerun. A superseded input revision cannot replace current decisions.`,
+    conceptText`While command results are unresolved, the view explains that classification is incomplete and preserves known filter restrictions while keeping unresolved possible matches visible; completed matches can already supply highlights.`,
     conceptText`Custom filters define matching criteria and optional actions, can be viewed alone, and are evaluated against changing page data. Their matching sets can participate in ${conceptLink(coreConceptIds.filterMixing, "Filter Mixing")}.`,
   ],
   interplay: conceptText`Specialized filters expose ${conceptLink(coreConceptIds.frontier, "Frontier Bundle Pages")}, ${conceptLink(coreConceptIds.sensitive, "Sensitive Bundle Pages")}, ${conceptLink(coreConceptIds.overrides, "Page Configuration Overrides")}, and ${conceptLink(coreConceptIds.linkGap, "In-Link Gaps")}. A Mark Sensitive action provides ${conceptLink(coreConceptIds.filterSensitivity, "Filter-Derived Sensitivity")}.`,
@@ -122,6 +126,7 @@ export const filterSensitivity = defineMeadowConcept({
   definition: conceptText`An enabled custom filter's Mark Sensitive action makes matching nodes effectively sensitive, even when their source does not mark them sensitive.`,
   mechanics: [
     conceptText`Effective sensitivity combines ${conceptLink(coreConceptIds.sourceSensitivity, "Source-Marked Sensitivity")} with matches from enabled bundle and global filters that have a Mark Sensitive action. Filter matches follow each filter's selector criteria and do not rewrite source sensitivity markings.`,
+    conceptText`An unresolved Command Selector is neither a negative decision nor a completed assessment. Union and intersection preserve known answers; automatic tracking, sensitivity confirmation and generation require the relevant assessment to be resolved. A force rerun immediately exposes unresolved status and prevents policy decisions until replacement classification succeeds.`,
     conceptText`The selected node's Sensitive badge has a question-mark explanation. A source marking explains meadow-sensitive in the source; otherwise the explanation lists every enabled filter supplying sensitivity.`,
     conceptText`Source review identifies these pages as Sensitive via filter. Its automatic tracking skips them and lists the exact skipped pages in the Tracking changes panel before acceptance. Acceptance includes their source material in the snapshot without automatically tracking it.`,
     conceptText`For example, a filter matching titles containing confidential can protect newly discovered notes and planning pages while allowing a public update from the same source change to be tracked.`,

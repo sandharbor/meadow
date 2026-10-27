@@ -186,7 +186,7 @@ router.post('/bundles/:bundleSlug/generation/versions', (req, res, next) => {
       operation.info(`Created version ${result.versionId}; predecessor ${result.manifest.versions.at(-2)?.versionId ?? 'none'} is frozen and the manifest is committed`);
       res.json({ success: true, versionId: result.versionId, operationId: operation.operationId });
     } catch (error) {
-      if (error instanceof SourcingError) return res.status(error.statusCode).json({ error: error.message });
+      if (error instanceof SourcingError || error instanceof CommandFilterIncompleteError) return res.status(error.statusCode).json({ error: error.message });
       logger.error('Error creating generated bundle version:', error);
       const bundleSlug = req.params.bundleSlug;
       if (bundleSlug) {
@@ -979,3 +979,5 @@ router.patch('/bundles/:slug/generation/options', (req, res, next) => {
   }
 });
 export default router;
+
+import { CommandFilterIncompleteError } from '../../../../shared/bundle-graph/graphFilterService.js';

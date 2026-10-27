@@ -54,6 +54,7 @@ function removalCause(node: IBundleNode, byKey: Map<string, IBundleNode>, outlin
 /** Candidate material plus departing accepted nodes and their original connections. */
 export async function sourceProposalComparison(directory: string, frontierDepth = 0) {
   if (!Number.isSafeInteger(frontierDepth) || frontierDepth < 0) throw new SourcingError('Frontier depth must be a non-negative integer.', 400);
+  const epoch = commandFilterConfigurationEpoch(directory);
   const review = await reviewSourceProposal(directory);
   if (review.unresolvedIdentities.length) throw new SourcingError('Resolve page identities before entering the comparison graph.', 409, 'source-identity-required');
   if (review.missingRequiredEntries.length) throw new SourcingError('Repair the missing required entries before entering the graph.', 409, 'source-repair-required');
@@ -67,6 +68,10 @@ export async function sourceProposalComparison(directory: string, frontierDepth 
   const nodes: IBundleNode[] = after.nodes.map(node => ({ ...node }));
   applySensitiveFromApiData(nodes);
   applyNodeConfigsToNodes(nodes, review.configuration.nodes);
+  const commandFilters = reconcileCommandFilters(directory, review.configuration.bundle, nodes, [
+    ...review.configuration.globalFilters.map(filter => ({ ...filter, enabled: filter.enabled && !review.configuration.bundle.disabledGlobalFilters?.includes(filter.id) })),
+    ...review.configuration.bundleFilters,
+  ], 'proposal-candidate', epoch);
   const oldNodes = before.nodes.map(node => ({ ...node }));
   applySensitiveFromApiData(oldNodes);
   applyNodeConfigsToNodes(oldNodes, saved.nodes);
@@ -188,7 +193,8 @@ export async function sourceProposalComparison(directory: string, frontierDepth 
     }
     return result;
   };
-  return { ...review, ...(frontierUnavailable && { frontierUnavailable }), graph: { nodes, edges: [...edges.values()], sources: candidate.sources ?? [],
+
+  return { ...review, ...(frontierUnavailable && { frontierUnavailable }), graph: { commandFilters, nodes, edges: [...edges.values()], sources: candidate.sources ?? [],
     allInlinkSources: links(before.allInlinkSources, inlinks), allOutlinkTargets: links(before.allOutlinkTargets, outlinks) } };
 }
 
@@ -196,3 +202,5 @@ import type { ParticipatesIn, sourceReviewWorkspace } from '../../../../../../..
 export type ProposalComparisonMeadowConceptParticipations = [
   ParticipatesIn<typeof sourceReviewWorkspace, 'compare-captures', typeof sourceProposalComparison>,
 ];
+
+import { commandFilterConfigurationEpoch, reconcileCommandFilters } from '../../../../shared/custom-filters/commandFilterEvaluation.js';

@@ -152,6 +152,16 @@ function validateBootstrapConfig(value: unknown) {
 
 function validateSelector(value: unknown): value is CustomBundleNodeSelectorConfig {
   if (!isPlainObject(value)) return false;
+  if (value.field === 'command') {
+    const command = value.command;
+    if (!isPlainObject(command) || typeof command.executable !== 'string' || !command.executable.trim()) return false;
+    if (command.args !== undefined && (!Array.isArray(command.args) || command.args.some(arg => typeof arg !== 'string' || arg.includes('\0')))) return false;
+    if (command.executable.includes('\0') || (command.cwd !== undefined && (typeof command.cwd !== 'string' || !command.cwd.trim() || command.cwd.includes('\0')))) return false;
+    return [['batchSize', 256], ['maxConcurrency', 32], ['timeoutMs', 3600000]].every(([key, max]) => {
+      const item = command[String(key)];
+      return item === undefined || (typeof item === 'number' && Number.isSafeInteger(item) && item > 0 && item <= Number(max));
+    });
+  }
   return (
     ['title', 'path', 'content'].includes(String(value.field)) &&
     ['substring', 'regex'].includes(String(value.matchType)) &&

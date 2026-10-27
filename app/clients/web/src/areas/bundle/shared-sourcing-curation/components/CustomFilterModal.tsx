@@ -113,7 +113,7 @@ const CustomFilterModal: React.FC<CustomFilterModalProps> = ({
       return;
     }
 
-    if (selectors.some(s => !s.value.trim())) {
+    if (selectors.some(s => s.field === 'command' ? !s.command?.executable.trim() : !s.value.trim())) {
       alert('All selectors must have a value');
       return;
     }
@@ -302,16 +302,17 @@ const CustomFilterModal: React.FC<CustomFilterModalProps> = ({
                   </label>
                   <select
                     value={selector.field}
-                    onChange={(e) => updateSelector(index, { field: e.target.value as SelectorField })}
+                    onChange={(e) => updateSelector(index, { field: e.target.value as SelectorField, ...(e.target.value === 'command' && !selector.command ? { command: { executable: '', args: [], batchSize: 4, maxConcurrency: 4, timeoutMs: 120000 } } : {}) })}
                     className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-inset focus:ring-blue-500"
                   >
                     <option value="title">Title</option>
                     <option value="path">Path</option>
                     <option value="content">Content</option>
+                    <option value="command">Command</option>
                   </select>
                 </div>
 
-                <div>
+                {selector.field !== 'command' && <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">
                     Match Type
                   </label>
@@ -323,9 +324,31 @@ const CustomFilterModal: React.FC<CustomFilterModalProps> = ({
                     <option value="substring">Substring</option>
                     <option value="regex">Regex</option>
                   </select>
-                </div>
+                </div>}
               </div>
 
+              {selector.field === 'command' ? <div className="space-y-2">
+                <label className="block text-xs">Executable
+                  <input aria-label="Executable" className="block w-full border rounded p-1" value={selector.command?.executable ?? ''}
+                    onChange={event => updateSelector(index, { command: { ...selector.command!, executable: event.target.value } })} />
+                </label>
+                <label className="block text-xs">Arguments (one per line)
+                  <textarea aria-label="Command arguments" className="block w-full border rounded p-1" rows={3} value={(selector.command?.args ?? []).join('\n')}
+                    onChange={event => updateSelector(index, { command: { ...selector.command!, args: event.target.value ? event.target.value.split('\n') : [] } })} />
+                </label>
+                <label className="block text-xs">Working directory (defaults to Meadow Home)
+                  <input aria-label="Working directory" className="block w-full border rounded p-1" value={selector.command?.cwd ?? ''}
+                    onChange={event => updateSelector(index, { command: { ...selector.command!, cwd: event.target.value || undefined } })} />
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {([['batchSize', 'Batch size', 4, 256], ['maxConcurrency', 'Concurrency', 4, 32], ['timeoutMs', 'Timeout (ms)', 120000, 3600000]] as const).map(([key, label, fallback, maximum]) => <label key={key} className="text-xs">{label}
+                    <input aria-label={label} type="number" min={1} max={maximum} className="block w-full border rounded p-1" value={selector.command?.[key] ?? fallback}
+                      onChange={event => updateSelector(index, { command: { ...selector.command!, [key]: Number(event.target.value) } })} />
+                  </label>)}
+                </div>
+                <p className="text-xs text-gray-600">Runs your program directly. It reads version 1 JSON on stdin and returns one selected boolean per node ID on stdout. Use stderr for diagnostics. Non-text content is null. See CLI filter help for the complete contract.</p>
+                <p className="text-xs text-gray-600">Successful inputs are cached. Rerun refreshes decisions after external dependencies or model behavior change. Output is limited to 1 MiB; retained diagnostics to 16 KiB.</p>
+              </div> : <>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">
                   Value
@@ -351,6 +374,7 @@ const CustomFilterModal: React.FC<CustomFilterModalProps> = ({
                   Case sensitive
                 </label>
               </div>
+              </>}
             </div>
           ))}
         </div>

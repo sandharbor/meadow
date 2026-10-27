@@ -102,6 +102,7 @@ export interface WorkingGraphRustOutput {
 }
 
 export interface LoadedWorkingGraph {
+  commandFilters: import('../../../../../contracts/types/shared/curation/customFilters.js').CommandFilterExecution[];
   sourceContentView?: 'accepted' | 'live';
   sourceDiagnostics?: import('../../../../../contracts/types/shared/sourcing/sourcing.js').SourceReferenceDiagnostic[];
   frontierUnavailable?: string;
@@ -276,15 +277,16 @@ export function serializeWorkingGraphOutput(output: WorkingGraphRustOutput): Ser
 
 export async function loadWorkingGraph(options: { bundleSlug: string; frontierDepth?: number }): Promise<LoadedWorkingGraph> {
   const directory = getBundleDirectory(options.bundleSlug);
+  const epoch = commandFilterConfigurationEpoch(directory);
   await initializeSourcing(directory);
   const snapshot = loadSourceSnapshot(directory, loadSourcingState(directory)!.acceptedId);
-  return await withPinnedSourceTree(snapshot.git, () => loadWorkingGraphUnlocked(options, snapshot));
+  return await withPinnedSourceTree(snapshot.git, () => loadWorkingGraphUnlocked(options, snapshot, epoch));
 }
 
 async function loadWorkingGraphUnlocked(options: {
   bundleSlug: string;
   frontierDepth?: number;
-}, snapshot: SourceSnapshot): Promise<LoadedWorkingGraph> {
+}, snapshot: SourceSnapshot, epoch: string): Promise<LoadedWorkingGraph> {
   const { bundleSlug } = options;
   let frontierDepth = options.frontierDepth ?? 0;
   let frontierUnavailable: string | undefined;
@@ -403,7 +405,9 @@ async function loadWorkingGraphUnlocked(options: {
   }
   hydrateSnapshotNodeContents(capturedRoot, snapshot, output.nodes);
   const serialized = serializeWorkingGraphOutput(output);
+  const commandFilters = reconcileCommandFilters(bundleDirectory, bundleConfig, serialized.nodes, loadCustomFiltersForBundle(bundleSlug), `accepted:${frontierDepth}`, epoch);
   return {
+    commandFilters,
     bundleConfig,
     sourceContentView: notesDir === capturedRoot ? 'accepted' : 'live',
     committedNodes,
@@ -418,3 +422,6 @@ async function loadWorkingGraphUnlocked(options: {
 import { encodedBundleNodeKey } from '../../../../../shared_code/utils/bundleNodeKey.js';
 
 import { decodeWorkingGraphKeys } from './workingGraphKeyCodec.js';
+
+import { commandFilterConfigurationEpoch, reconcileCommandFilters } from '../custom-filters/commandFilterEvaluation.js';
+import { loadCustomFiltersForBundle } from '../custom-filters/customFilterLoader.js';

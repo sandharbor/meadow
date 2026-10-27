@@ -78,7 +78,7 @@ export async function reviewSourceProposal(directory: string): Promise<SourcePro
       const chosen = (key: string) => proposal.tracking[key] && proposal.tracking[key].origin !== 'additions';
       const additions = Object.entries(tracking.targets).filter(([key, target]) => !acceptedKeys.has(key) && !target.bundleNodeId && !chosen(key));
       additionTracking = { enabled: proposal.trackAdditions !== false,
-        eligible: additions.filter(([, target]) => !target.sensitivity).map(([key]) => key),
+        eligible: additions.filter(([, target]) => !target.sensitivity && !target.assessmentIncomplete).map(([key]) => key),
         sensitiveSkipped: additions.filter(([, target]) => target.sensitivity).map(([key]) => key) };
       const covered = new Set(additionTracking.enabled ? additionTracking.eligible : []);
       const current = Object.keys(proposal.tracking).filter(key => proposal.tracking[key].origin === 'additions');

@@ -52,10 +52,18 @@ export function createProposalRoutes() {
   router.post('/bundles/:bundleSlug/sourcing/proposal/begin', handle(req => reviewSourceProposal(directory(req))));
   router.get('/bundles/:bundleSlug/sourcing/proposal', handle(req => reviewSourceProposal(directory(req))));
   router.get('/bundles/:bundleSlug/sourcing/proposal/graph', handle(req => sourceProposalComparison(directory(req), Number(req.query.frontierDepth ?? 0))));
+  router.post('/bundles/:bundleSlug/sourcing/proposal/command-filters/:filterId/:action', handle(async req => {
+    const { filterId, action } = req.params;
+    if (!['pause', 'resume', 'rerun'].includes(action)) throw new SourcingError('Expected pause, resume, or rerun.', 400);
+    await sourceProposalComparison(directory(req));
+    controlCommandFilter(directory(req), filterId, action as 'pause' | 'resume' | 'rerun');
+    return sourceProposalComparison(directory(req));
+  }));
   router.post('/bundles/:bundleSlug/sourcing/proposal/configuration', handle(async req => {
     const value = body(req).configuration;
     validateProposalConfiguration(value);
     await updateSourceProposalCapture(directory(req), revision(req), { configuration: value, incorporateNewerSources: body(req).incorporateNewerSources === true });
+    invalidateCommandFilterContext(directory(req), 'proposal-candidate');
     return reviewSourceProposal(directory(req));
   }));
   router.post('/bundles/:bundleSlug/sourcing/proposal/rebase-policy', handle(async req => {
@@ -98,6 +106,7 @@ export function createProposalRoutes() {
   }));
   router.post('/bundles/:bundleSlug/sourcing/proposal/discard', handle(async req => {
     await discardSourceProposal(directory(req), revision(req));
+    invalidateCommandFilterContext(directory(req), 'proposal-candidate');
     return { discarded: true };
   }));
   router.post('/bundles/:bundleSlug/sourcing/proposal/accept', handle(req => {
@@ -108,3 +117,5 @@ export function createProposalRoutes() {
   }));
   return router;
 }
+
+import { controlCommandFilter, invalidateCommandFilterContext } from '../../../../shared/custom-filters/commandFilterEvaluation.js';

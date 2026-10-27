@@ -25,6 +25,7 @@ import type {
 import { Graph } from '../../../../../contracts/types/shared/bundle-graph/graph.js';
 import {
   createCustomBundleNodeSelector,
+  evaluateCustomFilter,
   type IBundleNodeSelector,
 } from '../../../../../shared_code/utils/filterSelectors.js';
 import {
@@ -43,6 +44,7 @@ interface ExecutableFilter {
   id: string;
   selectorApplicationCriteria: 'union' | 'intersection';
   selectors: IBundleNodeSelector[];
+  config?: CustomFilterConfig;
 }
 
 function customFilterDescriptor(filter: CustomFilterConfig): GraphFilterDescriptor {
@@ -87,8 +89,9 @@ function executableFilters(customFilters: CustomFilterConfig[]): Map<string, Exe
       `custom-${filter.id}`,
       {
         id: `custom-${filter.id}`,
+        config: filter,
         selectorApplicationCriteria: filter.selectorApplicationCriteria,
-        selectors: filter.selectors.map(selector => createCustomBundleNodeSelector(selector)),
+        selectors: filter.selectors.map(selector => createCustomBundleNodeSelector(selector, undefined, filter.id)),
       },
     ] as const),
   ]);
@@ -96,8 +99,12 @@ function executableFilters(customFilters: CustomFilterConfig[]): Map<string, Exe
 
 function matchingNodeKeys(filter: ExecutableFilter, graph: Graph): Set<EncodedBundleNodeKey> {
   const selectorResults = filter.selectors.map(selector => selector.select(graph));
+  const answers = filter.config ? evaluateCustomFilter(graph, filter.config.selectors, filter.config.selectorApplicationCriteria, filter.config.id) : undefined;
   const matches = new Set<EncodedBundleNodeKey>();
   for (const node of graph.getAllNodes()) {
+    if (filter.config && answers?.get(node.bundleNodeKey) === undefined) {
+      throw new CommandFilterIncompleteError(filter.config.name);
+    }
     const selected = filter.selectorApplicationCriteria === 'union'
       ? selectorResults.some(result => result.has(node.bundleNodeKey))
       : selectorResults.every(result => result.has(node.bundleNodeKey));
@@ -168,6 +175,8 @@ export function selectGraphNodeKeys(
 export function selectEffectivelySensitiveNodeKeys(
   graph: Graph,
   customFilters: CustomFilterConfig[],
+  allowIncomplete = false,
+  requiredKeys?: ReadonlySet<EncodedBundleNodeKey>,
 ): Set<EncodedBundleNodeKey> {
   const result = new Set(
     graph.getAllNodes()
@@ -176,13 +185,11 @@ export function selectEffectivelySensitiveNodeKeys(
   );
   for (const filter of customFilters) {
     if (!filter.enabled || !filter.actions.some(action => action.type === 'mark_sensitive')) continue;
-    const selectors = filter.selectors.map(selector => createCustomBundleNodeSelector(selector));
-    const selected = selectors.map(selector => selector.select(graph));
+    const answers = evaluateCustomFilter(graph, filter.selectors, filter.selectorApplicationCriteria, filter.id);
     for (const node of graph.getAllNodes()) {
-      const matches = filter.selectorApplicationCriteria === 'union'
-        ? selected.some(keys => keys.has(node.bundleNodeKey))
-        : selected.every(keys => keys.has(node.bundleNodeKey));
-      if (matches) result.add(node.bundleNodeKey);
+      const match = answers.get(node.bundleNodeKey);
+      if (match === undefined && !allowIncomplete && (!requiredKeys || requiredKeys.has(node.bundleNodeKey))) throw new CommandFilterIncompleteError(filter.name);
+      if (match === true) result.add(node.bundleNodeKey);
     }
   }
   return result;
@@ -193,3 +200,8 @@ export type FilterSensitivityMeadowConceptParticipations = [
 ];
 
 import type { EncodedBundleNodeKey } from '../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';
+
+export class CommandFilterIncompleteError extends Error {
+  readonly statusCode = 409;
+  constructor(filterName: string) { super(`Command filter “${filterName}” assessment is incomplete. Inspect its progress/diagnostics, then resume or rerun it.`); }
+}

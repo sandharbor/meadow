@@ -172,6 +172,7 @@ registerAllProviderRoutes(app);
 
 // Centralized error handler
 app.use((err: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  if (err instanceof CommandFilterIncompleteError) { res.status(409).json({ error: err.message, code: 'COMMAND_FILTER_ASSESSMENT_INCOMPLETE' }); return; }
   if (err instanceof SourcingError) { res.status(err.statusCode).json({ error: err.message }); return; }
   logger.error("Unhandled error:", err.stack || err.message);
   if (res.headersSent) {
@@ -313,6 +314,7 @@ startRuntimeService().catch((error) => {
 
 // Graceful shutdown handling
 function shutdown(signal: string) {
+  stopCommandFilterProcesses();
   logger.info(`Received ${signal}, shutting down gracefully...`);
   stopLogMaintenance();
   process.exit(0);
@@ -325,3 +327,7 @@ export type RuntimeServiceMeadowConceptParticipations = [
   ParticipatesIn<typeof runtimeService, 'start-service', typeof startRuntimeService>,
   ParticipatesIn<typeof runtimeService, 'mutate-home', typeof startRuntimeService>,
 ];
+
+import { stopCommandFilterProcesses } from '../custom-filters/commandFilterEvaluation.js';
+
+import { CommandFilterIncompleteError } from '../bundle-graph/graphFilterService.js';

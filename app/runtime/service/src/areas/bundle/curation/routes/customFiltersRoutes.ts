@@ -30,6 +30,9 @@ import {
 import { getGraphFilterCatalog } from '../../../../shared/bundle-graph/graphFilterService.js';
 import { loadCustomFiltersForBundle } from '../../../../shared/custom-filters/customFilterLoader.js';
 
+import { controlCommandFilter, stopCommandFilter } from '../../../../shared/custom-filters/commandFilterEvaluation.js';
+import { loadWorkingGraph } from '../../../../shared/bundle-graph/workingGraphService.js';
+import { CommandFilterIncompleteError } from '../../../../shared/bundle-graph/graphFilterService.js';
 import { assessBundleBoundary } from '../../../../shared/bundle-boundary-review/bundleBoundaryReviewService.js';
 
 const router = express.Router();
@@ -106,14 +109,26 @@ router.post('/bundles/:bundleSlug/curation/custom-filters', validateBundleSlug, 
     return;
   }
   
+  const validated = bundleCustomFiltersCodec.validate({ filters: [filter], version: '1.0.0' });
+  if (!validated.valid) { res.status(400).json({ error: validated.diagnostic }); return; }
   const previousFilters = loadCustomFiltersForBundle(bundleSlug);
   const previous = previousFilters.find(item => item.id === filter.id);
   const now = new Date().toISOString();
+  filter.selectors = filter.selectors.map(selector => selector.field === 'command' ? { ...selector, command: { batchSize: 4, maxConcurrency: 4, timeoutMs: 120000, ...selector.command! } } : selector);
   filter.updatedAt = now;
   if (!filter.createdAt) {
     filter.createdAt = now;
   }
   
+  if (previous && previous.scope !== filter.scope) {
+    if (previous.scope === 'global') {
+      const old = loadGlobalCustomFilters(getConfigDirectory());
+      saveGlobalCustomFilters(getConfigDirectory(), { ...old, filters: old.filters.filter(item => item.id !== filter.id) });
+    } else {
+      const old = loadBundleCustomFilters(bundleSlug);
+      saveBundleCustomFilters(bundleSlug, { ...old, filters: old.filters.filter(item => item.id !== filter.id) });
+    }
+  }
   if (filter.scope === 'global') {
     const configDir = getConfigDirectory();
     const config = loadGlobalCustomFilters(configDir);
@@ -139,6 +154,9 @@ router.post('/bundles/:bundleSlug/curation/custom-filters', validateBundleSlug, 
     saveBundleCustomFilters(bundleSlug, config);
   }
   
+  if (!filter.enabled || JSON.stringify(previous?.selectors.filter(selector => selector.field === 'command')) !== JSON.stringify(filter.selectors.filter(selector => selector.field === 'command'))) {
+    stopCommandFilter(getBundleDirectory(bundleSlug), filter.id, filter.scope === 'global' || previous?.scope === 'global');
+  }
   await assessBundleBoundary(bundleSlug, { filterId: filter.id, previousFilters,
     event: !previous ? 'created' : !previous.enabled && filter.enabled ? 'enabled' : 'edited' });
   res.json({ success: true });
@@ -154,6 +172,7 @@ router.delete('/bundles/:bundleSlug/curation/custom-filters/:filterId', validate
     return;
   }
   
+  stopCommandFilter(getBundleDirectory(bundleSlug), filterId, scope === 'global');
   if (scope === 'global') {
     const configDir = getConfigDirectory();
     const config = loadGlobalCustomFilters(configDir);
@@ -217,6 +236,7 @@ router.post('/bundles/:bundleSlug/curation/disabled-global-filters/:filterId', v
     }
   }
   
+  if (disabled) stopCommandFilter(getBundleDirectory(bundleSlug), filterId);
   bundleConfig.disabledGlobalFilters = disabledGlobalFilters;
   saveBundleConfig(bundleDirectory, bundleConfig);
   
@@ -225,8 +245,29 @@ router.post('/bundles/:bundleSlug/curation/disabled-global-filters/:filterId', v
 }));
 
 router.get('/bundles/:bundleSlug/curation/changes-since-tracking', asyncHandler(async (req, res) => {
-  res.json(await assessBundleBoundary(req.params.bundleSlug));
+  try { res.json(await assessBundleBoundary(req.params.bundleSlug)); }
+  catch (error) {
+    if (error instanceof CommandFilterIncompleteError) res.json({ reviewRequired: false, reviewRequest: null, assessmentIncomplete: error.message });
+    else throw error;
+  }
 }));
 
+
+router.get('/bundles/:bundleSlug/curation/command-filters', asyncHandler(async (req, res) => {
+  const graph = await loadWorkingGraph({ bundleSlug: req.params.bundleSlug });
+  res.json({ evaluations: graph.commandFilters });
+}));
+router.post('/bundles/:bundleSlug/curation/command-filters/:filterId/:action', asyncHandler(async (req, res) => {
+  const { bundleSlug, filterId, action } = req.params;
+  if (!['pause', 'resume', 'rerun', 'run'].includes(action)) { res.status(400).json({ error: 'Expected run, pause, resume, or rerun.' }); return; }
+  const filters = loadCustomFiltersForBundle(bundleSlug);
+  if (!filters.some(filter => filter.id === filterId && filter.enabled && filter.selectors.some(selector => selector.field === 'command'))) {
+    res.status(400).json({ error: 'Choose an enabled command filter.' }); return;
+  }
+  await loadWorkingGraph({ bundleSlug });
+  if (action !== 'run') controlCommandFilter(getBundleDirectory(bundleSlug), filterId, action as 'pause' | 'resume' | 'rerun');
+  const graph = await loadWorkingGraph({ bundleSlug });
+  res.json({ evaluations: graph.commandFilters.filter(state => state.filterId === filterId) });
+}));
 
 export default router; 

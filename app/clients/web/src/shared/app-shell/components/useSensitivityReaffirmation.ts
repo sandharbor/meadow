@@ -44,10 +44,13 @@ export function useSensitivityReaffirmation({ slug, enabled, sourcingOpen, onPol
       onPolicyChanged();
       void assess(true);
     };
+    const completed = (event: Event) => { if ((event as CustomEvent<string>).detail === slug) void assess(true); };
+    window.addEventListener('command-filter-completed', completed);
     window.addEventListener('meadow-filter-policy-changed', policyChanged);
     return () => {
       controller.abort();
       window.removeEventListener('pagehide', abort);
+      window.removeEventListener('command-filter-completed', completed);
       window.removeEventListener('meadow-filter-policy-changed', policyChanged);
     };
   }, [slug, enabled, sourcingOpen, onPolicyChanged]);

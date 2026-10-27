@@ -346,8 +346,12 @@ const BundleEditor: React.FC = () => {
       });
   }, []);
 
+  const graphFetchToken = useRef<symbol | null>(null);
+  const commandRefreshQueued = useRef(false);
   useEffect(() => {
     if (!configLoaded) return;
+    const requestToken = Symbol();
+    graphFetchToken.current = requestToken;
     // Clear previous error when starting a new fetch
     setGraphError(null);
     let cancelled = false;
@@ -387,6 +391,7 @@ const BundleEditor: React.FC = () => {
         if (typeof data.entryBundleNodeId === 'string') setEntryBundleNodeId(data.entryBundleNodeId);
         if (typeof data.defaultTraversalBundleNodeId === 'string') setDefaultTraversalBundleNodeId(data.defaultTraversalBundleNodeId);
         const g = new Graph();
+        g.commandFilters = data.commandFilters ?? [];
         g.sources = data.sources ?? [];
         g.sourceDiagnostics = data.sourceDiagnostics ?? [];
         g.ignoredSourceNames = data.ignoredSourceNames ?? [];
@@ -408,6 +413,10 @@ const BundleEditor: React.FC = () => {
         setGraphError(err instanceof Error ? err.message : String(err));
       })
       .finally(() => {
+        if (graphFetchToken.current === requestToken) {
+          graphFetchToken.current = null;
+          if (!cancelled && commandRefreshQueued.current) { commandRefreshQueued.current = false; setConfigChangeTrigger(value => value + 1); }
+        }
         if (!cancelled) { setIsRecalculatingGraph(false); setAwaitingAcceptedGraph(false); }
       });
     return () => { cancelled = true; controller.abort(); window.removeEventListener('pagehide', abort); };
@@ -423,6 +432,24 @@ const BundleEditor: React.FC = () => {
       graph.unsubscribe(handleGraphChange);
     };
   }, [graph]);
+
+  const hasCommandFilters = filters.some(filter => filter.enabled && filter.hasCommandSelector);
+  const commandWorkPending = hasCommandFilters && (!graph?.commandFilters.length || graph.commandFilters.some(state => state.running > 0 || (!state.paused && state.pending > 0)));
+  useEffect(() => {
+    if (!hasCommandFilters) return;
+    const poll = () => { if (!graphFetchToken.current && !document.hidden) setConfigChangeTrigger(value => value + 1); };
+    const refresh = () => { if (graphFetchToken.current) commandRefreshQueued.current = true; else poll(); };
+    const timer = commandWorkPending ? window.setInterval(poll, 1500) : undefined;
+    window.addEventListener('command-filter-change', refresh);
+    return () => { if (timer) window.clearInterval(timer); window.removeEventListener('command-filter-change', refresh); };
+  }, [hasCommandFilters, commandWorkPending]);
+  const previousCommandWork = useRef(false);
+  useEffect(() => {
+    if (previousCommandWork.current && !commandWorkPending && graph?.commandFilters.some(state => state.status === 'completed')) {
+      window.dispatchEvent(new CustomEvent('command-filter-completed', { detail: slug }));
+    }
+    previousCommandWork.current = commandWorkPending;
+  }, [commandWorkPending, graph, slug]);
 
   // Filter out selected pages that are no longer in the graph
   useEffect(() => {

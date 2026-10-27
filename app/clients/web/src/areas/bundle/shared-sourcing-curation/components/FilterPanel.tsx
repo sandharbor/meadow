@@ -20,6 +20,7 @@ import React, { useLayoutEffect, useRef, useState } from 'react';
 import { IFilter } from '../types/filters';
 import { createSearchByTitleSelector, createOutlinkDiscrepancySelector, createInlinkDiscrepancySelector } from '../types/filters';
 import { useDebounce } from '../../../../shared/hooks/useDebounce';
+import CommandFilterProgress from './CommandFilterProgress.js';
 import CustomFilterModal from './CustomFilterModal';
 import { CustomFilterConfig } from '../../../../../../../contracts/types/shared/curation/customFilters';
 import { useEditorOperations } from '../types/editorOperations.js';
@@ -586,6 +587,8 @@ const FilterPanel = React.memo<FilterPanelProps>(({
           </div>
         )}
       </div>
+      {filter.hasCommandSelector && filter.enabled && <CommandFilterProgress filterId={filter.id.slice(7)}
+        evaluations={graph.commandFilters.filter(state => state.filterId === filter.id.slice(7))} />}
       {isExpanded && isExpandableFilter && (
         <div id={`${filter.id}-contents`}>
           {filter.isFolderFilter && (

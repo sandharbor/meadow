@@ -298,6 +298,31 @@ export function evaluateFilterExpression<Key extends string>(
   return evaluate(expression) || new Set(allBundleNodeKeys);
 }
 
+/** Possible visibility keeps unresolved nodes visible without ignoring known set restrictions. */
+export function evaluatePossibleFilterExpression<Key extends string>(
+  expression: FilterExpression | null, activeTerms: ActiveFilterExpressionTerm[],
+  matches: ReadonlyMap<string, Set<Key>>, unresolved: ReadonlyMap<string, Set<Key>>, all: Set<Key>,
+): Set<Key> {
+  type Bounds = { certain: Set<Key>; possible: Set<Key> };
+  const active = new Set(activeTerms.map(filterExpressionTermId));
+  const subtract = (left: Set<Key>, right: Set<Key>) => new Set([...left].filter(key => !right.has(key)));
+  const evaluate = (node: FilterExpression): Bounds | null => {
+    if (node.type === 'all') return { certain: all, possible: all };
+    if (node.type === 'filter') {
+      if (!active.has(filterExpressionTermId(node))) return null;
+      const certain = matches.get(node.filterId) ?? new Set<Key>();
+      const possible = union([certain, unresolved.get(node.filterId) ?? new Set<Key>()]);
+      return node.mode === 'solo' ? { certain, possible } : { certain: subtract(all, possible), possible: subtract(all, certain) };
+    }
+    const children = node.children.map(evaluate).filter((child): child is Bounds => child !== null);
+    if (!children.length) return null;
+    if (node.operator === 'union') return { certain: union(children.map(child => child.certain)), possible: union(children.map(child => child.possible)) };
+    if (node.operator === 'intersection') return { certain: intersection(children.map(child => child.certain)), possible: intersection(children.map(child => child.possible)) };
+    return { certain: subtract(children[0].certain, union(children.slice(1).map(child => child.possible))), possible: subtract(children[0].possible, union(children.slice(1).map(child => child.certain))) };
+  };
+  return !expression || !activeTerms.length ? new Set(all) : evaluate(expression)?.possible ?? new Set(all);
+}
+
 function updateGroup(
   expression: FilterExpression,
   groupId: string,

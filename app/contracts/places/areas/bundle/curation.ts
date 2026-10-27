@@ -21,6 +21,7 @@ export const curationPlaces: PlaceOwnerDefinition = {
     { surface: 'copy-selection', page: 'bundle', title: 'Copy selected pages', dialogName: 'Copy Selected Pages', history: false, parameters: [] },
   ],
   transients: [
+    { dialogName: 'Command filter errors', reason: 'Diagnostics for transient subprocess failures; failures belong to a particular evaluation revision.' },
     { dialogName: 'Heads Up', reason: 'A one-time consent shown the first time a page is marked sensitive.' },
     { dialogName: 'Tracking added pages', reason: 'A report shown right after accepting source changes.' },
   ],

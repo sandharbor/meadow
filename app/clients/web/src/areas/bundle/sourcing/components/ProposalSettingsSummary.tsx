@@ -32,7 +32,7 @@ function display(value: unknown): string {
 }
 function filterDescription(filter: CustomFilterConfig | undefined): string {
   if (!filter) return 'Not defined';
-  const selectors = filter.selectors.map(selector => `${selector.field} ${selector.matchType === 'regex' ? 'matches' : 'contains'} “${selector.value}”${selector.caseSensitive ? ' (case sensitive)' : ''}`);
+  const selectors = filter.selectors.map(selector => selector.field === 'command' ? `Command: ${selector.command?.executable ?? ''}` : `${selector.field} ${selector.matchType === 'regex' ? 'matches' : 'contains'} “${selector.value}”${selector.caseSensitive ? ' (case sensitive)' : ''}`);
   const actions = filter.actions.map(action => action.type === 'mark_sensitive' ? 'Mark sensitive' : action.type === 'fade' ? 'Fade' : `Highlight ${action.color ?? ''}${action.isDashed ? ' (dashed)' : ''}`);
   return `${filter.name} · ${filter.scope === 'global' ? 'All bundles' : 'This bundle'} · ${filter.enabled ? 'Enabled' : 'Disabled'} · ${selectors.join(filter.selectorApplicationCriteria === 'intersection' ? ' AND ' : ' OR ')} · ${actions.join(', ')}${filter.note ? ` · ${filter.note}` : ''}`;
 }

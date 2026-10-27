@@ -17,6 +17,7 @@ import { trackBundleNodes } from './bundleTrackingOperations.js';
 /** Assess the complete captured graph, including nodes needed by graph-based filter selectors. */
 export async function snapshotTrackingSensitivity(directory: string, snapshotId: string, nodeKeys: EncodedBundleNodeKey[]): Promise<Record<string, TrackingSensitivity>> {
   if (!nodeKeys.length) return {};
+  const epoch = commandFilterConfigurationEpoch(directory);
   const snapshot = loadSourceSnapshot(directory, snapshotId);
   const context = sourceProposalContext(loadSourceBundleConfig(directory), loadSourceNodeConfigs(directory), loadSourcingState(directory)?.candidateId === snapshotId ? snapshot : undefined);
   const configs = context.nodes;
@@ -29,9 +30,12 @@ export async function snapshotTrackingSensitivity(directory: string, snapshotId:
   nodes.forEach(node => graph.addNode(node));
   output.edges.forEach(edge => graph.addEdge(edge));
   graph.setLinkSourceData(output.allInlinkSources, output.allOutlinkTargets);
-  const sensitive = selectEffectivelySensitiveNodeKeys(graph, loadCustomFiltersForBundle(path.basename(directory)));
-  return Object.fromEntries(nodeKeys.filter(key => sensitive.has(key))
-    .map(key => [key, graph.getNode(key)?.sensitive ? 'source' : 'filter']));
+  const filters = loadCustomFiltersForBundle(path.basename(directory));
+  reconcileCommandFilters(directory, context.config, nodes, filters, 'snapshot-assessment', epoch);
+  const sensitive = selectEffectivelySensitiveNodeKeys(graph, filters, true);
+  const unresolved = new Set(filters.filter(filter => filter.enabled && filter.actions.some(action => action.type === 'mark_sensitive')).flatMap(filter => [...evaluateCustomFilter(graph, filter.selectors, filter.selectorApplicationCriteria, filter.id)].filter(([, answer]) => answer === undefined).map(([key]) => key)));
+  return Object.fromEntries(nodeKeys.filter(key => sensitive.has(key) || unresolved.has(key))
+    .map(key => [key, sensitive.has(key) ? graph.getNode(key)?.sensitive ? 'source' : 'filter' : 'incomplete']));
 }
 
 export type SnapshotSensitivityMeadowConceptParticipations = [
@@ -55,3 +59,7 @@ export async function trackSnapshotAdditions(directory: string, request: Snapsho
 }
 
 import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';
+
+import { commandFilterConfigurationEpoch, reconcileCommandFilters } from '../../../../shared/custom-filters/commandFilterEvaluation.js';
+
+import { evaluateCustomFilter } from '../../../../../../../shared_code/utils/filterSelectors.js';

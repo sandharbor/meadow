@@ -9,6 +9,7 @@ export interface ProposalTrackingTarget {
   sensitivity?: string;
   sensitivityReasons?: string[];
   untrackableReason?: string;
+  assessmentIncomplete?: string;
   sensitivityChanged?: boolean;
 }
 
@@ -25,6 +26,8 @@ export function revalidateProposalTracking(
       decision.invalidated = 'The page identity changed after this tracking choice. Review the current page before applying it.';
     } else if (!target && decision.track) {
       decision.invalidated = 'This page is no longer included in the proposed material.';
+    } else if (decision.track && target.assessmentIncomplete) {
+      decision.invalidated = target.assessmentIncomplete;
     } else if (decision.track && target.sensitivity) {
       if (decision.origin === 'automatic') decision.track = false;
       else if (decision.confirmedSensitivity !== target.sensitivity) decision.needsConfirmation = true;

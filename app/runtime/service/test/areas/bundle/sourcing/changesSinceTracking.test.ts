@@ -117,3 +117,40 @@ it('stages blacklisting instead of untracking, reviews its scope effects, and re
   expect(accepted.some((node: { bundleNodeName: string }) => node.bundleNodeName === 'Leaf')).toBe(false);
   expect(fs.existsSync(path.join(home, 'sources/Leaf.md'))).toBe(true);
 });
+
+
+it('keeps pending command assessments reviewable and prevents acceptance, depth tracking, and removal of sensitive reminders', async () => {
+  const script = path.join(home, 'classifier.mjs');
+  const release = path.join(home, 'release');
+  fs.writeFileSync(script, `import fs from 'node:fs';import {setTimeout} from 'node:timers/promises';let input='';for await(const chunk of process.stdin)input+=chunk;const request=JSON.parse(input);while(!fs.existsSync(${JSON.stringify(release)}))await setTimeout(10);process.stdout.write(JSON.stringify({version:1,results:request.nodes.map(node=>({id:node.id,selected:node.name==='Start'}))}));`);
+  const commandFilter: CustomFilterConfig = { ...filter, selectors: [{ field: 'command', matchType: 'substring', value: '', command: { executable: process.execPath, args: [script], batchSize: 1, maxConcurrency: 2 } }] };
+  saveGlobalCustomFilters(home, { filters: [commandFilter], version: '1.0.0' });
+  const filename = path.join(directory, 'config/bundle_node_config.yaml');
+  const config = YAML.parse(fs.readFileSync(filename, 'utf8'));
+  config.nodes = config.nodes.filter((node: { bundleNodeName: string }) => node.bundleNodeName !== 'Leaf');
+  fs.writeFileSync(filename, YAML.stringify(config));
+  try {
+    fs.writeFileSync(path.join(home, 'sources/New.md'), 'A newly captured page.');
+    fs.appendFileSync(path.join(home, 'sources/Child.md'), '\n[[New]]');
+    const scanned = await scanWithTrackingAssessment(directory, true, true);
+    expect(scanned.trackingSensitivity, JSON.stringify(scanned.changes)).toEqual(expect.objectContaining({ 'New.md': 'incomplete' }));
+    let review = await reviewSourceProposal(directory);
+    expect(review.trackingTargets['file:Start.md'].assessmentIncomplete).toBeTruthy();
+    await expect(acceptSourceProposal(directory, review.reviewToken)).rejects.toThrow('assessment is incomplete');
+    await expect(mutateBundleNode('review', { kind: 'path', value: 'Leaf.md' }, { operation: 'set-depths', outlinksDepth: 1 })).rejects.toThrow('assessment is incomplete');
+    fs.writeFileSync(release, '');
+    await expect.poll(async () => {
+      review = await reviewSourceProposal(directory);
+      return Object.values(review.trackingTargets).some(target => target.assessmentIncomplete);
+    }).toBe(false);
+    expect(review.proposal.tracking['file:Start.md']).toMatchObject({ sensitivityChange: true, needsConfirmation: true });
+    controlCommandFilter(directory, filter.id, 'rerun');
+    review = await reviewSourceProposal(directory);
+    expect(review.proposal.tracking['file:Start.md'].sensitivityChange).toBe(true);
+    await expect(acceptSourceProposal(directory, review.reviewToken)).rejects.toThrow('assessment is incomplete');
+  } finally { stopCommandFilter(directory, filter.id); stopCommandFilterProcesses(); }
+}, 15000);
+
+import { mutateBundleNode } from '../../../../src/areas/bundle/curation/services/bundleNodeOperations.js';
+import { scanWithTrackingAssessment } from '../../../../src/areas/bundle/sourcing/services/reviewWithTrackingAssessment.js';
+import { controlCommandFilter, stopCommandFilter, stopCommandFilterProcesses } from '../../../../src/shared/custom-filters/commandFilterEvaluation.js';

@@ -16,7 +16,7 @@ limitations under the License.
 
 export type CustomFilterScope = 'global' | 'bundle';
 
-export type SelectorField = 'title' | 'path' | 'content';
+export type SelectorField = 'title' | 'path' | 'content' | 'command';
 export type SelectorMatchType = 'substring' | 'regex';
 
 export interface CustomBundleNodeSelectorConfig {
@@ -24,6 +24,7 @@ export interface CustomBundleNodeSelectorConfig {
   matchType: SelectorMatchType;
   value: string;
   caseSensitive?: boolean;
+  command?: CommandSelectorConfig;
 }
 
 export interface CustomFilterConfig {
@@ -53,4 +54,48 @@ export interface GlobalCustomFiltersConfig {
 export interface BundleCustomFiltersConfig {
   filters: CustomFilterConfig[];
   version: string;
+}
+
+/** Executed directly, without shell expansion. Relative paths use cwd (default: Meadow Home). */
+export interface CommandSelectorConfig {
+  executable: string;
+  args?: string[];
+  cwd?: string;
+  batchSize?: number;
+  maxConcurrency?: number;
+  timeoutMs?: number;
+}
+
+export interface CommandFilterNodeResult {
+  state: 'pending' | 'running' | 'completed' | 'failed';
+  revision: string;
+  selected?: boolean;
+  cached?: boolean;
+  error?: string;
+}
+
+export interface CommandFilterDiagnostic {
+  nodeIds: string[];
+  message: string;
+  stderr: string;
+  stdout: string;
+  exitCode: number | null;
+}
+
+export interface CommandFilterExecution {
+  filterId: string;
+  selectorKey: string;
+  revision: string;
+  executable: string;
+  args: string[];
+  paused: boolean;
+  status: 'pending' | 'running' | 'paused' | 'completed' | 'failed';
+  total: number;
+  completed: number;
+  cached: number;
+  pending: number;
+  running: number;
+  failed: number;
+  diagnostics: CommandFilterDiagnostic[];
+  nodes: Record<string, CommandFilterNodeResult>;
 }

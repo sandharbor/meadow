@@ -16,6 +16,7 @@ import { loadTrackingRecords } from '../../../../shared/bundle-node/trackingReco
 /** Curation prepares tracking decisions without writing accepted policy or rereading live sources. */
 export async function prepareProposalTracking(directory: string, snapshotId: string, configuration: ProposalConfiguration,
   decisions: Record<string, ProposalTrackingDecision>, identities: Record<string, BundleNodeId> = {}) {
+  const epoch = commandFilterConfigurationEpoch(directory);
   const records = loadTrackingRecords(directory);
   const snapshot = loadSourceSnapshotManifest(directory, snapshotId);
   const raw = await snapshotGraph(directory, snapshot, configuration.nodes, 0, false, configuration.bundle);
@@ -29,9 +30,12 @@ export async function prepareProposalTracking(directory: string, snapshotId: str
   graph.setLinkSourceData(output.allInlinkSources, output.allOutlinkTargets);
   const filters = [...configuration.globalFilters.map(filter => ({ ...filter,
     enabled: filter.enabled && !configuration.bundle.disabledGlobalFilters?.includes(filter.id),
-  })), ...configuration.bundleFilters].filter(filter => filter.enabled && filter.actions.some(action => action.type === 'mark_sensitive'));
-  const sensitive = selectEffectivelySensitiveNodeKeys(graph, filters);
-  const sensitiveByFilter = filters.map(filter => ({ filter, keys: selectEffectivelySensitiveNodeKeys(graph, [filter]) }));
+  })), ...configuration.bundleFilters];
+  reconcileCommandFilters(directory, configuration.bundle, nodes, filters, 'proposal-candidate', epoch);
+  const sensitivityFilters = filters.filter(filter => filter.enabled && filter.actions.some(action => action.type === 'mark_sensitive'));
+  const sensitive = selectEffectivelySensitiveNodeKeys(graph, filters, true);
+  const sensitiveByFilter = sensitivityFilters.map(filter => ({ filter, keys: selectEffectivelySensitiveNodeKeys(graph, [filter], true) }));
+  const unresolved = new Set(sensitivityFilters.flatMap(filter => [...evaluateCustomFilter(graph, filter.selectors, filter.selectorApplicationCriteria, filter.id)].filter(([, answer]) => answer === undefined).map(([key]) => key)));
   const targets: Record<string, ProposalTrackingTarget> = {};
   const proposed = globalThis.structuredClone(decisions);
   const ids = new Set(configuration.nodes.map(node => String(node.bundleNodeId)));
@@ -45,6 +49,9 @@ export async function prepareProposalTracking(directory: string, snapshotId: str
     const config = id ? configsById.get(id) : undefined;
     targets[key] = { bundleNodeId: id,
       ...(node.bundleNodeKind === 'collection' || (id && requiredIds.has(id)) ? { untrackableReason: 'This node is required by the bundle.' } : {}) };
+    if (unresolved.has(key)) {
+      targets[key].assessmentIncomplete = 'Command filter sensitivity assessment is incomplete. Inspect the filter progress and diagnostics before tracking.';
+    }
     if (sensitive.has(key)) {
       targets[key].sensitivityReasons = [
         ...(node.sensitive ? ['The captured source marks this node sensitive.'] : []),
@@ -59,7 +66,7 @@ export async function prepareProposalTracking(directory: string, snapshotId: str
       if (targets[key].sensitivityChanged && !proposed[key]) proposed[key] = { track: true, origin: 'explicit', bundleNodeId: id, sensitivityChange: true };
       targets[key].sensitivity = sha256(JSON.stringify({ policy, digest: graphNodeByKey(raw, key)?.sourceFile?.digest }));
     }
-    if (!sensitive.has(key) && proposed[key]?.sensitivityChange && proposed[key].track && !proposed[key].confirmedSensitivity) delete proposed[key];
+    if (!unresolved.has(key) && !sensitive.has(key) && proposed[key]?.sensitivityChange && proposed[key].track && !proposed[key].confirmedSensitivity) delete proposed[key];
     if (proposed[key] && !proposed[key].bundleNodeId) {
       const id = targets[key].bundleNodeId ?? generateBundleNodeId(ids);
       ids.add(id);
@@ -93,3 +100,6 @@ export async function prepareProposalTracking(directory: string, snapshotId: str
   }
   return { tracking, nodes: configs, targets };
 }
+
+import { commandFilterConfigurationEpoch, reconcileCommandFilters } from '../../../../shared/custom-filters/commandFilterEvaluation.js';
+import { evaluateCustomFilter } from '../../../../../../../shared_code/utils/filterSelectors.js';

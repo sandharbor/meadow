@@ -27,6 +27,9 @@ export async function acceptSourceProposal(directory: string, token: string) {
     if (review.unresolvedIdentities.length) throw new SourcingError('Resolve page identities before accepting.');
     if (review.conflicts.length) throw new SourcingError('Resolve configuration conflicts before accepting.');
     if (review.missingRequiredEntries.length) throw new SourcingError('Repair missing required entries before accepting.');
+    if (Object.values(review.trackingTargets).some(target => target.assessmentIncomplete)) {
+      throw new SourcingError('Command filter sensitivity assessment is incomplete. Resume or rerun the filter before accepting.', 409);
+    }
     if (Object.values(review.proposal.tracking).some(decision => decision.needsConfirmation || decision.invalidated)) {
       throw new SourcingError('Review unresolved tracking decisions before accepting.');
     }

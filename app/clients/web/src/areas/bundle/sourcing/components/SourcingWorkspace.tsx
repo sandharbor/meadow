@@ -22,7 +22,7 @@ import { useIdentityDecisions } from './useIdentityDecisions.js';
 
 type PendingEdit = ProposalConfiguration | { trackingChange: Record<string, unknown> };
 
-type Comparison = SourceProposalReview & { frontierUnavailable?: string; graph: { nodes: IBundleNode[]; edges: IEdge[]; sources: Graph['sources']; allInlinkSources: Record<string, EncodedBundleNodeKey[]>; allOutlinkTargets: Record<string, EncodedBundleNodeKey[]> } };
+type Comparison = SourceProposalReview & { frontierUnavailable?: string; graph: { commandFilters?: Graph['commandFilters']; nodes: IBundleNode[]; edges: IEdge[]; sources: Graph['sources']; allInlinkSources: Record<string, EncodedBundleNodeKey[]>; allOutlinkTargets: Record<string, EncodedBundleNodeKey[]> } };
 
 /**
  * Page changes opens over the curation editor: its bar slides over the editor header, and the editor below
@@ -83,6 +83,7 @@ export function SourcingWorkspace({ bundleSlug, onClose, onAccepted, requestedPa
     reviewRef.current = compared; setReview(compared);
     const result = new Graph();
     result.sources = compared.graph.sources;
+    result.commandFilters = compared.graph.commandFilters ?? [];
     compared.graph.nodes.forEach(node => result.addNode(node));
     compared.graph.edges.forEach(edge => result.addEdge(edge));
     result.setLinkSourceData(compared.graph.allInlinkSources, compared.graph.allOutlinkTargets);
@@ -94,6 +95,19 @@ export function SourcingWorkspace({ bundleSlug, onClose, onAccepted, requestedPa
     catch (err) { setError(String(err)); }
     finally { setLoadingCount(count => count - 1); }
   }, [bundleSlug, receive]);
+  const commandWorkPending = graph?.commandFilters.some(state => state.running > 0 || (!state.paused && state.pending > 0)) ?? false;
+  useEffect(() => {
+    if (!graph?.commandFilters.length) return;
+    let active = true, refreshing = false;
+    const refresh = () => {
+      if (!active || refreshing || busyRef.current || document.hidden) return;
+      refreshing = true;
+      void receive(reviewRef.current!).catch(err => setError(String(err))).finally(() => { refreshing = false; });
+    };
+    const timer = commandWorkPending ? window.setInterval(refresh, 1500) : undefined;
+    window.addEventListener('command-filter-change', refresh);
+    return () => { active = false; if (timer) window.clearInterval(timer); window.removeEventListener('command-filter-change', refresh); };
+  }, [graph?.commandFilters.length, commandWorkPending, receive]);
   const identityDecisions = useIdentityDecisions(review?.proposal.identities ?? {}, async choices => {
     const result = await proposalRequest<SourceProposalReview>(bundleSlug, 'identities', { choices, revision: reviewRef.current?.proposal.revision });
     await receive(result, true);
@@ -229,7 +243,8 @@ export function SourcingWorkspace({ bundleSlug, onClose, onAccepted, requestedPa
     finally { setBusy(false); }
   };
   const sensitiveCount = Object.values(review?.proposal.tracking ?? {}).filter(decision => decision.needsConfirmation || decision.invalidated).length;
-  const blocked = Boolean(!review || review.unresolvedIdentities.length || review.conflicts.length || review.missingRequiredEntries.length || sensitiveCount);
+  const assessmentIncomplete = Object.values(review?.trackingTargets ?? {}).some(target => target.assessmentIncomplete);
+  const blocked = Boolean(assessmentIncomplete || !review || review.unresolvedIdentities.length || review.conflicts.length || review.missingRequiredEntries.length || sensitiveCount);
   const changes = useMemo(() => review ? acceptedChanges(review, graph, sensitiveCount) : null, [review, graph, sensitiveCount]);
   // Closing identity review reloads the graph its choices shape. While identities are unresolved it cannot close.
   const unresolvedIdentities = review?.unresolvedIdentities.length ?? 0;
@@ -264,6 +279,7 @@ export function SourcingWorkspace({ bundleSlug, onClose, onAccepted, requestedPa
     <div className={`flex min-h-0 flex-1 flex-col ${ready ? 'bg-white' : ''} ${leaving === 'bar' ? 'invisible' : ''}`}>
     {review?.proposal.newerSourcesAvailable && <p role="status" className="bg-amber-50 px-5 py-2 text-sm">Newer sources available. Acceptance keeps the current capture.</p>}
     {review && <SourceRegistryChanges changes={{ before: review.proposal.original.bundle.sources ?? [], after: review.proposal.proposed.bundle.sources ?? [], stale: false, outputPathsChange: review.proposal.original.bundle.sourceOutputLayout !== review.proposal.proposed.bundle.sourceOutputLayout }} />}
+    {assessmentIncomplete && <p role="status" className="bg-amber-50 px-5 py-2 text-sm">Command filter sensitivity assessment is incomplete. Resume or rerun the filter before accepting.</p>}
     {frontierUnavailable && <p role="status" className="bg-amber-50 px-5 py-2">{frontierUnavailable}</p>}
     {error && <p role="alert" className="bg-red-50 px-5 py-2 text-red-800">{error}</p>}
     {notice && <p role="status" className="bg-amber-50 px-5 py-2">{notice}<button className="ml-4 underline" onClick={() => setNotice(null)}>Dismiss</button></p>}

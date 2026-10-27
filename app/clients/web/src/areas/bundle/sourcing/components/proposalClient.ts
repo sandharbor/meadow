@@ -36,6 +36,11 @@ export function proposalEditorOperations(context: Context): SourcingTypeEditorOp
     if (operation.startsWith('source-comparison?') || operation.startsWith('source-image?')) {
       return apiRequest(`bundles/${encodeURIComponent(context.bundleSlug)}/sourcing/${operation.replace(/^source-/, '')}`);
     }
+    if (operation.startsWith('command-filters/')) {
+      const result = await context.mutate(operation, {});
+      window.dispatchEvent(new Event('command-filter-change'));
+      return new Response(JSON.stringify(result), { status: 200 });
+    }
     const review = context.current();
     const draft = globalThis.structuredClone(review.proposal.proposed);
     const body = (typeof options?.body === 'string' ? JSON.parse(options.body) : {}) as {
@@ -72,7 +77,7 @@ export function proposalEditorOperations(context: Context): SourcingTypeEditorOp
     }
     if (operation === 'node/track' || operation === 'node/untrack' || operation === 'track-nodes') {
       const keys = body.nodeKeys ?? (body.path ? [body.path] : []);
-      const safeKeys = operation === 'track-nodes' ? keys.filter(key => !review.trackingTargets[key]?.sensitivity) : keys;
+      const safeKeys = operation === 'track-nodes' ? keys.filter(key => !review.trackingTargets[key]?.sensitivity && !review.trackingTargets[key]?.assessmentIncomplete) : keys;
       const result = await context.mutate('tracking', { nodeKeys: safeKeys, track: operation !== 'node/untrack', confirmSensitive: body.includeSensitive === true });
       const outcomes = keys.map(key => {
         const decision = result.proposal.tracking[key];

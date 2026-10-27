@@ -35,6 +35,7 @@ export interface SelectorBase {
 export interface INormalBundleNodeSelector extends SelectorBase {
   type: 'normal';
   searchInput?: string;
+  unresolved?: (graph: Graph) => Set<EncodedBundleNodeKey>;
 }
 
 export type IBundleNodeSelector = INormalBundleNodeSelector;
@@ -324,8 +325,18 @@ export const calculateOptimalGapThreshold = (
  */
 export const createCustomBundleNodeSelector = (
   config: CustomBundleNodeSelectorConfig,
-  onError?: (message: string, error: unknown) => void
+  onError?: (message: string, error: unknown) => void,
+  filterId = '',
 ): INormalBundleNodeSelector => {
+  if (config.field === 'command') {
+    const key = commandSelectorKey(config, filterId);
+    return {
+      id: `command-${key}`, name: 'Command', type: 'normal',
+      unresolved: graph => new Set(graph.getAllNodes().filter(node => node.sourceReview?.kind !== 'departing' && node.sourceReview?.kind !== 'frontier' && node.commandFilterResults?.[key]?.state !== 'completed').map(node => node.bundleNodeKey)),
+      select: graph => new Set(graph.getAllNodes().filter(node => node.commandFilterResults?.[key]?.selected === true
+        && node.commandFilterResults[key].state === 'completed').map(node => node.bundleNodeKey)),
+    };
+  }
   const selectFunction = (graph: Graph) => {
     const selectedNodeKeys = new Set<EncodedBundleNodeKey>();
 
@@ -397,3 +408,34 @@ export const createCustomBundleNodeSelector = (
 };
 
 import type { EncodedBundleNodeKey } from '../../contracts/types/shared/bundle-graph/bundleNodeKey.js';
+
+/** The same authored selector always addresses the same runtime decision slot. */
+export function commandSelectorKey(selector: CustomBundleNodeSelectorConfig, filterId = ''): string {
+  const command = selector.command;
+  return JSON.stringify([filterId, command?.executable, command?.args ?? [], command?.cwd ?? null,
+    command?.batchSize ?? 4, command?.maxConcurrency ?? 4, command?.timeoutMs ?? 120000]);
+}
+
+/** Three-valued matching preserves known answers through unions/intersections. */
+export function evaluateCustomFilter(
+  graph: Graph, selectors: CustomBundleNodeSelectorConfig[], criterion: 'union' | 'intersection', filterId = '',
+): Map<EncodedBundleNodeKey, boolean | undefined> {
+  const prepared = selectors.map(selector => selector.field === 'command'
+    ? { key: commandSelectorKey(selector, filterId) }
+    : { selected: createCustomBundleNodeSelector(selector).select(graph) });
+  return new Map(graph.getAllNodes().map(node => {
+    const answers = prepared.map(selector => selector.key !== undefined
+      ? node.commandFilterResults?.[selector.key]?.state === 'completed' ? node.commandFilterResults[selector.key].selected : undefined
+      : selector.selected!.has(node.bundleNodeKey));
+    const answer = criterion === 'union'
+      ? answers.includes(true) ? true : answers.includes(undefined) ? undefined : false
+      : answers.includes(false) ? false : answers.includes(undefined) ? undefined : true;
+    return [node.bundleNodeKey, answer];
+  }));
+}
+
+export function customFilterNodeMatch(
+  node: IBundleNode, selectors: CustomBundleNodeSelectorConfig[], criterion: 'union' | 'intersection', graph: Graph, filterId = '',
+): boolean | undefined {
+  return evaluateCustomFilter(graph, selectors, criterion, filterId).get(node.bundleNodeKey);
+}

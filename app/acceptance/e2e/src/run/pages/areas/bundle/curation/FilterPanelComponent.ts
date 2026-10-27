@@ -109,6 +109,19 @@ export class FilterPanelComponent {
       .first();
   }
 
+  get commandFilterProgress() { return this.page.locator('[data-command-filter]'); }
+
+  async chooseCommandSelector() {
+    const dialog = this.page.getByRole('dialog', { name: 'Create Custom Filter', exact: true });
+    await dialog.locator('select').filter({ has: this.page.locator('option[value="command"]') }).selectOption('command');
+  }
+
+  async addCommandSensitivityAction() {
+    const dialog = this.page.getByRole('dialog', { name: 'Create Custom Filter', exact: true });
+    await dialog.getByRole('button', { name: 'Add Action', exact: true }).click();
+    await dialog.locator('select').filter({ has: this.page.locator('option[value="mark_sensitive"]') }).nth(1).selectOption('mark_sensitive');
+  }
+
   async clickAddCustomFilter() {
     await this.expect(this.addCustomFilterBtn).toBeVisible();
     await this.addCustomFilterBtn.click();

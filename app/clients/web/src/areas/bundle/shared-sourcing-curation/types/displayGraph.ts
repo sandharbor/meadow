@@ -24,7 +24,7 @@ import { calculateHighlightDetail } from '../utils/highlightDetailCalculators';
 import {
   FilterExpression,
   createDefaultFilterExpression,
-  evaluateFilterExpression,
+  evaluatePossibleFilterExpression,
   getActiveFilterExpressionTerms
 } from './filterExpression';
 
@@ -258,23 +258,32 @@ export class DisplayGraph {
     const activeTerms = getActiveFilterExpressionTerms(this._filters);
     const activeFilterIds = new Set(activeTerms.map(term => term.filterId));
     const filterMatches = new Map<string, Set<EncodedBundleNodeKey>>();
+    const filterUnknowns = new Map<string, Set<EncodedBundleNodeKey>>();
 
     this._filters.forEach(filter => {
       if (!activeFilterIds.has(filter.id) || filterMatches.has(filter.id)) return;
       const selectedNodeKeys = filter.bundleNodeSelectors.map((selector: IBundleNodeSelector) => selector.select(this._graph));
+      const unknowns = filter.bundleNodeSelectors.map(selector => selector.unresolved?.(this._graph) ?? new Set<EncodedBundleNodeKey>());
+      const unknown = new Set<EncodedBundleNodeKey>();
       const matches = new Set<EncodedBundleNodeKey>();
       this._displayNodes.forEach(displayNode => {
         const isSelected = filter.selectorApplicationCriteria === 'union'
           ? selectedNodeKeys.some((nodeKeys: Set<EncodedBundleNodeKey>) => nodeKeys.has(displayNode.bundleNodeKey))
           : selectedNodeKeys.every((nodeKeys: Set<EncodedBundleNodeKey>) => nodeKeys.has(displayNode.bundleNodeKey));
+        const answers = selectedNodeKeys.map((keys, index) => unknowns[index].has(displayNode.bundleNodeKey) ? undefined : keys.has(displayNode.bundleNodeKey));
+        const answer = filter.selectorApplicationCriteria === 'union'
+          ? answers.includes(true) ? true : answers.includes(undefined) ? undefined : false
+          : answers.includes(false) ? false : answers.includes(undefined) ? undefined : true;
+        if (answer === undefined) unknown.add(displayNode.bundleNodeKey);
         if (isSelected) matches.add(displayNode.bundleNodeKey);
       });
       filterMatches.set(filter.id, matches);
+      filterUnknowns.set(filter.id, unknown);
     });
 
     const expression = this._filterExpression || createDefaultFilterExpression(activeTerms);
     const allBundleNodeKeys = new Set(this._displayNodes.keys());
-    const visibleBundleNodeKeys = evaluateFilterExpression(expression, activeTerms, filterMatches, allBundleNodeKeys);
+    const visibleBundleNodeKeys = evaluatePossibleFilterExpression(expression, activeTerms, filterMatches, filterUnknowns, allBundleNodeKeys);
 
     // Reset node presentation and apply the visibility expression.
     this._displayNodes.forEach(displayNode => {

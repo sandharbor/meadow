@@ -21,6 +21,7 @@ import {
   appendFilterExpressionGroup,
   createDefaultFilterExpression,
   evaluateFilterExpression,
+  evaluatePossibleFilterExpression,
   isDefaultFilterExpression,
   moveFilterExpressionNode,
   moveFilterExpressionNodeOnto,
@@ -290,5 +291,28 @@ describe('filter expression language', () => {
     expect(alphaFirstAgain).toMatchObject({
       children: [{ filterId: 'alpha' }, { filterId: 'beta' }]
     });
+  });
+});
+
+
+describe('incomplete command filter expressions', () => {
+  it('preserves known restrictions from other filters while retaining possible matches', () => {
+    const terms = [solo('alpha'), hide('beta')];
+    const unknown = new Map<string, Set<string>>([['alpha', new Set(['c', 'd'])]]);
+    const expression = createDefaultFilterExpression(terms);
+    expect([...evaluatePossibleFilterExpression(expression, terms, matches, unknown, allPages)].sort()).toEqual(['a', 'd']);
+  });
+  it('propagates uncertainty through ordered differences and hidden terms', () => {
+    const expression: FilterExpression = { type: 'group', id: 'difference', operator: 'difference', children: [
+      { type: 'filter', filterId: 'alpha', mode: 'solo' }, { type: 'filter', filterId: 'beta', mode: 'solo' },
+    ] };
+    expect([...evaluatePossibleFilterExpression(expression, [solo('alpha'), solo('beta')], matches, new Map<string, Set<string>>([['alpha', new Set(['d'])], ['beta', new Set(['a'])]]), allPages)].sort()).toEqual(['a', 'd']);
+  });
+  it('agrees with the existing expression evaluator when every result is known', () => {
+    for (const operator of ['union', 'intersection', 'difference'] as const) {
+      const terms = [solo('alpha'), hide('beta')];
+      const expression: FilterExpression = { type: 'group', id: 'known', operator, children: terms.map(term => ({ type: 'filter', ...term })) };
+      expect(evaluatePossibleFilterExpression(expression, terms, matches, new Map(), allPages)).toEqual(evaluateFilterExpression(expression, terms, matches, allPages));
+    }
   });
 });
