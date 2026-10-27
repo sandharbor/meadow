@@ -28,6 +28,7 @@ import BundleLogsModal from './BundleLogsModal';
 import { AppShellComponentSinglePagePreviewCallout as SinglePagePreviewCallout, useAppShellStateSinglePagePreviewCallout as useSinglePagePreviewCallout } from '../../../areas/bundle/review/exported.js';
 import { AppShellComponentCreateOrEditBundleModal as CreateOrEditBundleModal } from '../../../areas/bundles/exported.js';
 import PreviewPublishModal, { type PreviewModalTab } from './PreviewPublishModal';
+import { useSensitivityReaffirmation } from './useSensitivityReaffirmation';
 import type { AppShellTypeOpenKnowledgeFormatSettings as OpenKnowledgeFormatSettings } from '../../../areas/bundle/generation/exported.js';
 import { useAppShellStateFilterState as useFilterState, appShellQueryCreateUntrackedNodeSelector as createUntrackedNodeSelector } from '../../../areas/bundle/curation/exported.js';
 import type { BlacklistShortcutUndo } from '../../../../../../contracts/types/shared/sourcing/blacklistReview.js';
@@ -76,9 +77,6 @@ const BundleEditor: React.FC = () => {
   }, [editorInstance]);
   useEffect(() => logger.debug(`[editor-mode] editor ${editorInstance} sourcing=${sourcingOpen}`), [editorInstance, sourcingOpen]);
   const [awaitingAcceptedGraph, setAwaitingAcceptedGraph] = useState(false);
-  const [sensitivityReviewTrigger, setSensitivityReviewTrigger] = useState(0);
-  const [sensitivityCount, setSensitivityCount] = useState(0);
-  const assessedSlug = useRef<string>();
   const [sourceReviewTrigger, setSourceReviewTrigger] = useState(0);
   const [blacklistUndo, setBlacklistUndo] = useState<BlacklistShortcutUndo | null>(null);
   const [blacklistNotice, setBlacklistNotice] = useState<string | null>(null);
@@ -1017,33 +1015,11 @@ const BundleEditor: React.FC = () => {
     return untrackedNodeKeys.size;
   }, [graph]);
 
-  // Handler to close modal and enable untracked pages filter in solo mode
-  useEffect(() => {
-    if (!slug || !configLoaded || hasDraftChanges) return;
-    let active = true;
-    const assess = async (openReview: boolean) => {
-      try {
-        const response = await apiRequest(`bundles/${encodeURIComponent(slug)}/curation/changes-since-tracking`);
-        if (!response.ok || !active) return;
-        const result = await response.json() as { reviewRequest?: { findings: Array<{ code: string }> } | null };
-        if (!active) return;
-        const count = result.reviewRequest?.findings.filter(finding => finding.code === 'sensitivity-reaffirmation-required').length ?? 0;
-        setSensitivityCount(count);
-        if (count && openReview && !sourcingOpen) setSensitivityReviewTrigger(value => value + 1);
-      } catch (error) { logger.error('Could not assess changes since tracking', error); }
-    };
-    const firstVisit = assessedSlug.current !== slug;
-    assessedSlug.current = slug;
-    void assess(firstVisit);
-    const policyChanged = (event: Event) => {
-      if ((event as CustomEvent<string>).detail !== slug) return;
-      reloadCustomFilters();
-      void assess(true);
-    };
-    window.addEventListener('meadow-filter-policy-changed', policyChanged);
-    return () => { active = false; window.removeEventListener('meadow-filter-policy-changed', policyChanged); };
-  }, [slug, configLoaded, hasDraftChanges, sourcingOpen, reloadCustomFilters]);
+  const { sensitivityCount, sensitivityReviewTrigger, setSensitivityReviewTrigger } = useSensitivityReaffirmation({
+    slug, enabled: configLoaded && !hasDraftChanges, sourcingOpen, onPolicyChanged: reloadCustomFilters,
+  });
 
+  // Handler to close modal and enable untracked pages filter in solo mode
   const handleShowUntrackedNodes = () => {
     // Enable untracked pages filter in solo mode with labels turned on
     const updatedFilters = filters.map(filter => {
