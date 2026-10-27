@@ -55,10 +55,12 @@ test("parent records worker death and late teardown failure with the authoritati
     outputDir: path.join(directory, "playwright-output"),
     reporter: [[fileURLToPath(new URL("../../src/run/artifactReporter.ts", import.meta.url)), { outputDir: artifacts }]],
   })};`);
+  // A full Playwright run is slow on a busy machine, as when quickcheck's other
+  // checks compile Rust alongside it; the limit only catches a run that hangs.
   const result = spawnSync(process.execPath, [
     fileURLToPath(import.meta.resolve("@playwright/test/cli")), "test", "--config", configuration,
-  ], { cwd: directory, encoding: "utf8", timeout: 30_000 });
-  assert.ifError(result.error);
+  ], { cwd: directory, encoding: "utf8", timeout: 180_000 });
+  if (result.error) assert.fail(`${result.error.message}\n${result.stdout}${result.stderr}`);
   assert.equal(result.status, 1, result.stdout + result.stderr);
 
   for (const [title, reason] of [[workerTitle, /SIGKILL/], [lateTitle, /failure after artifact fixture teardown/]] as const) {

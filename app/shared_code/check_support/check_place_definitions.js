@@ -7,19 +7,18 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { AREA_CALLERS } from './area_boundary_policy.js';
+import { walkBoundarySources } from './area_boundary_check.js';
 
-const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+// Real paths, as the source walk reports them.
+const appRoot = fs.realpathSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..'));
 const placesRoot = path.join(appRoot, 'contracts/places');
 const ownerDirectories = [path.join(placesRoot, 'areas'), path.join(placesRoot, 'shared')];
 const violations = [];
 
+// Source files only, as the boundary check sees them: build output such as
+// Rust's target folders changes while other checks compile in parallel.
 function walk(directory, visit) {
-  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-    if (['node_modules', 'dist', '.git'].includes(entry.name)) continue;
-    const full = path.join(directory, entry.name);
-    if (entry.isDirectory()) walk(full, visit);
-    else if (/\.(ts|tsx|js|mjs)$/.test(entry.name)) visit(full);
-  }
+  for (const file of walkBoundarySources(directory)) visit(file);
 }
 
 function imports(file) {
