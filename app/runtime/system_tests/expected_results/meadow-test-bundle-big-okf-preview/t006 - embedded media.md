@@ -87,7 +87,7 @@ enableOpenDedicatedPage: false
 
 ## Audio, video, and PDF
 
-Obsidian embeds audio and video with a player. These are a quarter-second tone and a fifth of a second of green, kept tiny on purpose.
+Obsidian embeds audio and video with a player. These are a quarter-second tone and two seconds of green, kept small on purpose. The video is displayed at 320 by 180 pixels so its player controls are usable.
 
 ![t006 --- short tone.mp3](/t006/t006%20---%20short%20tone.mp3)
 

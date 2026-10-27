@@ -31,7 +31,7 @@ const sections = scenarioSections({
   setup: { type: 'setup', text: conceptText`Establish the starting state: the big bundle is open in the list view.` },
   previewPdfInList: { type: 'test', text: conceptText`Hover the PDF's document icon in the list. The hover preview draws the PDF's first page.` },
   openBundlePreview: { type: 'test', text: conceptText`Open the bundle preview.` },
-  inspectMediaEmbeds: { type: 'test', text: conceptText`Inspect the audio and video players and the two PDF viewers. Each viewer draws the PDF with its links in place.` },
+  inspectMediaEmbeds: { type: 'test', text: conceptText`Inspect the audio player, play the video with usable player controls, and inspect the two PDF viewers. Each viewer draws the PDF with its links in place.` },
   openPdfFullscreen: { type: 'test', text: conceptText`Open the PDF viewer whose Meadow container adds a fullscreen button, then close it.` },
   followPdfLink: { type: 'test', text: conceptText`Follow the PDF's link to the page in this bundle.` },
   openPdfPageFromBacklink: { type: 'test', text: conceptText`Open the PDF's own page from that page's backlink. It draws the PDF at full width.` },
@@ -78,6 +78,8 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '123ca774-77c
 
     await sourceCommand(() => generatedBundle.media.expectAudioPlayer("short%20tone.mp3"));
     await sourceCommand(() => generatedBundle.media.expectVideoPlayer("short%20clip.mp4"));
+    await sourceCommand(() => addKeyFrame(bundleGeneration));
+    await sourceCommand(() => checkpoint("video plays with usable controls"));
     await sourceCommand(() => generatedBundle.media.expectPdfEmbedsRendered(2));
     await sourceCommand(() => generatedBundle.media.expectPdfLink(pageLinkedFromPdf));
     await sourceCommand(() => generatedBundle.media.expectPdfLink("https://example.com/"));

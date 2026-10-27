@@ -486,7 +486,19 @@ export class GeneratedBundleMedia {
   }
 
   async expectVideoPlayer(srcFragment: string) {
-    await this.expect(this.root.locator(`video[controls][src*="${srcFragment}"]`)).toHaveCount(1);
+    const video = this.root.locator(`video[controls][src*="${srcFragment}"]`);
+    await this.expect(video).toHaveCount(1);
+    await video.scrollIntoViewIfNeeded();
+    await this.expect(video).toBeVisible();
+    await this.expect.poll(async () => (await video.boundingBox())?.width ?? 0).toBeGreaterThanOrEqual(300);
+    await this.expect.poll(async () => (await video.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(150);
+    await video.evaluate(async element => {
+      const player = element as HTMLVideoElement;
+      player.muted = true;
+      await player.play();
+    });
+    await this.expect.poll(() => video.evaluate(element => (element as HTMLVideoElement).currentTime)).toBeGreaterThan(0);
+    await video.evaluate(element => (element as HTMLVideoElement).pause());
   }
 
   /**
