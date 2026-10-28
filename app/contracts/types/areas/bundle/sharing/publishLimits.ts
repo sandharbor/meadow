@@ -20,16 +20,14 @@ limitations under the License.
 
 /**
  * Maximum file size allowed for publishing (in bytes).
- * Files larger than this will cause the publish to fail.
- * 
- * 4MB limit chosen because:
- * - S3 ETags for files <= 5MB are simple MD5 hashes (allows efficient diff comparison)
- * - Most HTML/CSS/JS/image files are well under this limit
- * - Large files like videos should be hosted separately
+ * Documents and other artifacts above this limit must be excluded or resized.
  */
-export const MAX_PUBLISHABLE_FILE_SIZE_BYTES = 4 * 1024 * 1024; // 4MB
+export const MAX_PUBLISHABLE_FILE_SIZE_BYTES = 20 * 1024 * 1024;
+
+/** Eligible images are compressed to this smaller target before publishing. */
+export const MAX_PUBLISHABLE_IMAGE_SIZE_BYTES = 4 * 1024 * 1024;
 
 /**
  * Human-readable version of the limit for display in UI
  */
-export const MAX_PUBLISHABLE_FILE_SIZE_DISPLAY = '4MB';
+export const MAX_PUBLISHABLE_FILE_SIZE_DISPLAY = '20 MB';

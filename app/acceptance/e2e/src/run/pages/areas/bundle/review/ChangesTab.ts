@@ -329,9 +329,9 @@ export class ChangesTab {
     await this.expect(folderLabel.locator('..').locator('span').first()).toHaveText('▼');
   }
 
-  /** Assert that no file matching the given name appears in the changes list. */
+  /** Match the exact filename so an asset and its generated HTML page differ. */
   async expectFileNotInChanges(filename: string) {
-    const match = this.page.locator(`span:has-text("${filename}")`);
+    const match = this.page.getByText(filename, { exact: true });
     await this.expect(match).toHaveCount(0);
   }
 

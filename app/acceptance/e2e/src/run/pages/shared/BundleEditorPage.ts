@@ -498,6 +498,13 @@ export class BundleEditorPage {
     ]);
   }
 
+  async clickBlacklistAll() {
+    const button = this.page.getByRole('button', { name: 'Blacklist All', exact: true });
+    await this.expect(button).toBeEnabled();
+    await button.click();
+    await this.sourceReview.expectReadyToAccept();
+  }
+
   /** Track every reachable page from the graph view, leaving sensitive pages for individual review. */
   async trackAllReachablePages() {
     await this.switchToGraphView();
