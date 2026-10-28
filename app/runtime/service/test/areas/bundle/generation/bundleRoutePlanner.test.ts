@@ -50,13 +50,23 @@ describe('bundle route planning', () => {
     expect(plan.routes.get(duplicateB.bundleNodeId)).toBe('Same.html');
   });
 
-  it('uses source-file routes for interactive SVG documents', () => {
+  it('uses format-qualified page routes for SVG documents', () => {
     const entry = { bundleNodeKind: 'file', bundleNodeId: id('eeeeee000000'), bundleNodeName: 'Entry', sourceGraphSubdirectory: '', fileType: 'md', listType: 'whitelist' } as const;
     const svg = { bundleNodeKind: 'file', bundleNodeId: id('ssssss000000'), bundleNodeName: 'Linked diagram', sourceGraphSubdirectory: 'images', fileType: 'svg', listType: 'whitelist' } as const;
 
     const plan = planBundleRoutes([entry, svg], { entryBundleNodeId: entry.bundleNodeId });
 
-    expect(plan.routes.get(svg.bundleNodeId)).toBe('images/Linked diagram.svg');
+    expect(plan.routes.get(svg.bundleNodeId)).toBe('images/Linked diagram.svg.html');
+  });
+
+  it('gives same-title notes, images, audio, and video distinct pages', () => {
+    const types = ['md', 'png', 'mp3', 'mp4'] as const;
+    const configs: BundleNodeConfig[] = types.map((fileType, index) => ({
+      bundleNodeKind: 'file', bundleNodeId: id(String(index + 1).repeat(12)),
+      bundleNodeName: 'Same', sourceGraphSubdirectory: 'Media', fileType, listType: 'whitelist',
+    }));
+    const plan = planBundleRoutes(configs, { entryBundleNodeId: configs[0].bundleNodeId });
+    expect([...plan.routes.values()]).toEqual(['Media/Same.html', 'Media/Same.png.html', 'Media/Same.mp3.html', 'Media/Same.mp4.html']);
   });
 
   it('uses reserved routes for generated tag pages and relocates colliding source content', () => {

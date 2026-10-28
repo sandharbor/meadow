@@ -18,6 +18,8 @@ import React from 'react';
 import { apiUrl } from '../../../../shared/utils/apiClient';
 import { AuthenticatedImage } from '../../../../shared/components/AuthenticatedImage';
 import { ExcalidrawThumbnail } from './ExcalidrawThumbnail';
+import { VideoThumbnail } from './VideoThumbnail';
+import { isVideoFileType } from '../../../../../../../shared_code/utils/fileTypeUtils.js';
 import { PdfThumbnail } from './PdfThumbnail';
 
 // Shared constants for hover image dimensions
@@ -53,7 +55,9 @@ const ImageHoverPreview: React.FC<ImageHoverPreviewProps> = ({
       }}
       className="bg-gray-800 text-white text-xs rounded px-2 py-1 shadow-lg"
     >
-      {isPdf ? (
+      {isVideoFileType(imagePath.split(/[?#]/)[0].split('.').pop() ?? '') ? (
+        <VideoThumbnail sourcePath={imagePath} alt={title} style={{ width: HOVER_IMAGE_WIDTH - 16, height: HOVER_IMAGE_HEIGHT, margin: '0 auto 4px' }} />
+      ) : isPdf ? (
         <PdfThumbnail
           pdfSourcePath={imagePath}
           alt={title}

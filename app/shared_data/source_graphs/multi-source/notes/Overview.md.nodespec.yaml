@@ -23,6 +23,7 @@ nodespecs:
       htmlRenderedLinks:
         mainSectionLinks:
           - relativeLinkPath: diagram.svg
+          - relativeLinkPath: diagram.svg.html
         footerSectionBacklinks:
           - relativeLinkPath: Start.html
             backlinkContexts:
@@ -30,11 +31,11 @@ nodespecs:
                 embeddedLinks:
                   - linkName: research overview
                     linkRelativePath: ../research/Overview.html
-          - relativeLinkPath: diagram.svg
+          - relativeLinkPath: diagram.svg.html
             backlinkContexts: []
           - relativeLinkPath: ../research/Report.html
             backlinkContexts: []
-          - relativeLinkPath: ../research/diagram.svg
+          - relativeLinkPath: ../research/diagram.svg.html
             backlinkContexts: []
   - bundle: multi-source-mixed
     sourcing:
@@ -60,6 +61,7 @@ nodespecs:
       htmlRenderedLinks:
         mainSectionLinks:
           - relativeLinkPath: diagram.svg
+          - relativeLinkPath: diagram.svg.html
         footerSectionBacklinks:
           - relativeLinkPath: Start.html
             backlinkContexts:
@@ -67,11 +69,11 @@ nodespecs:
                 embeddedLinks:
                   - linkName: research overview
                     linkRelativePath: ../research/Overview.html
-          - relativeLinkPath: diagram.svg
+          - relativeLinkPath: diagram.svg.html
             backlinkContexts: []
           - relativeLinkPath: ../research/Report.html
             backlinkContexts: []
-          - relativeLinkPath: ../research/diagram.svg
+          - relativeLinkPath: ../research/diagram.svg.html
             backlinkContexts: []
   - bundle: multi-source-omitted
     sourcing:

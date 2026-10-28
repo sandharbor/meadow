@@ -21,6 +21,14 @@ export type ImageFileType = (typeof IMAGE_FILE_TYPES)[number];
 export const AUDIO_FILE_TYPES = ['mp3', 'wav', 'm4a', '3gp', 'flac', 'ogg', 'oga', 'opus'] as const;
 export const VIDEO_FILE_TYPES = ['mp4', 'webm', 'ogv', 'mov', 'mkv'] as const;
 
+export const isAudioFileType = (fileType: string): boolean =>
+  (AUDIO_FILE_TYPES as readonly string[]).includes(fileType.toLowerCase());
+export const isVideoFileType = (fileType: string): boolean =>
+  (VIDEO_FILE_TYPES as readonly string[]).includes(fileType.toLowerCase());
+/** Files displayed on a dedicated media page, keeping the original asset separately. */
+export const isStandaloneMediaFileType = (fileType: string): boolean =>
+  (isImageFileType(fileType) && fileType !== 'excalidraw') || isAudioFileType(fileType) || isVideoFileType(fileType);
+
 /** Audio and video extensions with leading dots, for path matching */
 export const AUDIO_VIDEO_EXTENSIONS = [...AUDIO_FILE_TYPES, ...VIDEO_FILE_TYPES].map((ext) => `.${ext}` as const);
 

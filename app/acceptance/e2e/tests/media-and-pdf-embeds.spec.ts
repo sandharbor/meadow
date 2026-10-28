@@ -29,9 +29,11 @@ PDF. Follow the PDF's link to a page in the bundle, and reach the PDF's own page
 that page's backlink and from the embed.`);
 const sections = scenarioSections({
   setup: { type: 'setup', text: conceptText`Establish the starting state: the big bundle is open in the list view.` },
+  previewVideo: { type: 'test', text: conceptText`Audio and video have distinct colored graph glyphs. Hover the video icon to see a decoded frame.` },
   previewPdfInList: { type: 'test', text: conceptText`Hover the PDF's document icon in the list. The hover preview draws the PDF's first page.` },
   openBundlePreview: { type: 'test', text: conceptText`Open the bundle preview.` },
   inspectMediaEmbeds: { type: 'test', text: conceptText`Inspect the audio player, play the video with usable player controls, and inspect the two PDF viewers. Each viewer draws the PDF with its links in place.` },
+  dedicatedMediaPages: { type: 'test', text: conceptText`Open audio and video pages from their action menus and an image page from its hover controls. Dedicated pages retain backlinks and offer fullscreen and download.` },
   openPdfFullscreen: { type: 'test', text: conceptText`Open the PDF viewer whose Meadow container adds a fullscreen button, then close it.` },
   followPdfLink: { type: 'test', text: conceptText`Follow the PDF's link to the page in this bundle.` },
   openPdfPageFromBacklink: { type: 'test', text: conceptText`Open the PDF's own page from that page's backlink. It draws the PDF at full width.` },
@@ -54,6 +56,16 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '123ca774-77c
     await sourceCommand(() => editor.switchToListView());
     await sourceCommand(() => checkpoint("list view loaded"));
     return { editor, previewModal, generatedBundle };
+  });
+
+  await test.step(sections.steps.previewVideo, async () => {
+    await sourceCommand(() => editor.switchToGraphView());
+    await sourceCommand(() => editor.expectMediaGraphIndicators());
+    await sourceCommand(() => editor.switchToListView());
+    await sourceCommand(() => editor.hoverListViewVideoIcon('t006 --- short clip'));
+    await sourceCommand(() => addKeyFrame(bundleCuration));
+    await sourceCommand(() => checkpoint('video hover shows a captured frame'));
+    await sourceCommand(() => page.mouse.move(0, 0));
   });
 
   await test.step(sections.steps.previewPdfInList, async () => {
@@ -87,6 +99,35 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '123ca774-77c
     await sourceCommand(() => checkpoint("media players and PDF viewers rendered"));
   });
 
+  await test.step(sections.steps.dedicatedMediaPages, async () => {
+    for (const media of [
+      { fragment: 'short%20tone.mp3', title: 't006 --- short tone', menu: true },
+      { fragment: 'short%20clip.mp4', title: 't006 --- short clip', menu: true },
+      { fragment: 'meadow.png', title: 't006 --- meadow', menu: false },
+      { fragment: 'meadow-flower.svg', title: 't006 --- meadow-flower', menu: false },
+    ]) {
+      if (!media.menu) {
+        await sourceCommand(() => generatedBundle.media.openEmbeddedImageFullscreen(media.fragment));
+        await sourceCommand(() => addKeyFrame(bundleGeneration));
+        await sourceCommand(() => checkpoint('embedded image fullscreen'));
+        await sourceCommand(() => generatedBundle.media.closeMediaFullscreen());
+      }
+      await sourceCommand(() => generatedBundle.media.openEmbeddedMediaPage(media.fragment, media.menu));
+      await sourceCommand(() => generatedBundle.expectHeading(media.title));
+      await sourceCommand(() => generatedBundle.media.expectBacklink('t006 - embedded media'));
+      await sourceCommand(() => generatedBundle.media.expectDedicatedMediaActions(media.fragment));
+      await sourceCommand(() => addKeyFrame(bundleGeneration));
+      await sourceCommand(() => checkpoint(`${media.title} page has backlinks and media actions`));
+      await sourceCommand(() => generatedBundle.media.openDedicatedMediaFullscreen());
+      await sourceCommand(() => checkpoint(`${media.title} fullscreen is above page navigation`));
+      await sourceCommand(() => generatedBundle.media.closeMediaFullscreen());
+      const downloaded = await sourceCommand(() => generatedBundle.media.downloadMedia());
+      expect(downloaded).toContain(decodeURIComponent(media.fragment));
+      await sourceCommand(() => generatedBundle.clickPageLink('t006 - embedded media'));
+      await sourceCommand(() => generatedBundle.expectHeading('t006 - embedded media'));
+    }
+  });
+
   await test.step(sections.steps.openPdfFullscreen, async () => {
     await sourceCommand(() => generatedBundle.media.openPdfFullscreen());
     await sourceCommand(() => addKeyFrame(pdf));
@@ -104,6 +145,9 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '123ca774-77c
     await sourceCommand(() => generatedBundle.clickPageLink("t006 --- document with a link"));
     await sourceCommand(() => generatedBundle.expectHeading("t006 --- document with a link"));
     await sourceCommand(() => generatedBundle.media.expectStandalonePdfRendered());
+    await sourceCommand(() => generatedBundle.media.expectDedicatedMediaActions('document%20with%20a%20link.pdf'));
+    await sourceCommand(() => generatedBundle.media.openDedicatedMediaFullscreen());
+    await sourceCommand(() => generatedBundle.media.closeMediaFullscreen());
     await sourceCommand(() => addKeyFrame(pdf));
     await sourceCommand(() => checkpoint("the PDF's own page drew the PDF"));
   });

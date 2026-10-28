@@ -95,6 +95,8 @@ export interface StaticAssetNames {
   excalidrawCss: string;
   excalidrawVendorJs: string;
   excalidrawJs: string;
+  mediaCss?: string;
+  mediaJs?: string;
   svgCss?: string;
   svgJs?: string;
   pdfCss?: string;

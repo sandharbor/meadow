@@ -17,14 +17,15 @@ limitations under the License.
 import path from 'path';
 import fs from 'fs';
 import type { BundleNodeConfig } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
-import { IMAGE_SIZE_PATTERN, imageSizeStyle, linkTextToLinkInfo, normalizePageTitle, calculateRelativePath, escapeHtmlAttribute, readLinkedNote } from './shared.js';
+import { IMAGE_SIZE_PATTERN, linkTextToLinkInfo, normalizePageTitle, calculateRelativePath, escapeHtmlAttribute, readLinkedNote } from './shared.js';
 import type { LinkInfo, PageNameToPage } from './types.js';
 import { BundleConfig } from '../../../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
 import type { LinkResolvedInfo } from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode.js';
 import { encodePathForUrl } from '../../../../../../../shared_code/utils/urlUtils.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
 import { IMAGE_FILE_TYPES, MEDIA_FILE_TYPES } from './constants.js';
-import { AUDIO_FILE_TYPES, VIDEO_FILE_TYPES } from '../../../../../../../shared_code/utils/fileTypeUtils.js';
+import { mediaFrameHtml } from './mediaPresentation.js';
+import { isStandaloneMediaFileType } from '../../../../../../../shared_code/utils/fileTypeUtils.js';
 import { pageLinkFragment } from './pageAnchors.js';
 import type { BundleRouteTable } from './bundleRoutePlanner.js';
 
@@ -50,7 +51,7 @@ interface ResolvedTarget {
  *     Use when the consumer needs to fetch the source — e.g. the image
  *     branch building `<img src>` URLs or `data-meadow-excalidraw-src`.
  *
- * For asset types the two modes are equivalent.
+ * Media page links and source-file embeds deliberately use different destinations.
  */
 export function resolveTrackedLinkHref(args: {
   resolved: LinkResolvedInfo;
@@ -87,11 +88,11 @@ export function resolveTrackedLinkHref(args: {
   }
 
   let urlFilename: string;
-  if (targetUrlMode === 'rendered-page' && (targetExt === 'md' || targetExt === 'html' || targetExt === 'excalidraw' || targetExt === 'pdf')) {
+  if (targetUrlMode === 'rendered-page' && (targetExt === 'md' || targetExt === 'html' || targetExt === 'excalidraw' || targetExt === 'pdf' || isStandaloneMediaFileType(targetExt))) {
     const normalizedTitle = bundleConfig && bundleSlug
       ? normalizePageTitle(targetTitle, bundleConfig, bundleSlug)
       : targetTitle;
-    urlFilename = `${normalizedTitle}.html`;
+    urlFilename = isStandaloneMediaFileType(targetExt) ? `${normalizedTitle}.${targetExt}.html` : `${normalizedTitle}.html`;
   } else {
     urlFilename = targetFilename;
   }
@@ -148,22 +149,6 @@ function isEmbeddedExcalidrawFileTarget(resolved: LinkResolvedInfo): boolean {
 function isResolvedImageLikeTarget(resolved: LinkResolvedInfo | undefined): boolean {
   const ext = resolved ? resolvedTargetExtension(resolved) : null;
   return !!ext && ((IMAGE_FILE_TYPES as readonly string[]).includes(ext) || MEDIA_FILE_TYPES.includes(ext));
-}
-
-/**
- * The player for an embedded audio or video file at `src`, or null for any
- * other file. A video takes a size, as an image does.
- */
-export function mediaEmbedHtml(fileName: string, src: string, fragment?: string, size?: string): string | null {
-  const fileType = fileName.slice(fileName.lastIndexOf('.') + 1).toLowerCase();
-  const suffix = fragment ? `#${fragment}` : '';
-  if ((AUDIO_FILE_TYPES as readonly string[]).includes(fileType)) {
-    return `<audio controls src="${src}${suffix}"></audio>`;
-  }
-  if ((VIDEO_FILE_TYPES as readonly string[]).includes(fileType)) {
-    return `<video controls src="${src}${suffix}"${imageSizeStyle(size)}></video>`;
-  }
-  return null;
 }
 
 /**
@@ -710,25 +695,16 @@ export function linkOrImageHtml(
         : `${drawingHtmlName}.html`)
     );
 
-    // A wikilink without `!` is a link, as in Obsidian: a drawing or PDF
-    // opens its page, and any other file opens the file itself.
+    // A wikilink without `!` opens the dedicated page for included media.
     if (!embed) {
       const [target, ...alias] = linkText.replace(/\\\|/g, '|').split('|');
       const text = alias.length > 0 ? alias.join('|') : target.slice(target.lastIndexOf('/') + 1).split('#')[0];
-      const pdfPath = imageSourceDir ? `${imageSourceDir}/${imageName}` : imageName;
-      const href = isExcalidraw
-        ? drawingPageHref()
-        : imageName.toLowerCase().endsWith('.pdf')
-          ? resolveTrackedLinkHref({
-            resolved: { link_resolved_target_path: pdfPath, link_resolved_target_directory: imageSourceDir },
-            hostPageDirectory: currentPageDirectory,
-            hostOutputDirectory: currentOutputDirectory,
-            bundleNodeConfigs,
-            bundleConfig,
-            bundleSlug,
-            routeTable,
-          }) ?? encodedImagePath
-          : encodedImagePath;
+      const mediaPath = imageSourceDir ? `${imageSourceDir}/${imageName}` : imageName;
+      const href = isExcalidraw ? drawingPageHref() : resolveTrackedLinkHref({
+        resolved: { link_resolved_target_path: mediaPath, link_resolved_target_directory: imageSourceDir },
+        hostPageDirectory: currentPageDirectory, hostOutputDirectory: currentOutputDirectory,
+        bundleNodeConfigs, bundleConfig, bundleSlug, routeTable,
+      }) ?? encodedImagePath;
       return `<a href="${href}">${escapeHtmlAttribute(text)}</a>`;
     }
 
@@ -817,13 +793,17 @@ export function linkOrImageHtml(
         ...mediaEmbedOptions,
       };
       const styleAttr = frameWidth ? ` style="max-width: ${frameWidth}px"` : '';
+      const svgPageHref = resolveTrackedLinkHref({
+        resolved: resolvedImageInfo ?? { link_resolved_target_path: imageSourceDir ? `${imageSourceDir}/${imageName}` : imageName, link_resolved_target_directory: imageSourceDir },
+        hostPageDirectory: currentPageDirectory, hostOutputDirectory: currentOutputDirectory, bundleNodeConfigs, bundleConfig, bundleSlug, routeTable,
+      }) ?? encodedImagePath;
       const title = imageName.replace(/\.svg$/i, '');
       const titleAttr = escapeHtmlAttribute(`Open ${title}`);
 
       if (!embedOptions.enableEmbeddedLinks &&
           !embedOptions.enableFullscreenButton &&
           embedOptions.enableOpenDedicatedPage) {
-        return `<a class="meadow-svg-embed-link" href="${encodedImagePath}"${styleAttr} title="${titleAttr}"><img src="${encodedImagePath}" alt="${originalImageFilename}" /><span class="meadow-svg-open-icon" aria-hidden="true">⤢</span></a>`;
+        return `<a class="meadow-svg-embed-link" href="${svgPageHref}"${styleAttr} title="${titleAttr}"><img src="${encodedImagePath}" alt="${originalImageFilename}" /><span class="meadow-svg-open-icon" aria-hidden="true">⤢</span></a>`;
       }
 
       const contentHtml = embedOptions.enableEmbeddedLinks
@@ -834,7 +814,7 @@ export function linkOrImageHtml(
         ? '<button type="button" class="meadow-svg-fullscreen-btn" aria-label="Open SVG fullscreen" title="Open fullscreen">⛶</button>'
         : '';
       const openHtml = embedOptions.enableOpenDedicatedPage
-        ? `<a class="meadow-svg-open-icon meadow-svg-open-link" href="${encodedImagePath}" title="${titleAttr}" aria-label="${titleAttr}">⤢</a>`
+        ? `<a class="meadow-svg-open-icon meadow-svg-open-link" href="${svgPageHref}" title="${titleAttr}" aria-label="${titleAttr}">⤢</a>`
         : '';
       return `<span class="meadow-svg-embed-frame${fullscreenClass}"${styleAttr}>${contentHtml}${fullscreenButton}${openHtml}</span>`;
     }
@@ -855,8 +835,14 @@ export function linkOrImageHtml(
       });
     }
 
-    return mediaEmbedHtml(imageName, encodedImagePath, linkInfo.fragment, sizeConstraint)
-      ?? `<img src="${encodedImagePath}"${imageSizeStyle(sizeConstraint)} alt="${originalImageFilename}" />`;
+    const pageHref = resolveTrackedLinkHref({
+      resolved: resolvedImageInfo ?? { link_resolved_target_path: imageSourceDir ? `${imageSourceDir}/${imageName}` : imageName, link_resolved_target_directory: imageSourceDir },
+      hostPageDirectory: currentPageDirectory, hostOutputDirectory: currentOutputDirectory,
+      bundleNodeConfigs, bundleConfig, bundleSlug, routeTable,
+    });
+    return mediaFrameHtml({ fileType: imageName.split('.').pop()!.toLowerCase(),
+      src: `${encodedImagePath}${linkInfo.fragment ? `#${linkInfo.fragment}` : ''}`,
+      alt: originalImageFilename, size: sizeConstraint, pageHref: mediaEmbedOptions?.enableOpenDedicatedPage === false ? null : pageHref });
   }
 
   if (linkInfo.type === 'page') {

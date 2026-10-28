@@ -1,0 +1,29 @@
+/* Shared media actions, usable with a pointer, keyboard, or touch. */
+.meadow-media-frame { position: relative; display: inline-block; max-width: 100%; vertical-align: middle; }
+.meadow-media-frame > img, .meadow-media-frame > video { display: block; max-width: 100%; object-fit: contain; }
+.meadow-media-frame > audio { display: block; max-width: 100%; }
+.meadow-media-audio { padding-top: 36px; }
+.meadow-media-toolbar { position: absolute; top: 6px; right: 6px; display: flex; gap: 4px; z-index: 2; }
+.meadow-media-toolbar button, .meadow-media-toolbar a { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; padding: 5px; border: 1px solid #cbd5e1; border-radius: 5px; background: rgba(255,255,255,.96); color: #334155; font: 20px/1 system-ui; text-decoration: none; cursor: pointer; }
+.meadow-media-toolbar svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; }
+.meadow-media-toolbar :focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.meadow-media-image:not(.meadow-media-page):not(.is-fullscreen) .meadow-media-toolbar { opacity: 0; transition: opacity .15s; }
+.meadow-media-image:hover .meadow-media-toolbar, .meadow-media-image:focus-within .meadow-media-toolbar { opacity: 1 !important; }
+.meadow-media-action-text { display: none; }
+.meadow-media-menu { position: absolute; top: 34px; right: 0; padding: 4px; border: 1px solid #cbd5e1; border-radius: 6px; background: white; box-shadow: 0 4px 16px #0002; }
+.meadow-media-menu[hidden] { display: none; }
+.meadow-media-menu a { width: auto; min-width: 140px; gap: 8px; border: 0; font: 14px system-ui; white-space: nowrap; }
+.meadow-media-menu .meadow-media-action-text { display: inline; }
+.meadow-media-page { display: block; width: 100%; padding-top: 44px; min-height: 80px; }
+.meadow-media-page > img, .meadow-media-page > video { margin: auto; max-height: 80vh; width: auto; height: auto; }
+.meadow-media-frame.is-fullscreen { position: fixed; inset: 0; z-index: 10000; display: flex; align-items: center; justify-content: center; flex-direction: column; box-sizing: border-box; width: 100% !important; height: 100% !important; max-width: none !important; margin: 0; padding: 48px 16px 16px; background: #111827; color: white; }
+.meadow-media-frame.is-fullscreen > img, .meadow-media-frame.is-fullscreen > video { width: 100% !important; height: 100% !important; max-width: 100%; max-height: calc(100vh - 64px); object-fit: contain; }
+.meadow-media-frame.is-fullscreen > .meadow-pdf-page, .meadow-media-frame.is-fullscreen > .meadow-excalidraw-page { width: 100%; height: 100%; overflow: auto; background: white; }
+body.meadow-media-fullscreen-open { overflow: hidden; }
+@media (hover: none) { .meadow-media-image .meadow-media-toolbar { opacity: 1 !important; } }
+
+.meadow-media-page > iframe { width: 100%; height: 70vh; border: 0; background: white; }
+.meadow-media-frame.is-fullscreen > iframe { width: 100%; height: 100%; }
+
+html[data-meadow-excalidraw-thumbnail="true"] .meadow-media-toolbar { display: none; }
+html[data-meadow-excalidraw-thumbnail="true"] .meadow-media-page { padding: 0; }

@@ -20,7 +20,7 @@ import { fileURLToPath } from 'url';
 import { performance } from 'perf_hooks';
 import { setTimeout as delay, setImmediate as yieldToEventLoop } from 'timers/promises';
 import { Page } from './page.js';
-import { renderPageToHtml, renderExcalidrawPageToHtml, renderPdfPageToHtml, renderGeneratedBundleNodeToHtml, renderSimpleBacklinksHtml, CollectedSrsCard } from './htmlGenerator.js';
+import { renderPageToHtml, renderExcalidrawPageToHtml, renderPdfPageToHtml, renderMediaPageToHtml, renderGeneratedBundleNodeToHtml, renderSimpleBacklinksHtml, CollectedSrsCard } from './htmlGenerator.js';
 import { buildExcalidrawClientEmbeddedFileData, buildExcalidrawClientLinkData, copyExcalidrawEmbeddedFiles } from './linkModificationService.js';
 import { calculateRelativePath, normalizePageTitle } from './shared.js';
 import {
@@ -94,7 +94,7 @@ import {
   SPACED_REPETITION_ASSETS_DIRECTORY,
 } from '../customizationAssets.js';
 import { planBundleRoutes, routeForBundleNode } from './bundleRoutePlanner.js';
-import { canonicalPageFilename, isImageFileType } from '../../../../../../../shared_code/utils/fileTypeUtils.js';
+import { canonicalPageFilename, isImageFileType, isStandaloneMediaFileType } from '../../../../../../../shared_code/utils/fileTypeUtils.js';
 import { sourceFilenameIn } from '../../../../shared/bundle-node/sourceFileNames.js';
 import { rewriteNativeHtmlUrls } from './nativeHtml.js';
 import { emitVersionAwarenessAssets } from '../versioning/versionAwarenessAssets.js';
@@ -806,23 +806,16 @@ export async function generateHtmlForBundle(
     }
   }
 
-  // Interactive SVG embed assets. Ordinary SVG `<img>` embeds do not need
-  // them, so only copy the runtime when a tracked Markdown page actually
-  // contains a Meadow container directive for an SVG.
-  const bundleHasSvgDirective = Object.values(bundleNodeConfs).some(conf => {
-    if (conf.bundleNodeKind !== 'file' || conf.fileType !== 'md' || conf.listType !== 'whitelist') {
-      return false;
+  if (Object.values(bundleNodeConfs).some(conf => conf.listType === 'whitelist' &&
+    (isStandaloneMediaFileType(conf.fileType ?? '') || conf.fileType === 'pdf' || conf.fileType === 'excalidraw'))) {
+    for (const asset of ['meadow-media.css', 'meadow-media.js']) {
+      fs.copyFileSync(path.join(sharedDirectory, asset), path.join(assetsDirectory, asset));
     }
-    const sourceFilename = canonicalPageFilename(conf.bundleNodeName, conf.fileType);
-    const sourcePath = conf.sourceGraphSubdirectory
-      ? path.join(renderContentDirectory, ...conf.sourceGraphSubdirectory.split('/'), sourceFilename)
-      : path.join(renderContentDirectory, sourceFilename);
-    if (!fs.existsSync(sourcePath)) return false;
-    const content = fs.readFileSync(sourcePath, 'utf8');
-    const directives = content.match(/:::meadow\b[\s\S]*?:::/gi) ?? [];
-    return directives.some(directive => /!\[\[[^\]]+\.svg(?:\|[^\]]*)?\]\]/i.test(directive));
-  });
-  if (bundleHasSvgDirective) {
+  }
+
+  // Dedicated SVG pages and directed embeds share link forwarding and presentation assets.
+  const bundleHasSvg = Object.values(bundleNodeConfs).some(conf => conf.fileType === 'svg' && conf.listType === 'whitelist');
+  if (bundleHasSvg) {
     for (const asset of ['meadow-svg.css', 'meadow-svg.js']) {
       const src = path.join(sharedDirectory, asset);
       const dst = path.join(assetsDirectory, asset);
@@ -1065,7 +1058,7 @@ export async function generateHtmlForBundle(
     // name are told apart. Titles are labels, never identities.
     for (const resolved of Object.values(allLinkResolutionMaps.get(pageKey) ?? {})) {
       const target = resolved.link_resolved_target_path;
-      if (!target || !/\.(?:md|html|excalidraw|pdf)$/i.test(target)) continue;
+      if (!target) continue;
       const targetKey = fileKeyByGraphPath.get(target.replace(/^\//, ''));
       if (!targetKey) continue;
       const inlinks = inverseLinks[targetKey] ??= [];
@@ -1085,6 +1078,10 @@ export async function generateHtmlForBundle(
   const traversablePdfPageKeys = Object.keys(bundleNodeConfs).filter(key => {
     const conf = bundleNodeConfs[key];
     return conf.bundleNodeKind === 'file' && conf.listType === 'whitelist' && conf.fileType === 'pdf' && traversablePageKeys.has(key);
+  });
+  const traversableMediaPageKeys = Object.keys(bundleNodeConfs).filter(key => {
+    const conf = bundleNodeConfs[key];
+    return conf.bundleNodeKind === 'file' && conf.listType === 'whitelist' && isStandaloneMediaFileType(conf.fileType) && traversablePageKeys.has(key);
   });
   const traversableHtmlPageKeys = Object.keys(bundleNodeConfs).filter(key => {
     const conf = bundleNodeConfs[key];
@@ -1112,6 +1109,7 @@ export async function generateHtmlForBundle(
     ...traversableHtmlPageKeys,
     ...traversableExcalidrawPageKeys,
     ...traversablePdfPageKeys,
+    ...traversableMediaPageKeys,
   ];
   const folderNavigationPages: FolderNavigationPage[] = generationOptions.folderNavigationEnabled
     ? [...new Map(traversableRenderablePageKeys
@@ -1217,6 +1215,7 @@ export async function generateHtmlForBundle(
     + htmlRenderOrder.length
     + excalidrawRenderOrder.length
     + traversablePdfPageKeys.length
+    + traversableMediaPageKeys.length
     + traversableAssetPageKeys.length;
   let renderedOrSkipped = 0;
   let lastPercent = -1;
@@ -1326,13 +1325,13 @@ export async function generateHtmlForBundle(
         && childConfig.fileType !== 'excalidraw'
         ? copyStructuralFileAsset(childConfig)
         : undefined;
-      const targetRoute = directAssetRoute ?? pageRoute;
+      const targetRoute = childConfig.fileType && (isStandaloneMediaFileType(childConfig.fileType) || childConfig.fileType === 'pdf') ? pageRoute : directAssetRoute ?? pageRoute;
       const href = encodePathForUrl(calculateRelativePath(outputDirectory, targetRoute));
       const imageLike = childConfig.bundleNodeKind === 'file' && isImageFileType(childConfig.fileType);
       const preview = imageLike && childConfig.fileType === 'excalidraw'
         ? `<span class="structural-child-preview structural-child-preview-excalidraw"><iframe src="${href}?meadow-thumbnail=1" title="Preview of ${escapeHtml(child.bundleNodeName)}" loading="lazy" tabindex="-1" aria-hidden="true"></iframe></span>`
         : imageLike && directAssetRoute
-          ? `<span class="structural-child-preview structural-child-preview-image"><img src="${href}" alt="" loading="lazy"></span>`
+          ? `<span class="structural-child-preview structural-child-preview-image"><img src="${encodePathForUrl(calculateRelativePath(outputDirectory, directAssetRoute))}" alt="" loading="lazy"></span>`
           : '';
       const fileTypeAttr = childConfig.bundleNodeKind === 'file'
         ? ` data-file-type="${escapeHtml(childConfig.fileType)}"`
@@ -1704,6 +1703,32 @@ export async function generateHtmlForBundle(
     await finishStandalonePage(pageKey, htmlPath, outputRoute);
   };
 
+  const renderStandaloneMediaPage = async (pageKey: string) => {
+    const conf = bundleNodeConfs[pageKey];
+    const subdir = conf.sourceGraphSubdirectory || '';
+    const route = routeForBundleNode(conf, routePlan.routes);
+    const outputDirectory = outputDirectoryForRoute(route);
+    const outputFolder = path.join(generatedHtmlDirectory, outputDirectory);
+    fs.mkdirSync(outputFolder, { recursive: true });
+    const filename = canonicalPageFilename(conf.bundleNodeName, conf.fileType);
+    const mediaHref = encodePathForUrl(calculateRelativePath(outputDirectory, subdir ? `${subdir}/${filename}` : filename));
+    const htmlPath = renderMediaPageToHtml({
+      outputFolder, outputFilename: path.posix.basename(route, '.html'),
+      pageTitle: normalizePageTitle(conf.bundleNodeName, bundleConfig, bundleSlug || undefined),
+      currentPageDirectory: outputDirectory, mediaHref, fileType: conf.fileType!,
+      breadcrumbHtml: standaloneBreadcrumbHtml(pageKey, outputDirectory),
+      backlinksHtml: generationOptions.backlinksEnabled ? renderSimpleBacklinksHtml(conf.bundleNodeName, subdir, inverseLinks,
+        bundleNodeConfigsArrayForLinks, bundleConfig, bundleSlug || undefined, routePlan.routes, outputDirectory, conf.fileType) : '',
+      staticAssetNames, bundleConfig, bundleSlug: bundleSlug || undefined, searchEnabled: generationOptions.searchEnabled,
+      folderNavigation: generationOptions.folderNavigationEnabled ? { storageKey: folderNavigationStorageKey, defaultOpen: generationOptions.folderNavigationDefaultOpen } : undefined,
+    });
+    emittedOutputs.claim(route, conf.bundleNodeId, 'page');
+    await finishStandalonePage(pageKey, htmlPath, route);
+  };
+  if (startPageKey && traversableMediaPageKeys.includes(startPageKey) && !options.shouldCancel?.()) {
+    await renderStandaloneMediaPage(startPageKey);
+  }
+
   if (startPageKey && traversablePdfPageKeys.includes(startPageKey) && !options.shouldCancel?.()) {
     await renderStandalonePdfPage(startPageKey);
   }
@@ -1892,6 +1917,12 @@ export async function generateHtmlForBundle(
     await renderStandalonePdfPage(pageKey);
   }
   recordStageTiming('render_pdf_pages', renderPdfStart, { page_count: traversablePdfPageKeys.length });
+
+  for (const pageKey of traversableMediaPageKeys) {
+    if (pageKey === startPageKey && startPageRenderedEmitted) continue;
+    if (options.shouldCancel?.()) break;
+    await renderStandaloneMediaPage(pageKey);
+  }
 
   if (generationOptions.spacedRepetitionEnabled && allCollectedSrsCards.length > 0) {
     timeSync('bundle.generation.stage', { ...timingLabels, stage: 'write_srs_manifest', card_count: allCollectedSrsCards.length }, () => {

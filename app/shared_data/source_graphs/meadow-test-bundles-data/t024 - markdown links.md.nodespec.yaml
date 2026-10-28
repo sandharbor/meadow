@@ -24,18 +24,18 @@ nodespecs:
     generation:
       htmlRenderedLinks:
         mainSectionLinks:
-          - relativeLinkPath: t024/t024 ---- linked page.html
+          - relativeLinkPath: https://example.com/badge
+          - relativeLinkPath: https://example.com/formatted
+          - relativeLinkPath: https://example.com/titled
+          - relativeLinkPath: https://img.shields.io/badge/meadow-test-green.svg
           - relativeLinkPath: t024/deeper/t024 ---- deep page.html
           - relativeLinkPath: t024/t024 ---- inlink only.html
-          - relativeLinkPath: t024/t024 ---- test image.png
-          - relativeLinkPath: https://example.com/formatted
-          - relativeLinkPath: https://example.com/badge
-          - relativeLinkPath: https://img.shields.io/badge/meadow-test-green.svg
-          - relativeLinkPath: https://example.com/titled
           - relativeLinkPath: t024/t024 ---- linked page.html
           - relativeLinkPath: t024/t024 ---- linked page.html
           - relativeLinkPath: t024/t024 ---- linked page.html
           - relativeLinkPath: t024/t024 ---- linked page.html
+          - relativeLinkPath: t024/t024 ---- linked page.html
+          - relativeLinkPath: t024/t024 ---- test image.png.html
         footerSectionBacklinks:
           - relativeLinkPath: main page.html
             backlinkContexts:

@@ -31,12 +31,13 @@ nodespecs:
     generation:
       htmlRenderedLinks:
         mainSectionLinks:
-          - relativeLinkPath: Overview.html
           - relativeLinkPath: ../research/Overview.html
-          - relativeLinkPath: Same/Inside.html
-          - relativeLinkPath: Frontier.html
           - relativeLinkPath: ../research/Report.html#findings
           - relativeLinkPath: ../research/diagram.svg
+          - relativeLinkPath: ../research/diagram.svg.html
+          - relativeLinkPath: Frontier.html
+          - relativeLinkPath: Overview.html
+          - relativeLinkPath: Same/Inside.html
         footerSectionBacklinks:
           - relativeLinkPath: ../research/Overview.html
             backlinkContexts:
@@ -82,12 +83,13 @@ nodespecs:
     generation:
       htmlRenderedLinks:
         mainSectionLinks:
-          - relativeLinkPath: Overview.html
           - relativeLinkPath: ../research/Overview.html
-          - relativeLinkPath: Same/Inside.html
-          - relativeLinkPath: Frontier.html
           - relativeLinkPath: ../research/Report.html#findings
           - relativeLinkPath: ../research/diagram.svg
+          - relativeLinkPath: ../research/diagram.svg.html
+          - relativeLinkPath: Frontier.html
+          - relativeLinkPath: Overview.html
+          - relativeLinkPath: Same/Inside.html
         footerSectionBacklinks:
           - relativeLinkPath: ../research/Overview.html
             backlinkContexts:

@@ -21,7 +21,7 @@ nodespecs:
             backlinkContexts:
               - seeInContextLinkRelativePath: ../t006 - embedded media.html
                 embeddedLinks: []
-          - relativeLinkPath: t006 --- meadow-flower.svg
+          - relativeLinkPath: t006 --- meadow-flower.svg.html
             backlinkContexts: []
   - bundle: meadow-test-bundle-small
     sourcing:

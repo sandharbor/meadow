@@ -29,8 +29,8 @@ nodespecs:
       htmlRenderedLinks:
         mainSectionLinks:
           - relativeLinkPath: ../notes/Start.html
+          - relativeLinkPath: ../notes/diagram.svg.html
           - relativeLinkPath: Same/Inside.html
-          - relativeLinkPath: ../notes/diagram.svg
         footerSectionBacklinks:
           - relativeLinkPath: ../notes/Start.html
             backlinkContexts:
@@ -84,7 +84,7 @@ nodespecs:
       htmlRenderedLinks:
         mainSectionLinks:
           - relativeLinkPath: ../notes/Start.html
-          - relativeLinkPath: ../notes/diagram.svg
+          - relativeLinkPath: ../notes/diagram.svg.html
         footerSectionBacklinks:
           - relativeLinkPath: ../notes/Start.html
             backlinkContexts:

@@ -25,6 +25,10 @@
     {{#if include_excalidraw}}
     <link rel="stylesheet" href="{{ assets_prefix }}{{ excalidraw_css }}">
     {{/if}}
+    {{#if include_media}}
+    <link rel="stylesheet" href="{{ assets_prefix }}{{ media_css }}">
+    <script src="{{ assets_prefix }}{{ media_js }}" defer></script>
+    {{/if}}
     {{#if include_svg_embed}}
     <link rel="stylesheet" href="{{ assets_prefix }}{{ svg_css }}">
     {{/if}}

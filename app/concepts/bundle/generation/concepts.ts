@@ -54,6 +54,8 @@ export const htmlGeneration = define({
   id: id.htmlGeneration, name: "HTML Generation", kind: "process", searchFacet: true, appAreaIds: [id.bundleGeneration, id.bundleReview],
   definition: text`The process that turns a curated source graph into browsable HTML bundle output.`,
   mechanics: [
+    text`Audio, video, and images have dedicated media pages with breadcrumbs and backlinks. Embedded players offer Go to page in a media actions menu; image hover controls offer fullscreen and Go to page. Dedicated media pages, PDFs, and drawings offer fullscreen and download. Their source files remain available as assets, with format-qualified media page routes distinguishing same-title files.`,
+    text`Curation distinguishes audio and video with colored node glyphs. Hovering a video captures a representative frame without playing sound.`,
     text`It renders pages and assets, applies ${link(id.hooks, "Generation Hooks")}, and prepares output for preview or export.`,
     text`A bundle that adopts multi-source output places source pages and assets beneath sources/<canonical-name>/<relative-path>. One mapping governs rendered routes, backlinks, transclusions, navigation, exports, and generated formats; generated collection pages and internal assets retain their own namespaces. Existing single-source paths remain unchanged until adoption, and returning to one source keeps the adopted layout. Source-qualified links are rewritten to portable destinations in each format.`,
     text`The selected preview page becomes readable as soon as it renders, including after customization, while remaining pages continue rendering. Live preview reads do not install or save a partial version; the complete generated output is installed atomically.`,
@@ -71,7 +73,7 @@ export const htmlNode = define({
 export const images = define({
   id: id.images, name: "Images", kind: "artifact", searchFacet: true, appAreaIds: area,
   definition: text`Image assets included by generated bundle pages.`,
-  mechanics: [text`Oversized images can be compressed automatically to satisfy output constraints.`],
+  mechanics: [text`Oversized images can be compressed automatically to satisfy output constraints. Embedded images expose fullscreen and Go to page controls on hover or keyboard focus; their dedicated pages include backlinks and a download action.`],
   interplay: text`${link(id.htmlGeneration, "HTML Generation")} copies or transforms them while retaining page references.`,
 });
 

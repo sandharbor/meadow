@@ -21,7 +21,7 @@ import { Graph } from '../../../../../../../contracts/types/shared/bundle-graph/
 import { isUntrackableFrontierNode } from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode';
 import { IFilter } from '../types/filters';
 import { DisplayGraph, DisplayNode, MatchingFilter } from '../types/displayGraph';
-import { isImageFileType } from '../../../../../../../shared_code/utils/fileTypeUtils';
+import { isImageFileType, isVideoFileType } from '../../../../../../../shared_code/utils/fileTypeUtils';
 import { sourceGraphPath } from '../../../../../../../shared_code/utils/bundleSourceUtils';
 import ImageHoverPreview, { HOVER_IMAGE_WIDTH } from './ImageHoverPreview';
 import BundleNodeHoverCard from './BundleNodeHoverCard';
@@ -846,7 +846,7 @@ const GraphVis: React.FC<GraphVisProps> = ({
                   if (ctm) {
                     const screenPt = pt.matrixTransform(ctm);
                     // Images, drawings, and PDFs preview on hover; a PDF shows its first page.
-                    const isImage = isImageFileType(page.fileType) || page.fileType === 'pdf';
+                    const isImage = isImageFileType(page.fileType) || page.fileType === 'pdf' || isVideoFileType(page.fileType);
                     // Excalidraw drawings live as `<title>.excalidraw.md` on disk;
                     // the hover preview component recognises that URL suffix and
                     // routes it through the vendored Excalidraw renderer instead

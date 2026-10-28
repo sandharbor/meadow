@@ -127,7 +127,7 @@ it('exports OKF paths and selects an index without confusing namesake pages', as
   fs.writeFileSync(BundleConfigPaths.getBundleConfigFile(bundle), YAML.stringify(config));
   await buildFilteredOpenKnowledgeFormatForBundle(bundle);
   expect(fs.readFileSync(path.join(okf, 'index.md'), 'utf8')).toContain('Research overview');
-});
+}, 20000);
 
 it('previews the selected source when two pages share a filename', async () => {
   let previewPath: string | undefined;

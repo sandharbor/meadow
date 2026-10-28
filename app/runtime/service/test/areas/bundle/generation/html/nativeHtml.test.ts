@@ -49,6 +49,34 @@ describe('rewriteNativeHtmlUrls', () => {
     expect(rewritten).toBe('<a href="../Home.html">Home</a><link href="shared.css"><a href="Second.html">Second</a>');
   });
 
+  it('links to a media page while the player fetches the original file', () => {
+    const media: BundleNodeConfig = { bundleNodeKind: 'file', bundleNodeName: 'clip', fileType: 'mp4',
+      sourceGraphSubdirectory: 'media', bundleNodeId: 'dddddddddddd', listType: 'whitelist' };
+    const rewritten = rewriteNativeHtmlUrls({
+      content: '<a href="media/clip.mp4">Clip</a><video src="media/clip.mp4"></video>',
+      currentOutputDirectory: '', bundleNodeConfigs: [...configs, media], bundleConfig,
+      linkResolutionMap: { 'media/clip.mp4': { link_resolved_target_directory: 'media', link_resolved_target_path: 'media/clip.mp4' } },
+      routeTable: new Map([['dddddddddddd', 'media/clip.mp4.html']]),
+    });
+    expect(rewritten).toBe('<a href="media/clip.mp4.html">Clip</a><video src="media/clip.mp4"></video>');
+  });
+
+  it('preserves SVG image and use asset references while routing navigation anchors', () => {
+    const image: BundleNodeConfig = { bundleNodeKind: 'file', bundleNodeName: 'photo', fileType: 'png',
+      bundleNodeId: 'eeeeeeeeeeee', listType: 'whitelist' };
+    const svg: BundleNodeConfig = { ...image, bundleNodeName: 'icon', fileType: 'svg', bundleNodeId: 'ffffffffffff' };
+    const rewritten = rewriteNativeHtmlUrls({
+      content: '<svg><a href="photo.png">Photo</a><image href="photo.png"/><use href="icon.svg"/></svg>',
+      currentOutputDirectory: '', bundleNodeConfigs: [...configs, image, svg], bundleConfig,
+      linkResolutionMap: {
+        'photo.png': { link_resolved_target_directory: '', link_resolved_target_path: 'photo.png' },
+        'icon.svg': { link_resolved_target_directory: '', link_resolved_target_path: 'icon.svg' },
+      },
+      routeTable: new Map([['eeeeeeeeeeee', 'photo.png.html'], ['ffffffffffff', 'icon.svg.html']]),
+    });
+    expect(rewritten).toBe('<svg><a href="photo.png.html">Photo</a><image href="photo.png"/><use href="icon.svg"/></svg>');
+  });
+
   it('leaves external URLs alone and neutralizes resolved untracked links', () => {
     const content = '<a href="https://example.com">External</a><a href="./private.md">Private</a>';
     const rewritten = rewriteNativeHtmlUrls({

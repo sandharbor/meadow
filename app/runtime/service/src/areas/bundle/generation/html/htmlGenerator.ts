@@ -52,7 +52,6 @@ import { BundleConfig } from '../../../../../../../contracts/types/shared/bundle
 import { BundleNodeConfig } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import {
   altTextAndSize,
-  imageSizeStyle,
   readLinkedNote,
   normalizePageTitle,
   getMdContent,
@@ -65,13 +64,13 @@ import {
 import {
   isImageLikeWikiLink,
   linkOrImageHtml as linkOrImageHtmlService,
-  mediaEmbedHtml,
   pdfViewerAttributes,
   resolvedPdfEmbedHtml,
   resolveTrackedLinkHref,
   type MediaEmbedOptions,
 } from './linkModificationService.js';
 import type { LinkResolvedInfo } from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode.js';
+import { mediaFrameHtml } from './mediaPresentation.js';
 import { IMAGE_FILE_TYPES, KNOWN_FILE_TYPES, MEDIA_FILE_TYPES } from './constants.js';
 import { encodePathForUrl } from '../../../../../../../shared_code/utils/urlUtils.js';
 import { HooksLoader } from '../utils/hooksLoader.js';
@@ -439,15 +438,12 @@ export function createNoteRenderer(context: NoteRenderContext) {
         if (fileType === 'pdf') {
           return resolvedPdfEmbedHtml({ ...pdfHosting, pdfPath: imageTargetPath, src: encodedPath, fragment, allLinkResolutionMaps });
         }
-        return mediaEmbedHtml(fileName, encodedPath, fragment, size)
-          ?? `<img src="${encodedPath}" alt="${alt}"${imageSizeStyle(size)}${titleAttr} />`;
-      } else if (fileType === 'pdf') {
-        // A link to a PDF goes to its page, which shows it.
+        return mediaFrameHtml({ fileType, src: `${encodedPath}${fragment ? `#${fragment}` : ''}`, alt, size, title,
+          pageHref: resolveTrackedLinkHref({ ...pdfHosting, resolved: resolvedInfo }) });
+      } else {
+        // A media link opens its dedicated page.
         const pageHref = resolveTrackedLinkHref({ ...pdfHosting, resolved: resolvedInfo });
         return `<a href="${pageHref ?? encodedPath}"${titleAttr}>${text}</a>`;
-      } else {
-        // Link to image [text](path)
-        return `<a href="${encodedPath}"${titleAttr}>${text}</a>`;
       }
     }
 
@@ -927,6 +923,8 @@ export function renderPageToHtml(
     include_callouts: includeCallouts,
     include_excalidraw: includeExcalidraw,
     include_svg_embed: includeSvgEmbed,
+    include_media: htmlContent.includes('meadow-media-frame'),
+    ...mediaTemplateAssets(staticAssetNames),
     include_pdf: includePdf,
     style_css: styleCss,
     javascript_js: javascriptJs,
@@ -1081,7 +1079,7 @@ export function renderSimpleBacklinksHtml(
   bundleSlug?: string,
   routeTable?: RenderOptions['routeTable'],
   currentOutputDirectory: string = currentPageDirectory,
-  fileType: 'excalidraw' | 'pdf' = 'excalidraw',
+  fileType: string = 'excalidraw',
 ): string {
   const list = inverseLinks[makeBundleNodeKey(pageTitle, fileType, currentPageDirectory)] ?? [];
   const sorted = sortedBacklinks(list, bundleNodeConfigs);
@@ -1148,7 +1146,11 @@ export function renderExcalidrawPageToHtml(args: StandalonePageArgs & {
     : '';
   const bodyHtml = `<div class="meadow-excalidraw-page" data-meadow-excalidraw-src="${drawingMdHref}"${linksAttr}${untrackedAttr}${embeddedFilesAttr}${untrackedEmbeddedFilesAttr}><span class="meadow-excalidraw-loading">Loading drawing…</span></div>`;
 
-  return writeStandalonePage({ ...args, bodyHtml, includeExcalidraw: true });
+  return writeStandalonePage({ ...args, bodyHtml: mediaFrameHtml({ fileType: 'excalidraw', src: drawingMdHref, standalone: true, contentHtml: bodyHtml }), includeExcalidraw: true });
+}
+
+function mediaTemplateAssets(names?: import('./types.js').StaticAssetNames) {
+  return { media_css: names?.mediaCss || 'meadow-media.css', media_js: names?.mediaJs || 'meadow-media.js' };
 }
 
 /** The template names of the PDF viewer's assets, as hashed in `_mw_assets`. */
@@ -1232,6 +1234,11 @@ function writeStandalonePage(args: StandalonePageArgs & {
     include_mermaid: false,
     include_callouts: false,
     include_excalidraw: args.includeExcalidraw ?? false,
+    include_svg_embed: bodyHtml.includes('meadow-svg-embed'),
+    svg_css: staticAssetNames?.svgCss || 'meadow-svg.css',
+    svg_js: staticAssetNames?.svgJs || 'meadow-svg.js',
+    include_media: bodyHtml.includes('meadow-media-frame'),
+    ...mediaTemplateAssets(staticAssetNames),
     include_pdf: args.includePdf ?? false,
     ...pdfTemplateAssets(staticAssetNames),
     style_css: styleCss,
@@ -1282,7 +1289,12 @@ export function renderPdfPageToHtml(args: StandalonePageArgs & {
 }): string {
   const attributes = pdfViewerAttributes(args.pdfHref, { tracked: args.clientLinkMap, untracked: args.clientUntrackedLinks });
   const bodyHtml = `<div class="meadow-pdf-embed meadow-pdf-page"${attributes}><span class="meadow-pdf-loading">Loading PDF…</span></div>`;
-  return writeStandalonePage({ ...args, bodyHtml, includePdf: true });
+  return writeStandalonePage({ ...args, bodyHtml: mediaFrameHtml({ fileType: 'pdf', src: args.pdfHref, standalone: true, contentHtml: bodyHtml }), includePdf: true });
+}
+
+export function renderMediaPageToHtml(args: StandalonePageArgs & { mediaHref: string; fileType: string }): string {
+  return writeStandalonePage({ ...args, bodyHtml: mediaFrameHtml({ fileType: args.fileType, src: args.mediaHref, alt: args.pageTitle, standalone: true,
+    contentHtml: args.fileType === 'svg' ? `<iframe class="meadow-svg-embed" src="${escapeHtmlAttribute(args.mediaHref)}" title="${escapeHtmlAttribute(args.pageTitle)}" sandbox="allow-same-origin"></iframe>` : undefined }) });
 }
 
 function contentToBlockId(content: string): string {

@@ -193,6 +193,8 @@ export function hashAndRenameStaticAssets(outputDir: string, options: HashStatic
   const structuralPagesCss = renameWithHashIfExists(path.join(outputDir, 'structural-pages.css')) ?? '';
   const excalidrawCss = renameWithHashIfExists(path.join(outputDir, 'meadow-excalidraw.css')) ?? '';
   const excalidrawJs = renameWithHashIfExists(path.join(outputDir, 'meadow-excalidraw.js')) ?? '';
+  const mediaCss = renameWithHashIfExists(path.join(outputDir, 'meadow-media.css')) ?? '';
+  const mediaJs = renameWithHashIfExists(path.join(outputDir, 'meadow-media.js')) ?? '';
   const svgCss = renameWithHashIfExists(path.join(outputDir, 'meadow-svg.css')) ?? '';
   const svgJs = renameWithHashIfExists(path.join(outputDir, 'meadow-svg.js')) ?? '';
   const pdfCss = renameWithHashIfExists(path.join(outputDir, 'meadow-pdf.css')) ?? '';
@@ -307,5 +309,5 @@ export function hashAndRenameStaticAssets(outputDir: string, options: HashStatic
     writeCompressionManifest(outputDir, { gzip: gzipPaths });
   }
 
-  return { styleCss, javascriptJs, mermaidMinJs, calloutsCss, structuralPagesCss, excalidrawCss, excalidrawVendorJs, excalidrawJs, svgCss, svgJs, pdfCss, pdfVendorJs, pdfWorkerJs, pdfJs, srsCss, srsJs, searchCss, searchJs, hoverPreviewCss, hoverPreviewJs, folderNavigationCss, folderNavigationDataJs, folderNavigationJs, globalStyleCss, bundleStyleCss, globalJavascriptJs, bundleJavascriptJs };
+  return { mediaCss, mediaJs, styleCss, javascriptJs, mermaidMinJs, calloutsCss, structuralPagesCss, excalidrawCss, excalidrawVendorJs, excalidrawJs, svgCss, svgJs, pdfCss, pdfVendorJs, pdfWorkerJs, pdfJs, srsCss, srsJs, searchCss, searchJs, hoverPreviewCss, hoverPreviewJs, folderNavigationCss, folderNavigationDataJs, folderNavigationJs, globalStyleCss, bundleStyleCss, globalJavascriptJs, bundleJavascriptJs };
 }

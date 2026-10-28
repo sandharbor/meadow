@@ -454,6 +454,28 @@ export class BundleEditorPage {
     await this.expect(preview.locator("canvas")).toBeVisible({ timeout: 30_000 });
   }
 
+  async expectMediaGraphIndicators() {
+    await this.expect(this.page.locator('[data-node-indicator="audio"]').first()).toBeVisible();
+    await this.expect(this.page.locator('[data-node-indicator="video"]').first()).toBeVisible();
+    const audio = this.page.getByTestId('graph-page-node').filter({ has: this.page.locator('[data-node-indicator="audio"]') }).first();
+    const video = this.page.getByTestId('graph-page-node').filter({ has: this.page.locator('[data-node-indicator="video"]') }).first();
+    await this.expect(audio.locator('[data-node-shape="file"]')).toHaveAttribute('fill', '#e0f2fe');
+    await this.expect(video.locator('[data-node-shape="file"]')).toHaveAttribute('fill', '#ede9fe');
+  }
+
+  async hoverListViewVideoIcon(title: string) {
+    await this.listViewRowByTitleAndFileType(title, 'mp4').getByTestId('video-icon').hover();
+    const preview = this.page.getByTestId('image-hover-preview');
+    await this.expect(preview).toContainText(title);
+    await this.expect(preview.getByTestId('video-thumbnail')).toHaveAttribute('data-thumbnail-state', 'loaded', { timeout: 30_000 });
+    await this.expect(preview.locator('canvas')).toBeVisible();
+    // The reusable fixture is a green clip: verify an actual decoded frame, not a placeholder.
+    const pixel = await preview.locator('canvas').evaluate(element =>
+      Array.from((element as HTMLCanvasElement).getContext('2d')!.getImageData(1, 1, 1, 1).data));
+    this.expect(pixel[1]).toBeGreaterThan(pixel[0] + 50);
+    this.expect(pixel[1]).toBeGreaterThan(pixel[2] + 50);
+  }
+
   async expectImageHoverPreviewVisible(title: string) {
     const preview = this.page.getByTestId("image-hover-preview");
     await this.expect(preview).toBeVisible();

@@ -15,6 +15,7 @@ nodespecs:
       htmlRenderedLinks:
         mainSectionLinks:
           - relativeLinkPath: t002 ---- dup 2.png
+          - relativeLinkPath: t002 ---- dup 2.png.html
         footerSectionBacklinks:
           - relativeLinkPath: ../../t002 - dup pages and images.html
             backlinkContexts:

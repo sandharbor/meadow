@@ -18,7 +18,7 @@ import { useEditorViewValue } from '../utils/useEditorViewValue.js';
 import React, { useState, useMemo, useEffect } from 'react';
 import { DisplayGraph, DisplayNode, MatchingFilter } from '../types/displayGraph';
 import { apiUrl } from '../../../../shared/utils/apiClient';
-import { isImageFileType } from '../../../../../../../shared_code/utils/fileTypeUtils';
+import { isImageFileType, isVideoFileType, isAudioFileType } from '../../../../../../../shared_code/utils/fileTypeUtils';
 import { sourceGraphPath } from '../../../../../../../shared_code/utils/bundleSourceUtils';
 import { AuthenticatedImage } from '../../../../shared/components/AuthenticatedImage';
 import ImageHoverPreview, { HOVER_IMAGE_WIDTH, HOVER_IMAGE_HEIGHT } from './ImageHoverPreview';
@@ -192,6 +192,19 @@ const ListView: React.FC<ListViewProps> = ({
           onMouseLeave={() => setHoveredImage(null)}
         />
       );
+    }
+    if (isVideoFileType(page.fileType) || isAudioFileType(page.fileType)) {
+      const video = isVideoFileType(page.fileType);
+      const filePath = sourceGraphPath(page.sourceId, page.sourceGraphSubdirectory
+        ? `${page.sourceGraphSubdirectory}/${page.bundleNodeName}.${page.fileType}` : `${page.bundleNodeName}.${page.fileType}`);
+      const sourcePath = editorSourcePath(bundleSlug, page.underlyingNode, filePath, displayGraph.underlyingGraph.sourceContentView === 'live');
+      return <span data-testid={video ? 'video-icon' : 'audio-icon'} role="img" aria-label={video ? 'Video' : 'Audio'}
+        className={`w-8 h-8 inline-flex items-center justify-center rounded cursor-pointer ${video ? 'bg-violet-100 text-violet-700' : 'bg-sky-100 text-sky-700'}`}
+        onMouseEnter={video ? e => handleImageMouseEnter(e, sourcePath, page.bundleNodeName) : undefined}
+        onMouseLeave={() => setHoveredImage(null)}>
+        {video ? <svg viewBox="0 0 24 24" className="w-5 h-5" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3" fill="none" stroke="currentColor" strokeWidth="2" /><path d="m10 8 6 4-6 4Z" fill="currentColor" /></svg>
+          : <svg viewBox="0 0 24 24" className="w-5 h-5" aria-hidden="true"><path d="M10 17V5l10-2v12M10 9l10-2" fill="none" stroke="currentColor" strokeWidth="2"/><ellipse cx="7" cy="17" rx="3" ry="2" fill="currentColor"/><ellipse cx="17" cy="15" rx="3" ry="2" fill="currentColor"/></svg>}
+      </span>;
     }
     if (page.fileType === 'pdf') {
       // A PDF shows a document icon; hovering it shows the first page.

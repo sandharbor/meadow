@@ -58,6 +58,11 @@ describe('published bundle search index', () => {
     });
   });
 
+  it('searches media page content without indexing action labels', () => {
+    const document = searchDocumentFromHtml(pageHtml('Media', 'A video about meadows.<span class="meadow-media-toolbar">Go to page Download media</span>'), 'Media.html');
+    expect(document?.b).toBe('A video about meadows.');
+  });
+
   it('does not include nested heading enhancements in the page title', () => {
     const duplicateTitleHtml = `<!doctype html><html><head>
       <title>company brain -- concepts</title></head><body><main>

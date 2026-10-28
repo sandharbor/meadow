@@ -81,7 +81,7 @@ export function searchDocumentFromHtml(
   const searchableMain = main.cloneNode(true) as typeof main;
   const clonedPageTitle = searchableMain.querySelector('h1');
   clonedPageTitle?.remove();
-  searchableMain.querySelectorAll('script, style, template, noscript').forEach(element => element.remove());
+  searchableMain.querySelectorAll('script, style, template, noscript, .meadow-media-toolbar').forEach(element => element.remove());
 
   return {
     t: title,

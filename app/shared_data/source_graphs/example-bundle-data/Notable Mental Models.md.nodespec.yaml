@@ -38,19 +38,20 @@ nodespecs:
     generation:
       htmlRenderedLinks:
         mainSectionLinks:
-          - relativeLinkPath: First Principles Thinking.html
-          - relativeLinkPath: Inversion.html
-          - relativeLinkPath: Second Order Thinking.html
-          - relativeLinkPath: Probabilistic Thinking.html
-          - relativeLinkPath: Circle of Competence.html
-          - relativeLinkPath: Razors.html
-          - relativeLinkPath: Occam's Razor.html
-          - relativeLinkPath: Hanlon's Razor.html
-          - relativeLinkPath: Margin of Safety.html
           - relativeLinkPath: Charlie Munger.html
-          - relativeLinkPath: Warren Buffett.html
+          - relativeLinkPath: Circle of Competence.html
+          - relativeLinkPath: First Principles Thinking.html
+          - relativeLinkPath: Hanlon's Razor.html
           - relativeLinkPath: Howard Marks.html
+          - relativeLinkPath: Inversion.html
+          - relativeLinkPath: Margin of Safety.html
           - relativeLinkPath: Mental Models Overview.html
+          - relativeLinkPath: Occam's Razor.html
+          - relativeLinkPath: Probabilistic Thinking.html
+          - relativeLinkPath: Razors.html
+          - relativeLinkPath: Second Order Thinking.html
+          - relativeLinkPath: Warren Buffett.html
           - relativeLinkPath: _mw_gen/tagpages/tag--flashcards--mental-models.html
           - relativeLinkPath: images/Mental Models Diagram.svg
+          - relativeLinkPath: images/Mental Models Diagram.svg.html
         footerSectionBacklinks: []

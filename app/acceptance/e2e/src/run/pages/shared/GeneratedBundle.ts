@@ -501,6 +501,63 @@ export class GeneratedBundleMedia {
     await video.evaluate(element => (element as HTMLVideoElement).pause());
   }
 
+  private mediaFrame(srcFragment: string) {
+    return this.root.locator(`.meadow-media-frame:has(> [src*="${srcFragment}"])`).first();
+  }
+
+  async openEmbeddedMediaPage(srcFragment: string, menu = false) {
+    const frame = this.mediaFrame(srcFragment);
+    await frame.scrollIntoViewIfNeeded();
+    await frame.hover();
+    if (menu) await frame.getByRole('button', { name: 'Media actions', exact: true }).click();
+    await frame.getByRole(menu ? 'menuitem' : 'link', { name: 'Go to page', exact: true }).click();
+  }
+
+  async expectDedicatedMediaActions(srcFragment: string) {
+    const frame = this.root.locator('.meadow-media-page').first();
+    await this.expect(frame).toBeVisible();
+    await this.expect(frame.getByRole('link', { name: 'Download media' })).toHaveAttribute('href', new RegExp(srcFragment.replaceAll('.', '\\.')));
+    await this.expect(frame.getByRole('link', { name: 'Download media' })).toHaveAttribute('download', '');
+    await this.expect(frame.getByRole('link', { name: 'Go to page' })).toHaveCount(0);
+    await this.expect(frame.getByRole('button', { name: 'Open media fullscreen', exact: true })).toBeVisible();
+  }
+
+  async openDedicatedMediaFullscreen() {
+    const frame = this.root.locator('.meadow-media-page').first();
+    await frame.getByRole('button', { name: 'Open media fullscreen', exact: true }).click();
+    await this.expect(frame).toHaveClass(/is-fullscreen/);
+    await this.expect.poll(() => frame.evaluate(element => {
+      const rect = element.getBoundingClientRect();
+      return document.elementFromPoint(rect.right - 20, rect.top + 20)?.closest('.meadow-media-frame') === element;
+    })).toBe(true);
+  }
+
+  async downloadMedia() {
+    const link = this.root.locator('.meadow-media-page').getByRole('link', { name: 'Download media' });
+    const promise = link.page().waitForEvent('download');
+    await link.click();
+    const download = await promise;
+    this.expect(await download.failure()).toBeNull();
+    return download.suggestedFilename();
+  }
+
+  async closeMediaFullscreen() {
+    await this.root.locator('body').press('Escape');
+    await this.expect(this.root.locator('.meadow-media-frame.is-fullscreen')).toHaveCount(0);
+  }
+
+  async openEmbeddedImageFullscreen(srcFragment: string) {
+    const frame = this.mediaFrame(srcFragment);
+    await frame.scrollIntoViewIfNeeded();
+    await frame.hover();
+    await frame.getByRole('button', { name: 'Open media fullscreen', exact: true }).click();
+    await this.expect(this.root.locator('.meadow-media-frame.is-fullscreen')).toHaveCount(1);
+  }
+
+  async expectBacklink(name: string) {
+    await this.expect(this.root.locator('footer').getByRole('link', { name, exact: true })).toBeVisible();
+  }
+
   /**
    * Waits for each PDF viewer on the page to draw its first page. Viewers
    * draw pages as they scroll into view, so each is brought into view first.

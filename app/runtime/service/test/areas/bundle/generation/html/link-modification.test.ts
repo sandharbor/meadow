@@ -241,16 +241,16 @@ describe('html link modification', () => {
       expect(asLink('Sketch')).toBe('<a href="drawings/Sketch.html">Sketch</a>');
     });
 
-    it('links an image to the image', () => {
-      expect(asLink('photo.png')).toBe('<a href="images/photo.png">photo.png</a>');
+    it('links an image to its page', () => {
+      expect(asLink('photo.png')).toBe('<a href="images/photo.png.html">photo.png</a>');
     });
 
     it('links a PDF to its page, showing the alias', () => {
       expect(asLink('Report.pdf|the report')).toBe('<a href="Report.html">the report</a>');
     });
 
-    it('links audio to the file', () => {
-      expect(asLink('song.mp3')).toBe('<a href="song.mp3">song.mp3</a>');
+    it('links audio to its page', () => {
+      expect(asLink('song.mp3')).toBe('<a href="song.mp3.html">song.mp3</a>');
     });
   });
 });

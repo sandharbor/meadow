@@ -16,7 +16,7 @@ limitations under the License.
 
 import React from 'react';
 import { Highlight } from '../types/displayGraph';
-import { isImageFileType } from '../../../../../../../shared_code/utils/fileTypeUtils';
+import { isImageFileType, isAudioFileType, isVideoFileType } from '../../../../../../../shared_code/utils/fileTypeUtils';
 import { FileType } from '../../../../../../../contracts/types/shared/bundle-graph/FileType';
 import type { BundleNodeKind } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig';
 
@@ -153,7 +153,7 @@ const BundleNodeGlyph: React.FC<BundleNodeGlyphProps> = ({
       ) : (
         <circle
           r={BUNDLE_NODE_RADIUS}
-          fill="#fff"
+          fill={isAudioFileType(fileType) ? '#e0f2fe' : isVideoFileType(fileType) ? '#ede9fe' : '#fff'}
           stroke={strokeColor}
           strokeWidth={1}
           strokeDasharray={isFrontierImageExtension ? '2,1' : 'none'}
@@ -170,6 +170,18 @@ const BundleNodeGlyph: React.FC<BundleNodeGlyphProps> = ({
         </g>
       )}
 
+      {showImageIndicator && bundleNodeKind === 'file' && isAudioFileType(fileType) && (
+        <g data-node-indicator="audio" stroke="#0284c7" strokeWidth="0.5" fill="#0284c7">
+          <path d="M-0.5 1.5 V-1.8 L1.8 -2.3 V1" fill="none" />
+          <ellipse cx="-1.2" cy="1.5" rx="0.8" ry="0.5" /><ellipse cx="1.1" cy="1" rx="0.8" ry="0.5" />
+        </g>
+      )}
+      {showImageIndicator && bundleNodeKind === 'file' && isVideoFileType(fileType) && (
+        <g data-node-indicator="video" stroke="#7c3aed" strokeWidth="0.4">
+          <rect x="-2" y="-1.5" width="4" height="3" rx="0.5" fill="none" />
+          <path d="M-0.5 -0.9 L0.9 0 L-0.5 0.9 Z" fill="#7c3aed" />
+        </g>
+      )}
       {/* PDF indicator icon: a page with a folded corner and a red label */}
       {showImageIndicator && bundleNodeKind === 'file' && fileType === 'pdf' && (
         <g transform="translate(-1.3, -1.5) scale(0.75)" data-node-indicator="pdf">

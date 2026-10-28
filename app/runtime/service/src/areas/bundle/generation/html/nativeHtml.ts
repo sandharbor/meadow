@@ -18,6 +18,7 @@ import type { BundleConfig } from '../../../../../../../contracts/types/shared/b
 import type { BundleNodeConfig } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
 import type { LinkResolvedInfo } from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode.js';
 import type { BundleRouteTable } from './bundleRoutePlanner.js';
+import { isStandaloneMediaFileType } from '../../../../../../../shared_code/utils/fileTypeUtils.js';
 import { resolveTrackedLinkHref } from './linkModificationService.js';
 
 const URL_ATTRIBUTE_PATTERN = /\b(href|src)(\s*=\s*)(["'])(.*?)\3/gi;
@@ -70,12 +71,15 @@ export function rewriteNativeHtmlUrls(args: {
 
   return content.replace(
     URL_ATTRIBUTE_PATTERN,
-    (match: string, attribute: string, assignment: string, quote: string, rawUrl: string) => {
+    (match: string, attribute: string, assignment: string, quote: string, rawUrl: string, offset: number) => {
       if (isExternalOrDocumentLocalUrl(rawUrl)) return match;
       const resolved = linkResolutionMap?.[rawUrl];
       if (!resolved) return match;
 
       const fileType = resolvedFileType(resolved);
+      // SVG <image href> and <use href> fetch assets; only anchors navigate.
+      const tagPrefix = content.slice(content.lastIndexOf('<', offset), offset);
+      const mediaPageLink = attribute.toLowerCase() === 'href' && /^<a(?:\s|>)/i.test(tagPrefix);
       const href = resolveTrackedLinkHref({
         resolved,
         hostPageDirectory: currentOutputDirectory,
@@ -84,7 +88,7 @@ export function rewriteNativeHtmlUrls(args: {
         bundleConfig,
         bundleSlug,
         routeTable,
-        targetUrlMode: fileType && RENDERED_PAGE_FILE_TYPES.has(fileType)
+        targetUrlMode: fileType && (RENDERED_PAGE_FILE_TYPES.has(fileType) || (mediaPageLink && isStandaloneMediaFileType(fileType)))
           ? 'rendered-page'
           : 'source-file',
       });

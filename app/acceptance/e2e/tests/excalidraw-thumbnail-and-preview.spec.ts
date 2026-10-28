@@ -131,6 +131,11 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '5cc5229f-f7a
       "embedded in page in other t006 directory",
     ));
     await sourceCommand(() => generatedBundle.excalidraw.expectStandaloneDrawingVisible());
+    await sourceCommand(() => generatedBundle.media.expectDedicatedMediaActions('embedded%20in%20page%20in%20other%20t006%20directory.excalidraw.md'));
+    await sourceCommand(() => generatedBundle.media.openDedicatedMediaFullscreen());
+    await sourceCommand(() => generatedBundle.media.closeMediaFullscreen());
+    const drawingDownload = await sourceCommand(() => generatedBundle.media.downloadMedia());
+    expect(drawingDownload).toBe('embedded in page in other t006 directory.excalidraw.md');
 
     await sourceCommand(() => generatedBundle.clickPageLink("t006 - embedded media"));
     await sourceCommand(() => generatedBundle.expectHeading("t006 - embedded media"));
