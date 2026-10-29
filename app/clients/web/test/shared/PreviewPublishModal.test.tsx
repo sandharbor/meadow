@@ -98,7 +98,10 @@ describe('progressive bundle preview', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Bundle Preview' }));
     expect(screen.getByTitle('Preview')).toBe(iframe);
     await emit(0, 'complete', firstUrl);
-    expect(screen.getByTitle('Preview')).toBe(iframe);
+    const installedPreview = screen.getByTitle('Preview');
+    expect(installedPreview).not.toBe(iframe);
+    expect(installedPreview).not.toHaveAttribute('src', firstUrl);
+    expect(new window.URL(installedPreview.getAttribute('src')!).pathname).toBe(new window.URL(firstUrl).pathname);
     expect(transport.streams).toHaveLength(1);
   });
 
@@ -114,12 +117,15 @@ describe('progressive bundle preview', () => {
     expect(new window.URL(transport.streams[1].url, 'http://localhost').searchParams.get('startPagePath')).toBe('nested/Child.html');
     const nextUrl = firstUrl.replace('Entry.html?_t=1', 'nested/Child.html?_t=2');
     await emit(1, 'generating', nextUrl);
-    expect(screen.getByTestId('changes-content')).toHaveAttribute('data-refresh', '1');
+    expect(screen.getByTestId('changes-content')).toHaveAttribute('data-refresh', '2');
     expect(screen.getByTitle('Preview')).toHaveAttribute('src', nextUrl);
     expect(transport.streams[1].close).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'Save Changes' })).toBeDisabled();
     await emit(1, 'complete', nextUrl);
-    expect(screen.getByTitle('Preview')).toHaveAttribute('src', nextUrl);
+    const iframe = screen.getByTitle('Preview');
+    expect(iframe).not.toHaveAttribute('src', nextUrl);
+    expect(new window.URL(iframe.getAttribute('src')!).pathname).toBe(new window.URL(nextUrl).pathname);
+    expect(screen.getByTestId('changes-content')).toHaveAttribute('data-refresh', '3');
   });
 
   it('discards cached Changes after a version action without discarding the preview on tab switches', async () => {

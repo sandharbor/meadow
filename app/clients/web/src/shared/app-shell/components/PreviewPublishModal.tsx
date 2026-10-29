@@ -598,6 +598,17 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
 
             if (data.stage === 'complete' || data.stage === 'error' || data.stage === 'cancelled') {
               eventSource.close();
+              if (data.stage === 'complete') {
+                // Reload after installation so the frame cannot retain a partial staging response.
+                setPreviewNavigation(current => {
+                  const href = current.entries[current.index];
+                  if (!href) return current;
+                  const url = new URL(href);
+                  url.searchParams.set('_t', Date.now().toString());
+                  return replacePreviewPage(current, url.toString());
+                });
+                setPreviewPageRefreshKey(previous => previous + 1);
+              }
               if (data.stage === 'error') {
                 setPreviewResult({ success: false, error: data.message || data.result?.error || 'Failed to generate preview' });
               }
@@ -746,6 +757,18 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
         url.searchParams.set('_t', Date.now().toString());
         setPreviewNavigation(current => replacePreviewPage(current, url.toString()));
       }
+
+      if (startPageShown) {
+        // The early page can load while its staging tree is being installed.
+        setPreviewNavigation(current => {
+          const href = current.entries[current.index];
+          if (!href) return current;
+          const url = new URL(href);
+          url.searchParams.set('_t', Date.now().toString());
+          return replacePreviewPage(current, url.toString());
+        });
+      }
+      setPreviewPageRefreshKey(previous => previous + 1);
 
       // Show a quick "done!" that fades away
       setShowPreviewDone(true);
@@ -1400,6 +1423,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
                 <div className="flex-1 min-w-0 h-full">
                   <div className={previewSubTab === 'bundlePreview' ? 'h-full' : 'hidden'}>
                     <iframe
+                      key={previewPageRefreshKey}
                       ref={iframeRef}
                       src={previewNavigation.frameUrl || previewResult.traversalPageUrl}
                       className="w-full h-full border rounded"
