@@ -59,14 +59,17 @@ describe('bundle route planning', () => {
     expect(plan.routes.get(svg.bundleNodeId)).toBe('images/Linked diagram.svg.html');
   });
 
-  it('gives same-title notes, images, audio, and video distinct pages', () => {
-    const types = ['md', 'png', 'mp3', 'mp4'] as const;
+  it('gives same-title notes, images, audio, video, PDFs, and drawings distinct pages', () => {
+    const types = ['md', 'png', 'mp3', 'mp4', 'pdf', 'excalidraw'] as const;
     const configs: BundleNodeConfig[] = types.map((fileType, index) => ({
       bundleNodeKind: 'file', bundleNodeId: id(String(index + 1).repeat(12)),
       bundleNodeName: 'Same', sourceGraphSubdirectory: 'Media', fileType, listType: 'whitelist',
     }));
     const plan = planBundleRoutes(configs, { entryBundleNodeId: configs[0].bundleNodeId });
-    expect([...plan.routes.values()]).toEqual(['Media/Same.html', 'Media/Same.png.html', 'Media/Same.mp3.html', 'Media/Same.mp4.html']);
+    expect([...plan.routes.values()]).toEqual([
+      'Media/Same.html', 'Media/Same.png.html', 'Media/Same.mp3.html', 'Media/Same.mp4.html',
+      'Media/Same.pdf.html', 'Media/Same.excalidraw.html',
+    ]);
   });
 
   it('uses reserved routes for generated tag pages and relocates colliding source content', () => {

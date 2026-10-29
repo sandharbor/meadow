@@ -18,6 +18,7 @@ import fs from 'fs';
 import path from 'path';
 import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundleConfigPaths.js';
 import { parseBundleNodeConfig } from '../../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
+import { renderedPageFilename } from '../../../../../../../shared_code/utils/fileTypeUtils.js';
 import { planBundleRoutes, routeForBundleNode } from './bundleRoutePlanner.js';
 import { normalizePageTitle } from './shared.js';
 import { loadBundleConfig } from '../../../../shared/utils/bundleConfigUtils.js';
@@ -71,7 +72,7 @@ export function getHtmlPathForPage(
     if (!bundleConfig.entryBundleNodeId) {
       const normalizedTitle = normalizePageTitle(title, bundleConfig, bundleSlug);
       const subdir = bundleNodeConfig.sourceGraphSubdirectory || '';
-      return subdir ? `${subdir}/${normalizedTitle}.html` : `${normalizedTitle}.html`;
+      return path.posix.join(subdir, renderedPageFilename(normalizedTitle, bundleNodeConfig.fileType));
     }
     const plan = planBundleRoutes(bundleNodeConfigs, bundleConfig, bundleSlug);
     return routeForBundleNode(bundleNodeConfig, plan.routes);

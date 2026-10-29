@@ -33,8 +33,8 @@ nodespecs:
       htmlRenderedLinks:
         mainSectionLinks:
           - relativeLinkPath: https://example.com/meadow-external.png
-          - relativeLinkPath: t006/t006 --- document with a link.html
-          - relativeLinkPath: t006/t006 --- document with a link.html
+          - relativeLinkPath: t006/t006 --- document with a link.pdf.html
+          - relativeLinkPath: t006/t006 --- document with a link.pdf.html
           - relativeLinkPath: t006/t006 --- meadow-flower-petals-ani.gif
           - relativeLinkPath: t006/t006 --- meadow-flower-petals-ani.gif
           - relativeLinkPath: t006/t006 --- meadow-flower-petals-ani.gif

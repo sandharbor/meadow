@@ -47,7 +47,7 @@ describe('folder-derived HTML generation', () => {
     expect(fs.existsSync(path.join(generatedHtml, 'index.html'))).toBe(true);
     expect(fs.existsSync(path.join(generatedHtml, '_mw_gen', 'folderpages', 'project-111111111111.html'))).toBe(true);
     expect(fs.existsSync(path.join(generatedHtml, 'Project', 'index.html'))).toBe(true);
-    expect(fs.existsSync(path.join(generatedHtml, 'Project', 'Folder sketch.html'))).toBe(true);
+    expect(fs.existsSync(path.join(generatedHtml, 'Project', 'Folder sketch.excalidraw.html'))).toBe(true);
     expect(fs.existsSync(path.join(generatedHtml, 'Project', 'Middle', 'Deep.html'))).toBe(true);
     expect(fs.existsSync(path.join(generatedHtml, 'Project', 'Middle', 'index.html'))).toBe(false);
     expect(fs.existsSync(path.join(generatedHtml, '_mw_gen', 'folderpages', 'empty-222222222222.html'))).toBe(true);
@@ -66,7 +66,7 @@ describe('folder-derived HTML generation', () => {
     expect(project).not.toContain('structural-child-kind');
     expect(project).toContain('data-file-type="excalidraw"');
     expect(project).toContain('class="structural-child-preview structural-child-preview-excalidraw"');
-    expect(project).toContain('src="../../Project/Folder%20sketch.html?meadow-thumbnail=1"');
+    expect(project).toContain('src="../../Project/Folder%20sketch.excalidraw.html?meadow-thumbnail=1"');
     expect(project).not.toContain('Project/Middle/index.html');
     expect(read('_mw_gen/folderpages/empty-222222222222.html')).toContain('No pages in this folder are included in this bundle.');
     expect(read('Project/Middle/Deep.html')).toContain('href="../../Outside.html"');

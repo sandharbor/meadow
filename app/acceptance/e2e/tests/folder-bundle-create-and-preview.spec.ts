@@ -125,7 +125,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'ce4b027f-df2
     await sourceCommand(() => folderNavigation.expectRootFolderNames(["Alpha", "Outside"]));
     await sourceCommand(() => folderNavigation.expectRootFileNames([]));
     await sourceCommand(() => folderNavigation.openFolder("Alpha"));
-    await sourceCommand(() => folderNavigation.expectDirectFileNames("Alpha", ["Alpha note.html", "Visual map.html"]));
+    await sourceCommand(() => folderNavigation.expectDirectFileNames("Alpha", ["Alpha note.html", "Visual map.svg.html"]));
     await sourceCommand(() => folderNavigation.openFolder("Alpha/Nested"));
     await sourceCommand(() => folderNavigation.expectDirectFileNames("Alpha/Nested", [
       "Nested note.html",
@@ -133,7 +133,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'ce4b027f-df2
     await sourceCommand(() => folderNavigation.openFolder("Outside"));
     await sourceCommand(() => folderNavigation.expectDirectFileNames("Outside", [
       "Beyond outside.html",
-      "Frontier image.html",
+      "Frontier image.png.html",
       "Outside note.html",
     ]));
     await sourceCommand(() => previewModal.generatedBundle.expectStructuralChildNames([

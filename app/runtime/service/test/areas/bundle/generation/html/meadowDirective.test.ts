@@ -126,7 +126,7 @@ describe('meadow container directive', () => {
       const html = renderHost(contentRoot, outputRoot, '![[drawing.excalidraw|300]]');
 
       expect(html).toContain('class="meadow-excalidraw-embed-link"');
-      expect(html).toContain('href="drawing.html"');
+      expect(html).toContain('href="drawing.excalidraw.html"');
       expect(html).toContain('style="max-width: 300px"');
       expect(html).not.toContain('data-meadow-excalidraw-links=');
       expect(html).not.toContain('data-meadow-excalidraw-fullscreen');

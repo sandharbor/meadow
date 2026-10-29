@@ -18,7 +18,7 @@ import path from 'path';
 import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundleConfigPaths.js';
 import type { BundleConfig } from '../../../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
 import type { FileBundleNodeConfig, BundleNodeConfig, BundleNodeId } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
-import { isStandaloneMediaFileType } from '../../../../../../../shared_code/utils/fileTypeUtils.js';
+import { renderedPageFilename } from '../../../../../../../shared_code/utils/fileTypeUtils.js';
 import { normalizePageTitle } from './shared.js';
 import { sourceOutputDirectory } from '../../../../../../../shared_code/utils/bundleSourceUtils.js';
 
@@ -59,8 +59,7 @@ function preferredFileRoute(config: FileBundleNodeConfig, bundleConfig: BundleCo
         ...sourceSegments.slice(1),
       )
     : sourceDirectory;
-  const filename = isStandaloneMediaFileType(config.fileType) ? `${name}.${config.fileType}.html` : `${name}.html`;
-  return posixJoin(outputDirectory, filename);
+  return posixJoin(outputDirectory, renderedPageFilename(name, config.fileType));
 }
 
 function generatedStructuralRoute(

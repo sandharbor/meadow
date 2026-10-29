@@ -336,12 +336,12 @@ describe('html preview', () => {
         {
           title: 'meadow flower',
           directory: '',
-          relativeHtmlPath: 'meadow flower.html',
+          relativeHtmlPath: 'meadow flower.excalidraw.html',
         },
       ]);
 
       const generatedHtmlFolderPath = getGeneratedBundleTestOutputDirectory(excalidrawInitialSetup.getBundlePath());
-      expect(fs.existsSync(path.join(generatedHtmlFolderPath, 'meadow flower.html'))).toBe(true);
+      expect(fs.existsSync(path.join(generatedHtmlFolderPath, 'meadow flower.excalidraw.html'))).toBe(true);
       expect(fs.existsSync(path.join(generatedHtmlFolderPath, 'embedded media.html'))).toBe(true);
     } finally {
       excalidrawInitialSetup.tearDown();

@@ -217,7 +217,7 @@ describe('html link modification', () => {
     });
 
     expect(result).toContain('class="meadow-excalidraw-embed-link"');
-    expect(result).toContain('href="drawings/embedded%20drawing.html"');
+    expect(result).toContain('href="drawings/embedded%20drawing.excalidraw.html"');
     expect(result).toContain('data-meadow-excalidraw-src="drawings/embedded%20drawing.excalidraw.md"');
     expect(result).toContain('style="max-width: 500px"');
   });
@@ -238,7 +238,7 @@ describe('html link modification', () => {
     const asLink = (linkText: string) => linkOrImageHtml(linkText, confs, { linkResolutionMap, embed: false });
 
     it('links a drawing to its page', () => {
-      expect(asLink('Sketch')).toBe('<a href="drawings/Sketch.html">Sketch</a>');
+      expect(asLink('Sketch')).toBe('<a href="drawings/Sketch.excalidraw.html">Sketch</a>');
     });
 
     it('links an image to its page', () => {
@@ -246,7 +246,7 @@ describe('html link modification', () => {
     });
 
     it('links a PDF to its page, showing the alias', () => {
-      expect(asLink('Report.pdf|the report')).toBe('<a href="Report.html">the report</a>');
+      expect(asLink('Report.pdf|the report')).toBe('<a href="Report.pdf.html">the report</a>');
     });
 
     it('links audio to its page', () => {

@@ -33,7 +33,8 @@ test.use({ trackBigBundleExcalidrawPages: true });
 // the prefix has to flow through for an Excalidraw drawing:
 //   1. The embedding page's heading (`myprefix t006 - embedded media`).
 //   2. The standalone Excalidraw HTML file (the embed link must resolve to
-//      `myprefix t006 --- meadow-flower.html`, not `t006 --- meadow-flower.html`).
+//      `myprefix t006 --- meadow-flower.excalidraw.html`, not
+//      `t006 --- meadow-flower.excalidraw.html`).
 //   3. The label and href of every wikilink rendered inside the SVG.
 const PREFIX_HOOK_SOURCE = `function pageTitleNormalization(bundleSlug: string, pageTitle: string): string {
   return 'myprefix ' + pageTitle;

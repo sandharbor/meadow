@@ -78,8 +78,8 @@ export function getNodespecOutputPath(file: string, sourceGraphDir: string, bund
   const source = config?.sources && sourceContaining(file, config.sources);
   const relative = source ? path.relative(source.directory, file) : path.relative(sourceGraphDir, file);
   const output = source ? sourceOutputDirectory(config, source.id, relative) : relative;
-  // A PDF is shown on a page of its own.
-  return output.replace(/\.(?:md|pdf)$/, '.html');
+  // A note renders as `<title>.html`; a PDF is shown on a page of its own, beside it.
+  return output.replace(/\.md$/, '.html').replace(/\.pdf$/, '.pdf.html');
 }
 
 // Discover fixture graphs so adding a new graph cannot bypass completeness checks.

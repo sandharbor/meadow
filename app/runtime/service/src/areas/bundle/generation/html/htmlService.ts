@@ -1630,7 +1630,7 @@ async function renderBundleHtml(
       sourceMdPath,
       outputFolder: outputSubdir,
       outputFilename: normalizedOutputFilename,
-      pageTitle: normalizedOutputFilename,
+      pageTitle: normalizePageTitle(conf.bundleNodeName, bundleConfig, bundleSlug || undefined),
       currentPageDirectory: outputDirectory,
       drawingMdHref,
       clientLinkMap,
@@ -1697,7 +1697,7 @@ async function renderBundleHtml(
     const htmlPath = renderPdfPageToHtml({
       outputFolder: outputSubdir,
       outputFilename: normalizedOutputFilename,
-      pageTitle: normalizedOutputFilename,
+      pageTitle: normalizePageTitle(conf.bundleNodeName, bundleConfig, bundleSlug || undefined),
       currentPageDirectory: outputDirectory,
       pdfHref,
       clientLinkMap,

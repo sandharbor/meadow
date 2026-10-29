@@ -33,7 +33,7 @@ describe('emitted output ownership', () => {
     const emission = await generateHtmlForBundle(bundlePath, { preview: true, outputDirectory });
 
     expect(emission.owners).toEqual(expect.arrayContaining([
-      { path: 'meadow flower.html', bundleNodeId: '456175f97e4d', role: 'page' },
+      { path: 'meadow flower.excalidraw.html', bundleNodeId: '456175f97e4d', role: 'page' },
       { path: 'meadow flower.excalidraw.md', bundleNodeId: '456175f97e4d', role: 'drawing-data' },
       { path: 'embedded media.html', bundleNodeId: '8be9eee5814d', role: 'page' },
     ]));

@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import path from 'path';
 import type { FolderNavigationPage } from './types.js';
 
 interface FolderNode {
@@ -84,7 +85,7 @@ function sharedDirectorySegments(pages: FolderNavigationPage[]): string[] {
 
 function dataFile(page: FolderNavigationPage): FolderNavigationDataFile {
   return {
-    name: `${page.normalizedTitle}.html`,
+    name: path.posix.basename(page.outputPath),
     path: page.outputPath,
   };
 }

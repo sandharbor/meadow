@@ -26,7 +26,7 @@ import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js'
 import { copyFileUnlessCurrent } from '../../../../shared/utils/dirOperations.js';
 import { IMAGE_FILE_TYPES, MEDIA_FILE_TYPES } from './constants.js';
 import { mediaFrameHtml } from './mediaPresentation.js';
-import { isStandaloneMediaFileType } from '../../../../../../../shared_code/utils/fileTypeUtils.js';
+import { isStandaloneMediaFileType, renderedPageFilename } from '../../../../../../../shared_code/utils/fileTypeUtils.js';
 import { pageLinkFragment } from './pageAnchors.js';
 import type { BundleRouteTable } from './bundleRoutePlanner.js';
 
@@ -93,7 +93,7 @@ export function resolveTrackedLinkHref(args: {
     const normalizedTitle = bundleConfig && bundleSlug
       ? normalizePageTitle(targetTitle, bundleConfig, bundleSlug)
       : targetTitle;
-    urlFilename = isStandaloneMediaFileType(targetExt) ? `${normalizedTitle}.${targetExt}.html` : `${normalizedTitle}.html`;
+    urlFilename = renderedPageFilename(normalizedTitle, targetExt);
   } else {
     urlFilename = targetFilename;
   }
@@ -683,18 +683,21 @@ export function linkOrImageHtml(
       encodedImagePath = encodePathForUrl(calculateRelativePath(currentPageDirectory, imageTargetPath));
     }
 
-    // The standalone Excalidraw HTML lives at the *normalized* title (the
-    // pageTitleNormalization hook can rename it), so links must point at the
-    // normalized filename or they 404 when the hook is active.
+    // The standalone Excalidraw page lives at its planned route, named from
+    // the *normalized* title (the pageTitleNormalization hook can rename it).
     const drawingTitle = imageName.replace(/\.excalidraw$/i, '');
     const drawingHtmlName = bundleConfig && bundleSlug
       ? normalizePageTitle(drawingTitle, bundleConfig, bundleSlug)
       : drawingTitle;
-    const drawingPageHref = () => encodePathForUrl(
-      calculateRelativePath(currentPageDirectory, imageSourceDir
-        ? `${imageSourceDir}/${drawingHtmlName}.html`
-        : `${drawingHtmlName}.html`)
-    );
+    const drawingPageHref = () => resolveTrackedLinkHref({
+      resolved: {
+        link_resolved_target_path: imageSourceDir ? `${imageSourceDir}/${imageName}` : imageName,
+        link_resolved_target_directory: imageSourceDir,
+      },
+      hostPageDirectory: currentPageDirectory, hostOutputDirectory: currentOutputDirectory,
+      bundleNodeConfigs, bundleConfig, bundleSlug, routeTable,
+    }) ?? encodePathForUrl(calculateRelativePath(currentPageDirectory,
+      path.posix.join(imageSourceDir || '', renderedPageFilename(drawingHtmlName, 'excalidraw'))));
 
     // A wikilink without `!` opens the dedicated page for included media.
     if (!embed) {

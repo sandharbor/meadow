@@ -123,7 +123,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '5cc5229f-f7a
     ));
 
     const implicitEmbedHref =
-      "embedded%20in%20page%20in%20other%20t006%20directory.html";
+      "embedded%20in%20page%20in%20other%20t006%20directory.excalidraw.html";
     await sourceCommand(() => generatedBundle.excalidraw.expectEmbedVisible(implicitEmbedHref));
 
     await sourceCommand(() => generatedBundle.excalidraw.clickEmbed(implicitEmbedHref));

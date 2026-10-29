@@ -49,7 +49,7 @@ describe('getHtmlPathForPage', () => {
     );
 
     expect(getHtmlPathForPage(bundleDirectory, 't006 --- meadow-flower', 't006')).toBe(
-      't006/t006 --- meadow-flower.html',
+      't006/t006 --- meadow-flower.excalidraw.html',
     );
   });
 

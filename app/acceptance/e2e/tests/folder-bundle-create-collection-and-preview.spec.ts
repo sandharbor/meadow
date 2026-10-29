@@ -98,7 +98,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'df33875b-e30
     await sourceCommand(() => folderNavigation.openFolder("Alpha"));
     await sourceCommand(() => folderNavigation.expectDirectFileNames("Alpha", [
       "Alpha note.html",
-      "Visual map.html",
+      "Visual map.svg.html",
     ]));
     await sourceCommand(() => folderNavigation.openFolder("Beta"));
     await sourceCommand(() => folderNavigation.expectDirectFileNames("Beta", [
@@ -107,7 +107,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'df33875b-e30
     await sourceCommand(() => folderNavigation.openFolder("Outside"));
     await sourceCommand(() => folderNavigation.expectDirectFileNames("Outside", [
       "Beyond outside.html",
-      "Frontier image.html",
+      "Frontier image.png.html",
       "Outside note.html",
     ]));
     await sourceCommand(() => previewModal.generatedBundle.expectStructuralChildNames(["Beta", "Alpha"]));

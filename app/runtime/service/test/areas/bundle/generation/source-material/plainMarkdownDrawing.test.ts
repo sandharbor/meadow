@@ -66,11 +66,11 @@ it('publishes a drawing saved as plain Markdown that a page embeds and links wit
   const start = fs.readFileSync(path.join(output, 'Start.html'), 'utf8');
   expect(start).not.toContain('link not tracked');
   // Both the embed and the link resolve to the drawing's page.
-  expect(start.match(/href="drawings\/Sketch\.html"/g)).toHaveLength(2);
+  expect(start.match(/href="drawings\/Sketch\.excalidraw\.html"/g)).toHaveLength(2);
   // The embed shows the drawing; the plain link is a link, as in Obsidian.
   expect(start.match(/data-meadow-excalidraw-src="drawings\/Sketch\.excalidraw\.md"/g)).toHaveLength(1);
-  expect(start).toContain('<a href="drawings/Sketch.html">Sketch</a>');
+  expect(start).toContain('<a href="drawings/Sketch.excalidraw.html">Sketch</a>');
   // The drawing's page and the data its renderer fetches keep their published names.
-  expect(fs.existsSync(path.join(output, 'drawings/Sketch.html'))).toBe(true);
+  expect(fs.existsSync(path.join(output, 'drawings/Sketch.excalidraw.html'))).toBe(true);
   expect(fs.readFileSync(path.join(output, 'drawings/Sketch.excalidraw.md'), 'utf8')).toContain('excalidraw-plugin');
 });

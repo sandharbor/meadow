@@ -55,6 +55,18 @@ export function canonicalPageFilename(title: string, fileType: string | undefine
 }
 
 /**
+ * Returns the filename of the page Meadow renders for a logical page/file.
+ * Notes and native HTML pages render as `<title>.html`. Every other type
+ * keeps its extension, as `<title>.<file_type>.html`, so a PDF, drawing, or
+ * media page never takes the route of a same-titled note, and sits beside
+ * its original file (`<title>.pdf` and `<title>.pdf.html`).
+ */
+export function renderedPageFilename(title: string, fileType: string | undefined): string {
+  const ft = fileType || 'md';
+  return ft === 'md' || ft === 'html' ? `${title}.html` : `${title}.${ft}.html`;
+}
+
+/**
  * Returns the physical source filenames that may back a logical page/file in a
  * user's source graph. Obsidian Excalidraw commonly creates
  * `<title>.excalidraw.md`, but the marker is optional; the content can also be
