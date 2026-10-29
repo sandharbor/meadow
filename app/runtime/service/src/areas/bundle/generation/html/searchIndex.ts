@@ -17,7 +17,7 @@ limitations under the License.
 import { createHash } from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import { parseHTML } from 'linkedom';
+import { Parser } from 'htmlparser2';
 import { encodePathForUrl } from '../../../../../../../shared_code/utils/urlUtils.js';
 import { CUSTOMIZATION_ASSETS_DIRECTORY } from '../customizationAssets.js';
 
@@ -62,31 +62,92 @@ function normalizeVisibleText(value: string): string {
   return value.replace(/\s+/g, ' ').trim();
 }
 
+const UNSEARCHABLE_TAGS = new Set(['script', 'style', 'template', 'noscript']);
+
+function isUnsearchable(name: string, attributes: Record<string, string>): boolean {
+  return UNSEARCHABLE_TAGS.has(name) || (attributes.class?.split(/\s+/).includes('meadow-media-toolbar') ?? false);
+}
+
+/**
+ * The page's search document, read in one pass over its parse: the document
+ * title (the first `<title>` in `<head>`), and the text of the first `<main>`
+ * without its first `<h1>` (the page title, whose text is the fallback title)
+ * or any script, style, template, noscript or media toolbar. The tree is the
+ * one a DOM built from the same parser would have.
+ */
 export function searchDocumentFromHtml(
   html: string,
   relativeHtmlPath: string
 ): PublishedBundleSearchDocument | null {
-  const { document } = parseHTML(html);
-  const main = document.querySelector('main');
-  if (!main) return null;
+  // One entry for each open element: whether it starts the region it names.
+  type Open = { head: boolean; title: boolean; main: boolean; h1: boolean; excluded: boolean };
+  const open: Open[] = [];
+  let headSeen = false;
+  let inHead = false;
+  let titleState: 'before' | 'in' | 'done' = 'before';
+  let mainState: 'before' | 'in' | 'done' = 'before';
+  let h1State: 'before' | 'in' | 'done' = 'before';
+  let excludedDepth = 0;
+  const titleText: string[] = [];
+  const headingText: string[] = [];
+  const bodyText: string[] = [];
 
-  const pageTitleHeading = main.querySelector('h1');
-  // The document title is the normalized page name. The rendered h1 may also
-  // contain interactive enhancements (for example, a semantic-title popup),
-  // whose descendant text must not become part of the search-result title.
-  const title = normalizeVisibleText(document.title ?? '')
-    || normalizeVisibleText(pageTitleHeading?.textContent ?? '');
+  const parser = new Parser({
+    onopentag(name, attributes) {
+      const entry: Open = { head: false, title: false, main: false, h1: false, excluded: false };
+      if (open.length === 1 && !headSeen) {
+        // The document's head is its root element's first element child.
+        headSeen = true;
+        entry.head = name === 'head';
+        inHead = entry.head;
+      }
+      if (inHead && titleState === 'before' && name === 'title') {
+        titleState = 'in';
+        entry.title = true;
+      }
+      if (mainState === 'before' && name === 'main') {
+        mainState = 'in';
+        entry.main = true;
+      } else if (mainState === 'in') {
+        if (h1State === 'before' && name === 'h1') {
+          h1State = 'in';
+          entry.h1 = true;
+        }
+        if (entry.h1 || isUnsearchable(name, attributes)) {
+          entry.excluded = true;
+          excludedDepth += 1;
+        }
+      }
+      open.push(entry);
+    },
+    ontext(text) {
+      if (titleState === 'in') titleText.push(text);
+      if (mainState !== 'in') return;
+      if (h1State === 'in') headingText.push(text);
+      if (excludedDepth === 0) bodyText.push(text);
+    },
+    onclosetag() {
+      const entry = open.pop();
+      if (!entry) return;
+      if (entry.head) inHead = false;
+      if (entry.title) titleState = 'done';
+      if (entry.main) mainState = 'done';
+      if (entry.h1) h1State = 'done';
+      if (entry.excluded) excludedDepth -= 1;
+    },
+  }, { lowerCaseAttributeNames: false, decodeEntities: true, xmlMode: false });
+  parser.write(html);
+  parser.end();
+
+  if (mainState === 'before') return null;
+  const title = normalizeVisibleText(titleText.join(''))
+    || normalizeVisibleText(headingText.join(''));
   if (!title) return null;
-
-  const searchableMain = main.cloneNode(true) as typeof main;
-  const clonedPageTitle = searchableMain.querySelector('h1');
-  clonedPageTitle?.remove();
-  searchableMain.querySelectorAll('script, style, template, noscript, .meadow-media-toolbar').forEach(element => element.remove());
 
   return {
     t: title,
     p: encodePathForUrl(relativeHtmlPath.split(path.sep).join('/')),
-    b: normalizeVisibleText(searchableMain.textContent ?? ''),
+    b: normalizeVisibleText(bodyText.join('')),
   };
 }
 

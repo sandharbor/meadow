@@ -71,6 +71,29 @@ export function normalizePageTitle(pageTitle: string, bundleConfig: BundleConfig
   return pageTitle;
 }
 
+// A page is read for its own render and again for each page it links to.
+// Each read is checked against the file's current stamp.
+const recentNotes = new Map<string, { stamp: string; text: string }>();
+const MAX_RECENT_NOTES = 5000;
+
+/** The text of the note at `file`, or undefined when there is none. */
+function readNoteFile(file: string): string | undefined {
+  let stats: fs.BigIntStats;
+  try {
+    stats = fs.statSync(file, { bigint: true });
+  } catch {
+    return undefined;
+  }
+  const stamp = `${stats.dev}:${stats.ino}:${stats.size}:${stats.mtimeNs}:${stats.ctimeNs}`;
+  const recent = recentNotes.get(file);
+  if (recent?.stamp === stamp) return recent.text;
+  const text = fs.readFileSync(file, 'utf-8');
+  recentNotes.delete(file);
+  if (recentNotes.size >= MAX_RECENT_NOTES) recentNotes.delete(recentNotes.keys().next().value!);
+  recentNotes.set(file, { stamp, text });
+  return text;
+}
+
 export function getMdContent(
   directory: string,
   pageName: string,
@@ -86,11 +109,10 @@ export function getMdContent(
     mdPath = Page.findFullFilesystemPath(directory, pageName);
   }
 
-  if (!mdPath || !fs.existsSync(mdPath)) {
+  let mdContent = mdPath ? readNoteFile(mdPath) : undefined;
+  if (mdContent === undefined) {
     return '';
   }
-
-  let mdContent = fs.readFileSync(mdPath, 'utf-8');
 
   if (!preserveFrontmatter) {
     // The note as it is rendered: no frontmatter and no comments.

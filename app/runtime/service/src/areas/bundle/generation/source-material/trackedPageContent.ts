@@ -44,6 +44,7 @@ import {
 } from '../render-source/srsMarkdown.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
 import { invalidateWorkingGraphCache } from '../../../../shared/utils/workingGraphUtils.js';
+import { DirectoryRebuild, discardDirectory } from '../../../../shared/utils/dirOperations.js';
 import { copySourceFileToTrackedSnapshot } from '../../../../shared/bundle-node/trackedSourceContentSync.js';
 import { sourceFilenameIn } from '../../../../shared/bundle-node/sourceFileNames.js';
 import {
@@ -199,9 +200,7 @@ function cleanupPreparedGenerationSourceMaterial(bundleDirectory: string): void 
 
   invalidateWorkingGraphCache(preparedSourceContentDir);
 
-  if (fs.existsSync(preparedSourceContentDir)) {
-    fs.rmSync(preparedSourceContentDir, { recursive: true, force: true });
-  }
+  discardDirectory(preparedSourceContentDir);
   if (fs.existsSync(preparedBundleNodeConfigPath)) {
     fs.rmSync(preparedBundleNodeConfigPath, { force: true });
   }
@@ -231,8 +230,8 @@ export function prepareGenerationSourceMaterial(
     tagPageCount: 0,
   };
 
-  cleanupPreparedGenerationSourceMaterial(bundleDirectory);
   if (!fs.existsSync(baseBundleNodeConfigPath) || !fs.existsSync(trackedPageContentDir)) {
+    cleanupPreparedGenerationSourceMaterial(bundleDirectory);
     return fallback;
   }
 
@@ -247,7 +246,9 @@ export function prepareGenerationSourceMaterial(
     fallback = { sourceContentDirectory: preparedSourceContentDir, bundleNodeConfigPath: preparedBundleNodeConfigPath, tagPageCount: 0 };
     return projected;
   };
-  const bundleNodeConfigs = prepareBase();
+  // A single source's tag pages rebuild the prepared copy in place below.
+  const rebuildInPlace = options.tagsEnabled && !bundleConfig.sources;
+  const bundleNodeConfigs = rebuildInPlace ? storedNodes : prepareBase();
   if (!options.tagsEnabled) return fallback;
 
   try {
@@ -256,9 +257,11 @@ export function prepareGenerationSourceMaterial(
     // 1) Scan tracked markdown for Obsidian-style #tags
     const trackedMarkdownFiles = listMarkdownFilesRecursive(fallback.sourceContentDirectory, { excludeDirNames: new Set([tagPagesSubdirName]) });
     const tagKeyToExampleBody = new Map<string, string>();
+    const trackedMarkdown = new Map<string, string>();
 
     for (const filePath of trackedMarkdownFiles) {
       const md = fs.readFileSync(filePath, 'utf8');
+      trackedMarkdown.set(path.relative(fallback.sourceContentDirectory, filePath), md);
       const found = extractObsidianTagsFromMarkdown(md);
       for (const [key, exampleBody] of found.entries()) {
         if (!tagKeyToExampleBody.has(key)) tagKeyToExampleBody.set(key, exampleBody);
@@ -271,6 +274,7 @@ export function prepareGenerationSourceMaterial(
       .map(tagKey => tagKeyToPageTitle(tagKey));
 
     if (desiredTagPageTitles.length === 0) {
+      if (rebuildInPlace) cleanupPreparedGenerationSourceMaterial(bundleDirectory);
       return fallback;
     }
 
@@ -289,15 +293,14 @@ export function prepareGenerationSourceMaterial(
       };
     });
 
-    // 3) Copy tracked content into the generation-prepared source tree
-    if (!bundleConfig.sources) {
-      fs.cpSync(trackedPageContentDir, preparedSourceContentDir, { recursive: true });
-    }
-    if (fs.existsSync(tagPagesDir)) {
-      fs.rmSync(tagPagesDir, { recursive: true, force: true });
-    }
+    const tagBodyToPageTitle = (tagBody: string) => {
+      const title = tagKeyToPageTitle(normalizeTagToKey(tagBody));
+      return bundleConfig.sources ? `${tagPagesSubdirName}/${title}::${bundleConfig.sources[0].name}` : title;
+    };
+    const tagPageContent = (tagKey: string, exampleBody: string) =>
+      `<!-- auto-generated tag page for #${exampleBody || tagKey} -->\n`;
 
-    // 4) Write the prepared page config snapshot with only current tag pages
+    // 3) Write the prepared page config snapshot with only current tag pages
     fs.mkdirSync(path.dirname(preparedBundleNodeConfigPath), { recursive: true });
     fs.writeFileSync(
       preparedBundleNodeConfigPath,
@@ -308,27 +311,47 @@ export function prepareGenerationSourceMaterial(
       'utf8'
     );
 
-    // 5) Write tag page markdown files into prepared_source_content/x-tagpages
-    fs.mkdirSync(tagPagesDir, { recursive: true });
-    for (const [tagKey, exampleBody] of tagKeyToExampleBody.entries()) {
-      const title = tagKeyToPageTitle(tagKey);
-      const filePath = path.join(tagPagesDir, `${title}.md`);
-      const display = `#${exampleBody || tagKey}`;
-      const content = `<!-- auto-generated tag page for ${display} -->\n`;
-      fs.writeFileSync(filePath, content, 'utf8');
-    }
+    if (rebuildInPlace) {
+      // 4) Copy tracked content into the generation-prepared source tree, with
+      // tags in its markdown rewritten to wikilinks pointing at tag pages, and
+      // the tag pages written into prepared_source_content/x-tagpages.
+      const prepared = new DirectoryRebuild(preparedSourceContentDir);
+      const copyTree = (relativeDirectory: string) => {
+        prepared.mkdir(path.join(preparedSourceContentDir, relativeDirectory));
+        for (const entry of fs.readdirSync(path.join(trackedPageContentDir, relativeDirectory), { withFileTypes: true })) {
+          const relativePath = path.join(relativeDirectory, entry.name);
+          if (relativePath === tagPagesSubdirName) continue;
+          const source = path.join(trackedPageContentDir, relativePath);
+          const destination = path.join(preparedSourceContentDir, relativePath);
+          const markdown = trackedMarkdown.get(relativePath);
+          if (entry.isDirectory()) copyTree(relativePath);
+          else if (markdown !== undefined) prepared.writeFile(destination, rewriteObsidianTagsToWikiLinks(markdown, tagBodyToPageTitle));
+          else if (entry.isFile()) prepared.copyFile(source, destination);
+          else prepared.copyOther(source, destination);
+        }
+      };
+      copyTree('');
+      prepared.mkdir(tagPagesDir);
+      for (const [tagKey, exampleBody] of tagKeyToExampleBody.entries()) {
+        prepared.writeFile(path.join(tagPagesDir, `${tagKeyToPageTitle(tagKey)}.md`), tagPageContent(tagKey, exampleBody));
+      }
+      prepared.finish();
+    } else {
+      // 4) Write tag page markdown files into prepared_source_content/x-tagpages
+      if (fs.existsSync(tagPagesDir)) {
+        fs.rmSync(tagPagesDir, { recursive: true, force: true });
+      }
+      fs.mkdirSync(tagPagesDir, { recursive: true });
+      for (const [tagKey, exampleBody] of tagKeyToExampleBody.entries()) {
+        fs.writeFileSync(path.join(tagPagesDir, `${tagKeyToPageTitle(tagKey)}.md`), tagPageContent(tagKey, exampleBody), 'utf8');
+      }
 
-    // 6) Rewrite tags in prepared markdown to wikilinks pointing at tag pages
-    const preparedMarkdownFiles = listMarkdownFilesRecursive(preparedSourceContentDir, { excludeDirNames: new Set([tagPagesSubdirName]) });
-    const tagBodyToPageTitle = (tagBody: string) => {
-      const title = tagKeyToPageTitle(normalizeTagToKey(tagBody));
-      return bundleConfig.sources ? `${tagPagesSubdirName}/${title}::${bundleConfig.sources[0].name}` : title;
-    };
-    for (const filePath of preparedMarkdownFiles) {
-      const original = fs.readFileSync(filePath, 'utf8');
-      const rewritten = rewriteObsidianTagsToWikiLinks(original, tagBodyToPageTitle);
-      if (rewritten !== original) {
-        fs.writeFileSync(filePath, rewritten, 'utf8');
+      // 5) Rewrite tags in prepared markdown to wikilinks pointing at tag pages
+      for (const [relativePath, original] of trackedMarkdown) {
+        const rewritten = rewriteObsidianTagsToWikiLinks(original, tagBodyToPageTitle);
+        if (rewritten !== original) {
+          fs.writeFileSync(path.join(preparedSourceContentDir, relativePath), rewritten, 'utf8');
+        }
       }
     }
 

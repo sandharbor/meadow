@@ -45,6 +45,7 @@ export function frontmatterAsDict(markdownText: string): Record<string, unknown>
  * hides the rest of the note. `\%%` is two literal percent signs.
  */
 export function removeComments(markdown: string): string {
+  if (!markdown.includes('%%')) return markdown;
   const code = findCodeRanges(markdown);
   const inCode = (index: number) => code.some(range => index >= range.start && index < range.end);
   const escaped = (index: number) => {
@@ -81,6 +82,7 @@ export function removeComments(markdown: string): string {
  * contain brackets, such as a link, but not a blank line.
  */
 export function inlineFootnotesToReferences(markdown: string): string {
+  if (!markdown.includes('^[')) return markdown;
   const code = findCodeRanges(markdown);
   const definitions: string[] = [];
   let out = '';

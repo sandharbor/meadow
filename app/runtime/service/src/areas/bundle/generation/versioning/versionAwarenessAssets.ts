@@ -21,6 +21,7 @@ import type { BundleNodeId } from '../../../../../../../contracts/types/shared/b
 import type { GeneratedBundleReaderRouteIndex } from '../../../../../../../contracts/types/shared/generated-bundle-versioning/generatedBundleVersioning.js';
 
 const VERSIONING_ASSET_DIRECTORY = path.posix.join('_mw_assets', 'versioning');
+const CONCURRENT_PAGE_REWRITES = 8;
 
 export const VERSION_AWARENESS_CSS = `.meadow-version-awareness {
   box-sizing: border-box;
@@ -167,12 +168,12 @@ export interface VersionAwarenessAssetResult {
   routeIndex: GeneratedBundleReaderRouteIndex;
 }
 
-export function emitVersionAwarenessAssets(input: {
+export async function emitVersionAwarenessAssets(input: {
   outputDirectory: string;
   /** Generated page path → node whose output it actually is (its final writer). */
   pageOwners: ReadonlyMap<string, BundleNodeId>;
   entryRoute: string;
-}): VersionAwarenessAssetResult {
+}): Promise<VersionAwarenessAssetResult> {
   const htmlFiles = collectGeneratedHtmlFiles(input.outputDirectory);
   const generated = new Set(htmlFiles);
   const routeOwners = new Map<string, string>();
@@ -202,10 +203,11 @@ export function emitVersionAwarenessAssets(input: {
   fs.writeFileSync(path.join(assetDirectory, cssFilename), VERSION_AWARENESS_CSS, 'utf8');
   fs.writeFileSync(path.join(assetDirectory, routeIndexFilename), routeIndexContent, 'utf8');
 
-  for (const relativePath of htmlFiles) {
+  // Pages are rewritten a few at a time, which overlaps their file operations.
+  const rewritePage = async (relativePath: string): Promise<void> => {
     const absolutePath = path.join(input.outputDirectory, ...relativePath.split('/'));
-    const html = fs.readFileSync(absolutePath, 'utf8');
-    fs.writeFileSync(
+    const html = await fs.promises.readFile(absolutePath, 'utf8');
+    await fs.promises.writeFile(
       absolutePath,
       injectAwarenessReferences(
         html,
@@ -216,7 +218,18 @@ export function emitVersionAwarenessAssets(input: {
       ),
       'utf8',
     );
-  }
+  };
+  let next = 0;
+  let failed = false;
+  const rewriteRemainingPages = async (): Promise<void> => {
+    try {
+      while (!failed && next < htmlFiles.length) await rewritePage(htmlFiles[next++]);
+    } catch (error) {
+      failed = true;
+      throw error;
+    }
+  };
+  await Promise.all(Array.from({ length: CONCURRENT_PAGE_REWRITES }, rewriteRemainingPages));
 
   return {
     javascriptPath: `${VERSIONING_ASSET_DIRECTORY}/${javascriptFilename}`,

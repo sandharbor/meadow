@@ -79,7 +79,23 @@ const HTML_BLOCK_STARTS: { start: RegExp; end: RegExp | null; interruptsParagrap
   },
 ];
 
-export function findCodeRanges(markdown: string, options: CodeScanOptions = {}): CodeRange[] {
+// The passes over a note each find its code again, often in unchanged text.
+// One map for each kind of scan, keyed by the text itself.
+const recentCodeRanges = { plain: new Map<string, readonly CodeRange[]>(), htmlBlocks: new Map<string, readonly CodeRange[]>() };
+const MAX_RECENT_CODE_RANGES = 256;
+
+export function findCodeRanges(markdown: string, options: CodeScanOptions = {}): readonly CodeRange[] {
+  const recent = options.htmlBlocks ? recentCodeRanges.htmlBlocks : recentCodeRanges.plain;
+  let ranges = recent.get(markdown);
+  if (!ranges) {
+    ranges = Object.freeze(scanCodeRanges(markdown, options));
+    if (recent.size >= MAX_RECENT_CODE_RANGES) recent.delete(recent.keys().next().value!);
+    recent.set(markdown, ranges);
+  }
+  return ranges;
+}
+
+function scanCodeRanges(markdown: string, options: CodeScanOptions): CodeRange[] {
   const ranges: CodeRange[] = [];
   const lines = markdown.split('\n');
   const lineStarts: number[] = [];

@@ -25,6 +25,7 @@ import { isLinkTracked } from '../html/linkModificationService.js';
 import { bundleNodeConfigToKey } from '../../../../shared/bundle-node/nodeKeys.js';
 import { fileNodeNamesFor } from '../../../../shared/bundle-node/sourceFileNames.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
+import { DirectoryRebuild } from '../../../../shared/utils/dirOperations.js';
 
 type LinkResolutionMap = Record<string, LinkResolvedInfo>;
 type AllLinkResolutionMaps = Map<EncodedBundleNodeKey, LinkResolutionMap>;
@@ -424,10 +425,9 @@ export function prepareScrubbedSourceDirectory(
   bundleNodeConfigsForLinks: BundleNodeConfig[],
   allLinkResolutionMaps?: AllLinkResolutionMaps
 ): void {
-  if (fs.existsSync(scrubbedContentDir)) {
-    fs.rmSync(scrubbedContentDir, { recursive: true, force: true });
-  }
-  fs.mkdirSync(scrubbedContentDir, { recursive: true });
+  // Rebuilt in place, so the working graph's index still recognises the
+  // files that scrub to the same bytes as last time.
+  const scrubbed = new DirectoryRebuild(scrubbedContentDir);
 
   for (const config of Object.values(bundleNodeConfs)) {
     if (config.bundleNodeKind !== 'folder' || config.listType !== 'whitelist') continue;
@@ -439,7 +439,7 @@ export function prepareScrubbedSourceDirectory(
     const outputFolder = config.sourceGraphSubdirectory
       ? path.join(scrubbedContentDir, ...config.sourceGraphSubdirectory.split('/'))
       : scrubbedContentDir;
-    fs.mkdirSync(outputFolder, { recursive: true });
+    scrubbed.mkdir(outputFolder);
   }
 
   const allFiles = walkFilesRecursively(sourceContentDir);
@@ -464,10 +464,6 @@ export function prepareScrubbedSourceDirectory(
     }
 
     const outputPath = path.join(scrubbedContentDir, relativePath);
-    const outputDir = path.dirname(outputPath);
-    if (!fs.existsSync(outputDir)) {
-      fs.mkdirSync(outputDir, { recursive: true });
-    }
 
     const fileType = matchingConf.fileType || 'md';
     if (fileType === 'md' || fileType === 'excalidraw') {
@@ -477,11 +473,12 @@ export function prepareScrubbedSourceDirectory(
       const scrubbedContent = fileType === 'excalidraw'
         ? sanitizeExcalidrawSource(content, bundleNodeConfigsForLinks, linkResolutionMap, HTML_LINK_NOT_TRACKED_REPLACEMENT)
         : sanitizeMarkdownLinks(content, bundleNodeConfigsForLinks, linkResolutionMap, HTML_LINK_NOT_TRACKED_REPLACEMENT);
-      fs.writeFileSync(outputPath, scrubbedContent, 'utf-8');
+      scrubbed.writeFile(outputPath, scrubbedContent);
     } else {
-      fs.copyFileSync(filePath, outputPath);
+      scrubbed.copyFile(filePath, outputPath);
     }
   }
+  scrubbed.finish();
 }
 
 import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeKey.js';

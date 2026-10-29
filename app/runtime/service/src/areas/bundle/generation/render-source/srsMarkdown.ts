@@ -16,6 +16,7 @@ limitations under the License.
 
 import fs from 'fs';
 import path from 'path';
+import { DirectoryRebuild } from '../../../../shared/utils/dirOperations.js';
 import { createHash } from 'crypto';
 import {
   extractObsidianTagsFromMarkdown,
@@ -935,32 +936,46 @@ export function prepareSrsRenderSourceDirectory(
     configuredTags
   );
 
-  if (fs.existsSync(renderSourceContentDir)) {
-    fs.rmSync(renderSourceContentDir, { recursive: true, force: true });
-  }
   if (!fs.existsSync(sourceContentDir)) {
+    fs.rmSync(renderSourceContentDir, { recursive: true, force: true });
     return { matchedPageRelativePaths, updatedFiles };
   }
-  fs.cpSync(sourceContentDir, renderSourceContentDir, { recursive: true });
 
-  const renderSourceMarkdownFiles = listMarkdownFilesRecursive(renderSourceContentDir);
-  for (const markdownFile of renderSourceMarkdownFiles) {
-    const relativePath = toPosixRelativePath(renderSourceContentDir, markdownFile);
-    if (!matchedPageRelativePaths.has(relativePath)) {
-      continue;
+  // A copy of the source tree with SRS comments removed from matched pages,
+  // rebuilt in place so the working graph's index still recognises the files
+  // that are unchanged since the last render.
+  const renderSource = new DirectoryRebuild(renderSourceContentDir);
+  const copyTree = (relativeDirectory: string) => {
+    renderSource.mkdir(path.join(renderSourceContentDir, relativeDirectory));
+    for (const entry of fs.readdirSync(path.join(sourceContentDir, relativeDirectory), { withFileTypes: true })) {
+      const relativeEntry = path.join(relativeDirectory, entry.name);
+      const source = path.join(sourceContentDir, relativeEntry);
+      const destination = path.join(renderSourceContentDir, relativeEntry);
+      if (entry.isDirectory()) {
+        copyTree(relativeEntry);
+      } else if (!entry.isFile()) {
+        renderSource.copyOther(source, destination);
+      } else {
+        const originalMarkdown = entry.name.toLowerCase().endsWith('.md') && matchedPageRelativePaths.has(relativeEntry.split(path.sep).join('/'))
+          ? fs.readFileSync(source, 'utf8')
+          : undefined;
+        const withoutSrComments = originalMarkdown === undefined ? undefined : removeSrsCommentsFromMarkdown(originalMarkdown);
+        if (withoutSrComments === undefined || withoutSrComments === originalMarkdown) {
+          renderSource.copyFile(source, destination);
+        } else {
+          const mode = fs.statSync(source).mode & 0o777;
+          renderSource.writeFileWith(destination, withoutSrComments, mode, () => writeDurableDocument({
+            path: destination,
+            value: withoutSrComments,
+            codec: textDocumentCodec,
+            mode,
+          }));
+        }
+      }
     }
-
-    const originalMarkdown = fs.readFileSync(markdownFile, 'utf8');
-    const withoutSrComments = removeSrsCommentsFromMarkdown(originalMarkdown);
-    if (withoutSrComments !== originalMarkdown) {
-      writeDurableDocument({
-        path: markdownFile,
-        value: withoutSrComments,
-        codec: textDocumentCodec,
-        mode: fs.statSync(markdownFile).mode & 0o777,
-      });
-    }
-  }
+  };
+  copyTree('');
+  renderSource.finish();
 
   return { matchedPageRelativePaths, updatedFiles };
 }

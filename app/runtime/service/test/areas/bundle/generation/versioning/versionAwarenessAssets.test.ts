@@ -47,7 +47,7 @@ describe('version awareness assets', () => {
     return output;
   };
 
-  it('R06/R09 emits deterministic content-addressed reader-safe assets and page metadata', () => {
+  it('R06/R09 emits deterministic content-addressed reader-safe assets and page metadata', async () => {
     const routes = new Map<string, BundleNodeId>([
       ['index.html', nodeId('entry-node')],
       ['nested/Café.html', nodeId('stable-node')],
@@ -55,12 +55,12 @@ describe('version awareness assets', () => {
     const firstOutput = makeOutput('first');
     const secondOutput = makeOutput('second');
 
-    const first = emitVersionAwarenessAssets({
+    const first = await emitVersionAwarenessAssets({
       outputDirectory: firstOutput,
       pageOwners: routes,
       entryRoute: 'index.html',
     });
-    const second = emitVersionAwarenessAssets({
+    const second = await emitVersionAwarenessAssets({
       outputDirectory: secondOutput,
       pageOwners: routes,
       entryRoute: 'index.html',

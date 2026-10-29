@@ -78,6 +78,7 @@ import { frontmatterAsDict, inlineFootnotesToReferences, replaceInProse, replace
 import { blankOutCode } from './markdownCode.js';
 import { HeldEmbeds, renderTransclusionToHtml } from './transclusion.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
+import { copyFileUnlessCurrent } from '../../../../shared/utils/dirOperations.js';
 import { SOURCES_EXPORT_MANIFEST_FILENAME } from '../../../../shared/utils/zipUtils.js';
 import {
   CUSTOMIZATION_ASSETS_DIRECTORY,
@@ -283,8 +284,10 @@ export function createNoteRenderer(context: NoteRenderContext) {
   // Embeds found by convertWikiLinks; each marked() call below restores them.
   const heldEmbeds = new HeldEmbeds();
 
+  // Each pass below is skipped when the text it requires is absent, since
+  // nothing outside code can match then.
   function convertWikiLinks(mdContent: string, highlightDoNotLinkPageName?: string, overrides?: WikiLinkOverrides): string {
-    mdContent = replaceOutsideCode(
+    if (mdContent.includes(':::')) mdContent = replaceOutsideCode(
       mdContent,
       /(^|\n):::\s*meadow\s*\n([\s\S]*?)\n:::(?=\n|$)/g,
       (_match: string, prefix: string, body: string) =>
@@ -292,7 +295,7 @@ export function createNoteRenderer(context: NoteRenderContext) {
     );
 
     // First, handle image links with exclamation marks
-    mdContent = replaceOutsideCode(mdContent, /!\[\[(.*?)\]\]/g, (_match: string, linkText: string) => {
+    if (mdContent.includes('![[')) mdContent = replaceOutsideCode(mdContent, /!\[\[(.*?)\]\]/g, (_match: string, linkText: string) => {
       // Obsidian-style embeds: images stay images; otherwise treat as transclusion.
       const effectiveLinkResolutionMap = overrides?.linkResolutionMapOverride ?? linkResolutionMap;
       if (isImageLikeWikiLink(linkText, effectiveLinkResolutionMap)) {
@@ -325,7 +328,7 @@ export function createNoteRenderer(context: NoteRenderContext) {
     }, { htmlBlocks: true });
 
     // Then handle regular wiki links
-    mdContent = replaceOutsideCode(mdContent, /\[\[(.*?)\]\]/g, (_match: string, linkText: string) =>
+    if (mdContent.includes('[[')) mdContent = replaceOutsideCode(mdContent, /\[\[(.*?)\]\]/g, (_match: string, linkText: string) =>
       linkText.startsWith('#')
         ? samePageLink(linkText, overrides)
         : linkOrImageHtml(linkText, highlightDoNotLinkPageName, { ...overrides, embed: false }),
@@ -335,7 +338,7 @@ export function createNoteRenderer(context: NoteRenderContext) {
     // Standard Markdown links that marked cannot parse: Obsidian accepts
     // unescaped spaces in a destination, as in [text](relative/my page.md).
     // marked renders every other form through markdownLinkHtml below.
-    mdContent = replaceOutsideCode(mdContent, SPACED_DESTINATION_LINK, (match: string, bang: string, text: string, href: string) =>
+    if (mdContent.includes('](')) mdContent = replaceOutsideCode(mdContent, SPACED_DESTINATION_LINK, (match: string, bang: string, text: string, href: string) =>
       markdownLinkHtml(bang === '!', text, href, highlightDoNotLinkPageName, overrides) ?? match,
       { htmlBlocks: true }
     );
@@ -415,7 +418,7 @@ export function createNoteRenderer(context: NoteRenderContext) {
         }
         const imageDest = path.join(imageOutputDir, fileName);
         if (fs.existsSync(imageSrc) && (fileType !== 'svg' || !fs.existsSync(imageDest))) {
-          fs.copyFileSync(imageSrc, imageDest);
+          copyFileUnlessCurrent(imageSrc, imageDest);
         }
       }
 
@@ -1059,9 +1062,11 @@ export function renderGeneratedBundleNodeToHtml(args: {
 
 /** Backlinks in page-name order, as a reader scans them; the key orders two pages with one name. */
 function sortedBacklinks(keys: string[], bundleNodeConfigs: BundleNodeConfig[]): string[] {
-  const name = (key: string) => bundleNodeConfigs.find(config => bundleNodeConfigToKey(config) === key)?.bundleNodeName ?? key;
+  const unique = [...new Set(keys)];
+  const names = new Map(unique.map(key => [key, bundleNodeConfigs.find(config => bundleNodeConfigToKey(config) === key)?.bundleNodeName ?? key]));
+  const name = (key: string) => names.get(key)!;
   const compare = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
-  return [...new Set(keys)].sort((a, b) => compare(name(a), name(b)) || compare(a, b));
+  return unique.sort((a, b) => compare(name(a), name(b)) || compare(a, b));
 }
 
 /**
@@ -1369,10 +1374,83 @@ function addBlockAnchors(mdContent: string, originalForHashing?: string): string
   return anchoredBlocks(mdContent, originalForHashing).map(({ block, anchor }) => `${block.content}\n${anchor}`).join('\n\n');
 }
 
+/** A block of a backlinking page, with the links it is matched by, each found once. */
+class BacklinkSourceBlock {
+  private linkNames?: string[];
+  private linkTargets?: string[];
+
+  constructor(readonly anchorId: string, readonly content: string, private readonly definitions: Links) {}
+
+  /** Wikilink file names and Markdown link stems, compared with page names. */
+  get links(): string[] {
+    if (!this.linkNames) {
+      this.linkNames = markdownContentToPageLinkFilenames(this.content);
+      extractMarkdownLinkFilenames(this.content, this.linkNames, this.definitions);
+    }
+    return this.linkNames;
+  }
+
+  /** Wikilink texts and Markdown link destinations, compared with resolved link texts. */
+  get targets(): string[] {
+    this.linkTargets ??= [
+      ...[...blankOutCode(this.content).matchAll(/\[\[(.*?)\]\]/g)].map(match => match[1]),
+      ...markdownLinkDestinations(this.content, this.definitions),
+    ];
+    return this.linkTargets;
+  }
+}
+
+/** A backlinking page's blocks and reference definitions, which every page it links to reads. */
+class BacklinkSource {
+  readonly definitionMarkdown: string;
+  readonly blocks: BacklinkSourceBlock[];
+  private readonly definitions: Links;
+  private readonly tables = new Map<BacklinkSourceBlock, { header: string; rows: BacklinkSourceBlock[] } | null>();
+
+  constructor(mdContent: string) {
+    // Reference-style links in a block may use definitions from anywhere on the page.
+    const definitions = referenceDefinitions(mdContent);
+    this.definitionMarkdown = referenceDefinitionMarkdown(definitions);
+    this.blocks = addBlockAnchors(mdContent).split('\n\n').map(block => {
+      const { anchorId, content } = stripAndReturnBlockAnchorIds(block);
+      return new BacklinkSourceBlock(anchorId, content, definitions);
+    });
+    this.definitions = definitions;
+  }
+
+  /**
+   * The header, separator and data rows of a block that is a Markdown table,
+   * or null when it is not one. A table has at least 3 lines (header,
+   * separator, data row) and its separator line matches |---|.
+   */
+  table(block: BacklinkSourceBlock): { header: string; rows: BacklinkSourceBlock[] } | null {
+    if (!this.tables.has(block)) {
+      const lines = block.content.split('\n');
+      this.tables.set(block, lines.length < 3 || !/^\|[\s-:|]+\|$/.test(lines[1].trim())
+        ? null
+        : { header: `${lines[0]}\n${lines[1]}`, rows: lines.slice(2).map(row => new BacklinkSourceBlock('', row, this.definitions)) });
+    }
+    return this.tables.get(block)!;
+  }
+}
+
+// Keyed by the page's Markdown, so a page is analysed once however many
+// pages it links to, and an edited page is analysed again.
+const backlinkSources = new Map<string, BacklinkSource>();
+const MAX_BACKLINK_SOURCES = 2000;
+
+function backlinkSource(mdContent: string): BacklinkSource {
+  let source = backlinkSources.get(mdContent);
+  if (!source) {
+    source = new BacklinkSource(mdContent);
+    if (backlinkSources.size >= MAX_BACKLINK_SOURCES) backlinkSources.delete(backlinkSources.keys().next().value!);
+    backlinkSources.set(mdContent, source);
+  }
+  return source;
+}
+
 function backlinkContext(directory: string, backlink: string, thePageName: string, currentPageDirectory?: string, resolutions?: Record<string, LinkResolvedInfo>): BacklinkContext[] {
-  const mdContent = getMdContent(directory, backlink, false);
-  const mdContentWithAnchors = addBlockAnchors(mdContent);
-  const blocks = mdContentWithAnchors.split('\n\n');
+  const source = backlinkSource(getMdContent(directory, backlink, false));
   const matchingBlockInfo: BacklinkContext[] = [];
 
   // Links in source markdown may reference a page with or without a directory
@@ -1381,64 +1459,26 @@ function backlinkContext(directory: string, backlink: string, thePageName: strin
   const matchingTexts = new Set(Object.entries(resolutions ?? {})
     .filter(([, value]) => value.link_resolved_target_path?.replace(/^\//, '') === `${currentPageDirectory ? `${currentPageDirectory}/` : ''}${thePageName}.md`)
     .map(([text]) => text));
-  // Reference-style links in a block may use definitions from anywhere on the page.
-  const definitions = referenceDefinitions(mdContent);
-  const definitionMarkdown = referenceDefinitionMarkdown(definitions);
-  const hasResolvedTarget = (content: string) => [
-    ...[...blankOutCode(content).matchAll(/\[\[(.*?)\]\]/g)].map(match => match[1]),
-    ...markdownLinkDestinations(content, definitions),
-  ].some(text => matchingTexts.has(text));
   if (!resolutions && currentPageDirectory) {
     namesToMatch.push(`${currentPageDirectory}/${thePageName}`);
   }
+  const matches = (block: BacklinkSourceBlock) => resolutions
+    ? block.targets.some(text => matchingTexts.has(text))
+    : block.links.some(link => namesToMatch.includes(link));
 
-  for (const block of blocks) {
-    const { anchorId, content } = stripAndReturnBlockAnchorIds(block);
-    const links = markdownContentToPageLinkFilenames(content);
-    // Also extract link targets from standard markdown links [text](path.md)
-    extractMarkdownLinkFilenames(content, links, definitions);
-
-    if (resolutions ? hasResolvedTarget(content) : links.some(link => namesToMatch.includes(link))) {
+  for (const block of source.blocks) {
+    if (matches(block)) {
       // For table blocks, extract only the matching row instead of the full table.
-      // A markdown table block has lines starting with '|'.
-      const tableRow = extractMatchingTableRow(content, namesToMatch, definitions, resolutions ? hasResolvedTarget : undefined);
-      if (tableRow !== null) {
-        matchingBlockInfo.push({ anchor_id: anchorId, content: tableRow + definitionMarkdown });
-      } else {
-        matchingBlockInfo.push({ anchor_id: anchorId, content: content + definitionMarkdown });
-      }
+      const table = source.table(block);
+      const tableRow = table?.rows.find(matches);
+      matchingBlockInfo.push({
+        anchor_id: block.anchorId,
+        content: (tableRow ? `${table!.header}\n${tableRow.content}` : block.content) + source.definitionMarkdown,
+      });
     }
   }
 
   return matchingBlockInfo;
-}
-
-/**
- * If the content is a markdown table, return only the header + separator + the
- * row that contains a link matching one of the target names. Returns null when
- * the content is not a table.
- */
-function extractMatchingTableRow(content: string, namesToMatch: string[], definitions: Links, hasResolvedTarget?: (content: string) => boolean): string | null {
-  const lines = content.split('\n');
-  // A markdown table has at least 3 lines (header, separator, data row)
-  // and the separator line matches |---|
-  if (lines.length < 3 || !/^\|[\s-:|]+\|$/.test(lines[1].trim())) {
-    return null;
-  }
-
-  const headerLine = lines[0];
-  const separatorLine = lines[1];
-
-  for (let i = 2; i < lines.length; i++) {
-    const row = lines[i];
-    const rowLinks = markdownContentToPageLinkFilenames(row);
-    extractMarkdownLinkFilenames(row, rowLinks, definitions);
-    if (hasResolvedTarget ? hasResolvedTarget(row) : rowLinks.some(link => namesToMatch.includes(link))) {
-      return `${headerLine}\n${separatorLine}\n${row}`;
-    }
-  }
-
-  return null;
 }
 
 /**

@@ -36,6 +36,7 @@ import { BundleConfig } from '../../../../../../../contracts/types/shared/bundle
 import { FileType } from '../../../../../../../contracts/types/shared/bundle-graph/FileType.js';
 import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundleConfigPaths.js';
 import { loadBundleConfig } from '../../../../shared/utils/bundleConfigUtils.js';
+import { discardDirectory, finishDiscardedDirectories } from '../../../../shared/utils/dirOperations.js';
 import { loadAppConfig } from '../../../../../../../shared_code/utils/appConfigUtils.js';
 import { resolveEffectiveGenerationOptions } from '../../../../../../../shared_code/utils/generationOptionsUtils.js';
 import {
@@ -350,24 +351,41 @@ async function loadWorkingGraphData(options: {
   return { breadcrumbPaths, breadcrumbNodeKeysByNodeKey, allLinkResolutionMaps, traversablePageKeys, graphNodes, graphEdges };
 }
 
+interface GenerateHtmlOptions {
+  /** Operation-specific destination used by the version lifecycle staging service. */
+  outputDirectory: string;
+  preview?: boolean;
+  startPage?: { title: string; directory?: string; sourceId?: string };
+  startPagePath?: string; // relative HTML path to prioritize (e.g., "subdir/Page Name.html")
+  onStartPageRendered?: (info: { title: string; directory: string; relativeHtmlPath: string }) => void;
+  shouldCancel?: () => boolean;
+  onProgress?: (info: {
+    stage: 'preparing' | 'copying-shared' | 'scanning-links' | 'computing-breadcrumbs' | 'rendering-pages' | 'complete';
+    message: string;
+    current?: number;
+    total?: number;
+    percent?: number;
+  }) => void;
+}
+
+/**
+ * Directories that generation rebuilds are discarded in the background while
+ * it continues; each is deleted before generation returns.
+ */
 export async function generateHtmlForBundle(
   bundleDirectory: string,
-  options: {
-    /** Operation-specific destination used by the version lifecycle staging service. */
-    outputDirectory: string;
-    preview?: boolean;
-    startPage?: { title: string; directory?: string; sourceId?: string };
-    startPagePath?: string; // relative HTML path to prioritize (e.g., "subdir/Page Name.html")
-    onStartPageRendered?: (info: { title: string; directory: string; relativeHtmlPath: string }) => void;
-    shouldCancel?: () => boolean;
-    onProgress?: (info: {
-      stage: 'preparing' | 'copying-shared' | 'scanning-links' | 'computing-breadcrumbs' | 'rendering-pages' | 'complete';
-      message: string;
-      current?: number;
-      total?: number;
-      percent?: number;
-    }) => void;
+  options: GenerateHtmlOptions
+): Promise<GenerationEmission> {
+  try {
+    return await renderBundleHtml(bundleDirectory, options);
+  } finally {
+    await finishDiscardedDirectories();
   }
+}
+
+async function renderBundleHtml(
+  bundleDirectory: string,
+  options: GenerateHtmlOptions
 ): Promise<GenerationEmission> {
   logger.info(`Processing bundle: ${bundleDirectory}`);
 
@@ -561,9 +579,7 @@ export async function generateHtmlForBundle(
 
   // Create and clean the current generated HTML directory.
   const prepareOutputStart = performance.now();
-  if (fs.existsSync(generatedHtmlDirectory)) {
-    fs.rmSync(generatedHtmlDirectory, { recursive: true, force: true });
-  }
+  discardDirectory(generatedHtmlDirectory);
   fs.mkdirSync(generatedHtmlDirectory, { recursive: true });
 
   const assetsDirectory = path.join(generatedHtmlDirectory, '_mw_assets');
@@ -925,9 +941,7 @@ export async function generateHtmlForBundle(
         const sourcesExportDir = BundleConfigPaths.getSourcesExportDir(bundleDirectory);
         const legacySourcesExportDir = path.join(bundleDirectory, 'build', 'markdown_export');
         const legacySourcesExportOutputDir = path.join(assetsDirectory, 'md-export');
-        if (fs.existsSync(sourcesExportDir)) {
-          fs.rmSync(sourcesExportDir, { recursive: true, force: true });
-        }
+        discardDirectory(sourcesExportDir);
         if (fs.existsSync(legacySourcesExportDir)) {
           fs.rmSync(legacySourcesExportDir, { recursive: true, force: true });
         }
@@ -1960,7 +1974,7 @@ export async function generateHtmlForBundle(
     );
   }
 
-  const versionAwareness = timeSync(
+  const versionAwareness = await timeAsync(
     'bundle.generation.stage',
     { ...timingLabels, stage: 'write_version_awareness_assets' },
     () => emitVersionAwarenessAssets({

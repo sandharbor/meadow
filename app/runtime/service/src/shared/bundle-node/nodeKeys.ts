@@ -31,6 +31,30 @@ export function sourceFilePathToBundleNodeKey(sourcePath: string): EncodedBundle
   return serializeBundleNodeKey(fileNodeKeyFromSourceFilePath(sourcePath));
 }
 
+interface CachedConfigKey {
+  kind: BundleNodeConfig['bundleNodeKind'];
+  id: BundleNodeConfig['bundleNodeId'];
+  name: string;
+  fileType: string | undefined;
+  directory: string | undefined;
+  sourceId: string | undefined;
+  key: EncodedBundleNodeKey;
+}
+
+// Rendering looks up configurations by key once per link and backlink. A key
+// is recomputed only when a field it derives from changes.
+const configKeys = new WeakMap<BundleNodeConfig, CachedConfigKey>();
+
 export function bundleNodeConfigToKey(conf: BundleNodeConfig): EncodedBundleNodeKey {
-  return serializeBundleNodeKey(bundleNodeKeyFromConfig(conf));
+  const cached = configKeys.get(conf);
+  if (cached && cached.kind === conf.bundleNodeKind && cached.id === conf.bundleNodeId && cached.name === conf.bundleNodeName
+    && cached.fileType === conf.fileType && cached.directory === conf.sourceGraphSubdirectory && cached.sourceId === conf.sourceId) {
+    return cached.key;
+  }
+  const key = serializeBundleNodeKey(bundleNodeKeyFromConfig(conf));
+  configKeys.set(conf, {
+    kind: conf.bundleNodeKind, id: conf.bundleNodeId, name: conf.bundleNodeName, fileType: conf.fileType,
+    directory: conf.sourceGraphSubdirectory, sourceId: conf.sourceId, key,
+  });
+  return key;
 }

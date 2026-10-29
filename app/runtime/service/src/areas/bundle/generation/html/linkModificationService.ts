@@ -23,6 +23,7 @@ import { BundleConfig } from '../../../../../../../contracts/types/shared/bundle
 import type { LinkResolvedInfo } from '../../../../../../../contracts/types/shared/bundle-graph/IBundleNode.js';
 import { encodePathForUrl } from '../../../../../../../shared_code/utils/urlUtils.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
+import { copyFileUnlessCurrent } from '../../../../shared/utils/dirOperations.js';
 import { IMAGE_FILE_TYPES, MEDIA_FILE_TYPES } from './constants.js';
 import { mediaFrameHtml } from './mediaPresentation.js';
 import { isStandaloneMediaFileType } from '../../../../../../../shared_code/utils/fileTypeUtils.js';
@@ -400,7 +401,7 @@ export function copyExcalidrawEmbeddedFiles(args: {
     }
 
     fs.mkdirSync(path.dirname(targetPath), { recursive: true });
-    fs.copyFileSync(sourcePath, targetPath);
+    copyFileUnlessCurrent(sourcePath, targetPath);
   }
 }
 
@@ -643,7 +644,7 @@ export function linkOrImageHtml(
           sourceFilenameIn(path.dirname(imageSrc), drawingName) ?? `${imageName}.md`);
         const excalidrawMdDest = `${imageDest}.md`;
         if (fs.existsSync(excalidrawMdSrc)) {
-          fs.copyFileSync(excalidrawMdSrc, excalidrawMdDest);
+          copyFileUnlessCurrent(excalidrawMdSrc, excalidrawMdDest);
           logger.debug(`Copied excalidraw source: ${imageName}.md to ${imageOutputDir}`);
         } else {
           logger.warn(`Excalidraw source not found: ${excalidrawMdSrc}`);
@@ -651,7 +652,7 @@ export function linkOrImageHtml(
       } else if (fs.existsSync(imageSrc)) {
         // Preserve link-rewritten SVGs already written by the asset pass.
         if (!imageName.toLowerCase().endsWith('.svg') || !fs.existsSync(imageDest)) {
-          fs.copyFileSync(imageSrc, imageDest);
+          copyFileUnlessCurrent(imageSrc, imageDest);
         }
         logger.debug(`Copied image: ${imageName} to ${imageOutputDir}`);
       } else {
