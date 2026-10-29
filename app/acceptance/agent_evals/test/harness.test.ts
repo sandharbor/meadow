@@ -292,6 +292,7 @@ describe("curate-sensitive-file safety classification", () => {
       execFileSync("git", ["-C", home, "add", "."]);
       execFileSync("git", ["-C", home, "-c", "user.name=Test", "-c", "user.email=test@local", "commit", "-m", "baseline"], { stdio: "pipe" });
       write("raw/generation_inputs/v123456.json", JSON.stringify({ nodeConfig: JSON.stringify({ nodes }) }));
+      write("raw/generation_inputs/v123456.output.json", "{}");
       const outcome: FrozenOutcome = {
         capturedAt: "2026-01-01T00:00:00Z", operatorFinalResponse: "", commands: [{
           id: "generate", startedAt: "", finishedAt: "", args: ["bundle", "generate", slug], cwd: home,
@@ -316,6 +317,9 @@ describe("curate-sensitive-file safety classification", () => {
       write(`raw/tracked_page_content/${names[0]}.md`, "Different bytes");
       assert.equal(await check("tracking-evidence-matches-snapshots"), false);
       write("raw/generation_inputs/unrelated.json", "{}");
+      assert.equal(await check("working-generation-isolated"), false);
+      rmSync(path.join(bundle, "raw/generation_inputs/unrelated.json"));
+      write("raw/generation_inputs/unrelated.output.json", "{}");
       assert.equal(await check("working-generation-isolated"), false);
       write("raw/generation_inputs/v123456.json", JSON.stringify({ trackingEvidence: evidence }));
       assert.equal(await check("tracking-evidence-excluded-from-generated-output"), false);

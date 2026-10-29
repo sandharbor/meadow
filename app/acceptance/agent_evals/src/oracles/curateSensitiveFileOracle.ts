@@ -189,6 +189,9 @@ export async function evaluateCurateSensitiveFile(input: {
     expectedWorkingGenerationFiles.add(
       `bundles/${slug}/raw/generation_inputs/${generation.versionId}.json`,
     );
+    expectedWorkingGenerationFiles.add(
+      `bundles/${slug}/raw/generation_inputs/${generation.versionId}.output.json`,
+    );
   }
   const unexpectedHomeChanges = gitStatusEntries.filter(entry => {
     const relativePath = entry.slice(3);
