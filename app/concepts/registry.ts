@@ -44,6 +44,25 @@ export function validateConceptRegistry(concepts: readonly AnyMeadowConcept[]): 
         errors.push(`concept "${concept.id}" has non-app-area membership "${appAreaId}"`);
       }
     }
+    if (concept.subAreas?.length && (concept.subAreas.length !== 1 || concept.appAreaIds?.length !== 1)) {
+      errors.push(`concept "${concept.id}" must be contained within exactly one app area to be a sub-area`);
+    }
+    if (concept.subAreas?.length && concept.parentId) {
+      const parent = byId.get(concept.parentId);
+      if (parent?.subAreas?.length && parent.subAreas[0].areaId !== concept.subAreas[0].areaId) {
+        errors.push(`sub-area "${concept.id}" must have the same owning area as its parent`);
+      }
+      const visited = new Set([concept.id]);
+      let ancestor = parent;
+      while (ancestor?.subAreas?.length) {
+        if (visited.has(ancestor.id)) {
+          errors.push(`sub-area "${concept.id}" has a cycle in its parent hierarchy`);
+          break;
+        }
+        visited.add(ancestor.id);
+        ancestor = ancestor.parentId ? byId.get(ancestor.parentId) : undefined;
+      }
+    }
     for (const subArea of concept.subAreas ?? []) {
       if (byId.get(subArea.areaId)?.kind !== "app-area" || !concept.appAreaIds?.includes(subArea.areaId)) {
         errors.push(`concept "${concept.id}" has invalid sub-area membership "${subArea.areaId}"`);

@@ -36,7 +36,7 @@ const sections = scenarioSections({
   reviewGeneratedDiff: { type: 'test', text: conceptText`Review the generated diff.` },
   goChangesTabInspectDiff: { type: 'test', text: conceptText`Go to Changes tab and inspect the diff` },
 });
-const areas = scenarioAreas([bundleGeneration]);
+const areas = scenarioAreas([bundleGeneration], { subAreas: [hooks, customize] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: '6e16ca6b-afe5-492d-9627-37c1aac8f45e' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame }) => {
   const { modal, changesTab } = await test.step(sections.steps.setup, async () => {
     const wf = new Workflows(page, expect);

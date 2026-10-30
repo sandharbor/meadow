@@ -51,7 +51,7 @@ const sections = scenarioSections({
   confirmRemoteDeletion: { type: 'test', text: conceptText`Confirm remote deletion.` },
   checkRetainedHistory: { type: 'test', text: conceptText`Check the retained history.` },
 });
-const areas = scenarioAreas([bundleSharing]);
+const areas = scenarioAreas([bundleSharing], { subAreas: [publishing, deletion] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: 'f133eb45-0c07-4621-bf2a-b753ee1038b7' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,

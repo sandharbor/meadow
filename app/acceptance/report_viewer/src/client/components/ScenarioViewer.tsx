@@ -107,6 +107,7 @@ interface ConceptView {
   description: string
   isContribution?: boolean
   subAreas?: { areaId: string; order: number }[]
+  parentId?: string
 }
 
 interface AppAreaView {
@@ -1971,10 +1972,11 @@ export default function ScenarioViewer() {
               ))}
             </div>
           )}
-          {matchingSubAreaGroups.map(({ area, subAreas }) => (
-            <div key={area.id} role="group" aria-label={`${area.name} sub-areas`}
+          {matchingSubAreaGroups.flatMap(({ area, rows }) => rows.map(({ parent, ancestors, subAreas }) => (
+            <div key={parent?.id ?? area.id} role="group" aria-label={`${parent?.name ?? area.name} sub-areas`}
+              style={expanded ? { marginLeft: `${(ancestors.length + 1) * 16}px` } : undefined}
               className={`scenario-metadata-group filter-areas flex items-center gap-1.5 ${expanded ? 'area-subareas min-w-0 flex-wrap rounded-r-md px-3 py-1.5' : 'shrink-0'}`}>
-              <span className="text-[11px] text-neutral-500">{area.name.replace(/^Bundle /, '')} sub-areas:</span>
+              <span className="text-[11px] text-neutral-500">{[area.name.replace(/^Bundle /, ''), ...ancestors.map(doc => doc.name)].join(' → ')} sub-areas:</span>
               {subAreas.map(doc => (
                 <Link key={doc.id} to={`/${runId}?area=${encodeURIComponent(area.id)}&subarea=${encodeURIComponent(doc.id)}`}
                   title={doc.description} data-selected="false" data-highlighted={hoveredDocId === doc.id}
@@ -1985,7 +1987,7 @@ export default function ScenarioViewer() {
                 </Link>
               ))}
             </div>
-          ))}
+          )))}
           {!!manifest.designPressureIds?.length && <div role="group" aria-label="Design pressures" className="flex flex-wrap items-center gap-1.5">
             <span className="text-[11px] text-neutral-400">Design pressures:</span>
             {pressures.filter(pressure => manifest.designPressureIds?.includes(pressure.id)).map(pressure => <button key={pressure.id}

@@ -41,7 +41,7 @@ const sections = scenarioSections({
   checkSearchWhenOpenedDiskSameScript: { type: 'test', text: conceptText`Check search when opened from disk. The same script-shard loader works when the self-contained HTML is opened directly from disk, without an HTTP server.` },
   fetchThroughActiveBrowserPageSoChromium: { type: 'test', text: conceptText`Fetch through the active browser page so Chromium owns stale keep-alive recovery. Playwright's APIRequestContext can reuse an idle proxy socket here and surface a sporadic ECONNRESET instead of retrying this safe GET.` },
 });
-const areas = scenarioAreas([bundleGeneration]);
+const areas = scenarioAreas([bundleGeneration], { subAreas: [customize, generatedBundleSearch] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: 'becacc26-9e46-40a8-98b7-701c607af0f7' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,

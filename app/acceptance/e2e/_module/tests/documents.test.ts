@@ -6,7 +6,8 @@ import os from 'node:os';
 import path from 'node:path';
 import ts from 'typescript';
 import { conceptDocument, documentBacklinks, documentPassages, validateDocuments, type MeadowDocument } from '../../../../concepts/documents.js';
-import { conceptLink, conceptText, sensitive, preventAccidentalSharing, scenarioDesignPressures } from '../../../../concepts/index.js';
+import { allCoreConcepts, conceptLink, conceptText, customize, hooks, htmlGeneration, localExport,
+  sensitive, preventAccidentalSharing, scenarioDesignPressures, validateConceptRegistry, type AnyMeadowConcept } from '../../../../concepts/index.js';
 import { loadDocumentRegistry } from '../../../../concepts/loadRegistry.js';
 import { scenarioDocumentMembership } from '../../../../concepts/scenarioMembership.js';
 import { captureDocumentSnapshot, readDocumentSnapshot, readScenarioDocuments, SCENARIO_DOCUMENTS_FILE } from '../../src/artifacts/documentSnapshot.js';
@@ -14,6 +15,19 @@ import { resolveScenarioDocuments } from '../../src/artifacts/scenarioDocuments.
 import { scenarioMetadataIssues } from '../scripts/scenario-metadata.js';
 
 const registry = await loadDocumentRegistry();
+
+test('workflow sub-areas have one owner and an acyclic hierarchy within that owner', () => {
+  assert.deepEqual(validateConceptRegistry(allCoreConcepts), []);
+  const replace = (concept: AnyMeadowConcept) =>
+    allCoreConcepts.map(original => original.id === concept.id ? concept : original);
+  assert.ok(validateConceptRegistry(allCoreConcepts.map(concept => concept.id === htmlGeneration.id
+    ? { ...htmlGeneration, subAreas: customize.subAreas } : concept))
+    .some(error => error.includes('contained within exactly one app area')));
+  assert.ok(validateConceptRegistry(replace({ ...hooks, parentId: localExport.id }))
+    .some(error => error.includes('same owning area')));
+  assert.ok(validateConceptRegistry(replace({ ...customize, parentId: hooks.id }))
+    .some(error => error.includes('cycle')));
+});
 const source = `
 import { sensitive, bundleSourcing, sourceReviewWorkspace, scenarioAreas, scenarioDesignPressures as associate,
   preventAccidentalSharing as pressure, conceptText, linkedScenarioName, linkedScenarioDescription } from '../../../concepts/index.js';

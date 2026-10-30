@@ -19,7 +19,7 @@ import path from "path";
 import { test, expect } from "../src/run/test-fixtures.js";
 import { PreviewPublishModal } from "../src/run/pages/index.js";
 import { Bundle, Workflows } from "../src/run/workflows.js";
-import { scenarioSections, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSharing } from '../../../concepts/index.js';
+import { scenarioSections, localExport, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSharing } from '../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 
@@ -39,11 +39,12 @@ const sections = scenarioSections({
   modifyCurrentGeneratedFiles: { type: 'test', text: conceptText`Modify the current generated files.` },
   restoreCurrentFilesDeleteFrozenVersion: { type: 'test', text: conceptText`Restore current files and delete the frozen version.` },
 });
-const areas = scenarioAreas([bundleSharing]);
+const areas = scenarioAreas([bundleSharing], { subAreas: [localExport] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: '88cdda07-2ad1-4f28-9a3b-ed7ef17a4275' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   artifactDir,
   checkpoint,
+  addKeyFrame,
   skipMeadowHomeStateCheck,
   testServer,
 }) => {
@@ -100,6 +101,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '88cdda07-2ad
     expect(allManifestText).not.toContain("private editorial note");
     expect(allManifestText).not.toContain(testServer.sourceGraphsDir);
 
+    await sourceCommand(() => addKeyFrame(localExport));
     await sourceCommand(() => checkpoint("selected and all-version exports contain only shareable data"));
     return { exportTo };
   });

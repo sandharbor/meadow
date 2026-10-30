@@ -21,7 +21,7 @@ const sections = scenarioSections({
   moveTrackedImageKeepingItAsSame: { type: 'test', text: conceptText`Move the tracked image, keeping it as the same file.` },
   reviewRegeneratedImage: { type: 'test', text: conceptText`Review the regenerated image.` },
 });
-const areas = scenarioAreas([bundleReview]);
+const areas = scenarioAreas([bundleReview], { subAreas: [changesTabDoc] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: 'e6332af2-80c8-4c20-9104-8bb2e1375b37' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, meadowCli, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   const { editor } = await test.step(sections.steps.setup, async () => {
     let command = 0;

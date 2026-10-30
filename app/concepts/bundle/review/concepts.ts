@@ -23,6 +23,7 @@ export const changesTab = define({
   kind: "interface",
   searchFacet: true,
   appAreaIds: [id.bundleReview],
+  subAreas: [{ areaId: id.bundleReview, order: 2 }],
   definition: text`The review surface for how a generated bundle's files differ from its comparison baseline: added, deleted, modified, and moved.`,
   mechanics: [
     text`It filters change types and HTML sections, displays diffs, and groups internal asset folders.`,
@@ -32,4 +33,16 @@ export const changesTab = define({
   interplay: text`It makes the pending effects of ${link(id.bundleGeneration, "Bundle Generation")} explicit before ${link(id.bundleSharing, "Bundle Sharing")} acts on them.`,
 });
 
-export const reviewConcepts = [changesTab] as const;
+export const previewBrowser = define({
+  id: id.previewBrowser, name: "Preview Browser", kind: "interface", searchFacet: true,
+  appAreaIds: [id.bundleReview],
+  subAreas: [{ areaId: id.bundleReview, order: 1 }],
+  definition: text`The embedded browser for inspecting and navigating generated bundle pages before sharing them.`,
+  mechanics: [
+    text`Follow links between generated pages, use Back and Forward to revisit them, or open the preview in an external browser. Following a new link after going back replaces the forward branch.`,
+    text`When output regenerates, the preview preserves the selected page when possible and makes that page readable while the remaining output renders.`,
+  ],
+  interplay: text`It inspects ${link(id.htmlGeneration, "HTML Generation")} output in ${link(id.bundleReview, "Bundle Review")}; ${link(id.changesTab, "Changes Tab")} explains file differences alongside that preview.`,
+});
+
+export const reviewConcepts = [previewBrowser, changesTab] as const;

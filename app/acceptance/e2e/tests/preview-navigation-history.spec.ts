@@ -17,7 +17,7 @@ limitations under the License.
 import { test, expect } from '../src/run/test-fixtures.js';
 import { PreviewPublishModal } from '../src/run/pages/index.js';
 import { Workflows } from '../src/run/workflows.js';
-import { scenarioSections, htmlGeneration, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleReview } from '../../../concepts/index.js';
+import { scenarioSections, previewBrowser, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleReview } from '../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
 
@@ -31,7 +31,7 @@ const sections = scenarioSections({
   returnThroughHistoryThenMoveForwardAgain: { type: 'test', text: conceptText`Return through history and then move forward again.` },
   differentLinkMiddleReplacesOldForwardBranch: { type: 'test', text: conceptText`A different link from the middle replaces the old forward branch.` },
 });
-const areas = scenarioAreas([bundleReview]);
+const areas = scenarioAreas([bundleReview], { subAreas: [previewBrowser] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: '862fa2d0-3ce1-4398-a5cc-821eb8ba8549' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page, checkpoint, addKeyFrame, skipMeadowHomeStateCheck,
 }) => {
@@ -50,7 +50,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '862fa2d0-3ce
     await sourceCommand(() => modal.expectPreviewNavigation(true, false));
     await sourceCommand(() => modal.generatedBundle.clickPageLink('t001 ---- child 1'));
     await sourceCommand(() => modal.generatedBundle.expectSingleHeading('t001 ---- child 1'));
-    await sourceCommand(() => addKeyFrame(htmlGeneration));
+    await sourceCommand(() => addKeyFrame(previewBrowser));
     await sourceCommand(() => checkpoint('two followed links appear in preview history'));
   });
 
@@ -66,7 +66,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '862fa2d0-3ce
     await sourceCommand(() => modal.goForwardInPreview());
     await sourceCommand(() => modal.generatedBundle.expectSingleHeading('t001 ---- child 1'));
     await sourceCommand(() => modal.expectPreviewNavigation(true, false));
-    await sourceCommand(() => addKeyFrame(htmlGeneration));
+    await sourceCommand(() => addKeyFrame(previewBrowser));
     await sourceCommand(() => checkpoint('back and forward restore the expected generated pages'));
   });
 

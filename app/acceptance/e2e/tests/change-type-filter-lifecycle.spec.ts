@@ -50,7 +50,7 @@ const sections = scenarioSections({
   shouldSeeChangesInMainSection: { type: 'test', text: conceptText`Should see 2 changes in the <main> section` },
   hideModifiedFiles: { type: 'test', text: conceptText`Hide modified files.` },
 });
-const areas = scenarioAreas([bundleReview]);
+const areas = scenarioAreas([bundleReview], { subAreas: [changesTabDoc] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: 'e141c6a7-5f95-4f01-a45c-05bd2c17322f' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,

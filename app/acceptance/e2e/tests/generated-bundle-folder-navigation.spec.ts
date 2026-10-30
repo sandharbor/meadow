@@ -82,7 +82,7 @@ const sections = scenarioSections({
   checkMobileHeaderReopenCustomizePanelExercise: { type: 'test', text: conceptText`Check the mobile header. Reopen the Customize panel to exercise the mobile layout on a child page. The controls share one row, breadcrumbs sit beneath without overlap, and selecting a page closes the overlay before the next page loads.` },
   selectPageMobileNavigation: { type: 'test', text: conceptText`Select a page from mobile navigation.` },
 });
-const areas = scenarioAreas([bundleGeneration]);
+const areas = scenarioAreas([bundleGeneration], { subAreas: [customize] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: '9a5da1c5-dbc5-469e-b131-ee051d4de4b4' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,

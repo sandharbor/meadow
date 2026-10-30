@@ -47,7 +47,7 @@ const sections = scenarioSections({
   generateKnowledgePackage: { type: 'test', text: conceptText`Generate the knowledge package.` },
   inspectGeneratedPackageFiles: { type: 'test', text: conceptText`Inspect the generated package files.` },
 });
-const areas = scenarioAreas([bundleGeneration]);
+const areas = scenarioAreas([bundleGeneration], { subAreas: [customize] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: 'd5c7a445-f8b2-4d0a-8896-acb8452cfc86' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,

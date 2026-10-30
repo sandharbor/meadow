@@ -17,7 +17,7 @@ limitations under the License.
 import { test, expect } from '../src/run/test-fixtures.js';
 import { CustomizeTab, PreviewPublishModal } from '../src/run/pages/index.js';
 import { Workflows } from '../src/run/workflows.js';
-import { scenarioSections, htmlGeneration, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleGeneration, bundleReview } from '../../../concepts/index.js';
+import { scenarioSections, customize, generatedBundleSearch, previewBrowser, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleGeneration, bundleReview } from '../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
 
@@ -29,7 +29,7 @@ const sections = scenarioSections({
   setup: { type: 'setup', text: conceptText`Establish the starting state: child page is open before changing a generation option.` },
   disableSearchConfirmBothOptionPageLocation: { type: 'test', text: conceptText`Disable Search and confirm both the option and page location changed as intended.` },
 });
-const areas = scenarioAreas([bundleGeneration, bundleReview]);
+const areas = scenarioAreas([bundleGeneration, bundleReview], { subAreas: [customize, generatedBundleSearch, previewBrowser] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: 'beb448bf-8830-4679-ab10-8b55d20306d5' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page, checkpoint, addKeyFrame, skipMeadowHomeStateCheck,
 }) => {
@@ -55,7 +55,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'beb448bf-883
     expect(new URL(regeneratedUrl).pathname).toBe(new URL(originalUrl).pathname);
     expect(regeneratedUrl).not.toBe(originalUrl);
     await sourceCommand(() => modal.expectPreviewNavigation(true, false));
-    await sourceCommand(() => addKeyFrame(htmlGeneration));
+    await sourceCommand(() => addKeyFrame(previewBrowser));
     await sourceCommand(() => checkpoint('Search is disabled and regeneration retains the child page'));
   });
 

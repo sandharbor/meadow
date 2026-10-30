@@ -1,5 +1,6 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 import { test, expect } from '@playwright/test';
+import { URL } from 'node:url';
 
 test.beforeEach(async ({ page }) => {
   const concepts = [
@@ -56,7 +57,16 @@ test('sub-areas follow workflow order and combine with the existing filters', as
   await workspace.click();
   await expect(page.getByRole('link', { name: 'workspace only' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'mentions workspace' })).toHaveCount(0);
-  await page.getByRole('group', { name: 'Concept filters', exact: true }).getByRole('button', { name: 'Source Review Workspace', exact: true }).click();
+  await expect(page.getByRole('group', { name: 'Concept filters', exact: true })
+    .getByRole('button', { name: 'Source Review Workspace', exact: true })).toHaveCount(0);
+  // Existing direct concept bookmarks still filter mentions independently of
+  // explicit workflow membership, and their selected pill remains accessible.
+  const bookmarked = new URL(page.url());
+  bookmarked.searchParams.set('doc', 'workspace');
+  await page.goto(bookmarked.href);
+  await page.getByRole('button', { name: /^Concepts(?: \d+ selected)?$/ }).click();
+  await expect(page.getByRole('group', { name: 'Detailed concept filters', exact: true })
+    .getByRole('button', { name: 'Source Review Workspace', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByRole('link', { name: 'identity only' })).toHaveCount(0);
   await subAreas.getByRole('button', { name: 'All', exact: true }).click();
   await expect(page).not.toHaveURL(/[?&]subarea=/);

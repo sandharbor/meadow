@@ -16,7 +16,7 @@ limitations under the License.
 
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleEditorPage, BundleListPage } from "../src/run/pages/index.js";
-import { scenarioSections, folderBundles, paths, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
+import { scenarioSections, nodeDetails, folderBundles, paths, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
 import { Bundle, Fixture } from "../src/run/workflows.js";
 
 test.use({ bundleMode: "multiple-folders" });
@@ -31,7 +31,7 @@ const sections = scenarioSections({
   selectDirectChildren: { type: 'test', text: conceptText`Select direct children.` },
   selectAllDeeperPaths: { type: 'test', text: conceptText`Select all deeper paths.` },
 });
-const areas = scenarioAreas([bundleCuration]);
+const areas = scenarioAreas([bundleCuration], { subAreas: [nodeDetails] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: '7d68931a-2d3c-403f-b1d4-293f0dd5f124' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,

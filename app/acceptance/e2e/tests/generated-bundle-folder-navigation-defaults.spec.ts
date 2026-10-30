@@ -35,7 +35,7 @@ const sections = scenarioSections({
   localPreviewsRequireReadOnlyAccessCookies: { type: 'test', text: conceptText`Local previews require read-only access cookies. Leave local storage empty so this browser still represents a first-time bundle reader.` },
   verifyScenarioNewReaderReceivesBundleDefault: { type: 'test', text: conceptText`Verify the scenario: a new reader receives the bundle default while returning readers retain their choice.` },
 });
-const areas = scenarioAreas([bundleGeneration]);
+const areas = scenarioAreas([bundleGeneration], { subAreas: [customize] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: 'ed1db37f-0e07-43db-af7c-bda2a5d6fdee' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page, browser, checkpoint, skipMeadowHomeStateCheck, addKeyFrame,
 }) => {

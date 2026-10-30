@@ -40,7 +40,7 @@ const sections = scenarioSections({
   openSectionFilter: { type: 'test', text: conceptText`Open the section filter.` },
   checkWhichSectionChanged: { type: 'test', text: conceptText`Check which section changed.` },
 });
-const areas = scenarioAreas([bundleReview]);
+const areas = scenarioAreas([bundleReview], { subAreas: [changesTabDoc] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: 'e5b729ec-8d8d-4a05-acad-1822d0cc963c' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame }) => {
   const { modal, changesTab } = await test.step(sections.steps.setup, async () => {
     const wf = new Workflows(page, expect);

@@ -16,7 +16,7 @@ limitations under the License.
 
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, BundleEditorPage, FilterPanelComponent, SelectedPageDetailComponent, Pill, ActionButton } from "../src/run/pages/index.js";
-import { scenarioSections, frontier, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
+import { scenarioSections, nodeDetails, nodePathDetails, frontier, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -39,7 +39,7 @@ const sections = scenarioSections({
   explainCopyFrontierPage: { type: 'test', text: conceptText`Explain and copy the frontier page.` },
   returnFullGraph: { type: 'test', text: conceptText`Return to the full graph.` },
 });
-const areas = scenarioAreas([bundleCuration]);
+const areas = scenarioAreas([bundleCuration], { subAreas: [nodeDetails, nodePathDetails] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: '360daa04-8a00-4999-96b2-4e655a7fba25' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, checkpoint, assertMeadowHomeState, addKeyFrame }) => {
   const { bundleList } = await test.step(sections.steps.setup, async () => {
     const bundleList = new BundleListPage(page, expect);

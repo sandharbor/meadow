@@ -60,7 +60,7 @@ const sections = scenarioSections({
   deleteCurrentPublication: { type: 'test', text: conceptText`Delete the current publication.` },
   checkPublicationCommandHelp: { type: 'test', text: conceptText`Check publication command help.` },
 });
-const areas = scenarioAreas([bundleSharing]);
+const areas = scenarioAreas([bundleSharing], { subAreas: [publicationRevision, publishing] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: '6f66d070-98df-4b44-b9cc-464f88a4ff60' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   meadowCli,
   minioS3,

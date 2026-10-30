@@ -21,13 +21,26 @@ const area = [id.bundleSharing] as const;
 
 export const publishing = define({
   id: id.publishing, name: "Publishing", kind: "process", searchFacet: true, appAreaIds: area,
+  subAreas: [{ areaId: id.bundleSharing, order: 1 }],
   definition: text`The flow that makes reviewed generated bundle output available through a publishing destination.`,
-  mechanics: [text`It previews output, reviews files, transfers artifacts, and records the resulting publication state.`],
+  mechanics: [text`It transfers saved generated artifacts through the selected destination and records the resulting publication state.`],
   interplay: text`It consumes ${link(id.bundleGeneration, "Bundle Generation")} output after ${link(id.bundleReview, "Bundle Review")} and can use ${link(id.s3, "S3-Compatible Object Storage")}.`,
+});
+
+export const localExport = define({
+  id: id.localExport, name: "Local Export", kind: "capability", searchFacet: true, appAreaIds: area,
+  subAreas: [{ areaId: id.bundleSharing, order: 2 }],
+  definition: text`Save bundle output to a local folder or ZIP for use outside Meadow.`,
+  mechanics: [
+    text`The Local Export surface offers rendered bundle output, sources, and Open Knowledge Format. Rendered output can export a selected saved version or all versions, with an inventory that preserves locally deleted versions without inventing output folders.`,
+    text`Export checks the selected saved output before copying it. Dirty current files block their own export; a retained frozen version remains independently exportable. Exported content omits private editorial notes and local source paths, and compressed web assets are made readable from disk.`,
+  ],
+  interplay: text`It delivers ${link(id.sourcesExport, "Sources Export")}, ${link(id.openKnowledgeFormat, "Open Knowledge Format")}, or ${link(id.versioning, "Generated Bundle Version")} output locally; ${link(id.publishing, "Publishing")} delivers output through a publishing destination.`,
 });
 
 export const publicationRevision = define({
   id: id.publicationRevision, name: "Publication Revision", kind: "entity", searchFacet: true, appAreaIds: area,
+  subAreas: [{ areaId: id.bundleSharing, order: 3 }],
   definition: text`A provider-specific record that publishes one saved generated bundle version at one provider address.`,
   mechanics: [
     text`Changing either the generated version or the publish slug creates a revision. It records its predecessor, reader connection, retention choice, remote state, and immutable provider identity.`,
@@ -46,6 +59,7 @@ export const s3 = define({
 
 export const deletion = define({
   id: id.deletion, name: "Published Bundle Deletion", aliases: ["Deletion"], kind: "process", searchFacet: true, appAreaIds: area,
+  subAreas: [{ areaId: id.bundleSharing, order: 4 }],
   definition: text`The confirmed removal of a bundle and any artifacts or publication state owned by it.`,
   mechanics: [text`Deletion coordinates local state removal with cleanup at each active sharing destination.`],
   interplay: text`It reverses the durable effects of ${link(id.publishing, "Publishing")} without redefining generation or review.`,
@@ -58,4 +72,4 @@ export const git = define({
   interplay: text`It records local effects of ${link(id.bundleGeneration, "Bundle Generation")} and ${link(id.bundleSharing, "Bundle Sharing")}.`,
 });
 
-export const sharingConcepts = [publishing, publicationRevision, s3, deletion, git] as const;
+export const sharingConcepts = [publishing, localExport, publicationRevision, s3, deletion, git] as const;

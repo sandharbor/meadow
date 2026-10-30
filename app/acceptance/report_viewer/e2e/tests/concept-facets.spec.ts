@@ -1,6 +1,55 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 import { test, expect } from '@playwright/test';
-import { pendingSourceProposal } from '../../../../concepts/index.js';
+import { bundleGeneration, customize, hooks, generatedBundleSearch, tagPageGeneration, openKnowledgeFormat,
+  sourcesExport, versioning, pendingSourceProposal, scenarioAreas } from '../../../../concepts/index.js';
+
+test('generation workflows move under their area and filter declared evidence', async ({ page }, testInfo) => {
+  const runId = 'generation-workflows';
+  const scenarios = [
+    { slug: 'customized-output', testName: 'Customized output',
+      ...scenarioAreas([bundleGeneration], { subAreas: [customize] }) },
+    { slug: 'hook-output', testName: 'Hook output',
+      ...scenarioAreas([bundleGeneration], { subAreas: [customize, hooks] }) },
+    { slug: 'tag-pages', testName: 'Tag pages',
+      ...scenarioAreas([bundleGeneration], { subAreas: [customize, tagPageGeneration] }) },
+    { slug: 'mentions-customization', testName: 'Mentions customization',
+      ...scenarioAreas([bundleGeneration]) },
+  ].map(scenario => ({ ...scenario, status: 'passed', duration: 1,
+    bundleMode: 'single-file', executionSurface: 'browser', conceptIds: [customize.id],
+    appAreaDocIds: scenario.appAreaIds, subAreaDocIds: scenario.subAreaIds,
+    bundleDocIds: [], keyFrames: [], hasIssues: false }));
+  await page.route(`**/api/runs/${runId}`, route => route.fulfill({ json: { runId, scenarios } }));
+  await page.goto(`/${runId}?view=list&area=${bundleGeneration.id}`);
+  const workflows = page.getByRole('group', { name: 'Bundle Generation sub-areas', exact: true });
+  await expect(workflows.getByRole('button')).toHaveText(['All', customize.name]);
+  const customization = page.getByRole('group', { name: 'Bundle Customization sub-areas', exact: true });
+  await expect(customization).toHaveCount(0);
+  const concepts = page.getByRole('group', { name: 'Concept filters', exact: true });
+  await concepts.getByRole('button', { name: /^Show \d+ more$/ }).click();
+  await expect(concepts.getByRole('button', { name: customize.name, exact: true })).toHaveCount(0);
+  for (const concept of [openKnowledgeFormat, sourcesExport, versioning]) {
+    await expect(concepts.getByRole('button', { name: concept.name, exact: true })).toBeVisible();
+  }
+  await workflows.getByRole('button', { name: customize.name, exact: true }).click();
+  await expect(page.getByRole('link', { name: /Customized output/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Hook output/ })).toBeVisible();
+  await expect(customization.getByRole('button')).toHaveText(['All', hooks.name, generatedBundleSearch.name, tagPageGeneration.name]);
+  await customization.getByRole('button', { name: hooks.name, exact: true }).click();
+  await expect(page.getByRole('link', { name: /Hook output/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Customized output/ })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: /Tag pages/ })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: /Mentions customization/ })).toHaveCount(0);
+  await page.reload();
+  await expect(workflows.getByRole('button', { name: customize.name, exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(customization.getByRole('button', { name: hooks.name, exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await page.screenshot({ path: testInfo.outputPath('generation-workflows.png'), fullPage: true });
+  await customization.getByRole('button', { name: 'All', exact: true }).click();
+  await expect(page.getByRole('link', { name: /Customized output/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Tag pages/ })).toBeVisible();
+  await workflows.getByRole('button', { name: 'All', exact: true }).click();
+  await expect(customization).toHaveCount(0);
+  await expect(page.getByRole('link', { name: /Mentions customization/ })).toBeVisible();
+});
 
 test('pending declarations remain inspectable without appearing as passing evidence', async ({ page }) => {
   const runId = 'pending-design-evidence';
@@ -47,9 +96,10 @@ test('run filters use explicit category facets while rules remain directly navig
   const detailedConcepts = page.getByRole('group', { name: 'Detailed concept filters', exact: true });
   await expect(detailedConcepts).not.toBeVisible();
   const facets = page.getByRole('group', { name: 'Concept filters', exact: true });
-  await expect(facets.getByRole('button', { name: 'Publishing', exact: true })).toHaveCount(0);
+  await expect(facets.getByRole('button', { name: 'Images', exact: true })).toHaveCount(0);
   await facets.getByRole('button', { name: /^Show \d+ more$/ }).click();
-  await expect(facets.getByRole('button', { name: 'Publishing', exact: true })).toBeVisible();
+  await expect(facets.getByRole('button', { name: 'Images', exact: true })).toBeVisible();
+  await expect(facets.getByRole('button', { name: 'Publishing', exact: true })).toHaveCount(0);
   await expect(facets.getByRole('button', { name: 'HTML Generation', exact: true })).toBeVisible();
   await facets.getByRole('button', { name: 'Show less', exact: true }).click();
   await expect(facets.getByRole('button', { name: 'Newer source material pauses frontier exploration', exact: true })).toHaveCount(0);

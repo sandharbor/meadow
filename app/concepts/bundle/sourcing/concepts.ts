@@ -5,7 +5,7 @@ import { conceptLink as link, conceptText as text, defineMeadowConcept as define
 
 export const sourceSetupNew = define({
   id: id.sourceSetupNew, name: 'Source Setup - New', kind: 'process', searchFacet: true,
-  parentId: id.bundleSourcing, appAreaIds: [id.bundleSourcing, id.bundles],
+  parentId: id.bundleSourcing, appAreaIds: [id.bundleSourcing],
   subAreas: [{ areaId: id.bundleSourcing, order: 1 }],
   definition: text`Choosing a new bundle's source directories and starting pages or folders in Create New Bundle.`,
   mechanics: [

@@ -71,7 +71,7 @@ selected run and scenario result. This pilot does not reclassify existing tests.
 ## Search facets
 
 Set `searchFacet: true` on concepts that are useful category-level filters in
-acceptance reports, such as Publishing, HTML Generation, and Frontier Bundle
+acceptance reports, such as Images, HTML Generation, and Frontier Bundle
 Page. Facet eligibility is explicit and independent of concept kind or test
 coverage; omission defaults to false. Behavioral rules use `searchFacet: false`
 and remain accessible through their parent concept and direct evidence links.
@@ -79,14 +79,36 @@ The report keeps every concept available for documentation and screenshot
 navigation, while only opted-in facets appear in the run filter pills.
 
 Use `subAreas: [{ areaId, order }]` to expose an existing concept as a workflow
-sub-area of one of its app areas. Run reports show an indented, parent-labeled
+sub-area strictly contained within its single app area. Registry validation rejects
+sub-areas associated with multiple areas. Run reports show an indented, parent-labeled
 row for each selected area with sub-areas, in that area's declared workflow
 order. Each row's All control clears only that parent's sub-area selections;
 sub-area selections combine with other report filters. Expanded scenario
 metadata shows Starts with, Areas, each area's declared sub-areas, then Concepts.
 Source Setup - New and Source Setup - Edit precede Source Review Identity and
 Source Review Workspace within Sourcing;
-Custom Filtering and Filter Mixing are sub-areas of Curation. Source-change subtype definitions live in separate shared files with type-only implementation links from their canonical concept documents. Scenarios link the specific subtype they assert and capture its evidence with addKeyFrame. The run overview nests Modify and Remove subtype rows under selected source-change categories, using captured concept associations rather than inferring coverage from titles or current code. A sub-area keeps
+Custom Filtering, Filter Mixing, Node Details, and Graph Search are sub-areas of
+Curation. Node Path Details and Node Link Details are nested beneath Node Details;
+the latter retains the existing Bundle Page Links identity and aliases.
+Generation contains Bundle Customization, with Generation Hooks, Generated Bundle
+Search, and Tag Page Generation nested underneath it. Review contains Preview
+Browser and Changes Tab. Sharing contains Publishing, Local Export, Publication
+Revision, and Published Bundle Deletion. A sub-area must be strictly contained
+within one app area. Concepts that span areas, such as Open Knowledge Format,
+Sources Export, and Generated Bundle Version, remain general concepts.
+Source Setup - New and Source Review Workspace belong to Sourcing: launching
+setup from Bundles or reusing the graph editor does not give those workflows
+another owning area.
+Use a sub-area concept's `parentId` to nest it beneath another sub-area in the
+same owning area. Other concept parent relationships do not create filter rows.
+Scenarios explicitly declare the parent and the child they exercise. Selecting
+the parent shows its child row; selecting a child narrows to that child's evidence.
+The child's All control returns to its parent, while the area's All control
+clears the whole branch. Child-only bookmarks reveal their parent row as well.
+Sub-areas appear under their parent areas instead of in the general concept
+filters. Direct concept selections from documentation and bookmarked URLs remain
+available in the expanded Concepts row.
+Source-change subtype definitions live in separate shared files with type-only implementation links from their canonical concept documents. Scenarios link the specific subtype they assert and capture its evidence with addKeyFrame. The run overview nests Modify and Remove subtype rows under selected source-change categories, using captured concept associations rather than inferring coverage from titles or current code. A sub-area keeps
 its canonical concept definition and documentation.
 
 ## Scenario areas
@@ -219,7 +241,7 @@ pressures, and fixtures. IDs and names/aliases are validated across document kin
 
 Documents may belong to several app areas and appear in each area's browser.
 Area association does not make a concept a workflow sub-area; that still requires
-`subAreas`. The viewer shows kind and area links under the title and distinguishes
+`subAreas` and containment within a single area. The viewer shows kind and area links under the title and distinguishes
 browsing from explicit scenario selection. Concepts are documented ideas; tagging
 is their use as filters, with `searchFacet` retaining the curated filter list.
 

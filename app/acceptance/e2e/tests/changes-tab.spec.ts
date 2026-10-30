@@ -40,7 +40,7 @@ const sections = scenarioSections({
   verifySavedVersionHasNoChanges: { type: 'test', text: conceptText`Verify the saved version has no changes.` },
   goChangesTabAssertNoChangedFiles: { type: 'test', text: conceptText`Go to Changes tab — assert "No changed files"` },
 });
-const areas = scenarioAreas([bundleReview]);
+const areas = scenarioAreas([bundleReview], { subAreas: [changesTabDoc] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: 'cd2d2768-5c81-4558-8fbe-8dc5d4c5f09b' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame }) => {
   const { modal, changesTab, versions } = await test.step(sections.steps.setup, async () => {
     const wf = new Workflows(page, expect);

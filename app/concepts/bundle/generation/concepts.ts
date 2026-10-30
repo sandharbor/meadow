@@ -21,9 +21,11 @@ const area = [id.bundleGeneration] as const;
 
 export const customize = define({
   id: id.customize, name: "Bundle Customization", aliases: ["Customize"], kind: "capability", searchFacet: true, appAreaIds: area,
+  subAreas: [{ areaId: id.bundleGeneration, order: 1 }],
   definition: text`Settings that change the presentation and navigation of generated bundle output.`,
   mechanics: [
     text`Options such as breadcrumbs and backlinks are applied while ${link(id.htmlGeneration, "HTML Generation")} renders pages.`,
+    text`${link(id.hooks, "Generation Hooks")}, ${link(id.generatedBundleSearch, "Generated Bundle Search")}, and ${link(id.tagPageGeneration, "Tag Page Generation")} are aspects of customization.`,
     text`Folder navigation has a global default-open or default-closed state, with a per-bundle override. This initial state applies until a reader opens or closes the navigation; the reader's choice is remembered separately for each bundle, including bundles on the same host.`,
   ],
   interplay: text`Customization changes generated presentation without changing the source graph selected by ${link(id.bundleCuration, "Bundle Curation")}.`,
@@ -38,16 +40,32 @@ export const excalidraw = define({
 
 export const generatedBundleSearch = define({
   id: id.generatedBundleSearch, name: "Generated Bundle Search", kind: "capability", searchFacet: true, appAreaIds: area,
+  parentId: id.customize,
+  subAreas: [{ areaId: id.bundleGeneration, order: 2 }],
   definition: text`Search over page titles and content inside generated bundle output.`,
   mechanics: [text`The generated index ranks results and supports navigation and presentation customization.`],
-  interplay: text`It is produced by ${link(id.htmlGeneration, "HTML Generation")}; it is distinct from ${link(id.sourceGraphSearch, "Source Graph Search")} used while curating.`,
+  interplay: text`It is produced by ${link(id.htmlGeneration, "HTML Generation")}; it is distinct from ${link(id.sourceGraphSearch, "Graph Search")} used while curating.`,
 });
 
 export const hooks = define({
   id: id.hooks, name: "Generation Hooks", aliases: ["Hooks"], kind: "interface", searchFacet: true, appAreaIds: area,
+  parentId: id.customize,
+  subAreas: [{ areaId: id.bundleGeneration, order: 1 }],
   definition: text`Configured transformations that customize source processing and generated page output.`,
   mechanics: [text`Global and bundle-level hooks can transform titles, Markdown, and other generation inputs.`],
   interplay: text`Hooks extend ${link(id.htmlGeneration, "HTML Generation")} while remaining governed by the bundle configuration.`,
+});
+
+export const tagPageGeneration = define({
+  id: id.tagPageGeneration, name: "Tag Page Generation", kind: "capability", searchFacet: true, appAreaIds: area,
+  parentId: id.customize,
+  subAreas: [{ areaId: id.bundleGeneration, order: 3 }],
+  definition: text`Generate navigable pages for tags found in a bundle's tracked Markdown content.`,
+  mechanics: [
+    text`The Tags customization option enables tag pages. Generation scans the selected Markdown, creates tag pages in the bundle's generated namespace, and turns tag mentions into links to those pages.`,
+    text`Generated tag pages are presentation artifacts. Sources exports retain the original tags rather than generated tag-page links.`,
+  ],
+  interplay: text`It is part of ${link(id.customize, "Bundle Customization")}, rendered through ${link(id.htmlGeneration, "HTML Generation")}, and distinct from ${link(id.generatedBundleSearch, "Generated Bundle Search")}.`,
 });
 
 export const htmlGeneration = define({
@@ -164,6 +182,6 @@ export const generationRecord = define({
 });
 
 export const generationConcepts = [
-  customize, excalidraw, generatedBundleSearch, hooks, htmlGeneration, htmlNode,
+  customize, excalidraw, generatedBundleSearch, hooks, tagPageGeneration, htmlGeneration, htmlNode,
   images, openKnowledgeFormat, pdf, sourcesExport, svg, versioning, frozenVersion, restoringFrozenVersion, generationRecord,
 ] as const;

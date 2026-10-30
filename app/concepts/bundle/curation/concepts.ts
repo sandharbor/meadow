@@ -256,8 +256,10 @@ export const linkGap = defineMeadowConcept({
 
 export const links = defineMeadowConcept({
   id: coreConceptIds.links,
-  name: "Bundle Page Links",
-  aliases: ["Links"],
+  name: "Node Link Details",
+  aliases: ["Links", "Bundle Page Links"],
+  parentId: coreConceptIds.nodeDetails,
+  subAreas: [{ areaId: coreConceptIds.bundleCuration, order: 2 }],
   kind: "interface",
   searchFacet: true,
   appAreaIds: curationArea,
@@ -311,17 +313,40 @@ export const sensitive = defineMeadowConcept({
   interplay: conceptText`The design pressure to ${conceptLink(designPressureIds.preventAccidentalSharing, "prevent accidental sharing of sensitive material")} motivates this protection. Sensitivity constrains ${conceptLink(coreConceptIds.tracking, "Bundle Node Tracking")} and is surfaced through ${conceptLink(coreConceptIds.filters, "Custom Filters")} and ${conceptLink(coreConceptIds.callout, "Curation Callouts")}.`,
 });
 
+export const nodeDetails = defineMeadowConcept({
+  id: coreConceptIds.nodeDetails, name: "Node Details", kind: "interface", searchFacet: true,
+  appAreaIds: curationArea,
+  subAreas: [{ areaId: coreConceptIds.bundleCuration, order: 3 }],
+  definition: conceptText`Inspect a selected node and access its contextual details while curating a bundle.`,
+  mechanics: [
+    conceptText`The selected-node panel and node context menu expose information and actions for that node. Details include its identity, location, configuration, links, and reachability.`,
+    conceptText`${conceptLink(coreConceptIds.nodePathDetails, "Node Path Details")} explains how the graph reached it; ${conceptLink(coreConceptIds.links, "Node Link Details")} inspects its immediate incoming and outgoing relationships.`,
+  ],
+  interplay: conceptText`${conceptLink(coreConceptIds.sourceGraphSearch, "Graph Search")} and graph selection locate the node. These inspection tools explain it without changing which nodes belong to the bundle.`,
+});
+
+export const nodePathDetails = defineMeadowConcept({
+  id: coreConceptIds.nodePathDetails, name: "Node Path Details", kind: "interface", searchFacet: true,
+  appAreaIds: curationArea, parentId: coreConceptIds.nodeDetails,
+  subAreas: [{ areaId: coreConceptIds.bundleCuration, order: 1 }],
+  definition: conceptText`The node's path dialog explaining how traversal reached it in the bundle graph.`,
+  mechanics: [conceptText`Inspect the route's steps, depth constraints, inherited budgets, and overrides, then return to the selected node.`],
+  interplay: conceptText`It is part of ${conceptLink(coreConceptIds.nodeDetails, "Node Details")} and presents ${conceptLink(coreConceptIds.paths, "Curation Paths")}.`,
+});
+
 export const sourceGraphSearch = defineMeadowConcept({
   id: coreConceptIds.sourceGraphSearch,
-  name: "Source Graph Search",
+  name: "Graph Search",
+  aliases: ["Source Graph Search"],
   kind: "capability",
   searchFacet: true,
   appAreaIds: curationArea,
-  definition: conceptText`The capability for locating source pages by title while curating a bundle graph.`,
+  subAreas: [{ areaId: coreConceptIds.bundleCuration, order: 4 }],
+  definition: conceptText`Find pages by title in the graph you're curating.`,
   mechanics: [
-    conceptText`Search narrows graph-visible pages and supports navigation to the matching source-page context.`,
+    conceptText`Search narrows graph-visible pages and supports navigation to the matching page's context.`,
   ],
-  interplay: conceptText`It searches the editable source graph; ${conceptLink(coreConceptIds.generatedBundleSearch, "Generated Bundle Search")} is a distinct reader-facing capability over generated output.`,
+  interplay: conceptText`It searches the graph being curated; ${conceptLink(coreConceptIds.generatedBundleSearch, "Generated Bundle Search")} is a distinct reader-facing capability over generated output.`,
 });
 
 export const tracking = defineMeadowConcept({
@@ -392,5 +417,7 @@ export const curationConcepts = [
   paths,
   sensitive,
   sourceGraphSearch,
+  nodeDetails,
+  nodePathDetails,
   tracking,
 ] as const;

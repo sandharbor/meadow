@@ -171,7 +171,7 @@ export const sourceReviewWorkspace = define({
   implementationRoles: ['render-workspace', 'compare-captures'],
   id: id.sourceReviewWorkspace, name: 'Source Review Workspace', kind: 'capability', searchFacet: true,
   subAreas: [{ areaId: id.bundleSourcing, order: 4 }],
-  parentId: id.pendingSourceProposal, appAreaIds: [id.bundleSourcing, id.bundleCuration],
+  parentId: id.pendingSourceProposal, appAreaIds: [id.bundleSourcing],
   definition: text`sourcing is an explicitly marked mode of the full graph editor, combining candidate exploration and accepted-versus-proposed comparison.`,
   mechanics: [
     text`Keep the full canvas, graph and list views, existing selection/sidebar machinery, and complete filtering, solo, hide, labels, and inspection tools. A persistent sourcing header with Refresh sources, Exit, and Accept changes and a cohesive sourcing accent distinguish the mode. Exit leaves an unchanged review directly, discarding its empty proposal; when the review has changes, it asks whether to keep them for later or discard them. Start with ordinary filter groups visible below the prominent Source changes group; refine colors and layout through a prototype.`,

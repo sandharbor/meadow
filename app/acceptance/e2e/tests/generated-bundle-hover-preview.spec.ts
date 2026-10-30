@@ -35,7 +35,7 @@ const sections = scenarioSections({
   thisBacklinkFetchesRootPageWhileCurrent: { type: 'test', text: conceptText`This backlink fetches a root page while the current page is nested under t001/. Its preview links must resolve against the fetched root page, not against the nested page displaying the popup.` },
   followLinkInHoverPreview: { type: 'test', text: conceptText`Follow the link in the hover preview.` },
 });
-const areas = scenarioAreas([bundleGeneration]);
+const areas = scenarioAreas([bundleGeneration], { subAreas: [customize] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: '6f8a8ed1-f84c-4753-b987-cef81539b2d8' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,

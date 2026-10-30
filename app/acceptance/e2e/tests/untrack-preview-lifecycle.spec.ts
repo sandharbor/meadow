@@ -40,7 +40,7 @@ const sections = scenarioSections({
   trackSamePageAgainProveReverseTransition: { type: 'test', text: conceptText`Track the same page again and prove the reverse transition is generated.` },
   saveRestoredPage: { type: 'test', text: conceptText`Save the restored page.` },
 });
-const areas = scenarioAreas([bundleCuration, bundleReview]);
+const areas = scenarioAreas([bundleCuration, bundleReview], { subAreas: [changesTabDoc] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: '09f3977f-b9a3-4467-af26-51cc5f4423f3' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,

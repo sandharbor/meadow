@@ -42,7 +42,7 @@ const sections = scenarioSections({
   checkCommittedFilesVerifyBundleDirectoryIn: { type: 'test', text: conceptText`Check the committed files. Verify the bundle directory in MeadowHome is fully committed — no untracked or uncommitted files under the bundle (including build/sources_export/).` },
   disableSourceExportInspectDiffReopenReview: { type: 'test', text: conceptText`Disable source export and inspect the diff. Reopen Review, disable the saved Sources ZIP setting, and inspect the resulting HTML changes through the filter dropdown.` },
 });
-const areas = scenarioAreas([bundleGeneration, bundleReview]);
+const areas = scenarioAreas([bundleGeneration, bundleReview], { subAreas: [customize, changesTabDoc] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: '0ec721cf-af7a-4c07-8787-42294412e324' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame, testServer,
 }) => {

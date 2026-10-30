@@ -21,7 +21,7 @@ import {
   PreviewPublishModal,
   CustomizeTab,
 } from "../src/run/pages/index.js";
-import { scenarioSections, excalidraw, hooks, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleGeneration } from "../../../concepts/index.js";
+import { scenarioSections, customize, excalidraw, hooks, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleGeneration } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -59,7 +59,7 @@ const sections = scenarioSections({
   followingLinkShouldLandOnRenamedPage: { type: 'test', text: conceptText`Following the link should land on the renamed page.` },
   finishExpectedWarningCheck: { type: 'test', text: conceptText`Finish the expected-warning check.` },
 });
-const areas = scenarioAreas([bundleGeneration]);
+const areas = scenarioAreas([bundleGeneration], { subAreas: [customize, hooks] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: '96c282bf-6c94-4f7c-95b7-f70b7af50808' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,

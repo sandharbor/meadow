@@ -29,7 +29,7 @@ import {
   EXPECTED_GENERATED_PAGES,
   materializeCreateSafeBundleSource,
 } from "../src/agent-evals/scenarios/createSafeBundle.js";
-import { scenarioSections, bundles, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration, bundleGeneration } from "../../../concepts/index.js";
+import { scenarioSections, customize, tagPageGeneration, bundles, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration, bundleGeneration } from "../../../concepts/index.js";
 import { scenarioDesignPressures, preventAccidentalSharing } from "../../../concepts/index.js";
 import { cli } from "../../../concepts/index.js";
 import { expect, test } from "../src/run/test-fixtures.js";
@@ -70,7 +70,7 @@ const sections = scenarioSections({
   checkCommandHelp: { type: 'test', text: conceptText`Check command help.` },
 });
 const pressures = scenarioDesignPressures([preventAccidentalSharing]);
-const areas = scenarioAreas([bundles, bundleCuration, bundleGeneration]);
+const areas = scenarioAreas([bundles, bundleCuration, bundleGeneration], { subAreas: [customize, tagPageGeneration] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: '5d8ab79c-23c5-4af5-8d25-7dcde499ddfe' }, name.annotation, description.annotation, areas.annotation, pressures.annotation, sections.annotation] }, async ({ sourceCommand,
   assertMeadowHomeState,
   meadowCli,

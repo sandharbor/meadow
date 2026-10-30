@@ -38,7 +38,7 @@ const sections = scenarioSections({
   compareSharingOldNewVersions: { type: 'test', text: conceptText`Compare sharing the old and new versions.` },
   returnNewVersion: { type: 'test', text: conceptText`Return to the new version.` },
 });
-const areas = scenarioAreas([bundleGeneration, bundleReview, bundleSharing]);
+const areas = scenarioAreas([bundleGeneration, bundleReview, bundleSharing], { subAreas: [changesTabDoc, customize] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: '74ff8663-eed7-4380-b7d6-bfd3ded60fda' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,

@@ -16,7 +16,7 @@ limitations under the License.
 
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, BundleEditorPage, PreviewPublishModal, CustomizeTab, ChangesTab } from "../src/run/pages/index.js";
-import { scenarioSections, htmlGeneration, hooks, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleGeneration } from "../../../concepts/index.js";
+import { scenarioSections, customize, htmlGeneration, hooks, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleGeneration } from "../../../concepts/index.js";
 import { hooksBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -38,7 +38,7 @@ const sections = scenarioSections({
   saveRegenerateSaveHookThisTriggersPreview: { type: 'test', text: conceptText`Save and regenerate. Save the hook — this triggers preview regeneration via SSE stream. Response headers mark the start of generation. The updated heading can appear while output is still staging, so also wait for regeneration to finish before teardown captures the generated files.` },
   checkUpdatedTitleVerifyUpdatedHeadingSidebar: { type: 'test', text: conceptText`Check the updated title. Verify the updated heading (sidebar is alongside the preview, iframe is already visible)` },
 });
-const areas = scenarioAreas([bundleGeneration]);
+const areas = scenarioAreas([bundleGeneration], { subAreas: [customize, hooks] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: '5c38a3bb-fff1-466e-b6fe-a03358542cc4' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame }) => {
   const { bundleList } = await test.step(sections.steps.setup, async () => {
     const bundleList = new BundleListPage(page, expect);

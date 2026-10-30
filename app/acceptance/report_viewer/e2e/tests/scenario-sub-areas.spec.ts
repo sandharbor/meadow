@@ -1,7 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 import { test, expect } from '@playwright/test';
 import { URL } from 'node:url';
-import { bundleCuration, bundleSourcing, filters, filterMixing, sensitive, sourceReviewWorkspace } from '../../../../concepts/index.js';
+import { bundleCuration, bundleSourcing, bundleGeneration, customize, hooks, filters, filterMixing, sensitive, sourceReviewWorkspace } from '../../../../concepts/index.js';
 
 // Use the real registry so feature classification and report rendering are checked together.
 // Use a narrow desktop as well as mobile so these labels genuinely need expansion.
@@ -54,3 +54,33 @@ for (const width of [1024, 390]) {
     await expect(curationFilters.getByRole('button', { name: filterMixing.name, exact: true })).toHaveAttribute('aria-pressed', 'true');
   });
 }
+
+test('nested customization metadata links to a child filter with its parent visible', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  const manifest = { testName: 'Hook customization', bundleMode: 'single-file', logs: [], keyFrames: [],
+    conceptIds: [customize.id, hooks.id], appAreaDocIds: [bundleGeneration.id], subAreaDocIds: [customize.id, hooks.id] };
+  await page.route('**/api/runs/nested-preview', route => route.fulfill({ json: {
+    runId: 'nested-preview', scenarios: [{ ...manifest, slug: 'evidence', status: 'passed', duration: 1,
+      executionSurface: 'browser', bundleDocIds: [], hasIssues: false }],
+  } }));
+  await page.route('**/api/nested-preview/evidence/*', route => {
+    const endpoint = new URL(route.request().url()).pathname.split('/').pop();
+    return route.fulfill({ json: endpoint === 'manifest' ? manifest
+      : endpoint === 'test-source' ? { source: '' } : endpoint === 'backend-telemetry' ? {} : [] });
+  });
+  await page.goto('/nested-preview/evidence');
+  const metadata = page.getByRole('region', { name: 'Scenario metadata', exact: true });
+  await metadata.getByRole('button', { name: 'Expand scenario metadata', exact: true }).click();
+  const generation = metadata.getByRole('group', { name: 'Bundle Generation sub-areas', exact: true });
+  const customization = metadata.getByRole('group', { name: 'Bundle Customization sub-areas', exact: true });
+  await expect(generation.getByRole('link')).toHaveText([customize.name]);
+  await expect(customization.getByRole('link')).toHaveText([hooks.name]);
+  expect((await customization.boundingBox())!.x).toBeGreaterThan((await generation.boundingBox())!.x);
+  expect((await customization.boundingBox())!.x + (await customization.boundingBox())!.width).toBeLessThanOrEqual(390);
+  await metadata.screenshot({ path: testInfo.outputPath('nested-customization.png') });
+  await customization.getByRole('link', { name: hooks.name, exact: true }).click();
+  const parentFilters = page.getByRole('group', { name: 'Bundle Generation sub-areas', exact: true });
+  const childFilters = page.getByRole('group', { name: 'Bundle Customization sub-areas', exact: true });
+  await expect(parentFilters.getByRole('button', { name: customize.name, exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(childFilters.getByRole('button', { name: hooks.name, exact: true })).toHaveAttribute('aria-pressed', 'true');
+});

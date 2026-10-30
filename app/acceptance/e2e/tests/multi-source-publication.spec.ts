@@ -23,7 +23,7 @@ const sections = scenarioSections({
   followStablePageIdentity: { type: 'test', text: conceptText`Follow the stable page identity.` },
   openNewerPage: { type: 'test', text: conceptText`Open the newer page.` },
 });
-const areas = scenarioAreas([bundleSourcing, bundleSharing], { subAreas: [sourceSetupEdit] });
+const areas = scenarioAreas([bundleSourcing, bundleSharing], { subAreas: [sourceSetupEdit, publicationRevision] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: 'ee4a97bf-6cac-45f3-8f0e-a1504a703777' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, minioS3, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   const { slug, editor, authored, originalContent, modal, versions, publish, originalUrl, originalNamespace } = await test.step(sections.steps.setup, async () => {
     await sourceCommand(() => testServer.activateS3Provider());

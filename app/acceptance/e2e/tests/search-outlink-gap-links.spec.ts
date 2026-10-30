@@ -22,7 +22,7 @@ import {
   LinksModal,
 } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { scenarioSections, sourceGraphSearch, labels, linkGap, callout, links, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
+import { scenarioSections, nodeDetails, sourceGraphSearch, labels, linkGap, callout, links, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -48,7 +48,7 @@ const sections = scenarioSections({
   checkLinkedPageTitle: { type: 'test', text: conceptText`Check the linked page title.` },
   keyframeForBundlePageLinks: { type: 'test', text: conceptText`Keyframe for Bundle Page Links.` },
 });
-const areas = scenarioAreas([bundleCuration]);
+const areas = scenarioAreas([bundleCuration], { subAreas: [sourceGraphSearch, nodeDetails, links] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: '5d8213b4-06da-47eb-a6a1-a88f6f18fe4f' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,

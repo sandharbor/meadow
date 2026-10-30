@@ -26,7 +26,7 @@ const sections = scenarioSections({
   acceptSourceUpdate: { type: 'test', text: conceptText`Accept the source update.` },
   regenerateReviewRenamedPageAgainstSavedSite: { type: 'test', text: conceptText`Regenerate and review the renamed page against the saved site.` },
 });
-const areas = scenarioAreas([bundleSourcing, bundleGeneration, bundleReview], { subAreas: [sourceReviewIdentity, sourceReviewWorkspace] });
+const areas = scenarioAreas([bundleSourcing, bundleGeneration, bundleReview], { subAreas: [sourceReviewIdentity, sourceReviewWorkspace, changesTabDoc] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: '86ec9574-29c5-4f44-b44e-58cfbbbae216' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, sourceChanges, testServer, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   const { editor, bundleConfig, original, modal, changes } = await test.step(sections.steps.setup, async () => {
     const wf = new Workflows(page, expect);

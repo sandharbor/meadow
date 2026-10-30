@@ -51,7 +51,7 @@ import {
 } from '../../../../e2e/src/run/executionSurface.ts'
 import type { FilterExpression } from '../../../../../contracts/types/shared/curation/filterExpression.ts'
 import { FilterMixPanel } from './FilterMixPanel.tsx'
-import { groupSubAreas } from '../subAreaGroups.ts'
+import { groupSubAreas, subAreaAncestors, subAreaContains } from '../subAreaGroups.ts'
 import {
   SCENARIO_FILTER_SECTION_LABELS,
   addScenarioFilterTerm,
@@ -355,6 +355,7 @@ export default function RunDetail() {
     || allDocs.some(doc => mixSelections.subarea.includes(doc.id) && doc.subAreas?.some(entry => entry.areaId === area.id))), allDocs)
   const subAreaDocs = [...new Map(subAreaGroups.flatMap(group => group.subAreas).map(doc => [doc.id, doc])).values()]
   const selectedSubAreaIds = customMix ? mixSelections.subarea : selectedValues('subarea').filter(id => subAreaDocs.some(doc => doc.id === id))
+  const leafSubAreaIds = selectedSubAreaIds.filter(id => !selectedSubAreaIds.some(other => other !== id && subAreaContains(id, other, allDocs)))
   const sourcingSelected = selectedAreaIds.includes(SOURCING_AREA_ID)
   const selectedSourceChangeCategories = customMix || sourcingSelected ? selectedValues('sourcechange').filter(isSourceChangeCategory) : []
   const selectedSourceChangeSubtypeIds = selectedValues('sourcechangesubtype').filter(isSourceChangeSubtypeId)
@@ -378,9 +379,12 @@ export default function RunDetail() {
   const presentAreaIds = new Set(
     (data?.scenarios ?? []).flatMap((s) => s.appAreaDocIds)
   )
-  const facetDocs = docs.filter(doc => doc.searchFacet)
-  const detailedDocs = [...docs.filter(doc => !doc.searchFacet), ...selectedDocs.filter(concept => !docs.some(doc => doc.id === concept.id))]
-  const selectedDetailedDocIds = selectedDocs.filter(doc => !doc.searchFacet).map(doc => doc.id)
+  const facetDocs = docs.filter(doc => doc.searchFacet && !doc.subAreas?.length)
+  // Sub-areas live under their parents. Keep direct concept selections visible
+  // for bookmarked filters and links from concept documentation.
+  const detailedDocs = [...docs.filter(doc => !doc.searchFacet && !doc.subAreas?.length),
+    ...selectedDocs.filter(concept => concept.subAreas?.length || !docs.some(doc => doc.id === concept.id))]
+  const selectedDetailedDocIds = selectedDocs.filter(doc => !doc.searchFacet || doc.subAreas?.length).map(doc => doc.id)
   const isPartialRun = facetDocs.some(doc => !presentDocIds.has(doc.id))
   const isPartialAreaRun = appAreas.length > 0 && presentAreaIds.size < appAreas.length
   const targetedDocIds = new Set(data?.targetedConceptIds ?? [])
@@ -603,7 +607,7 @@ export default function RunDetail() {
     scenarioMatchesFilterExpression(expression, (section, value) => scenarioFilterValues(scenario, section).has(value))
 
   const plainSelections: ScenarioFilterSelections = {
-    surface: selectedExecutionSurfaces, mode: selectedBundleModes, area: selectedAreas.map(area => area.id), subarea: selectedSubAreaIds,
+    surface: selectedExecutionSurfaces, mode: selectedBundleModes, area: selectedAreas.map(area => area.id), subarea: leafSubAreaIds,
     sourcechange: selectedSourceChangeCategories, sourcechangesubtype: selectedSourceChangeSubtypeIds, doc: selectedDocIds, pressure: selectedPressureIds, bundle: selectedBundles.map(bundle => bundle.id),
   }
   const plainExpressionIgnoring = (sections: readonly ScenarioFilterSection[]) =>
@@ -841,23 +845,37 @@ export default function RunDetail() {
 
       {(subAreaGroups.length > 0 || showSourceChanges) && <div role="group" aria-label="Area details">
         {appAreas.map(area => {
-          const subAreas = subAreaGroups.find(group => group.area.id === area.id)?.subAreas
+          const rows = subAreaGroups.find(group => group.area.id === area.id)?.rows ?? []
           return <Fragment key={area.id}>
-            {subAreas && <div className="filter-section filter-areas area-subareas mb-1 rounded-md px-3 py-1.5">
-              <div className="filter-row" role="group" aria-label={`${area.name} sub-areas`}>
-                <span className="filter-label text-xs text-neutral-500 font-medium">{area.name.replace(/^Bundle /, '')}<span className="block text-[10px] font-normal text-neutral-400">Sub-areas</span></span>
-                <div className="filter-all"><button className="filter-default text-neutral-600 px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
-                  aria-pressed={!subAreas.some(doc => selectedSubAreaIds.includes(doc.id))}
-                  onClick={() => setFilters({ subAreaIds: selectedSubAreaIds.filter(id => !subAreas.some(doc => doc.id === id)) })}>All</button></div>
-                <div className="filter-choices">{subAreas.map(doc => {
-                  const selected = selectedSubAreaIds.includes(doc.id)
-                  const available = availableSubAreaIds.has(doc.id)
-                  return <button key={doc.id} aria-pressed={selected} title={available ? undefined : 'No matching scenarios with the current filters.'}
-                    className={`px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors ${selected ? 'bg-sky-500 text-white' : available ? 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200' : 'bg-neutral-50 text-neutral-400 hover:bg-neutral-100'}${selected && !available ? ' opacity-60' : ''}`}
-                    onClick={() => setFilters({ subAreaIds: selected ? selectedSubAreaIds.filter(id => id !== doc.id) : [...selectedSubAreaIds, doc.id] })}>{doc.name}</button>
-                })}</div>
-              </div>
-            </div>}
+            {rows.filter(row => !row.parent || selectedSubAreaIds.some(id => subAreaContains(row.parent!.id, id, allDocs)))
+              .map(({ parent, ancestors, subAreas }) => {
+                const inRow = (id: string) => subAreas.some(doc => subAreaContains(doc.id, id, allDocs))
+                const clearRow = () => {
+                  const remaining = selectedSubAreaIds.filter(id => !inRow(id))
+                  setFilters({ subAreaIds: parent && !remaining.includes(parent.id) ? [...remaining, parent.id] : remaining })
+                }
+                return <div key={parent?.id ?? area.id} className="filter-section filter-areas area-subareas mb-1 rounded-md px-3 py-1.5"
+                  style={{ marginLeft: `${(ancestors.length + 1) * 16}px` }}>
+                  <div className="filter-row" role="group" aria-label={`${parent?.name ?? area.name} sub-areas`}>
+                    <span className="filter-label text-xs text-neutral-500 font-medium">{area.name.replace(/^Bundle /, '')}<span className="block text-[10px] font-normal text-neutral-400">{ancestors.length ? ancestors.map(doc => doc.name).join(' → ') : 'Sub-areas'}</span></span>
+                    <div className="filter-all"><button className="filter-default text-neutral-600 px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
+                      aria-pressed={!selectedSubAreaIds.some(inRow)} onClick={clearRow}>All</button></div>
+                    <div className="filter-choices">{subAreas.map(doc => {
+                      const selected = selectedSubAreaIds.some(id => subAreaContains(doc.id, id, allDocs))
+                      const available = availableSubAreaIds.has(doc.id)
+                      const toggle = () => {
+                        const remaining = selectedSubAreaIds.filter(id => selected ? !subAreaContains(doc.id, id, allDocs)
+                          : !subAreaAncestors(doc.id, allDocs).includes(id))
+                        if (selected && parent && !remaining.some(id => subAreaContains(parent.id, id, allDocs))) remaining.push(parent.id)
+                        setFilters({ subAreaIds: selected ? remaining : [...remaining, doc.id] })
+                      }
+                      return <button key={doc.id} aria-pressed={selected} title={available ? undefined : 'No matching scenarios with the current filters.'}
+                        className={`px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors ${selected ? 'bg-sky-500 text-white' : available ? 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200' : 'bg-neutral-50 text-neutral-400 hover:bg-neutral-100'}${selected && !available ? ' opacity-60' : ''}`}
+                        onClick={toggle}>{doc.name}</button>
+                    })}</div>
+                  </div>
+                </div>
+              })}
             {area.id === SOURCING_AREA_ID && showSourceChanges && <div className="filter-section filter-areas area-subareas mb-1 rounded-md px-3 py-1.5">
               <div className="filter-row" role="group" aria-label="Source changes">
                 <span className="filter-label text-xs text-neutral-500 font-medium">Sourcing<span className="block text-[10px] font-normal text-neutral-400">Source changes</span></span>
@@ -991,8 +1009,8 @@ export default function RunDetail() {
         const baseDocs = facetDocs.filter((d) => !d.isContribution)
         const extensionDocs = facetDocs.filter((d) => d.isContribution)
         const extensionDocIds = extensionDocs.map((d) => d.id)
-        const selectedBaseDocIds = selectedDocs.filter(doc => doc.searchFacet && !doc.isContribution).map(doc => doc.id)
-        const selectedExtensionDocIds = selectedDocs.filter(doc => doc.searchFacet && doc.isContribution).map(doc => doc.id)
+        const selectedBaseDocIds = selectedDocs.filter(doc => doc.searchFacet && !doc.subAreas?.length && !doc.isContribution).map(doc => doc.id)
+        const selectedExtensionDocIds = selectedDocs.filter(doc => doc.searchFacet && !doc.subAreas?.length && doc.isContribution).map(doc => doc.id)
 
         const renderDocPill = (doc: ConceptView, available: boolean) => {
           const isSelected = selectedDocIds.includes(doc.id)

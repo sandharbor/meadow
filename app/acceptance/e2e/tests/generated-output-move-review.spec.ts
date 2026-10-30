@@ -22,7 +22,7 @@ const sections = scenarioSections({
   reviewRegeneratedSite: { type: 'test', text: conceptText`Review the regenerated site.` },
   movedModifiedFileMatchesEitherFilter: { type: 'test', text: conceptText`A moved and modified file matches either filter.` },
 });
-const areas = scenarioAreas([bundleSourcing, bundleGeneration, bundleReview]);
+const areas = scenarioAreas([bundleSourcing, bundleGeneration, bundleReview], { subAreas: [changesTabDoc] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: '20cb59b9-e1a1-49f7-910d-c17bcf1f8e64' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, meadowCli, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   const { editor } = await test.step(sections.steps.setup, async () => {
     let command = 0;

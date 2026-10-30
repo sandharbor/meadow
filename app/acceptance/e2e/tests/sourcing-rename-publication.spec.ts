@@ -27,7 +27,7 @@ const sections = scenarioSections({
   visitOldPageInspectLinkRenamedCounterpart: { type: 'test', text: conceptText`Visit the old page and inspect its link to the renamed counterpart.` },
   followReaderSLinkRenamedPage: { type: 'test', text: conceptText`Follow the reader's link to the renamed page.` },
 });
-const areas = scenarioAreas([bundleSourcing, bundleGeneration, bundleReview, bundleSharing], { subAreas: [sourceReviewIdentity] });
+const areas = scenarioAreas([bundleSourcing, bundleGeneration, bundleReview, bundleSharing], { subAreas: [sourceReviewIdentity, publicationRevision] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: '2632e392-a3dd-44cc-a0d3-4f3f520ac54f' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, sourceChanges, testServer, minioS3, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   const { editor, bundleConfig, original, modal, versions, initialVersion, publish, originalUrl, originalPageKey, originalHtml } = await test.step(sections.steps.setup, async () => {
     await sourceCommand(() => testServer.activateS3Provider());
