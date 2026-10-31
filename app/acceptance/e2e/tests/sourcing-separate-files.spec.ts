@@ -3,7 +3,7 @@
 import { test, expect } from '../src/run/test-fixtures.js';
 import { Workflows } from '../src/run/workflows.js';
 import { BundleEditorPage } from '../src/run/pages/index.js';
-import { scenarioSections, orphan, conceptText, conceptLink, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewIdentity, sourceIdentityMatching, treatAsDifferentPages } from '../../../concepts/index.js';
+import { scenarioSections, exemplarySpec, orphan, conceptText, conceptLink, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewIdentity, sourceIdentityMatching, manuallyOverrideSourceIdentityMatching, treatAsDifferentPages } from '../../../concepts/index.js';
 import { MeadowHomeBundleConfig } from '../src/run/utils/index.js';
 
 const originalTitle = 't003 ---- page with section to link to';
@@ -13,14 +13,14 @@ test.use({ bundleMode: "single-file" });
 
 const name = linkedScenarioName(conceptText`Sourcing treats a rejected rename as different pages and removes the old configuration on acceptance`);
 
-const description = linkedScenarioDescription(conceptText`Override ${conceptLink(sourceIdentityMatching.id, 'source identity matching')} by choosing to ${conceptLink(treatAsDifferentPages.id, 'treat the files as different pages')}. Acceptance removes the old configuration and admits the renamed destination as a new page.`);
+const description = linkedScenarioDescription(conceptText`${conceptLink(manuallyOverrideSourceIdentityMatching.id, 'Manually override source identity matching')} by choosing to ${conceptLink(treatAsDifferentPages.id, 'treat the files as different pages')}. Acceptance removes the old configuration and admits the renamed destination as a new page.`);
 const sections = scenarioSections({
   setup: { type: 'setup', text: conceptText`Establish the starting state: the accepted source state is established before changing files.` },
-  rejectSuggestedMatch: { type: 'test', text: conceptText`Rename the page and its links, then override ${conceptLink(sourceIdentityMatching.id, 'source identity matching')} to ${conceptLink(treatAsDifferentPages.id, 'treat them as different pages')}.` },
+  rejectSuggestedMatch: { type: 'test', text: conceptText`Rename the page and its links, and ${conceptLink(manuallyOverrideSourceIdentityMatching.id, 'manually override source identity matching')} to ${conceptLink(treatAsDifferentPages.id, 'treat them as different pages')}.` },
   acceptSeparatePages: { type: 'test', text: conceptText`Accept the update: remove the old configuration and admit the renamed destination as a new page.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewIdentity] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '30c13a6a-547f-4c87-ac13-cc68a5a6592a' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '30c13a6a-547f-4c87-ac13-cc68a5a6592a' }, { type: 'concept', description: exemplarySpec.id }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   const { editor, bundleConfig, original } = await test.step(sections.steps.setup, async () => {
     await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
     const editor = new BundleEditorPage(page, expect);
@@ -43,9 +43,10 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '30c13a6a-547
     await sourceCommand(() => rename.showDifferentHelp());
     await sourceCommand(() => rename.expectPreviousRoute('t003 - link to section.md'));
     expect(bundleConfig.findNode({ bundleNodeId: original.bundleNodeId })).toEqual(original);
-    await sourceCommand(() => addKeyFrame(treatAsDifferentPages));
-    await sourceCommand(() => addKeyFrame(orphan));
-    await sourceCommand(() => checkpoint('different pages shows the previous route and proposes removing the old configuration'));
+    await sourceCommand(() => checkpoint(
+      conceptText`${conceptLink(treatAsDifferentPages.id, 'Different pages')} shows the previous route and proposes removing the ${conceptLink(orphan.id, 'orphaned configuration')}.`,
+      { keyFrames: [treatAsDifferentPages, orphan] },
+    ));
     return { review };
   });
 
@@ -57,8 +58,10 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '30c13a6a-547
     await sourceCommand(() => editor.switchToListView());
     await sourceCommand(() => editor.expectListViewRowByExactNamePresent(renamedTitle));
     await sourceCommand(() => editor.expectListViewRowByExactNameNotPresent(originalTitle));
-    await sourceCommand(() => addKeyFrame(treatAsDifferentPages));
-    await sourceCommand(() => checkpoint('acceptance removes the old configuration and admits the renamed destination as a new page'));
+    await sourceCommand(() => checkpoint(
+      conceptText`Acceptance removes the old configuration and admits the renamed destination as a new page.`,
+      { keyFrames: [treatAsDifferentPages] },
+    ));
   });
 
   await sourceCommand(() => skipMeadowHomeStateCheck());

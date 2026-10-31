@@ -10,7 +10,7 @@ const guidance = '/**\n' + INTERFACE_GUIDANCE.split('\n').map(line => ' * ' + li
 test('source discovery skips generated test workspaces and caches, including transient symlinks', t => {
   const f = fixture(t);
   const source = f.write('app/contracts/types/areas/bundle/sourcing/identity.ts', 'export type Identity = string;');
-  for (const folder of ['config_workspace', 'scratch_config_folder', 'expected_results', 'node_modules', '.linkrange-cache']) {
+  for (const folder of ['config_workspace', 'scratch_config_folder', 'expected_results', 'test_repo', 'node_modules', '.linkrange-cache']) {
     const file = f.write(`app/test/${folder}/generated.ts`, 'export type Generated = string;');
     fs.symlinkSync(path.join(f.directory, 'deleted-test-output'), path.join(path.dirname(file), 'transient'));
   }

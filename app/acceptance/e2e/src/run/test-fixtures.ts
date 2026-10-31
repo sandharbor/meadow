@@ -49,6 +49,8 @@ import { getTestArtifactDirectory } from "./artifactReporter.js";
 import { scenarioRecordingDirectory } from '../artifacts/scenarioVideo.js';
 import { SourceCommandTracker } from "./SourceCommandTracker.js";
 import type { SourceCommand } from "../artifacts/sourceCommand.js";
+import { renderConceptText, type ConceptText } from '../../../../concepts/types.js';
+import type { CheckpointOptions, RecordedCheckpoint, RecordedKeyFrame } from '../artifacts/scenarioCheckpoints.js';
 import { appendTickEntrySync } from "./writeTickEntry.js";
 import {
   MEADOW_HOME_FINAL_STATUS_FILE,
@@ -541,7 +543,8 @@ export const test = base.extend<{
   /** Opt-in source-position capture for commands in a scenario. */
   sourceCommand: <T>(action: () => T | Promise<T>) => Promise<T>;
   /** A Dev Tools fork supplies its actual home and service partition for portable capture. */
-  checkpoint: (message: string, target?: { homeDirectory: string; partition: string; ports: Record<string, number> }) => Promise<void>;
+  checkpoint: (message: string | ConceptText, options?: CheckpointOptions) => Promise<void>;
+  _keyFrameRecorder: { capture: (concepts: readonly { id: string }[], checkpointId?: number) => Promise<void> };
   /**
    * Assert that the MeadowHome configDir git repo is clean except for the
    * explicitly allowed paths. Untracked entries (`??`) and modified entries
@@ -1518,7 +1521,7 @@ export const test = base.extend<{
     });
   },
 
-  checkpoint: async ({ page, artifactDir, testServer, minioS3, fixtureHome, _additionalCheckpointHandlers, _tickCaptureRegistry }, use, testInfo) => {
+  checkpoint: async ({ page, artifactDir, testServer, minioS3, fixtureHome, _additionalCheckpointHandlers, _tickCaptureRegistry, _keyFrameRecorder }, use, testInfo) => {
     // --- Setup: init repos ---
 
     const { minioEndpoint, configDir } = testServer;
@@ -1547,7 +1550,14 @@ export const test = base.extend<{
 
     // --- The checkpoint function ---
 
-    const checkpointFn = async (message: string, target?: { homeDirectory: string; partition: string; ports: Record<string, number> }) => {
+    const checkpoints: RecordedCheckpoint[] = [];
+    const checkpointMetadataPath = path.join(artifactDir, 'checkpoints.json');
+    writeFileSync(checkpointMetadataPath, '[]');
+    const checkpointFn = async (text: string | ConceptText, options: CheckpointOptions = {}) => {
+      const message = typeof text === 'string' ? text : renderConceptText(text);
+      const target = options.homeDirectory !== undefined ? options : undefined;
+      if (target && (!target.partition || !target.ports)) throw new Error('A checkpoint target requires homeDirectory, partition, and ports.');
+      const checkpointId = checkpoints.length + 1;
       const checkpointHome = target?.homeDirectory ?? configDir;
       const checkpointPartition = target?.partition ?? testServer.localServices.partition;
       const storage = target && minioEndpoint ? new MinioS3(minioEndpoint, minioBucketName(checkpointPartition), expect) : minioS3;
@@ -1657,6 +1667,12 @@ export const test = base.extend<{
 
       // Record this boundary before the next phase can change state or replace
       // its marker. Short phases may complete between periodic ticks.
+      if (options.keyFrames?.length) await _keyFrameRecorder.capture(options.keyFrames, checkpointId);
+      const command = _tickCaptureRegistry.sourceCommand?.current;
+      checkpoints.push({ id: checkpointId, message,
+        ...(typeof text === 'string' ? {} : { text }),
+        timestamp: new Date().toISOString(), sourceLine: command?.status === 'running' ? command.line : undefined });
+      writeFileSync(checkpointMetadataPath, JSON.stringify(checkpoints, null, 2));
       _tickCaptureRegistry.captureCheckpoint(message);
     };
 
@@ -1755,14 +1771,19 @@ export const test = base.extend<{
     });
   },
 
-  addKeyFrame: async ({ page, artifactDir }, use) => {
-    const keyFrames: { docId: string; filename: string; timestamp: string; codeRevision: string; uncommittedCode: boolean }[] = [];
+  addKeyFrame: async ({ _keyFrameRecorder }, use) => {
+    await use((...concepts) => _keyFrameRecorder.capture(concepts));
+  },
+
+  _keyFrameRecorder: async ({ page, artifactDir }, use) => {
+    const keyFrames: RecordedKeyFrame[] = [];
+    writeFileSync(path.join(artifactDir, 'keyframes.json'), '[]');
     const codeRevision = execSync("git rev-parse HEAD", { cwd: REPO_ROOT, encoding: "utf8" }).trim();
     const uncommittedCode = Boolean(execSync("git status --porcelain", { cwd: REPO_ROOT, encoding: "utf8" }).trim());
 
     const docIdCounts = new Map<string, number>();
 
-    const addKeyFrameFn = async (...concepts: { id: string }[]) => {
+    const capture = async (concepts: readonly { id: string }[], checkpointId?: number) => {
       if (concepts.length === 0) throw new Error("A keyframe requires at least one concept");
       const primaryConcept = concepts[0];
       const count = (docIdCounts.get(primaryConcept.id) ?? 0) + 1;
@@ -1773,11 +1794,11 @@ export const test = base.extend<{
       await page.screenshot({ path: path.join(artifactDir, filename) });
       const timestamp = new Date().toISOString();
       for (const concept of concepts) {
-        keyFrames.push({ docId: concept.id, filename, timestamp, codeRevision, uncommittedCode });
+        keyFrames.push({ docId: concept.id, filename, timestamp, codeRevision, uncommittedCode, checkpointId });
       }
     };
 
-    await use(addKeyFrameFn);
+    await use({ capture });
 
     // Teardown: write keyframes.json so artifact assembly can find them
     if (keyFrames.length > 0) {

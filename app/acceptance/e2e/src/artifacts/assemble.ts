@@ -116,11 +116,7 @@ interface LogEntry {
   message: string;
 }
 
-interface KeyFrame {
-  docId: string;
-  filename: string;
-  timestamp?: string;
-}
+type KeyFrame = import('./scenarioCheckpoints.js').RecordedKeyFrame;
 
 interface UncommittedEntry {
   timestamp: string;
@@ -242,6 +238,7 @@ interface Manifest {
   designPressureIds?: string[];
   sourceChangeCategories: SourceChangeCategory[];
   keyFrames: KeyFrame[];
+  checkpoints?: import('./scenarioCheckpoints.js').RecordedCheckpoint[];
   ticks: ProcessedTick[];
   consolidatedTicks: ConsolidatedTickGroup[];
   tickFileListing: Record<number, string[]>;
@@ -1333,6 +1330,9 @@ export function assembleTestArtifacts(testDir: string, options: { dropTickLog?: 
       : []
   );
 
+  const checkpointsPath = path.join(testDir, 'checkpoints.json');
+  const checkpoints = existsSync(checkpointsPath) ? JSON.parse(readFileSync(checkpointsPath, 'utf8')) : undefined;
+
   // Process tick log
   const tickData = measured(assemblySteps, "process tick log", () =>
     processTickLog(testDir)
@@ -1341,7 +1341,7 @@ export function assembleTestArtifacts(testDir: string, options: { dropTickLog?: 
   // Write manifest
   const identityPath = path.join(testDir, 'scenario-identity.json');
   const identity = existsSync(identityPath) ? JSON.parse(readFileSync(identityPath, 'utf8')) : {};
-  const manifest: Manifest = { ...identity, testName, description, nameText, descriptionText, sections, status, startTime, endTime, homeCommits, homeCommitMeta, minioCommitMeta, extensionCommitMeta, uncommittedEntries, logs, testSourceFile, testSource, testSourceFixtures, testSourceChanges, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, subAreaDocIds, designPressureIds, sourceChangeCategories, keyFrames, ...tickData };
+  const manifest: Manifest = { ...identity, testName, description, nameText, descriptionText, sections, status, startTime, endTime, homeCommits, homeCommitMeta, minioCommitMeta, extensionCommitMeta, uncommittedEntries, logs, testSourceFile, testSource, testSourceFixtures, testSourceChanges, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, subAreaDocIds, designPressureIds, sourceChangeCategories, keyFrames, checkpoints, ...tickData };
   // On disk the manifest leaves out what the report viewer rebuilds, and
   // skips indentation; see manifestEncoding.ts.
   const blobGitDir = contentBlobGitDir(testDir);

@@ -56,6 +56,7 @@ export const checkpoint = define({
   definition: text`A named phase boundary in an acceptance scenario that captures a restorable ${link(id.savedState, "Saved State")}.`,
   mechanics: [
     text`Each checkpoint commits the complete ${link(id.meadowHome, "Meadow Home")}, including its Git repository, ignored files, generated bundle data, and isolated source graphs, into the scenario's artifact state repository. Every participating service part commits its state at the same moment.`,
+    text`Checkpoint text can link concepts. Passing keyFrames to checkpoint captures their review image at that boundary and explicitly associates each concept with it. The simplified Test Code view displays the checkpoint prose at the code indentation, with concept-labelled thumbnails and the same hover preview as the timeline.`,
     text`It records the active service parts, the home format version, the application version, and the code revision. Capture refuses to run if the home is configured for anything other than ${link(id.localServices, "Local Services")}.`,
     text`Opening a checkpoint restores every part into a new home and fresh partitions: the captured data on the current code. Source locations in configuration, retained snapshots, and pending proposals move together into the restored home; relocation alone never creates a source update or makes a valid proposal stale. Older home formats upgrade through normal startup; newer or unsupported formats cannot be opened.`,
   ],
@@ -68,6 +69,17 @@ export const homeCommit = define({
   definition: text`A Git commit made in a ${link(id.meadowHome, "Meadow Home")} and observed during an acceptance run.`,
   mechanics: [text`Run manifests list home commits separately from ${link(id.checkpoint, "Checkpoints")}. The first one, initial Meadow Home commit, is made by runtime startup.`],
   interplay: text`Home commits are application behavior under test; ${link(id.checkpoint, "Checkpoints")} are test-authored phase boundaries.`,
+});
+
+export const exemplarySpec = define({
+  id: id.exemplarySpec, name: "Exemplary Spec", kind: "artifact", searchFacet: true,
+  definition: text`An acceptance scenario deliberately held to a higher standard as part of a small reference set for improving all specs.`,
+  mechanics: [
+    text`Clearly described sections operate at the level of intent. Like deep modules, each section closes over a cohesive set of non-trivial steps. A section for nearly every line of code is too granular; too few sections leave meaningful phases unexplained.`,
+    text`The description and sections link to concepts. Using the ubiquitous language makes the scenario conceptually cohesive and helps its reader remember the important ideas and areas it exercises.`,
+    text`Mark a scenario with an explicit concept annotation for Exemplary Spec, keeping the connection in metadata and its description focused on the behavior under test. The concept filter gathers this deliberately small set so its qualities can be examined, refined, and translated into guidance for every spec.`,
+  ],
+  interplay: text`${link(id.checkpoint, "Checkpoints")} name useful states reached within these intent-level sections and can capture concept-linked keyframes as evidence.`,
 });
 
 export const localServices = define({
@@ -88,4 +100,4 @@ export const serviceTarget = define({
   interplay: text`A forked ${link(id.checkpoint, "Checkpoint")} that used local services must stay Local; mixing its captured references with a hosted backend could not work.`,
 });
 
-export const developmentConcepts = [savedState, emptyHome, homeFixture, checkpoint, homeCommit, localServices, serviceTarget] as const;
+export const developmentConcepts = [savedState, emptyHome, homeFixture, checkpoint, homeCommit, exemplarySpec, localServices, serviceTarget] as const;

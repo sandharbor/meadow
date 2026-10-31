@@ -1,7 +1,8 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import { expect, test } from 'vitest';
-import { testSourceLocations } from './testSourceLocations';
+import { testSourceLocations, checkpointSourceBlocks } from './testSourceLocations';
+import { conceptText } from '../../../concepts/index.js';
 
 test('checkpoint locations support every literal quote style, escaping, and multiline calls', () => {
   const source = [
@@ -116,6 +117,7 @@ test('section wrappers are located without moving checkpoints or hiding compact 
   ].join('\n');
   expect(testSourceLocations(source)).toMatchObject({
     testLine: 5,
+    testClosing: { start: 16, end: 16 },
     checkpoints: [{ message: 'ready', line: 7 }, { message: 'reviewed', line: 12 }],
     sections: {
       declaration: { start: 1, end: 4 },
@@ -125,6 +127,29 @@ test('section wrappers are located without moving checkpoints or hiding compact 
       ],
     },
   });
+});
+
+test('the outer closing wrapper keeps executable code and comments that share its line', () => {
+  for (const ending of ['  await verify(); });', '}); afterTest();', '}); // Keep this note.']) {
+    const source = ['const sections = scenarioSections({});', 'test(name.name, {}, async () => {', ending].join('\n');
+    expect(testSourceLocations(source).testClosing).toBeUndefined();
+  }
+});
+
+test('only a final standalone state-check opt-out is hidden, including wrapped multiline calls', () => {
+  for (const call of ['await skipMeadowHomeStateCheck();', 'await sourceCommand(() => skipMeadowHomeStateCheck());']) {
+    expect(testSourceLocations(`test("example", async () => {\n  ${call}\n});`).finalStateCheckSkip).toEqual({ start: 2, end: 2 });
+  }
+  expect(testSourceLocations('test("example", async () => {\n  await sourceCommand(async () =>\n    await skipMeadowHomeStateCheck()\n  );\n});').finalStateCheckSkip).toEqual({ start: 2, end: 4 });
+  for (const body of [
+    'await skipMeadowHomeStateCheck();\n  await verify();',
+    'await verify(); await skipMeadowHomeStateCheck();',
+    'await sourceCommand(() => (verify(), skipMeadowHomeStateCheck()));',
+    'await assertMeadowHomeState();',
+    'await skipMeadowHomeStateCheck(); // Keep this note.',
+  ]) {
+    expect(testSourceLocations(`test("example", async () => {\n  ${body}\n});`).finalStateCheckSkip).toBeUndefined();
+  }
 });
 
 
@@ -148,4 +173,26 @@ test('sections can pass shared values onward without exposing transfer scaffoldi
     steps: [{ id: 'setup', start: 3, end: 3, closingStart: 8, closingEnd: 8, returnedValues: { start: 7, end: 7 } }],
   });
   expect(testSourceLocations(source).checkpoints).toEqual([{ message: 'ready', line: 6 }]);
+});
+
+
+test('checkpoint prose uses recorded text and source positions while preserving multiline call ranges', () => {
+  const source = [
+    'await sourceCommand(() => checkpoint(',
+    '  conceptText`Review ${conceptLink(orphan.id, "orphan")}.`,',
+    '  { keyFrames: [orphan] },',
+    '));',
+    'await sourceCommand(() => checkpoint("ready"));',
+    'await sourceCommand(() => checkpoint("ready"));',
+    'if (condition) await checkpoint("keep surrounding code");',
+    'await checkpoint(dynamicText);',
+  ].join('\n');
+  const text = conceptText`Captured prose.`;
+  const records = [{ id: 1, message: 'Captured prose.', text, timestamp: '2026-10-30', sourceLine: 1 }];
+  expect(checkpointSourceBlocks(source, records)).toEqual([
+    { line: 1, endLine: 4, indent: 0, checkpointId: 1, message: 'Captured prose.', text },
+    { line: 5, endLine: 5, indent: 0, message: 'ready' },
+    { line: 6, endLine: 6, indent: 0, message: 'ready' },
+  ]);
+  expect(testSourceLocations(source, records).checkpoints[0]).toEqual({ message: 'Captured prose.', line: 1 });
 });

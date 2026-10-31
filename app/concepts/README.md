@@ -154,9 +154,13 @@ requires every scenario to declare both variables, pass `name.name` as the test
 title, and include both annotations. Reports retain support for older captures
 that used the block comment immediately before the test.
 The simplified Test Code pane starts with the captured name and description,
-then the `test.use` setup and test body. It hides everything before the first
-top-level `test.use`, along with the prose declarations (or legacy description
-comment). Both scroll with the code;
+then the first declared section and its code. Configuration, metadata, and the
+test wrapper preceding that section are hidden, along with the matching closing
+test wrapper. The final standalone `skipMeadowHomeStateCheck()` call is also
+hidden as test infrastructure. Scenarios without captured
+sections retain the `test.use` setup and test body, hiding everything before the
+first top-level `test.use` and the prose declarations (or legacy description
+comment). The name and description scroll with the code;
 the original source line numbers still anchor ticks and checkpoints. “show the real code”
 reveals the original source.
 Concept links in a captured name or description open the shared floating concept details
@@ -199,6 +203,31 @@ line numbers still anchor commands and checkpoints; “show the real code” rev
 the declarations and wrappers. Details offers a Show sections checkbox, initially
 off, which shows the test sections in order and omits setup. Older scenarios and
 captures without sections keep their existing display.
+
+## Exemplary specs and checkpoint evidence
+
+Import `exemplarySpec` and add `{ type: 'concept', description: exemplarySpec.id }`
+to the scenario's annotations to mark it as part of the small reference set.
+Keep this connection in metadata rather than mentioning exemplary status in the
+scenario's name or description. The Exemplary Spec concept documents the
+qualities being held to a higher standard; its search facet gathers those
+scenarios for review.
+
+Checkpoints accept plain strings or checked linked text and can capture their
+keyframes directly:
+
+```ts
+await sourceCommand(() => checkpoint(
+  conceptText`Review the ${conceptLink(orphan.id, 'orphaned configuration')}.`,
+  { keyFrames: [treatAsDifferentPages, orphan] },
+));
+```
+
+Each listed concept shares the image captured at that checkpoint. The recording
+retains the linked prose and explicit keyframe association. The simplified code
+view shows checkpoint prose at the code's indentation, with a row of named
+thumbnails using the timeline's hover preview. The real-code toggle reveals the
+whole call. Standalone `addKeyFrame()` remains useful for intermediate images.
 
 ## Shared documents and design pressures
 

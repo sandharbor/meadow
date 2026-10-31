@@ -81,6 +81,7 @@ export default [
         setInterval: 'readonly',
         clearInterval: 'readonly',
         HTMLVideoElement: 'readonly',
+        HTMLImageElement: 'readonly',
         HTMLDivElement: 'readonly',
         HTMLPreElement: 'readonly',
         HTMLElement: 'readonly',
@@ -129,6 +130,7 @@ export default [
         setTimeout: 'readonly',
         clearTimeout: 'readonly',
         HTMLVideoElement: 'readonly',
+        HTMLImageElement: 'readonly',
       }
     },
     plugins: {

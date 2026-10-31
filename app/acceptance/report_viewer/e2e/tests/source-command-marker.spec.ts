@@ -47,7 +47,7 @@ test('ticks position command markers beside multiline calls without moving code 
     await page.getByRole('checkbox', { name: 'show the real code' }).uncheck();
     await expect(commandLine).not.toContainText('sourceCommand');
     await commandLine.click();
-    await expect(marker).toHaveText('T 2CP');
+    await expect(marker).toHaveText('T 2');
     await page.keyboard.press('ArrowLeft');
     await expect(marker).toHaveAttribute('data-command-status', 'running');
     await expect(commandLine.getByTestId('source-ticks-indicator')).toHaveCount(0);
@@ -66,7 +66,7 @@ test('ticks position command markers beside multiline calls without moving code 
       await expect(marker).toHaveAttribute('data-command-id', id);
       await expect(marker).toHaveAttribute('data-command-status', status);
       const checkpoint = id === '0';
-      await expect(marker).toContainText(checkpoint ? 'CP' : 'T');
+      await expect(marker).toContainText('T');
       await expect.poll(() => followingLine.evaluate(element => element.parentElement!.offsetTop)).toBe(lineOffset);
       await expect(commandLine).toHaveClass(checkpoint ? /bg-orange-50/ : /bg-purple-50/);
       await expect(marker).toHaveClass(checkpoint ? /text-orange-700/ : /text-purple-700/);

@@ -101,13 +101,25 @@ export const sourceIdentityMatching = define({
   interplay: text`${link(id.sourceMove, 'Source Move')} represents a proposed correspondence. ${link(id.sourceReviewIdentity, 'Source Review Identity')} records the user's decision, and ${link(id.sourceReviewAcceptance, 'Proposal Acceptance')} applies it.`,
 });
 
+export const manuallyOverrideSourceIdentityMatching = define({
+  id: id.manuallyOverrideSourceIdentityMatching, name: 'Manually Override Source Identity Matching', kind: 'process',
+  parentId: id.manualOverride, appAreaIds: [id.bundleSourcing],
+  semanticTitle: text`${link(id.manualOverride, 'Manually override')} ${link(id.sourceIdentityMatching, 'source identity matching')}`,
+  definition: text`Apply a ${link(id.manualOverride, 'Manual Override')} to ${link(id.sourceIdentityMatching, 'Source Identity Matching')}: replace Meadow's suggested correspondence between source files with an explicit identity decision.`,
+  mechanics: [
+    text`For example, Meadow can suggest Same file for a renamed page. Choosing ${link(id.treatAsDifferentPages, 'Treat as Different Pages')} replaces that system-made choice with New file, even when the matching evidence supports the suggestion.`,
+    text`The replacement is staged in the pending proposal. The accepted configuration remains unchanged until acceptance, which applies the explicit identity decision.`,
+  ],
+  interplay: text`${link(id.sourceReviewIdentity, 'Source Review Identity')} exposes the suggested choice and records its replacement. ${link(id.sourceReviewAcceptance, 'Proposal Acceptance')} applies the reviewed result.`,
+});
+
 export const treatAsDifferentPages = define({
   id: id.treatAsDifferentPages, name: 'Treat as Different Pages', kind: 'behavioral-rule', searchFacet: false,
   parentId: id.sourceReviewIdentity, appAreaIds: [id.bundleSourcing],
   implementationRoles: ['reject-match'],
   definition: text`choosing New file rejects a proposed identity match so the old page departs and the destination enters as a separate new page.`,
   mechanics: [
-    text`The choice overrides ${link(id.sourceIdentityMatching, 'Source Identity Matching')}, including a confident Same file suggestion. It records an identity decision in the pending proposal without changing the accepted page's saved configuration.`,
+    text`The choice can ${link(id.manuallyOverrideSourceIdentityMatching, 'manually override source identity matching')}, including a confident Same file suggestion. It records an identity decision in the pending proposal without changing the accepted page's saved configuration.`,
     text`On acceptance, remove the old unreachable configuration and admit the destination as a fresh page. Do not transfer the old page's durable identity, tracking, or traversal overrides. New-page tracking follows the proposal's addition-tracking choices and sensitivity policy. This creates a new page in the bundle from the captured destination; it does not create or delete source files.`,
     text`For example, rename a tracked source page and update its incoming links, then choose New file for the suggested rename. Before acceptance the old configuration remains; after acceptance it is removed and the renamed destination is available as a new page.`,
   ],
@@ -238,7 +250,7 @@ export const sourceReviewSensitivity = define({
 
 export const proposedSourceReviewConcepts = [
   pendingSourceProposal, proposalConfigurationDraft, pendingProposalRevalidation,
-  sourceReviewConfigurationMerge, sourceReviewTrigger, sourceReviewIdentity, sourceIdentityMatching, treatAsDifferentPages,
+  sourceReviewConfigurationMerge, sourceReviewTrigger, sourceReviewIdentity, sourceIdentityMatching, manuallyOverrideSourceIdentityMatching, treatAsDifferentPages,
   sourceReviewAcceptance, scopeExclusion, bridgeExclusion, sourceReviewCleanup, sourceReviewWorkspace,
   sourceReviewFiltering, graphFade, sourceReviewViewState, sourceReviewSensitivity,
 ] as const;

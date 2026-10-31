@@ -25,7 +25,7 @@ import os from "os";
 import path from "path";
 import { readConceptImplementations } from '../../../e2e/src/artifacts/conceptImplementations.js';
 import { testSourceDisplay } from '../testSourceDisplay.ts';
-import { testSourceLocations } from '../testSourceLocations.ts';
+import { testSourceLocations, checkpointSourceBlocks } from '../testSourceLocations.ts';
 import { scenarioDocumentation } from '../scenarioDocumentation.ts';
 import { describeTestSourceChanges } from '../../../e2e/src/artifacts/testSourceChanges.ts';
 import { sourceChangeCategoriesOf, type SourceChangeCategory } from '../../../../shared_code/shared_dev/sourceChangesTypes.ts';
@@ -1148,7 +1148,8 @@ app.get("/api/:runId/:testSlug/test-source", (req, res) => {
     file: manifest.testSourceFile || "",
     source: manifest.testSource || "",
     display: testSourceDisplay(manifest.testSource || ""),
-    locations: testSourceLocations(manifest.testSource || ""),
+    locations: testSourceLocations(manifest.testSource || "", manifest.checkpoints),
+    checkpointBlocks: checkpointSourceBlocks(manifest.testSource || "", manifest.checkpoints),
     fixtures: extractReferencedCliFixtureReferences(manifest.testSource || ""),
     sourceChanges: describeTestSourceChanges(manifest.testSource || "", manifest.testSourceChanges),
   });

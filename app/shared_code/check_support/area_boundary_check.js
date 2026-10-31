@@ -6,7 +6,7 @@ import { AREA_CALLERS, RESTRICTED_AREA_CONSUMERS, mayConsumeAreaContract, INTERF
 const extensions = /\.(?:[cm]?js|jsx|[cm]?ts|tsx)$/;
 const excludedFolders = new Set([
   'node_modules', 'dist', 'build', 'target', 'coverage', '.cache', '.vite', '.git',
-  '.linkrange-cache', 'linkrange-source', 'config_workspace', 'scratch_config_folder', 'expected_results',
+  '.linkrange-cache', 'linkrange-source', 'config_workspace', 'scratch_config_folder', 'expected_results', 'test_repo',
 ]);
 // Third-party renderers vendored as static assets for generated bundles. They
 // are copied to readers' browsers and never imported by app code, so their

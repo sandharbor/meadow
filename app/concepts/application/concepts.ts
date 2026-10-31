@@ -17,6 +17,16 @@ limitations under the License.
 import { coreConceptIds as id } from "../ids.js";
 import { conceptLink as link, conceptText as text, defineMeadowConcept as define } from "../language.js";
 
+export const manualOverride = define({
+  id: id.manualOverride, name: "Manual Override", kind: "process",
+  definition: text`A person deliberately replacing a choice that Meadow suggested or preselected with their own explicit choice.`,
+  mechanics: [
+    text`An override has a system-made choice to replace. Making an individual choice where Meadow has no suggestion is a manual decision, but does not itself override a system choice.`,
+    text`The owning workflow determines when the replacement is saved or accepted. Replacing a suggestion during review does not by itself apply the reviewed changes.`,
+  ],
+  interplay: text`${link(id.manuallyOverrideSourceIdentityMatching, "Manually Override Source Identity Matching")} applies this general action to Meadow's suggested correspondence between source files.`,
+});
+
 export const migration = define({
   id: id.migration, name: "Meadow Home Migration", aliases: ["Migration"], kind: "process", searchFacet: true,
   definition: text`A versioned transformation that advances durable Meadow Home data to the format required by the running application.`,
@@ -74,4 +84,4 @@ export const dataIntegrity = define({
   interplay: text`${link(id.externalFileEdits, "Editing Files Outside Meadow")} can change retained data without updating its records. ${link(id.restoringFrozenVersion, "Restoring a Frozen Version")} recovers a saved output/record pair; ${link(id.startupRecovery, "Safe Startup Recovery")} handles failures at the startup boundary.`,
 });
 
-export const applicationConcepts = [appPlace, migration, startupRecovery, softwareUpdate, externalFileEdits, dataIntegrity] as const;
+export const applicationConcepts = [appPlace, manualOverride, migration, startupRecovery, softwareUpdate, externalFileEdits, dataIntegrity] as const;

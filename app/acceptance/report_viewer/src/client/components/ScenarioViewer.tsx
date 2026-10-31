@@ -22,7 +22,8 @@ import { highlightTypeScriptLines } from './highlightTypeScript'
 import 'prismjs/components/prism-yaml'
 import 'prismjs/components/prism-json'
 import 'prismjs/themes/prism.css'
-import type { TestSourceLocations } from '../../testSourceLocations.ts'
+import type { TestSourceLocations, CheckpointSourceBlock } from '../../testSourceLocations.ts'
+import { setupTimelineBoundary } from '../../setupTimeline.ts'
 import type { TestSourceChange } from '../../../../e2e/src/artifacts/testSourceChanges.ts'
 import { TestSourceChangeModal } from './TestSourceChangeModal.tsx'
 import { CopyReferenceButton } from './CopyReferenceButton.tsx'
@@ -63,6 +64,7 @@ interface KeyFrame {
   docId: string
   filename: string
   timestamp?: string
+  checkpointId?: number
 }
 
 interface Manifest {
@@ -575,6 +577,7 @@ export default function ScenarioViewer() {
   const [s3Objects, setS3Objects] = useState<Record<string, string>>({})
   const [prevS3Objects, setPrevS3Objects] = useState<Record<string, string>>({})
   const [s3DiffMode, setS3DiffMode] = useState(true)
+  const [checkpointBlocks, setCheckpointBlocks] = useState<CheckpointSourceBlock[]>([])
   const [testSource, setTestSource] = useState('')
   const [sourceDisplay, setSourceDisplay] = useState<{ source: string; commandLines: number[] } | null>(null)
   const [showCaptureCode, setShowCaptureCode] = useState(false)
@@ -590,7 +593,13 @@ export default function ScenarioViewer() {
   const [activeTelemetryTab, setActiveTelemetryTab] = useState<TelemetryTab>('spans')
   const [highlightedLogIndex, setHighlightedLogIndex] = useState(-1)
   const [hoveredDocId, setHoveredDocId] = useState<string | null>(null)
-  const [hoveredKeyFrame, setHoveredKeyFrame] = useState<{ docId: string; filename: string; x: number; y: number } | null>(null)
+  const [hoveredKeyFrame, setHoveredKeyFrame] = useState<{ docId: string; filename: string; x: number; y: number; aspectRatio: number } | null>(null)
+  const showKeyFramePreview = (frame: KeyFrame, element: HTMLElement) => {
+    const rect = element.getBoundingClientRect()
+    const image = element instanceof HTMLImageElement ? element : element.querySelector('img')
+    setHoveredKeyFrame({ docId: frame.docId, filename: frame.filename, x: rect.left + rect.width / 2, y: rect.top,
+      aspectRatio: image?.naturalWidth && image.naturalHeight ? image.naturalWidth / image.naturalHeight : 1.6 })
+  }
 
   // Refs
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -832,6 +841,7 @@ export default function ScenarioViewer() {
       const testSourceData = await testSourceRes.json() as {
         source?: string
         display?: { source: string; commandLines: number[] }
+        checkpointBlocks?: CheckpointSourceBlock[]
         locations?: TestSourceLocations
         fixtures?: TestSourceFixtureReference[]
         sourceChanges?: TestSourceChange[]
@@ -853,6 +863,7 @@ export default function ScenarioViewer() {
       setStateCommits(stateData)
       setS3Commits(s3Data)
       setTestSource(testSourceData.source || '')
+      setCheckpointBlocks(testSourceData.checkpointBlocks ?? [])
       setSourceDisplay(testSourceData.display ?? null)
       setShowCaptureCode(false)
       setTestSourceChanges(testSourceData.sourceChanges ?? [])
@@ -1719,6 +1730,16 @@ export default function ScenarioViewer() {
 
   // --- Timeline markers ---
 
+  const setupPhase = sourceLocations.sections?.steps.find(step => manifest?.sections?.some(section => section.id === step.id && section.type === 'setup'))
+  const firstTestPhase = sourceLocations.sections?.steps.find(step => step.id === manifest?.sections?.find(section => section.type === 'test')?.id)
+  const setupBoundary = setupTimelineBoundary({ setupEndLine: setupPhase?.closingEnd, firstTestLine: firstTestPhase?.start,
+    ticks, sourceCheckpoints: sourceLocations.checkpoints, checkpoints: timelineCheckpointMessages })
+  const setupTimelinePercent = setupBoundary !== null && manifest?.startTime && videoRef.current?.duration
+    ? Math.max(0, Math.min(100, toVideoTime(setupBoundary) / videoRef.current.duration * 100)) : 0
+  // One mask dims the track, progress, markers, and thumbnails without changing hit targets.
+  const setupTimelineMask = setupTimelinePercent > 0
+    ? `linear-gradient(to right, rgba(0,0,0,0.6) ${setupTimelinePercent}%, #000 ${setupTimelinePercent}%)` : undefined
+
   const timelineMarkers = (() => {
     const video = videoRef.current
     if (!video?.duration) return null
@@ -2082,7 +2103,7 @@ export default function ScenarioViewer() {
             </div>
             <div className="order-last w-full min-w-0 lg:order-none lg:w-auto lg:flex-1">
               <div
-                className="bg-neutral-200 rounded relative cursor-pointer" style={{ height: '24px' }}
+                className="bg-neutral-200 rounded relative cursor-pointer" style={{ height: '24px', maskImage: setupTimelineMask }}
                 onClick={(e) => {
                   const rect = e.currentTarget.getBoundingClientRect()
                   const pct = (e.clientX - rect.left) / rect.width
@@ -2133,7 +2154,7 @@ export default function ScenarioViewer() {
                 const gap = 2
                 const totalH = maxStack * thumbH + (maxStack - 1) * gap
                 return (
-                  <div className="relative mt-0.5" style={{ height: totalH }}>
+                  <div className="relative mt-0.5" style={{ height: totalH, maskImage: setupTimelineMask }}>
                     {groups.map((group, gi) => {
                       const videoSec = toVideoTime(group.ms)
                       const pct = (videoSec / video.duration) * 100
@@ -2149,7 +2170,7 @@ export default function ScenarioViewer() {
                             const highlighted = hoveredDocId === kf.docId
                             return (
                               <img
-                                key={kf.filename}
+                                key={`${kf.filename}:${kf.docId}`}
                                 src={`${API}/keyframe-file/${kf.filename}`}
                                 className={`block cursor-pointer transition-all border ${
                                   highlighted ? 'ring-2 ring-brand-500 opacity-100 border-brand-500' :
@@ -2157,8 +2178,7 @@ export default function ScenarioViewer() {
                                 }`}
                                 style={{ height: thumbH, width: thumbH * 1.6, objectFit: 'cover', borderRadius: 2 }}
                                 onMouseEnter={(e) => {
-                                  const rect = e.currentTarget.getBoundingClientRect()
-                                  setHoveredKeyFrame({ docId: kf.docId, filename: kf.filename, x: rect.left + rect.width / 2, y: rect.top })
+                                  showKeyFramePreview(kf, e.currentTarget)
                                 }}
                                 onMouseLeave={() => setHoveredKeyFrame(null)}
                                 onClick={() => {
@@ -2194,14 +2214,17 @@ export default function ScenarioViewer() {
             const evidence = manifest?.keyFrames?.find(frame => frame.filename === hoveredKeyFrame.filename)
             const videoEl = videoRef.current
             const videoRect = videoEl?.getBoundingClientRect()
-            const popupWidth = videoRect ? videoRect.width * 0.85 : 320
+            const popupWidth = Math.min(videoRect ? videoRect.width * 0.85 : 320, window.innerWidth - 16,
+              (window.innerHeight - 100) * hoveredKeyFrame.aspectRatio)
+            const popupHeight = popupWidth / hoveredKeyFrame.aspectRatio + 60
             return (
               <div
+                role="tooltip" aria-label="Keyframe preview"
                 className="fixed z-50 pointer-events-none"
                 style={{
                   left: videoRect ? videoRect.left + videoRect.width / 2 : hoveredKeyFrame.x,
-                  top: hoveredKeyFrame.y - 8,
-                  transform: 'translate(-50%, -100%)',
+                  top: Math.max(8, Math.min(hoveredKeyFrame.y - popupHeight - 8, window.innerHeight - popupHeight - 8)),
+                  transform: 'translateX(-50%)',
                 }}
               >
                 <div className="bg-white rounded-lg shadow-xl border border-neutral-200 overflow-hidden">
@@ -2680,7 +2703,7 @@ export default function ScenarioViewer() {
           {/* Test Code tab */}
           {activeTab === 'test-code' && (
             <>
-            {(Boolean(sourceDisplay?.commandLines.length) || (sourceLocations.setupLine ?? 1) > 1 || Boolean(manifest.nameText && sourceLocations.scenarioProse)) && (
+            {(Boolean(sourceDisplay?.commandLines.length) || (sourceLocations.setupLine ?? 1) > 1 || Boolean(manifest.nameText && sourceLocations.scenarioProse) || Boolean(manifest.sections?.length && sourceLocations.sections?.steps.length) || Boolean(sourceLocations.finalStateCheckSkip)) && (
               <label className="flex items-center justify-end gap-1 border-b border-neutral-100 px-3 py-1 text-[10px] text-neutral-500">
                 <input type="checkbox" checked={showCaptureCode} onChange={event => setShowCaptureCode(event.target.checked)} />
                 show the real code
@@ -2701,6 +2724,11 @@ export default function ScenarioViewer() {
               {testSource ? (
                 highlightTypeScriptLines(!showCaptureCode && sourceDisplay ? sourceDisplay.source : testSource)
                   .map((lineHtml, i) => {
+                    if (displayedSections?.steps[0] && i + 1 < displayedSections.steps[0].start) return null
+                    if (displayedSections?.steps[0] && sourceLocations.testClosing
+                      && i + 1 >= sourceLocations.testClosing.start && i + 1 <= sourceLocations.testClosing.end) return null
+                    if (!showCaptureCode && sourceLocations.finalStateCheckSkip
+                      && i + 1 >= sourceLocations.finalStateCheckSkip.start && i + 1 <= sourceLocations.finalStateCheckSkip.end) return null
                     if (!showCaptureCode && i + 1 < (sourceLocations.setupLine ?? 1)) return null
                     const prose = displayedProse
                     if (prose && [prose.name, prose.description].some(range => range && i + 1 >= range.start && i + 1 <= range.end)) return null
@@ -2714,12 +2742,14 @@ export default function ScenarioViewer() {
                       if (step) {
                         const section = manifest.sections?.find(section => section.id === step.id)
                         if (section) return number === step.start ? <div key={i} role="region" aria-label={`Scenario section: ${section.id}`}
-                          data-source-line={number} className="my-3 ml-6 border-y border-neutral-200 bg-neutral-50 p-3 font-mono whitespace-pre-wrap">
-                          <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-neutral-400">{section.type === 'setup' ? 'Setup' : `Section ${manifest.sections!.filter(item => item.type !== 'setup').findIndex(item => item.id === section.id) + 1}`}</div>
+                          data-source-line={number} className={`my-3 ml-6 mr-3 rounded-md border border-[#dcebf4] bg-sky-50 p-2 font-mono whitespace-pre-wrap ${section.type === 'setup' ? 'opacity-60' : ''}`}>
+                          <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-sky-700">{section.type === 'setup' ? 'Setup' : `Section ${manifest.sections!.filter(item => item.type !== 'setup').findIndex(item => item.id === section.id) + 1}`}</div>
                           <ScenarioText text="" linkedText={section.text} runId={runId!} onOpenConcept={openConcept} />
                         </div> : null
                       }
                     }
+                    const checkpointBlock = !showCaptureCode ? checkpointBlocks.find(block => i + 1 >= block.line && i + 1 <= block.endLine) : undefined
+                    if (checkpointBlock && i + 1 !== checkpointBlock.line) return null
                     const fixtureReferences = testSourceFixturesByLine.get(i) ?? []
                     const lineEvents = sourceTimelineMarkers.get(i + 1)
                     const targetTick = lineEvents?.checkpoints[0] ?? lineEvents?.ticks[0]
@@ -2727,7 +2757,7 @@ export default function ScenarioViewer() {
                       if (targetTick !== undefined) selectTickIndex(targetTick - 1)
                     }
                     return (
-                      <div key={i}>
+                      <div key={i} className={setupPhase && i + 1 <= setupPhase.closingEnd ? 'opacity-60' : undefined}>
                         <div
                           data-source-line={i + 1}
                           data-source-highlighted={highlightedSourceLine === i + 1 ? true : undefined}
@@ -2741,7 +2771,7 @@ export default function ScenarioViewer() {
                               goToLine()
                             }
                           }}
-                          className={`code-line relative pl-[46px] pr-3 font-mono ${prose && i + 1 === sourceLocations.testLine ? 'mt-2' : ''} ${targetTick === undefined ? '' : 'cursor-pointer'} ${highlightedSourceLine === i + 1 ? sourceHighlightBackground : targetTick === undefined ? '' : lineEvents?.checkpoints.length ? 'hover:bg-orange-50/50 focus-visible:bg-orange-50/50' : 'hover:bg-purple-50/50 focus-visible:bg-purple-50/50'}`}
+                          className={`code-line relative pl-[46px] pr-3 font-mono ${checkpointBlock ? 'mt-3 py-1' : ''} ${prose && i + 1 === sourceLocations.testLine ? 'mt-2' : ''} ${targetTick === undefined ? '' : 'cursor-pointer'} ${highlightedSourceLine === i + 1 ? sourceHighlightBackground : targetTick === undefined ? '' : lineEvents?.checkpoints.length ? 'hover:bg-orange-50/50 focus-visible:bg-orange-50/50' : 'hover:bg-purple-50/50 focus-visible:bg-purple-50/50'}`}
                         >
                           {highlightedSourceLine === i + 1 && currentTickIndex >= 0 && (
                             <span
@@ -2752,7 +2782,6 @@ export default function ScenarioViewer() {
                               className={`absolute left-2 top-0 flex h-full w-11 items-center gap-0.5 font-sans text-[10px] ${sourceMarkerColors}`}
                             >
                               <span>T {currentTickIndex + 1}</span>
-                              {ticks[currentTickIndex]?.isCheckpoint && <span className="rounded bg-orange-100 px-1 font-bold">CP</span>}
                             </span>
                           )}
                           {highlightedSourceLine !== i + 1 && <span className="absolute left-2 top-0 flex h-full items-center gap-0.5">
@@ -2768,7 +2797,38 @@ export default function ScenarioViewer() {
                                 className="h-[7px] w-[7px] rounded-full" />
                             })}
                           </span>}
-                          <span dangerouslySetInnerHTML={{ __html: lineHtml || '&nbsp;' }} />
+                          {checkpointBlock ? <div role="region" aria-label={`Checkpoint: ${checkpointBlock.message}`}
+                            style={{ marginLeft: `calc(${checkpointBlock.indent}ch - 8px)`, marginRight: 8 }} className="rounded-md border border-[#f4e8d2] bg-orange-50 p-2 whitespace-pre-wrap">
+                            <div className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-orange-600">Checkpoint</div>
+                            <ScenarioText text={checkpointBlock.message} linkedText={checkpointBlock.text} runId={runId!} onOpenConcept={openConcept} />
+                            {checkpointBlock.checkpointId !== undefined && manifest.keyFrames?.some(frame => frame.checkpointId === checkpointBlock.checkpointId) && <div aria-label="Checkpoint keyframes" className="mt-2 flex flex-wrap gap-2">
+                              {manifest.keyFrames?.filter(frame => frame.checkpointId === checkpointBlock.checkpointId).map(frame => {
+                                const concept = concepts.find(concept => concept.id === frame.docId)
+                                return <span key={`${frame.filename}:${frame.docId}`} className="inline-flex items-center gap-2 rounded border border-neutral-200 bg-[#fbf2e6] pr-2 text-[11px] text-brand-700 hover:border-brand-300">
+                                <button type="button"
+                                className="inline-flex cursor-pointer items-center gap-2 rounded py-1 pl-1 focus-visible:ring-2 focus-visible:ring-brand-300"
+                                onMouseEnter={event => {
+                                  showKeyFramePreview(frame, event.currentTarget)
+                                }}
+                                onMouseLeave={() => setHoveredKeyFrame(null)}
+                                onFocus={event => {
+                                  showKeyFramePreview(frame, event.currentTarget)
+                                }}
+                                onBlur={() => setHoveredKeyFrame(null)}
+                                onClick={event => {
+                                  event.stopPropagation()
+                                  if (frame.timestamp && videoRef.current) videoRef.current.currentTime = Math.max(0, toVideoTime(new Date(frame.timestamp).getTime()))
+                                }}>
+                                <img src={`${API}/keyframe-file/${frame.filename}`} alt="" className="h-7 w-11 rounded-sm border border-neutral-200 object-cover" />
+                                {concept?.name ?? frame.docId}
+                                </button>
+                                {concept && <button type="button" aria-label={`About ${concept.name}`} title={`Open ${concept.name} documentation`}
+                                  className="inline-flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center rounded-full border border-brand-300 font-sans text-[10px] font-semibold text-brand-600 hover:bg-brand-50 focus-visible:ring-2 focus-visible:ring-brand-300"
+                                  onClick={event => { event.stopPropagation(); setHoveredKeyFrame(null); openConcept(concept) }}>?</button>}
+                                </span>
+                              })}
+                            </div>}
+                          </div> : <span dangerouslySetInnerHTML={{ __html: lineHtml || '&nbsp;' }} />}
                           {(testSourceChangesByLine.get(i) ?? []).map((change, index) => (
                             <button key={`${change.id}:${index}`} type="button"
                               aria-label={`About source change ${change.id}`}
