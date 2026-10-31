@@ -59,6 +59,10 @@ const previewNavigationBridge = `<script>
     type: 'meadow-preview-page-v1',
     href: window.location.href,
   }, '*');
+  // Content can be readable and navigable before images finish loading.
+  // Report early so a pending URL cannot suppress the next page's location.
+  reportPage();
+  window.addEventListener('DOMContentLoaded', reportPage);
   window.addEventListener('pageshow', reportPage);
   window.addEventListener('hashchange', reportPage);
 })();

@@ -33,7 +33,20 @@ const areas = scenarioAreas([bundleGeneration, bundleReview], { subAreas: [custo
 test(name.name, { annotation: [{ type: 'scenario-id', description: 'beb448bf-8830-4679-ab10-8b55d20306d5' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page, checkpoint, addKeyFrame, skipMeadowHomeStateCheck,
 }) => {
-  const { modal, originalUrl, options } = await test.step(sections.steps.setup, async () => {
+  const { modal, originalUrl, options, releaseResource } = await test.step(sections.steps.setup, async () => {
+    // Keep pages readable while their load/pageshow events wait on a resource.
+    // Preview navigation must be known before a person can change an option.
+    let releaseResource!: () => void;
+    const resourceReleased = new Promise<void>(resolve => { releaseResource = resolve; });
+    page.on('close', releaseResource);
+    await page.route('**/__delayed-preview-resource', async route => {
+      await resourceReleased;
+      await route.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg"/>' });
+    });
+    await page.route(/\/generation\/published\/.*\.html(?:\?.*)?$/, async route => {
+      const response = await route.fetch();
+      await route.fulfill({ response, body: (await response.text()).replace('</body>', '<img src="/__delayed-preview-resource" alt=""></body>') });
+    });
     const modal = new PreviewPublishModal(page, expect);
     await sourceCommand(() => new Workflows(page, expect).navigateToBigBundlePreview());
     await sourceCommand(() => modal.generatedBundle.clickPageLink('t001 - deeply nested'));
@@ -44,11 +57,12 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'beb448bf-883
     const options = new CustomizeTab(page, expect).generationOptions;
     await sourceCommand(() => options.expectOptionsHeading());
     await sourceCommand(() => checkpoint('child page is open before changing a generation option'));
-    return { modal, originalUrl, options };
+    return { modal, originalUrl, options, releaseResource };
   });
 
   await test.step(sections.steps.disableSearchConfirmBothOptionPageLocation, async () => {
     await sourceCommand(() => options.disableSearch());
+    releaseResource();
     await sourceCommand(() => modal.generatedBundle.expectSingleHeading('t001 ---- child 1'));
     await sourceCommand(() => modal.generatedBundle.search.expectUnavailable());
     const regeneratedUrl = await sourceCommand(() => modal.generatedBundle.getUrl());
