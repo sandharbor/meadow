@@ -897,6 +897,21 @@ export class GeneratedBundle {
     await this.root.getByRole("link", { name }).first().click();
   }
 
+  async expectTagLink(tag: string, href: string) {
+    await this.expect(this.root.locator('main').getByRole('link', { name: `#${tag}`, exact: true }))
+      .toHaveAttribute('href', href);
+  }
+
+  async expectTagTextWithoutLink(tag: string) {
+    const content = this.root.locator('main');
+    await this.expect(content).toContainText(`#${tag}`);
+    await this.expect(content.getByRole('link', { name: `#${tag}`, exact: true })).toHaveCount(0);
+  }
+
+  async expectBacklink(name: string) {
+    await this.expect(this.root.locator('footer').getByRole('link', { name, exact: true })).toBeVisible();
+  }
+
   async expectNativeHtmlCardColor(color: string) {
     await this.expect(this.root.locator(".html-node-card")).toHaveCSS("background-color", color);
   }

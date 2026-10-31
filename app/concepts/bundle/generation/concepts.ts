@@ -62,10 +62,23 @@ export const tagPageGeneration = define({
   subAreas: [{ areaId: id.bundleGeneration, order: 3 }],
   definition: text`Generate navigable pages for tags found in a bundle's tracked Markdown content.`,
   mechanics: [
-    text`The Tags customization option enables tag pages. Generation scans the selected Markdown, creates tag pages in the bundle's generated namespace, and turns tag mentions into links to those pages.`,
+    text`The Tags customization option enables tag pages. Generation scans the selected Markdown, creates tag pages in the ${link(id.generatedPagesDirectory, "Generated Pages Directory")}, and turns tag mentions into links to those pages.`,
     text`Generated tag pages are presentation artifacts. Sources exports retain the original tags rather than generated tag-page links.`,
   ],
   interplay: text`It is part of ${link(id.customize, "Bundle Customization")}, rendered through ${link(id.htmlGeneration, "HTML Generation")}, and distinct from ${link(id.generatedBundleSearch, "Generated Bundle Search")}.`,
+});
+
+export const generatedPagesDirectory = define({
+  id: id.generatedPagesDirectory, name: "Generated Pages Directory", aliases: ["_mw_gen"],
+  kind: "artifact", searchFacet: true, appAreaIds: area,
+  definition: text`The reserved _mw_gen directory within generated bundle output for generated public pages and protected source-page routes.`,
+  mechanics: [
+    text`${link(id.tagPageGeneration, "Tag Page Generation")} writes tag pages beneath _mw_gen/tagpages. Generated folder and collection pages use _mw_gen/folderpages.`,
+    text`Source pages whose original paths occupy the reserved _mw_gen namespace are relocated beneath _mw_gen/sourcepages so generated and source pages can coexist.`,
+    text`These paths are part of the browsable output and remain available when it is previewed, exported, or published.`,
+  ],
+  interplay: text`${link(id.htmlGeneration, "HTML Generation")} plans routes in this directory. It is a general output-structure concept associated with ${link(id.tagPageGeneration, "Tag Page Generation")}.`,
+  implementationRoles: ["plan-routes"] as const,
 });
 
 export const htmlGeneration = define({
@@ -182,6 +195,6 @@ export const generationRecord = define({
 });
 
 export const generationConcepts = [
-  customize, excalidraw, generatedBundleSearch, hooks, tagPageGeneration, htmlGeneration, htmlNode,
+  customize, excalidraw, generatedBundleSearch, hooks, tagPageGeneration, generatedPagesDirectory, htmlGeneration, htmlNode,
   images, openKnowledgeFormat, pdf, sourcesExport, svg, versioning, frozenVersion, restoringFrozenVersion, generationRecord,
 ] as const;

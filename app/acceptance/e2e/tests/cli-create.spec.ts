@@ -29,7 +29,7 @@ import {
   EXPECTED_GENERATED_PAGES,
   materializeCreateSafeBundleSource,
 } from "../src/agent-evals/scenarios/createSafeBundle.js";
-import { scenarioSections, customize, tagPageGeneration, bundles, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration, bundleGeneration } from "../../../concepts/index.js";
+import { scenarioSections, customize, tagPageGeneration, generatedPagesDirectory, bundles, conceptLink, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration, bundleGeneration } from "../../../concepts/index.js";
 import { scenarioDesignPressures, preventAccidentalSharing } from "../../../concepts/index.js";
 import { cli } from "../../../concepts/index.js";
 import { expect, test } from "../src/run/test-fixtures.js";
@@ -56,7 +56,7 @@ const name = linkedScenarioName(conceptText`CLI creates a page bundle and safely
 
 const description = linkedScenarioDescription(conceptText`Create a bundle from a read-only source, track safe pages, and generate and save it
 through the CLI. Check retries, stale saves, sensitive-page protection, and the
-resulting files.`);
+resulting files, including tag pages in the ${conceptLink(generatedPagesDirectory.id, 'Generated Pages Directory')}.`);
 const sections = scenarioSections({
   setup: { type: 'setup', text: conceptText`Establish the starting state: a read-only source is ready.` },
   createBundle: { type: 'test', text: conceptText`Create the bundle.` },

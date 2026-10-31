@@ -191,6 +191,17 @@ class GenerationOptionsSection {
     await this.expect(changesSpinner).not.toBeVisible({ timeout: 60_000 });
   }
 
+  /** Change tag-page generation and wait for the complete regenerated output. */
+  async setTagsEnabled(enabled: boolean) {
+    const previewStarted = this.page.waitForResponse(response => response.url().includes('/preview-stream'));
+    await this.selectHoverOption('Tags', enabled ? 'On' : 'Off');
+    const response = await previewStarted;
+    this.expect(response.ok()).toBe(true);
+    const changesSpinner = this.page.locator('nav button', { hasText: 'Changes' }).first().locator('span.animate-spin');
+    await this.expect(changesSpinner).not.toBeVisible({ timeout: 60_000 });
+    await this.expect(this.settingBundleCombobox('Tags')).toBeEnabled({ timeout: 60_000 });
+  }
+
   /** Set generated-bundle Hover Preview to "On" for this bundle. */
   async enableHoverPreview() {
     await this.selectHoverOption("Hover Preview", "On");

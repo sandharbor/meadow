@@ -88,6 +88,7 @@ export const coreConceptIds = {
   cli: "cli",
   customize: "customize",
   tagPageGeneration: "tag-page-generation",
+  generatedPagesDirectory: "generated-pages-directory",
   localExport: "local-export",
   deletion: "deletion",
   excalidraw: "excalidraw",

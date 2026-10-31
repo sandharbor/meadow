@@ -111,11 +111,10 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'e5500f1a-57f
     const invocations = fixture.started();
     fixture.flag('must-not-run');
     await sourceCommand(() => page.reload());
+    await sourceCommand(() => editor.sourceReview.expectSensitivityReviewReady());
+    await sourceCommand(() => editor.sourceReview.sensitivityReview.getByRole('button', { name: 'Close', exact: true }).click());
+    await sourceCommand(() => editor.sourceReview.close());
     await sourceCommand(() => editor.waitForSourceCheck());
-    if (await editor.sourceReview.sensitivityReview.isVisible()) {
-      await sourceCommand(() => editor.sourceReview.sensitivityReview.getByRole('button', { name: 'Close', exact: true }).click());
-      await sourceCommand(() => editor.sourceReview.close());
-    }
     await expect(progress.getByRole('status')).toContainText('0 failed');
     await sourceCommand(() => editor.expectGraphHighlightCount('#FFD700', 7));
     expect(fixture.started()).toBe(invocations);

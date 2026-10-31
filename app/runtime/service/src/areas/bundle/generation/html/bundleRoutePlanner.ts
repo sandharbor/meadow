@@ -15,6 +15,7 @@ limitations under the License.
 */
 
 import path from 'path';
+import type { generatedPagesDirectory, ParticipatesIn } from '../../../../../../../concepts/index.js';
 import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundleConfigPaths.js';
 import type { BundleConfig } from '../../../../../../../contracts/types/shared/bundle-config/bundleConfig.js';
 import type { FileBundleNodeConfig, BundleNodeConfig, BundleNodeId } from '../../../../../../../contracts/types/shared/bundle-graph/bundleNodeConfig.js';
@@ -23,6 +24,10 @@ import { normalizePageTitle } from './shared.js';
 import { sourceOutputDirectory } from '../../../../../../../shared_code/utils/bundleSourceUtils.js';
 
 export type BundleRouteTable = ReadonlyMap<BundleNodeId, string>;
+
+export type GeneratedPagesDirectoryMeadowConceptParticipations = [
+  ParticipatesIn<typeof generatedPagesDirectory, 'plan-routes', typeof planBundleRoutes>,
+];
 
 export interface PreferredRouteCollision {
   preferredRoute: string;
