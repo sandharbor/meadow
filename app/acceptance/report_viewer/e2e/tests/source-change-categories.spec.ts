@@ -5,6 +5,8 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/api/concepts*', route => route.fulfill({ json: [
     { id: 'source-review', name: 'Source Review', subAreas: [{ areaId: 'bundle/sourcing', order: 1 }] },
     { id: 'filter-mixing', name: 'Filter Mixing', subAreas: [{ areaId: 'bundle/curation', order: 1 }] },
+    { id: 'tracking-panel', name: 'Tracking Changes Panel', kind: 'ui-sub-area', appAreaIds: ['bundle/sourcing'] },
+    { id: 'node-details', name: 'Node Details', kind: 'ui-sub-area', appAreaIds: ['bundle/curation'] },
   ] }));
   await page.route(/\/api\/bundle-docs(?:\?.*)?$/,  route => route.fulfill({ json: [] }));
   await page.route(/\/api\/app-areas(?:\?.*)?$/,  route => route.fulfill({ json: [
@@ -32,7 +34,13 @@ test('source changes sit with Sourcing before Curation and share the sub-area in
   const sourcing = page.getByRole('group', { name: 'Bundle Sourcing sub-areas', exact: true });
   const changes = page.getByRole('group', { name: 'Source changes', exact: true });
   const curation = page.getByRole('group', { name: 'Bundle Curation sub-areas', exact: true });
-  await expect(changes.getByText('Sourcing')).toBeVisible();
+  await expect(changes.getByText('Sourcing', { exact: true })).toHaveCount(0);
+  const details = page.getByRole('group', { name: 'Area details', exact: true });
+  await expect(details.getByRole('heading')).toHaveText(['Sourcing', 'Curation']);
+  const sourcingGroup = details.getByRole('region', { name: 'Bundle Sourcing filters', exact: true });
+  const curationGroup = details.getByRole('region', { name: 'Bundle Curation filters', exact: true });
+  await expect(sourcingGroup.locator('.filter-label')).toHaveText(['Sub-areas', 'UI sub-areas', 'Source changes']);
+  await expect(curationGroup.locator('.filter-label')).toHaveText(['Sub-areas', 'UI sub-areas']);
   await expect(changes.getByText('Source changes', { exact: true })).toBeVisible();
   for (const width of [1280, 390]) {
     await page.setViewportSize({ width, height: 900 });
@@ -44,6 +52,9 @@ test('source changes sit with Sourcing before Curation and share the sub-area in
     expect(changesBox.x).toBe(sourcingBox.x);
     expect(changesBox.x).toBe(curationBox.x);
     expect(changesBox.x).toBeGreaterThan((await areas.boundingBox())!.x);
+    const headingBox = (await sourcingGroup.getByRole('heading').boundingBox())!;
+    expect(sourcingBox.x).toBeGreaterThan(headingBox.x);
+    expect(sourcingBox.y).toBeGreaterThanOrEqual(headingBox.y + headingBox.height);
     expect(changesBox.x + changesBox.width).toBeLessThanOrEqual(width);
     await page.getByRole('group', { name: 'Area details', exact: true }).screenshot({ path: testInfo.outputPath(`source-changes-hierarchy-${width}.png`) });
   }
@@ -77,4 +88,35 @@ test('source-change categories narrow sourcing scenarios by any applied change',
   await expect(changes).toHaveCount(0);
   await expect(page).not.toHaveURL(/[?&]sourcechange=/);
   await expect(page.getByRole('link', { name: 'removes a page' })).toBeVisible();
+});
+
+
+test('one selected area shows category labels directly, including nested source changes', async ({ page }, testInfo) => {
+  const areas = page.getByRole('group', { name: 'Areas', exact: true });
+  await areas.getByRole('button', { name: 'Sourcing', exact: true }).click();
+  const details = page.getByRole('group', { name: 'Area details', exact: true });
+  await expect(details.getByRole('heading')).toHaveCount(0);
+  await expect(details.locator('.filter-label')).toHaveText(['Sub-areas', 'UI sub-areas', 'Source changes']);
+  await details.getByRole('group', { name: 'Source changes', exact: true }).getByRole('button', { name: 'modify', exact: true }).click();
+  await expect(details.locator('.filter-label')).toHaveText(['Sub-areas', 'UI sub-areas', 'Source changes', 'Source changes → Modify']);
+  await expect(details.getByRole('heading')).toHaveCount(0);
+  await details.screenshot({ path: testInfo.outputPath('single-area-categories.png') });
+  await areas.getByRole('button', { name: 'Curation', exact: true }).click();
+  await expect(details.getByRole('heading')).toHaveText(['Sourcing', 'Curation']);
+  await expect(details.locator('.filter-label')).toHaveText(['Sub-areas', 'UI sub-areas', 'Source changes', 'Source changes → Modify', 'Sub-areas', 'UI sub-areas']);
+  await areas.getByRole('button', { name: 'All', exact: true }).click();
+  await expect(details).toHaveCount(0);
+});
+
+test('child-only bookmarks and mixes identify inferred owners without empty area headings', async ({ page }) => {
+  await page.goto('/source-changes?view=list&uisubarea=tracking-panel');
+  const details = page.getByRole('group', { name: 'Area details', exact: true });
+  await expect(details.getByRole('heading')).toHaveText(['Sourcing']);
+  await expect(details.locator('.filter-label')).toHaveText(['UI sub-areas']);
+  await page.goto(`/source-changes?view=list&mix=${encodeURIComponent('any(sourcechange:add, subarea:filter-mixing)')}`);
+  await expect(details.getByRole('heading')).toHaveText(['Sourcing', 'Curation']);
+  await expect(details.locator('.filter-label')).toHaveText(['Source changes', 'Sub-areas']);
+  await page.goto(`/source-changes?view=list&mix=${encodeURIComponent('all(area:bundle/sourcing, uisubarea:node-details)')}`);
+  await expect(details.getByRole('heading')).toHaveText(['Sourcing', 'Curation']);
+  await expect(details.locator('.filter-label')).toHaveText(['Sub-areas', 'UI sub-areas', 'Source changes', 'UI sub-areas']);
 });

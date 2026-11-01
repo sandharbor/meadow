@@ -136,8 +136,12 @@ general UI abstractions, not particular owned regions. Area Boundary Map is a
 report-tool documentation view with no declared product app-area owner; it stays
 a development capability rather than acquiring an unrelated lifecycle owner.
 
-UI sub-areas appear in a separate, parent-labeled row below each selected app
-area, using the run's recorded concept associations. Workflow Sub-areas continue
+UI sub-areas appear in a separate row below each selected app area, using the
+run's recorded concept associations. When several area contexts are visible,
+a small heading identifies each owner once; its indented rows show their category
+labels, such as Sub-areas, UI sub-areas, and Source changes. A single selected
+area needs only category labels. Child-only bookmarks and mixes retain owner
+headings when needed to identify inferred areas. Workflow Sub-areas continue
 to use explicit `scenarioAreas` declarations. UI choices combine by Any, and
 combine with workflow choices and other filter rows by All. All clears only that
 owner's UI choices. Document-backed filter pills have a filtering body and a separate lighter right

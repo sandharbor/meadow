@@ -378,6 +378,11 @@ export default function RunDetail() {
   const selectedSourceChangeSubtypeIds = selectedValues('sourcechangesubtype').filter(isSourceChangeSubtypeId)
     .filter(id => customMix || sourceChangeSubtypes.some(subtype => subtype.id === id && selectedSourceChangeCategories.includes(subtype.parent)))
   const showSourceChanges = sourcingSelected || selectedSourceChangeCategories.length > 0 || selectedSourceChangeSubtypeIds.length > 0
+  const detailAreas = appAreas.filter(area => subAreaGroups.some(group => group.area.id === area.id)
+    || uiSubAreaGroups.some(group => group.area.id === area.id) || area.id === SOURCING_AREA_ID && showSourceChanges)
+  const detailContextCount = new Set([...selectedAreas.map(area => area.id), ...detailAreas.map(area => area.id)]).size
+  // Inferred owners in child-only bookmarks and mixes still need an explicit name.
+  const showDetailAreaHeadings = selectedAreas.length !== 1 || detailContextCount > 1
   const selectedBundleIds = selectedValues('bundle')
   const selectedBundles = bundleDocs.filter((d) => selectedBundleIds.includes(d.id))
   const selectedBundleModes = selectedValues('mode').filter(isBundleMode)
@@ -844,9 +849,10 @@ export default function RunDetail() {
       })()}
 
       {(subAreaGroups.length > 0 || uiSubAreaGroups.length > 0 || showSourceChanges) && <div role="group" aria-label="Area details">
-        {appAreas.map(area => {
+        {detailAreas.map(area => {
           const rows = subAreaGroups.find(group => group.area.id === area.id)?.rows ?? []
-          return <Fragment key={area.id}>
+          return <section key={area.id} aria-label={`${area.name} filters`} className="mb-1">
+            {showDetailAreaHeadings && <h3 className="mb-0.5 ml-2 text-[11px] font-medium text-neutral-500">{area.name.replace(/^Bundle /, '')}</h3>}
             {rows.filter(row => !row.parent || selectedSubAreaIds.some(id => subAreaContains(row.parent!.id, id, allDocs)))
               .map(({ parent, ancestors, subAreas }) => {
                 const inRow = (id: string) => subAreas.some(doc => subAreaContains(doc.id, id, allDocs))
@@ -857,7 +863,7 @@ export default function RunDetail() {
                 return <div key={parent?.id ?? area.id} className="filter-section filter-areas area-subareas mb-1 rounded-md px-3 py-1.5"
                   style={{ marginLeft: `${(ancestors.length + 1) * 16}px` }}>
                   <div className="filter-row" role="group" aria-label={`${parent?.name ?? area.name} sub-areas`}>
-                    <span className="filter-label text-xs text-neutral-500 font-medium">{area.name.replace(/^Bundle /, '')}<span className="block text-[10px] font-normal text-neutral-400">{ancestors.length ? ancestors.map(doc => doc.name).join(' → ') : 'Sub-areas'}</span></span>
+                    <span className="filter-label text-xs font-medium text-neutral-600">{ancestors.length ? ancestors.map(doc => doc.name).join(' → ') : 'Sub-areas'}</span>
                     <div className="filter-all"><button className="filter-default text-neutral-600 px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
                       aria-pressed={!selectedSubAreaIds.some(inRow)} onClick={clearRow}>All</button></div>
                     <div className="filter-choices">{subAreas.map(doc => {
@@ -876,7 +882,7 @@ export default function RunDetail() {
               })}
             {uiSubAreaGroups.filter(group => group.area.id === area.id).map(({ uiSubAreas }) => <div key={`ui-${area.id}`} className="filter-section filter-areas area-subareas mb-1 rounded-md px-3 py-1.5">
               <div className="filter-row" role="group" aria-label={`${area.name} UI sub-areas`}>
-                <span className="filter-label text-xs text-neutral-500 font-medium">{area.name.replace(/^Bundle /, '')}<span className="block text-[10px] font-normal text-neutral-400">UI sub-areas</span></span>
+                <span className="filter-label text-xs font-medium text-neutral-600">UI sub-areas</span>
                 <div className="filter-all"><button className="filter-default text-neutral-600 px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
                   aria-pressed={!uiSubAreas.some(doc => selectedUiSubAreaIds.includes(doc.id))}
                   onClick={() => setFilters({ uiSubAreaIds: selectedUiSubAreaIds.filter(id => !uiSubAreas.some(doc => doc.id === id)) })}>All</button></div>
@@ -889,7 +895,7 @@ export default function RunDetail() {
             </div>)}
             {area.id === SOURCING_AREA_ID && showSourceChanges && <div className="filter-section filter-areas area-subareas mb-1 rounded-md px-3 py-1.5">
               <div className="filter-row" role="group" aria-label="Source changes">
-                <span className="filter-label text-xs text-neutral-500 font-medium">Sourcing<span className="block text-[10px] font-normal text-neutral-400">Source changes</span></span>
+                <span className="filter-label text-xs font-medium text-neutral-600">Source changes</span>
                 <div className="filter-all"><button className="filter-default text-neutral-600 px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
                   aria-pressed={selectedSourceChangeCategories.length === 0} onClick={() => setFilters({ sourceChangeCategories: [] })}>All</button></div>
                 <div className="filter-choices">{SOURCE_CHANGE_CATEGORIES.map(category => {
@@ -907,7 +913,7 @@ export default function RunDetail() {
               const parentName = category === 'modify' ? 'Modify' : 'Remove'
               return <div key={category} className="filter-section filter-areas area-subareas source-change-subtypes mb-1 rounded-md px-3 py-1.5">
                 <div className="filter-row" role="group" aria-label={`${parentName} source change subtypes`}>
-                  <span className="filter-label text-xs text-neutral-500 font-medium">Sourcing<span className="block text-[10px] font-normal text-neutral-400">Source changes → {parentName}</span></span>
+                  <span className="filter-label text-xs font-medium text-neutral-600">Source changes → {parentName}</span>
                   <div className="filter-all"><button className="filter-default text-neutral-600 px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
                     aria-pressed={selected.length === 0} onClick={() => setFilters({ sourceChangeSubtypeIds: selectedSourceChangeSubtypeIds.filter(id => !options.some(option => option.id === id)) })}>All</button></div>
                   <div className="filter-choices">{options.map(subtype => {
@@ -919,7 +925,7 @@ export default function RunDetail() {
                 </div>
               </div>
             })}
-          </Fragment>
+          </section>
         })}
       </div>}
 
