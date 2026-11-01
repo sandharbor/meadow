@@ -2,10 +2,13 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, useId } from 'react'
 import { createPortal } from 'react-dom'
+import { DocumentPillFrame } from './DocumentFilterPill.tsx'
 
 export type ScenarioFilterAction = 'add' | 'restart'
 
-export function ScenarioFilterPill({ name, selected, hidden, onChoose }: {
+export function ScenarioFilterPill({ name, selected, hidden, onChoose, document: linkedDocument, onOpen }: {
+  document?: { id: string; name: string }
+  onOpen?: (document: { id: string; name: string }) => void
   name: string
   selected: boolean
   hidden: boolean
@@ -62,10 +65,11 @@ export function ScenarioFilterPill({ name, selected, hidden, onChoose }: {
   }, [open])
 
   return <>
+    <DocumentPillFrame document={linkedDocument} selected={selected} onOpen={doc => onOpen?.(doc)} className="text-neutral-600">
     <button
       ref={trigger}
       type="button"
-      className="scenario-metadata-chip max-w-full break-words rounded-full px-2 py-0.5 text-left font-medium text-neutral-600 cursor-pointer"
+      className={`scenario-metadata-chip max-w-full break-words ${linkedDocument ? 'rounded-l-full' : 'rounded-full'} px-2 py-0.5 text-left font-medium text-neutral-600 cursor-pointer`}
       data-selected={selected}
       data-muted={hidden}
       title={selected ? 'Selected in the filters above' : hidden ? 'Hidden in the filters above' : undefined}
@@ -76,6 +80,7 @@ export function ScenarioFilterPill({ name, selected, hidden, onChoose }: {
     >
       {name}
     </button>
+    </DocumentPillFrame>
     {open && createPortal(
       <div
         ref={menu}

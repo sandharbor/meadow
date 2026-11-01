@@ -136,6 +136,9 @@ export function validateDocuments(documents: readonly MeadowDocument[]): string[
       if (!renderConceptText(passage.text)) errors.push(`Document "${document.id}" has empty text in "${passage.sectionId}".`);
       for (const link of conceptLinks(passage.text)) if (!ids.has(link.conceptId)) errors.push(`Document "${document.id}" references unknown document "${link.conceptId}".`);
     }
+    if (document.kind === 'ui-sub-area' && document.appAreaIds?.length !== 1) {
+      errors.push(`UI sub-area "${document.id}" must have exactly one owning app area.`);
+    }
     for (const area of document.appAreaIds ?? []) if (ids.get(area)?.kind !== 'app-area') errors.push(`Document "${document.id}" has invalid app area "${area}".`);
     if (document.parentId && !ids.has(document.parentId)) errors.push(`Document "${document.id}" has unknown parent "${document.parentId}".`);
   }

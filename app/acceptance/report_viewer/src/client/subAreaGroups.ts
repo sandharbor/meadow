@@ -4,6 +4,8 @@ interface SubAreaConcept {
   id: string
   name: string
   parentId?: string
+  kind?: string
+  appAreaIds?: readonly string[]
   subAreas?: readonly { areaId: string; order: number }[]
 }
 
@@ -29,7 +31,7 @@ export function groupSubAreas<Area extends { id: string; name: string }, Concept
   areas: readonly Area[], concepts: readonly Concept[],
 ) {
   return areas.map(area => {
-    const subAreas = concepts.filter(concept => concept.subAreas?.some(entry => entry.areaId === area.id))
+    const subAreas = concepts.filter(concept => concept.kind !== 'ui-sub-area' && concept.subAreas?.some(entry => entry.areaId === area.id))
       .sort((a, b) => {
         const order = (concept: Concept) => concept.subAreas!.find(entry => entry.areaId === area.id)!.order
         return order(a) - order(b) || a.name.localeCompare(b.name)
@@ -45,4 +47,13 @@ export function groupSubAreas<Area extends { id: string; name: string }, Concept
     visit(undefined, [])
     return { area, subAreas, rows }
   }).filter(group => group.subAreas.length > 0)
+}
+
+/** UI ownership comes from the run catalog, never inferred from a generic interface kind. */
+export function groupUiSubAreas<Area extends { id: string; name: string }, Concept extends SubAreaConcept>(
+  areas: readonly Area[], concepts: readonly Concept[],
+) {
+  return areas.map(area => ({ area, uiSubAreas: concepts.filter(concept =>
+    concept.kind === 'ui-sub-area' && concept.appAreaIds?.length === 1 && concept.appAreaIds[0] === area.id)
+    .sort((a, b) => a.name.localeCompare(b.name)) })).filter(group => group.uiSubAreas.length > 0)
 }

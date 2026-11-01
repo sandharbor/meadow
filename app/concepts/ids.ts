@@ -46,6 +46,7 @@ export const coreConceptIds = {
   bridgeExclusion: "bridge-exclusion",
   sourceReviewCleanup: "source-review-cleanup",
   sourceReviewWorkspace: "source-review-workspace",
+  trackingChangesPanel: "tracking-changes-panel",
   sourceReviewViewState: "source-review-view-state",
   sourceModification: "source-review-modification",
   sourceRemoval: "source-review-removal",

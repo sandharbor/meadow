@@ -354,8 +354,12 @@ test('Details shows each scenario’s metadata under its description and mirrors
     const filter = page.getByRole('group', { name: group, exact: true }).getByRole('button', { name, exact: true });
     await filter.click();
     await expect(badge).toHaveAttribute('data-selected', 'true');
-    await expect(filter).toHaveCSS('background-color', await badge.evaluate(element => globalThis.getComputedStyle(element).backgroundColor));
-    await expect(badge).toHaveCSS('outline', await filter.evaluate(element => globalThis.getComputedStyle(element).outline));
+    // The selected presentation belongs to the integrated pill, around both controls.
+    const filterParent = filter.locator('..');
+    const filterPill = (await filterParent.getAttribute('class'))?.includes('document-filter-pill') ? filterParent : filter;
+    const metadataPill = badge.locator('..');
+    await expect(filterPill).toHaveCSS('background-color', await metadataPill.evaluate(element => globalThis.getComputedStyle(element).backgroundColor));
+    await expect(metadataPill).toHaveCSS('outline', await filterPill.evaluate(element => globalThis.getComputedStyle(element).outline));
     await expect(badge).toHaveCSS('opacity', '1');
   }
 

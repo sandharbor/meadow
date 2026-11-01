@@ -40,7 +40,7 @@ test('sub-areas follow workflow order and combine with the existing filters', as
   const subAreas = page.getByRole('group', { name: 'Area details', exact: true });
   await expect(subAreas).toHaveCount(0);
   await areas.getByRole('button', { name: 'Sourcing', exact: true }).click();
-  await expect(subAreas.getByRole('button')).toHaveText(['All', 'Source Review Identity', 'Source Review Workspace']);
+  await expect(subAreas.locator('button[aria-pressed]')).toHaveText(['All', 'Source Review Identity', 'Source Review Workspace']);
   await expect(subAreas.getByRole('button', { name: 'All', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByRole('link', { name: 'other sourcing' })).toBeVisible();
   const identity = subAreas.getByRole('button', { name: 'Source Review Identity', exact: true });
@@ -88,8 +88,8 @@ test('area changes retain compatible sub-areas and clear inapplicable ones', asy
   await expect(subAreas.getByRole('button', { name: 'Source Review Workspace', exact: true })).toBeVisible();
   const release = subAreas.getByRole('button', { name: 'Release Review', exact: true });
   await release.click();
-  await expect(sourcing.getByRole('button')).toHaveText(['All', 'Source Review Identity', 'Source Review Workspace']);
-  await expect(sharing.getByRole('button')).toHaveText(['All', 'Release Review']);
+  await expect(sourcing.locator('button[aria-pressed]')).toHaveText(['All', 'Source Review Identity', 'Source Review Workspace']);
+  await expect(sharing.locator('button[aria-pressed]')).toHaveText(['All', 'Release Review']);
   await expect(page.getByRole('link', { name: 'release only' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'identity only' })).toBeVisible();
   await sourcing.getByRole('button', { name: 'All', exact: true }).click();

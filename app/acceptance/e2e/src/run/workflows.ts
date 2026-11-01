@@ -49,6 +49,7 @@ export enum Bundle {
   Hooks = "meadow-test-bundle-for-hooks",
   Nested = "meadow-test-bundle-nested",
   Example = "example-bundle",
+  SourcingReview = "sourcing-review",
 }
 
 // ---------------------------------------------------------------------------
@@ -91,6 +92,13 @@ export class Workflows {
     await this.bundleList.goto();
     await this.bundleList.clickBundle(Bundle.Small);
     await this.editor.waitForLoad(Bundle.Small);
+  }
+
+  /** Open the compact source-review fixture through the bundle list. */
+  async navigateToSourcingReviewBundle() {
+    await this.bundleList.goto();
+    await this.bundleList.clickBundle(Bundle.SourcingReview);
+    await this.editor.waitForLoad(Bundle.SourcingReview);
   }
 
   /** navigateToBigBundle → click Preview → wait for preview to complete. */

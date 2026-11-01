@@ -66,7 +66,9 @@ function scenarioAreaIssues(source: ts.SourceFile): string[] {
     if (!areaIds.has(declaredAreaIds[index])) issues.push(`${name} is not an app area shown in reports.`);
   }
   for (const name of declared.subAreas) {
-    if (!exported[name]?.subAreas?.some(entry => declaredAreaIds.includes(entry.areaId))) {
+    const concept = exported[name];
+    const uiOwner = concept?.kind === 'ui-sub-area' && concept.appAreaIds?.some(id => declaredAreaIds.includes(id));
+    if (!uiOwner && !concept?.subAreas?.some(entry => declaredAreaIds.includes(entry.areaId))) {
       issues.push(`${name} is not a sub-area of a declared app area.`);
     }
   }

@@ -87,12 +87,9 @@ sub-area selections combine with other report filters. Expanded scenario
 metadata shows Starts with, Areas, each area's declared sub-areas, then Concepts.
 Source Setup - New and Source Setup - Edit precede Source Review Identity and
 Source Review Workspace within Sourcing;
-Custom Filtering, Filter Mixing, Node Details, and Graph Search are sub-areas of
-Curation. Node Path Details and Node Link Details are nested beneath Node Details;
-the latter retains the existing Bundle Page Links identity and aliases.
+Custom Filtering and Filter Mixing are workflow sub-areas of Curation.
 Generation contains Bundle Customization, with Generation Hooks, Generated Bundle
-Search, and Tag Page Generation nested underneath it. Review contains Preview
-Browser and Changes Tab. Sharing contains Publishing, Local Export, Publication
+Search, and Tag Page Generation nested underneath it. Sharing contains Publishing, Local Export, Publication
 Revision, and Published Bundle Deletion. A sub-area must be strictly contained
 within one app area. Concepts that span areas, such as Open Knowledge Format,
 Sources Export, and Generated Bundle Version, remain general concepts.
@@ -110,6 +107,57 @@ filters. Direct concept selections from documentation and bookmarked URLs remain
 available in the expanded Concepts row.
 Source-change subtype definitions live in separate shared files with type-only implementation links from their canonical concept documents. Scenarios link the specific subtype they assert and capture its evidence with addKeyFrame. The run overview nests Modify and Remove subtype rows under selected source-change categories, using captured concept associations rather than inferring coverage from titles or current code. A sub-area keeps
 its canonical concept definition and documentation.
+
+## UI sub-areas
+
+Use `kind: "ui-sub-area"` for a named part of the user interface that a person
+recognizes and uses: a panel, tab, browser region, details region, search surface,
+or named graph overlay. It is broader than an implementation component. Each
+has exactly one owning `appAreaIds` entry, checked by document validation.
+A code, CLI, storage, or generic architectural interface keeps its own kind.
+A workflow or behavior does not become a UI sub-area merely because it uses UI.
+
+The current product UI inventory is:
+
+| Owning app area | UI sub-areas |
+| --- | --- |
+| Bundles | Find in Bundles |
+| Sourcing | Tracking Changes Panel |
+| Curation | Graph Search, Graph Title Labels, Node Details, Node Path Details, Node Link Details, Source Folder Filter |
+| Review | Changes Tab, Preview Browser |
+
+Generation and Sharing currently document workflows, capabilities, artifacts,
+and provider interfaces rather than named UI regions. Source Setup, Source Review
+Identity, and Source Review Workspace describe sourcing workflows; Custom
+Filtering and Filter Mixing describe rules and their composition. Bundle
+Customization, Generation Hooks, Generated Bundle Search, and Tag Page Generation
+describe output configuration or reader capabilities. App Place and Callout are
+general UI abstractions, not particular owned regions. Area Boundary Map is a
+report-tool documentation view with no declared product app-area owner; it stays
+a development capability rather than acquiring an unrelated lifecycle owner.
+
+UI sub-areas appear in a separate, parent-labeled row below each selected app
+area, using the run's recorded concept associations. Workflow Sub-areas continue
+to use explicit `scenarioAreas` declarations. UI choices combine by Any, and
+combine with workflow choices and other filter rows by All. All clears only that
+owner's UI choices. Document-backed filter pills have a filtering body and a separate lighter right
+segment with a gray document arrow. Only the arrow opens details, preserving all
+filters. Areas, workflow and UI sub-areas, fixture bundles, and core or contributed
+concepts use this control. Source-change types and execution surfaces use it only
+when the captured catalog contains their canonical counterpart. Starts-with shapes,
+All, and status options have no per-option canonical document and no arrow.
+Documentation links and direct concept bookmarks still work.
+Existing `scenarioAreas([...], { subAreas: [...] })` entries naming reclassified UI concepts
+remain accepted through the actual owning area, and old `subarea` bookmarks for
+those identities resolve to the UI row when the captured catalog classifies them
+as UI sub-areas. New UI associations use the usual concept imports and links;
+they do not infer scenario app-area membership.
+
+The catalog already captures `kind` and `appAreaIds`. A captured run retains its
+original classification, including older interface/workflow groupings. It needs
+a fresh run capture to acquire new grouping metadata. Runs with no catalog use
+the existing visibly labeled current-documentation fallback. Reassembly never
+rewrites a captured catalog. UI sub-area nesting is not currently a filter hierarchy.
 
 ## Scenario areas
 

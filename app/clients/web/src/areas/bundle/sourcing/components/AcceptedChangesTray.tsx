@@ -216,7 +216,8 @@ function PageChangeRow({ page, request, columns, onCompare, onSelect }: { page: 
   </li>;
 }
 
-import type { ParticipatesIn, proposalConfigurationDraft } from '../../../../../../../concepts/index.js';
+import type { ParticipatesIn, proposalConfigurationDraft, trackingChangesPanel } from '../../../../../../../concepts/index.js';
 export type AcceptedChangesTrayMeadowConceptParticipations = [
   ParticipatesIn<typeof proposalConfigurationDraft, 'summarize-draft', typeof AcceptedChangesTray>,
+  ParticipatesIn<typeof trackingChangesPanel, 'render-panel', typeof AcceptedChangesTray>,
 ];

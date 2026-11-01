@@ -49,7 +49,8 @@ import {
 } from '../helpers.ts'
 import { CheckpointOpenControl } from './CheckpointOpenControl.tsx'
 import { bundleModeLabel, type BundleMode } from '../../bundleModes.ts'
-import { groupSubAreas } from '../subAreaGroups.ts'
+import { DocumentPillFrame } from './DocumentFilterPill.tsx'
+import { groupSubAreas, groupUiSubAreas } from '../subAreaGroups.ts'
 
 // --- Types ---
 
@@ -109,6 +110,8 @@ interface ConceptView {
   description: string
   isContribution?: boolean
   subAreas?: { areaId: string; order: number }[]
+  kind?: string
+  appAreaIds?: string[]
   parentId?: string
 }
 
@@ -754,7 +757,7 @@ export default function ScenarioViewer() {
   const matchingDocs = useMemo(() => {
     const docIds = manifest?.conceptIds || []
     if (docIds.length === 0) return []
-    return concepts.filter((doc) => docIds.includes(doc.id) && !manifest?.subAreaDocIds?.includes(doc.id))
+    return concepts.filter((doc) => docIds.includes(doc.id) && !manifest?.subAreaDocIds?.includes(doc.id) && !(doc.kind === 'ui-sub-area' && doc.appAreaIds?.some(id => manifest?.appAreaDocIds?.includes(id))))
   }, [concepts, manifest])
 
   const matchingAppAreas = useMemo(() => {
@@ -765,6 +768,9 @@ export default function ScenarioViewer() {
 
   const matchingSubAreaGroups = useMemo(() => groupSubAreas(matchingAppAreas,
     concepts.filter(doc => manifest?.subAreaDocIds?.includes(doc.id))), [matchingAppAreas, concepts, manifest])
+
+  const matchingUiSubAreaGroups = useMemo(() => groupUiSubAreas(matchingAppAreas,
+    concepts.filter(doc => manifest?.conceptIds?.includes(doc.id) || manifest?.subAreaDocIds?.includes(doc.id))), [matchingAppAreas, concepts, manifest])
 
   const parseOptions = useMemo(() => ({
     recordKeyMap: stateRepoMeta?.recordKeyMap,
@@ -1960,6 +1966,7 @@ export default function ScenarioViewer() {
             ...(manifest.bundleMode ? [{ key: 'mode', label: `Starts: ${bundleModeLabel(manifest.bundleMode)}`, accent: 'filter-starts-with' }] : []),
             ...matchingAppAreas.map(area => ({ key: `area-${area.id}`, label: `Area: ${area.name}`, accent: 'filter-areas' })),
             ...matchingSubAreaGroups.flatMap(({ area, subAreas }) => subAreas.map(doc => ({ key: `${area.id}-${doc.id}`, label: `${area.name}: ${doc.name}`, accent: 'filter-areas' }))),
+            ...matchingUiSubAreaGroups.flatMap(({ area, uiSubAreas }) => uiSubAreas.map(doc => ({ key: `ui-${doc.id}`, label: `${area.name} UI: ${doc.name}`, accent: 'filter-areas' }))),
             ...matchingDocs.map(doc => ({ key: `concept-${doc.id}`, label: `Concept: ${doc.name}`, accent: doc.isContribution ? 'filter-contributed-tags' : 'filter-tags' })),
           ]}
         >
@@ -2009,6 +2016,12 @@ export default function ScenarioViewer() {
               ))}
             </div>
           )))}
+          {matchingUiSubAreaGroups.map(({ area, uiSubAreas }) => <div key={`ui-${area.id}`} role="group" aria-label={`${area.name} UI sub-areas`}
+            className={`scenario-metadata-group filter-areas flex items-center gap-1.5 ${expanded ? 'area-subareas min-w-0 flex-wrap rounded-r-md px-3 py-1.5' : 'shrink-0'}`}>
+            <span className="text-[11px] text-neutral-500">{area.name.replace(/^Bundle /, '')} UI sub-areas:</span>
+            {uiSubAreas.map(doc => <DocumentPillFrame key={doc.id} document={doc} onOpen={openConcept} className="bg-neutral-100 text-neutral-600"><Link to={`/${runId}?area=${encodeURIComponent(area.id)}&uisubarea=${encodeURIComponent(doc.id)}`}
+              title={doc.description} data-selected="false" className="scenario-metadata-chip max-w-full break-words px-2 py-0.5 rounded-l-full text-[11px] font-medium text-neutral-600 transition-colors">{doc.name}</Link></DocumentPillFrame>)}
+          </div>)}
           {!!manifest.designPressureIds?.length && <div role="group" aria-label="Design pressures" className="flex flex-wrap items-center gap-1.5">
             <span className="text-[11px] text-neutral-400">Design pressures:</span>
             {pressures.filter(pressure => manifest.designPressureIds?.includes(pressure.id)).map(pressure => <button key={pressure.id}

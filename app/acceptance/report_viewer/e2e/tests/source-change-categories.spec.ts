@@ -56,7 +56,7 @@ test('source-change categories narrow sourcing scenarios by any applied change',
   const changes = page.getByRole('group', { name: 'Source changes', exact: true });
   await expect(changes).toHaveCount(0);
   await areas.getByRole('button', { name: 'Sourcing', exact: true }).click();
-  await expect(changes.getByRole('button')).toHaveText(['All', 'add', 'move', 'rename', 'modify', 'remove']);
+  await expect(changes.locator('button[aria-pressed]')).toHaveText(['All', 'add', 'move', 'rename', 'modify', 'remove']);
   await expect(changes.getByRole('button', { name: 'All', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await expect(changes.getByRole('button', { name: 'modify', exact: true })).toHaveAttribute('title', 'No matching scenarios with the current filters.');
 

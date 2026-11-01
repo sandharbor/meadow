@@ -50,10 +50,10 @@ export const bundleSlug = defineMeadowConcept({
 export const findInBundles = defineMeadowConcept({
   id: coreConceptIds.findInBundles,
   name: "Find in Bundles",
-  kind: "capability",
+  kind: "ui-sub-area",
   searchFacet: true,
   appAreaIds: [coreConceptIds.bundles],
-  definition: conceptText`The capability for locating a source page across every bundle that includes or references it.`,
+  definition: conceptText`The filtered bundle-list view for locating a source page across every bundle that includes or references it.`,
   mechanics: [
     conceptText`It filters the bundle collection, identifies matching current or archived bundles, and can carry the selected page into bundle navigation.`,
   ],

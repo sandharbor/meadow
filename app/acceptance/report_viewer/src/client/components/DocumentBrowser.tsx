@@ -20,7 +20,7 @@ export default function DocumentBrowser({ documents, areas, pressures, openDocum
     ...(doc.sections ?? []).flatMap(section => [section.heading, ...section.blocks.flatMap(block => block.kind === 'paragraph' ? [renderConceptText(block.text)] : block.items.map(text => renderConceptText(text)))])]
     .join(' ').toLocaleLowerCase().includes(query));
   const item = (doc: BrowseDocument, areaId?: string) => <span key={doc.id} className="text-xs"><button className="text-brand-600 underline" onClick={() => openDocument(doc)}>{doc.name}</button>
-    {doc.subAreas?.some(entry => entry.areaId === areaId) && <span className="ml-1 text-neutral-500">(workflow sub-area)</span>}</span>;
+    {doc.kind === 'ui-sub-area' ? <span className="ml-1 text-neutral-500">(UI sub-area)</span> : doc.subAreas?.some(entry => entry.areaId === areaId) && <span className="ml-1 text-neutral-500">(workflow sub-area)</span>}</span>;
   return <details className="mb-3 rounded border border-neutral-200 px-3 py-2 text-sm">
     <summary className="cursor-pointer font-medium">Browse docs</summary>
     <div className="my-3 flex flex-wrap items-center gap-3">

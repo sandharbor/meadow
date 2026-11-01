@@ -23,6 +23,7 @@ export const MEADOW_CONCEPT_KINDS = [
   "process",
   "role",
   "interface",
+  "ui-sub-area",
   "mechanism",
   "state",
   "capability",

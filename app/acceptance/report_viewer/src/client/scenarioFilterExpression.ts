@@ -23,7 +23,7 @@ import {
 } from '../../../../contracts/types/shared/curation/filterExpression.ts'
 
 /** Row keys, matching the plain URL parameter for each filter row. */
-export const SCENARIO_FILTER_SECTIONS = ['surface', 'mode', 'area', 'subarea', 'sourcechange', 'sourcechangesubtype', 'doc', 'pressure', 'bundle'] as const
+export const SCENARIO_FILTER_SECTIONS = ['surface', 'mode', 'area', 'subarea', 'uisubarea', 'sourcechange', 'sourcechangesubtype', 'doc', 'pressure', 'bundle'] as const
 export type ScenarioFilterSection = typeof SCENARIO_FILTER_SECTIONS[number]
 export type ScenarioFilterSelections = Record<ScenarioFilterSection, string[]>
 
@@ -32,6 +32,7 @@ export const SCENARIO_FILTER_SECTION_LABELS: Record<ScenarioFilterSection, strin
   mode: 'Starts with',
   area: 'Area',
   subarea: 'Sub-area',
+  uisubarea: 'UI sub-area',
   sourcechange: 'Source change',
   sourcechangesubtype: 'Source change subtype',
   doc: 'Concept',
@@ -51,7 +52,7 @@ export const EVERYTHING_KEYWORD = 'everything'
 const ROOT_GROUP_ID = 'scenario-filters'
 
 export function emptyScenarioFilterSelections(): ScenarioFilterSelections {
-  return { surface: [], mode: [], area: [], subarea: [], sourcechange: [], sourcechangesubtype: [], doc: [], pressure: [], bundle: [] }
+  return { surface: [], mode: [], area: [], subarea: [], uisubarea: [], sourcechange: [], sourcechangesubtype: [], doc: [], pressure: [], bundle: [] }
 }
 
 const isSection = (value: string): value is ScenarioFilterSection => (SCENARIO_FILTER_SECTIONS as readonly string[]).includes(value)
@@ -308,4 +309,12 @@ export function parseScenarioFilterExpression(
   } catch (error) {
     return { error: error instanceof Error ? error.message : String(error) }
   }
+}
+
+/** Preserve old sub-area bookmarks against a catalog that explicitly reclassified those IDs. */
+export function migrateUiSubAreaFilters(expression: FilterExpression | null, uiIds: ReadonlySet<string>): FilterExpression | null {
+  if (!expression || expression.type === 'all') return expression
+  if (expression.type === 'group') return { ...expression, children: expression.children.map(child => migrateUiSubAreaFilters(child, uiIds)!) }
+  const parts = scenarioFilterTermParts(expression)
+  return parts?.section === 'subarea' && uiIds.has(parts.value) ? scenarioFilterTerm('uisubarea', parts.value) : expression
 }

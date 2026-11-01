@@ -73,7 +73,9 @@ export function scenarioAreas(
 ) {
   const appAreaIds = appAreas.map(area => area.id);
   const subAreaIds = (options.subAreas ?? []).map(subArea => {
-    if (!subArea.subAreas?.some(entry => (appAreaIds as readonly string[]).includes(entry.areaId))) {
+    // Old scenario declarations can retain UI identities after their reclassification.
+    const uiOwner = subArea.kind === 'ui-sub-area' && subArea.appAreaIds?.some(id => (appAreaIds as readonly string[]).includes(id));
+    if (!uiOwner && !subArea.subAreas?.some(entry => (appAreaIds as readonly string[]).includes(entry.areaId))) {
       throw new Error(`${subArea.name} is not a sub-area of a declared app area.`);
     }
     return subArea.id;

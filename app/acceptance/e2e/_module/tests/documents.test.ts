@@ -119,3 +119,28 @@ test('semantic titles participate in checked passages, backlinks, and immutable 
   assert.deepEqual(captured.documents.find(item => item.id === document.id)?.semanticTitle, title);
   assert.deepEqual(readDocumentSnapshot(root), captured);
 });
+
+test('UI sub-areas have one real owner and preserve their captured classification across catalog changes', t => {
+  const ui = allCoreConcepts.filter(concept => concept.kind === 'ui-sub-area');
+  assert.deepEqual(ui.map(concept => concept.name).sort(), [
+    'Changes Tab', 'Find in Bundles', 'Graph Search', 'Graph Title Labels', 'Node Details',
+    'Node Link Details', 'Node Path Details', 'Preview Browser', 'Source Folder Filter', 'Tracking Changes Panel',
+  ]);
+  for (const concept of ui) {
+    assert.equal(concept.appAreaIds?.length, 1);
+    assert.equal(concept.subAreas, undefined);
+    assert.ok(validateConceptRegistry(allCoreConcepts.map(original => original.id === concept.id
+      ? { ...concept, appAreaIds: [] } : original)).some(error => error.includes('exactly one owning app area')));
+  }
+  const root = mkdtempSync(path.join(os.tmpdir(), 'meadow-ui-catalog-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  writeFileSync(path.join(root, 'scenario.spec.ts'), source);
+  const legacyRegistry = { ...registry, documents: registry.documents.map(document => 'kind' in document && document.kind === 'ui-sub-area'
+    ? { ...document, kind: 'interface' as const } : document) };
+  const legacy = captureDocumentSnapshot(root, legacyRegistry, root);
+  const bytes = readFileSync(path.join(root, 'documents.json'), 'utf8');
+  assert.deepEqual(captureDocumentSnapshot(root, registry, root), legacy);
+  assert.equal(readFileSync(path.join(root, 'documents.json'), 'utf8'), bytes);
+  assert.equal(readDocumentSnapshot(root)?.documents.find(document => document.id === 'node-details')?.kind, 'interface');
+  assert.equal(conceptDocument(ui.find(concept => concept.id === 'node-details')!).kind, 'ui-sub-area');
+});

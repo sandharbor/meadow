@@ -20,10 +20,9 @@ import { conceptLink as link, conceptText as text, defineMeadowConcept as define
 export const changesTab = define({
   id: id.changesTab,
   name: "Changes Tab",
-  kind: "interface",
+  kind: "ui-sub-area",
   searchFacet: true,
   appAreaIds: [id.bundleReview],
-  subAreas: [{ areaId: id.bundleReview, order: 2 }],
   definition: text`The review surface for how a generated bundle's files differ from its comparison baseline: added, deleted, modified, and moved.`,
   mechanics: [
     text`It filters change types and HTML sections, displays diffs, and groups internal asset folders.`,
@@ -34,9 +33,8 @@ export const changesTab = define({
 });
 
 export const previewBrowser = define({
-  id: id.previewBrowser, name: "Preview Browser", kind: "interface", searchFacet: true,
+  id: id.previewBrowser, name: "Preview Browser", kind: "ui-sub-area", searchFacet: true,
   appAreaIds: [id.bundleReview],
-  subAreas: [{ areaId: id.bundleReview, order: 1 }],
   definition: text`The embedded browser for inspecting and navigating generated bundle pages before sharing them.`,
   mechanics: [
     text`Follow links between generated pages, use Back and Forward to revisit them, or open the preview in an external browser. Following a new link after going back replaces the forward branch.`,

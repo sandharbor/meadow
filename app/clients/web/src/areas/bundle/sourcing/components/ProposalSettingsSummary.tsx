@@ -159,3 +159,8 @@ export function TrackingChangesTable({ entries, removals, automatic = [], sensit
       {page => <TrackingRow key={page.key} testId="tracking-removal" name={page.name} onSelect={select(page)} before={<TrackingStatePills state="tracked" />} after={<TrackingStatePills state="untracked" removed />} />}</TrackingGroup>
   </div>;
 }
+
+import type { ParticipatesIn, trackingChangesPanel } from '../../../../../../../concepts/index.js';
+export type ProposalSettingsSummaryMeadowConceptParticipations = [
+  ParticipatesIn<typeof trackingChangesPanel, 'render-tracking-rows', typeof TrackingChangesTable>,
+];

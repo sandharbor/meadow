@@ -177,3 +177,43 @@ html, body {
     grid-template-columns: minmax(0, min(50%, var(--detail-video-width))) minmax(0, 1fr);
   }
 }
+
+/* The body and document segment share one pill, including its selected outline. */
+.filter-section .document-filter-pill,
+.scenario-metadata-group .document-filter-pill {
+  background-color: color-mix(in srgb, var(--filter-background) 80%, var(--filter-accent));
+}
+
+.document-filter-pill[data-selected="true"] {
+  background-color: color-mix(in srgb, var(--filter-accent) 75%, white);
+  color: theme(colors.neutral.800);
+  outline: 2px solid theme(colors.orange.500);
+}
+
+.filter-section .document-filter-pill > button[aria-pressed],
+.document-filter-pill > .scenario-metadata-chip {
+  background-color: transparent;
+  color: inherit;
+  outline: none;
+}
+
+.filter-section .document-filter-pill > button[aria-pressed]:hover,
+.document-filter-pill > .scenario-metadata-chip:hover {
+  background-color: rgb(0 0 0 / 4%);
+}
+
+.document-filter-pill > .document-filter-open {
+  /* Derive the segment tint from its actual pill background across row colors and states. */
+  background-color: rgb(255 255 255 / 14.5%);
+  color: theme(colors.neutral.600);
+}
+
+.document-filter-pill > .document-filter-open:hover {
+  background-color: rgb(255 255 255 / 17.2%);
+  color: theme(colors.neutral.800);
+}
+
+.document-filter-pill > button:focus-visible {
+  outline: 2px solid theme(colors.blue.500);
+  outline-offset: 2px;
+}

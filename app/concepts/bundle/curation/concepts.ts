@@ -128,7 +128,7 @@ export const filterSensitivity = defineMeadowConcept({
     conceptText`Effective sensitivity combines ${conceptLink(coreConceptIds.sourceSensitivity, "Source-Marked Sensitivity")} with matches from enabled bundle and global filters that have a Mark Sensitive action. Filter matches follow each filter's selector criteria and do not rewrite source sensitivity markings.`,
     conceptText`An unresolved Command Selector is neither a negative decision nor a completed assessment. Union and intersection preserve known answers; automatic tracking, sensitivity confirmation and generation require the relevant assessment to be resolved. A force rerun immediately exposes unresolved status and prevents policy decisions until replacement classification succeeds.`,
     conceptText`The selected node's Sensitive badge has a question-mark explanation. A source marking explains meadow-sensitive in the source; otherwise the explanation lists every enabled filter supplying sensitivity.`,
-    conceptText`Source review identifies these pages as Sensitive via filter. Its automatic tracking skips them and lists the exact skipped pages in the Tracking changes panel before acceptance. Acceptance includes their source material in the snapshot without automatically tracking it.`,
+    conceptText`Source review identifies these pages as Sensitive via filter. Its automatic tracking skips them and lists the exact skipped pages in the ${conceptLink(coreConceptIds.trackingChangesPanel, "Tracking Changes Panel")} before acceptance. Acceptance includes their source material in the snapshot without automatically tracking it.`,
     conceptText`For example, a filter matching titles containing confidential can protect newly discovered notes and planning pages while allowing a public update from the same source change to be tracked.`,
   ],
   interplay: conceptText`${conceptLink(coreConceptIds.filters, "Custom Filters")} supply the matching rules and action; their matches become ${conceptLink(coreConceptIds.sensitive, "Sensitive Bundle Pages")}. The assessment applies to ${conceptLink(coreConceptIds.sourceSnapshot, "Source Snapshots")} and constrains ${conceptLink(coreConceptIds.tracking, "Bundle Node Tracking")}.`,
@@ -139,7 +139,7 @@ export const folderFilter = defineMeadowConcept({
   id: coreConceptIds.folderFilter,
   name: "Source Folder Filter",
   aliases: ["Folder Filter"],
-  kind: "interface",
+  kind: "ui-sub-area",
   searchFacet: true,
   appAreaIds: curationArea,
   definition: conceptText`The hierarchical filter for focusing curation on selected source folders.`,
@@ -230,7 +230,7 @@ export const labels = defineMeadowConcept({
   id: coreConceptIds.labels,
   name: "Graph Title Labels",
   aliases: ["Show Titles"],
-  kind: "interface",
+  kind: "ui-sub-area",
   searchFacet: true,
   appAreaIds: curationArea,
   definition: conceptText`The graph overlay that displays page titles for nodes selected by a filter.`,
@@ -259,8 +259,7 @@ export const links = defineMeadowConcept({
   name: "Node Link Details",
   aliases: ["Links", "Bundle Page Links"],
   parentId: coreConceptIds.nodeDetails,
-  subAreas: [{ areaId: coreConceptIds.bundleCuration, order: 2 }],
-  kind: "interface",
+  kind: "ui-sub-area",
   searchFacet: true,
   appAreaIds: curationArea,
   definition: conceptText`The in-link and out-link relationships shown for a selected bundle page.`,
@@ -308,15 +307,14 @@ export const sensitive = defineMeadowConcept({
   appAreaIds: curationArea,
   definition: conceptText`A bundle node marked as requiring protection from casual inclusion in a bundle. Sensitivity applies individually to file, folder, and collection nodes; it does not propagate to descendants or members.`,
   mechanics: [
-    conceptText`Sensitive nodes are excluded from bulk tracking and remain available for deliberate, node-specific review. This includes pages protected by ${conceptLink(coreConceptIds.filterSensitivity, "Filter-Derived Sensitivity")}. Source review automatically tracks safe additions by default, lists sensitive skipped additions in its Tracking changes panel, and lets the user select an individual skipped page for review. Acceptance leaves skipped pages untracked in ordinary curation.`,
+    conceptText`Sensitive nodes are excluded from bulk tracking and remain available for deliberate, node-specific review. This includes pages protected by ${conceptLink(coreConceptIds.filterSensitivity, "Filter-Derived Sensitivity")}. Source review automatically tracks safe additions by default, lists sensitive skipped additions in its ${conceptLink(coreConceptIds.trackingChangesPanel, "Tracking Changes Panel")}, and lets the user select an individual skipped page for review. Acceptance leaves skipped pages untracked in ordinary curation.`,
   ],
   interplay: conceptText`The design pressure to ${conceptLink(designPressureIds.preventAccidentalSharing, "prevent accidental sharing of sensitive material")} motivates this protection. Sensitivity constrains ${conceptLink(coreConceptIds.tracking, "Bundle Node Tracking")} and is surfaced through ${conceptLink(coreConceptIds.filters, "Custom Filters")} and ${conceptLink(coreConceptIds.callout, "Curation Callouts")}.`,
 });
 
 export const nodeDetails = defineMeadowConcept({
-  id: coreConceptIds.nodeDetails, name: "Node Details", kind: "interface", searchFacet: true,
+  id: coreConceptIds.nodeDetails, name: "Node Details", kind: "ui-sub-area", searchFacet: true,
   appAreaIds: curationArea,
-  subAreas: [{ areaId: coreConceptIds.bundleCuration, order: 3 }],
   definition: conceptText`Inspect a selected node and access its contextual details while curating a bundle.`,
   mechanics: [
     conceptText`The selected-node panel and node context menu expose information and actions for that node. Details include its identity, location, configuration, links, and reachability.`,
@@ -326,9 +324,8 @@ export const nodeDetails = defineMeadowConcept({
 });
 
 export const nodePathDetails = defineMeadowConcept({
-  id: coreConceptIds.nodePathDetails, name: "Node Path Details", kind: "interface", searchFacet: true,
+  id: coreConceptIds.nodePathDetails, name: "Node Path Details", kind: "ui-sub-area", searchFacet: true,
   appAreaIds: curationArea, parentId: coreConceptIds.nodeDetails,
-  subAreas: [{ areaId: coreConceptIds.bundleCuration, order: 1 }],
   definition: conceptText`The node's path dialog explaining how traversal reached it in the bundle graph.`,
   mechanics: [conceptText`Inspect the route's steps, depth constraints, inherited budgets, and overrides, then return to the selected node.`],
   interplay: conceptText`It is part of ${conceptLink(coreConceptIds.nodeDetails, "Node Details")} and presents ${conceptLink(coreConceptIds.paths, "Curation Paths")}.`,
@@ -338,11 +335,10 @@ export const sourceGraphSearch = defineMeadowConcept({
   id: coreConceptIds.sourceGraphSearch,
   name: "Graph Search",
   aliases: ["Source Graph Search"],
-  kind: "capability",
+  kind: "ui-sub-area",
   searchFacet: true,
   appAreaIds: curationArea,
-  subAreas: [{ areaId: coreConceptIds.bundleCuration, order: 4 }],
-  definition: conceptText`Find pages by title in the graph you're curating.`,
+  definition: conceptText`The graph editor's search region for finding pages by title in the graph you're curating.`,
   mechanics: [
     conceptText`Search narrows graph-visible pages and supports navigation to the matching page's context.`,
   ],
