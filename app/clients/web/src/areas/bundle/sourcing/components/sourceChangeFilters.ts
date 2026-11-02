@@ -23,7 +23,8 @@ export function sourceChangeFilters(): SourcingTypeGraphFilter[] {
   }));
 }
 
-import type { ParticipatesIn, sourceReviewFiltering } from '../../../../../../../concepts/index.js';
+import type { ParticipatesIn, pageChangesFilters, sourceReviewFiltering } from '../../../../../../../concepts/index.js';
 export type SourceChangeFiltersMeadowConceptParticipations = [
+  ParticipatesIn<typeof pageChangesFilters, 'define-filters', typeof sourceChangeFilters>,
   ParticipatesIn<typeof sourceReviewFiltering, 'define-change-filters', typeof sourceChangeFilters>,
 ];

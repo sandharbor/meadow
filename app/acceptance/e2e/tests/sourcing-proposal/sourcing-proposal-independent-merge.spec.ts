@@ -1,13 +1,11 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import fs from 'node:fs';
-import path from 'node:path';
-import YAML from 'yaml';
+import { MeadowHomeBundleConfig } from '../../src/run/utils/index.js';
 import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, SelectedPageDetailComponent } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { scenarioSections, pendingProposalRevalidation, sourceReviewConfigurationMerge, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../../concepts/index.js';
+import { configurationConflictsDialog, changesTray, scenarioSections, pendingProposalRevalidation, sourceReviewConfigurationMerge, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });
@@ -25,24 +23,21 @@ const sections = scenarioSections({
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: '459afd83-d7c3-46e6-8ae4-2cb6b22a6c27' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState, expectLogErrors }) => {
-  const { editor, sourcing, nodes, leaf, saveLeaf } = await test.step(sections.steps.setup, async () => {
+  const { editor, sourcing, nodeConfig, leaf, saveLeaf } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
     const sourcing = new SourcingWorkspacePage(page, expect);
-    const filename = path.join(testServer.configDir, 'bundles/sourcing-review/config/bundle_node_config.yaml');
-    const nodes = () => YAML.parse(fs.readFileSync(filename, 'utf8')).nodes as { bundleNodeName: string; outlinksDepth?: number; inlinksDepth?: number }[];
-    const leaf = () => nodes().find(node => node.bundleNodeName === 'Leaf')!;
-    const saveLeaf = (depths: { outlinksDepth: number; inlinksDepth?: number }) => {
-      const config = YAML.parse(fs.readFileSync(filename, 'utf8'));
-      Object.assign(config.nodes.find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Leaf'), depths);
-      fs.writeFileSync(filename, YAML.stringify(config));
-    };
+
+    const nodeConfig = new MeadowHomeBundleConfig(testServer.configDir, "sourcing-review", expect);
+    const leaf = () => nodeConfig.nodeNamed('Leaf');
+    const saveLeaf = (depths: { outlinksDepth: number; inlinksDepth?: number }) =>
+      new MeadowHomeBundleConfig(testServer.configDir, 'sourcing-review', expect).saveNodeDepths('Leaf', depths);
     await sourceCommand(() => list.goto());
     await sourceCommand(() => list.clickBundle('sourcing-review'));
     await sourceCommand(() => editor.waitForLoad('sourcing-review'));
     await sourceCommand(() => sourcing.openByLink('sourcing-review'));
     await sourceCommand(() => checkpoint('the original saved page configuration has inherited traversal'));
-    return { editor, sourcing, nodes, leaf, saveLeaf };
+    return { editor, sourcing, nodeConfig, leaf, saveLeaf };
   });
 
   await test.step(sections.steps.verifyScenarioUnchangedEqualSavedFieldsMerge, async () => {
@@ -64,7 +59,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '459afd83-d7c
     await sourceCommand(() => checkpoint('unchanged and equal saved fields merge with independent traversal and curation labels'));
     await sourceCommand(() => sourcing.accept());
     expect(leaf()).toMatchObject({ outlinksDepth: 0, inlinksDepth: 1 });
-    expect(nodes().find(node => node.bundleNodeName === 'Reference')?.outlinksDepth).toBe(0);
+    expect(nodeConfig.findNode({ bundleNodeName: 'Reference' })?.outlinksDepth).toBe(0);
     await sourceCommand(() => editor.expectLabelVisible('Leaf'));
     await sourceCommand(() => checkpoint('compatible acceptance retains both traversal fields and the later presentation choice'));
   });

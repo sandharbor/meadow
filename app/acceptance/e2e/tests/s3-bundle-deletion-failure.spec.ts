@@ -15,8 +15,10 @@ limitations under the License.
 */
 
 import fs from "fs";
+import { MeadowHomeBundleConfig } from '../src/run/utils/index.js';
 import path from "path";
-import YAML from "yaml";
+
+import { MeadowHomeProviderSettings } from '../src/run/utils/MeadowHomeProviderSettings.js';
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, PublishToS3Tab } from "../src/run/pages/index.js";
 import { Bundle, Workflows } from "../src/run/workflows.js";
@@ -70,23 +72,10 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'd81c197a-003
     return { publishSlug };
   });
 
-  const { bundleDirectory, secretsPath, originalSecrets, list } = await test.step(sections.steps.removeCredentialsTryDeletingBundle, async () => {
+  const { bundleDirectory, restoreCredentials, list } = await test.step(sections.steps.removeCredentialsTryDeletingBundle, async () => {
     const bundleDirectory = path.join(testServer.configDir, "bundles", Bundle.Big);
-    const sentinelConfig = fs.readFileSync(path.join(bundleDirectory, "config", "bundle_config.yaml"));
-    const secretsPath = path.join(
-      testServer.configDir,
-      "app",
-      "publishing_providers",
-      "S3PublishingProvider",
-      "pp_secrets.yaml",
-    );
-    const originalSecrets = fs.readFileSync(secretsPath);
-    const secrets = YAML.parse(originalSecrets.toString("utf8")) as Record<string, unknown>;
-    fs.writeFileSync(secretsPath, YAML.stringify({
-      ...secrets,
-      s3AccessKeyId: "",
-      s3SecretAccessKey: "",
-    }));
+    const sentinelConfig = new MeadowHomeBundleConfig(testServer.configDir, Bundle.Big, expect).readText();
+    const restoreCredentials = new MeadowHomeProviderSettings(testServer.configDir, 'S3PublishingProvider').removeS3Credentials();
 
     const list = new BundleListPage(page, expect);
     await sourceCommand(() => list.goto());
@@ -98,14 +87,14 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'd81c197a-003
     stopExpectedErrors();
 
     expect(fs.existsSync(bundleDirectory)).toBe(true);
-    expect(fs.readFileSync(path.join(bundleDirectory, "config", "bundle_config.yaml"))).toEqual(sentinelConfig);
+    expect(new MeadowHomeBundleConfig(testServer.configDir, Bundle.Big, expect).readText()).toEqual(sentinelConfig);
     await sourceCommand(() => minioS3.expectHasFiles(`${publishSlug}-`));
     await sourceCommand(() => checkpoint("provider cleanup failure preserves every local bundle file"));
-    return { bundleDirectory, secretsPath, originalSecrets, list };
+    return { bundleDirectory, restoreCredentials, list };
   });
 
   await test.step(sections.steps.restoreCredentialsRetryDeletion, async () => {
-    fs.writeFileSync(secretsPath, originalSecrets);
+    restoreCredentials();
     await sourceCommand(() => list.confirmDelete());
     await sourceCommand(() => list.waitForBundleGone(Bundle.Big));
     expect(fs.existsSync(bundleDirectory)).toBe(false);

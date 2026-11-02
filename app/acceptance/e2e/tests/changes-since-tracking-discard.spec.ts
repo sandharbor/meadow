@@ -1,7 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import fs from 'node:fs';
-import path from 'node:path';
+import { AcceptedSourcingState } from '../src/run/utils/index.js';
+import { MeadowHomeFilters } from '../src/run/utils/MeadowHomeFilters.js';
 import { test, expect } from '../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent, PreviewPublishModal } from '../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
@@ -33,13 +33,13 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'd21b76d4-4a7
     const review = new SourcingWorkspacePage(page, expect);
     const preview = new PreviewPublishModal(page, expect);
     const proposal = new SourcingProposalState(testServer, 'multi-source-mixed');
-    const directory = path.join(testServer.configDir, 'bundles/multi-source-mixed');
+
     const bundleConfig = new MeadowHomeBundleConfig(testServer.configDir, 'multi-source-mixed', expect);
     await sourceCommand(() => list.goto());
     await sourceCommand(() => list.clickBundle('multi-source-mixed'));
     await sourceCommand(() => editor.waitForLoad('multi-source-mixed'));
     await sourceCommand(() => editor.waitForSourceCheck());
-    const accepted = JSON.parse(fs.readFileSync(path.join(directory, 'raw/sourcing/state.json'), 'utf8')).acceptedId;
+    const accepted = new AcceptedSourcingState(testServer.configDir, "multi-source-mixed").current.acceptedId;
     await sourceCommand(() => checkpoint('tracked nodes use the accepted source capture'));
     return { list, editor, filters, review, preview, proposal, bundleConfig, accepted };
   });
@@ -57,8 +57,8 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'd21b76d4-4a7
   await test.step(sections.steps.discardReviewSavedFilterUnresolvedNodeSurvive, async () => {
     await sourceCommand(() => review.sensitivityReview.getByRole('button', { name: 'Close', exact: true }).click());
     await sourceCommand(() => review.discard());
-    const savedFilters = JSON.parse(fs.readFileSync(path.join(testServer.configDir, 'app/global_custom_filters.json'), 'utf8'));
-    expect(savedFilters.filters.find((filter: { name: string }) => filter.name === 'Review existing inclusion').enabled).toBe(true);
+    const savedFilters = new MeadowHomeFilters(testServer.configDir, 'multi-source-mixed');
+    expect(savedFilters.globalFilterNamed('Review existing inclusion')?.enabled).toBe(true);
     await sourceCommand(() => page.reload());
     await sourceCommand(() => review.expectSensitivityReviewReady());
     await sourceCommand(() => review.sensitivityReview.getByRole('button', { name: 'Close', exact: true }).click());

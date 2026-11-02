@@ -1,9 +1,8 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import fs from 'node:fs';
+import { MeadowHomeBundleConfig } from '../../src/run/utils/index.js';
 import { SourcingProposalState } from '../../src/run/state/SourcingProposalState.js';
-import path from 'node:path';
-import YAML from 'yaml';
+
 import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
@@ -26,13 +25,13 @@ const sections = scenarioSections({
 const pressures = scenarioDesignPressures([preventAccidentalSharing]);
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: '63b363d7-248b-4c3b-a136-7cc5dffb7754' }, name.annotation, description.annotation, areas.annotation, pressures.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
-  const { editor, sourcing, proposal, filters, directory, captured } = await test.step(sections.steps.setup, async () => {
+  const { editor, sourcing, proposal, filters, captured } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
     const sourcing = new SourcingWorkspacePage(page, expect);
     const proposal = new SourcingProposalState(testServer, 'sourcing-review');
     const filters = new FilterPanelComponent(page, expect);
-    const directory = path.join(testServer.configDir, 'bundles/sourcing-review');
+
     await sourceCommand(() => list.goto());
     await sourceCommand(() => list.clickBundle('sourcing-review'));
     await sourceCommand(() => editor.waitForLoad('sourcing-review'));
@@ -48,7 +47,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '63b363d7-248
     for (const name of ['Safe One', 'Safe Two']) expect(proposal.current.tracking[`file:Additions/${name}.md`]).toMatchObject({ track: true, origin: 'additions' });
     const captured = proposal.current.candidateSnapshotId;
     await sourceCommand(() => checkpoint('safe additions are tracked by Track added pages'));
-    return { editor, sourcing, proposal, filters, directory, captured };
+    return { editor, sourcing, proposal, filters, captured };
   });
 
   await test.step(sections.steps.refreshIncorporatesChangedBytesRevalidatesExistingTracking, async () => {
@@ -69,9 +68,9 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '63b363d7-248
     await sourceCommand(() => addKeyFrame(sourceReviewSensitivity));
     await sourceCommand(() => checkpoint('newly sensitive additions are untracked without an explicit-choice confirmation'));
     await sourceCommand(() => sourcing.accept());
-    const nodes = YAML.parse(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).nodes;
-    expect(nodes.some((node: { bundleNodeName: string }) => node.bundleNodeName === 'Safe One')).toBe(false);
-    expect(nodes.some((node: { bundleNodeName: string }) => node.bundleNodeName === 'Safe Two')).toBe(false);
+    const nodeConfig = new MeadowHomeBundleConfig(testServer.configDir, "sourcing-review", expect);
+    expect(nodeConfig.findNode({ bundleNodeName: 'Safe One' })).toBeUndefined();
+    expect(nodeConfig.findNode({ bundleNodeName: 'Safe Two' })).toBeUndefined();
     await sourceCommand(() => editor.switchToListView());
     await sourceCommand(() => editor.expectListViewRowByExactNamePresent('Safe One'));
     await sourceCommand(() => editor.expectListViewRowByExactNamePresent('Safe Two'));

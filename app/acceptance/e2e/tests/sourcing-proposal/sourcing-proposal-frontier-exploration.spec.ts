@@ -1,6 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import fs from 'node:fs';
+import { AcceptedSourcingState } from '../../src/run/utils/index.js';
 import path from 'node:path';
 import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent, PreviewPublishModal, SelectedPageDetailComponent, Pill, ActionButton } from '../../src/run/pages/index.js';
@@ -34,7 +35,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'add4249e-bd6
     await sourceCommand(() => list.clickBundle('example-bundle'));
     await sourceCommand(() => editor.waitForLoad('example-bundle'));
     const directory = path.join(testServer.configDir, 'bundles/example-bundle');
-    const accepted = JSON.parse(fs.readFileSync(path.join(directory, 'raw/sourcing/state.json'), 'utf8')).acceptedId;
+    const accepted = new AcceptedSourcingState(testServer.configDir, "example-bundle").current.acceptedId;
     await sourceCommand(() => checkpoint('accepted curation has no pending source changes'));
     return { editor, sourcing, filters, preview, directory, accepted };
   });
@@ -47,7 +48,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'add4249e-bd6
     await sourceCommand(() => frontierPage.expectPill(Pill.Frontier));
     await sourceCommand(() => frontierPage.expectButtonDisabled(ActionButton.Track));
     await sourceCommand(() => expect(sourcing.root).toBeHidden());
-    expect(JSON.parse(fs.readFileSync(path.join(directory, 'raw/sourcing/state.json'), 'utf8')).acceptedId).toBe(accepted);
+    expect(new AcceptedSourcingState(testServer.configDir, "example-bundle").current.acceptedId).toBe(accepted);
     await sourceCommand(() => addKeyFrame(frontier));
     await sourceCommand(() => checkpoint('curation shows the live frontier without changing accepted material'));
   });
@@ -69,7 +70,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'add4249e-bd6
     await sourceCommand(() => sourcing.later());
     await sourceCommand(() => editor.switchToListView());
     await sourceCommand(() => editor.expectListViewRowByExactNameNotPresent('Availability Bias'));
-    expect(JSON.parse(fs.readFileSync(path.join(directory, 'raw/sourcing/state.json'), 'utf8')).acceptedId).toBe(accepted);
+    expect(new AcceptedSourcingState(testServer.configDir, "example-bundle").current.acceptedId).toBe(accepted);
     await sourceCommand(() => editor.clickPreview());
     await sourceCommand(() => preview.waitForPreviewComplete());
     await sourceCommand(() => preview.expectUntrackedPagesWarning());

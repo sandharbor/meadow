@@ -1,7 +1,6 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import fs from 'node:fs';
-import path from 'node:path';
+import { MeadowHomeBundleConfig } from '../../src/run/utils/index.js';
 import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent } from '../../src/run/pages/index.js';
 import { SelectedPageDetailComponent } from '../../src/run/pages/areas/bundle/curation/SelectedPageDetailComponent.js';
@@ -24,18 +23,18 @@ const sections = scenarioSections({
 });
 const areas = scenarioAreas([bundleCuration, bundleSourcing], { subAreas: [sourceReviewWorkspace] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: '8200e571-3323-4e87-8ca1-817d55a94bee' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, sourceChanges, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
-  const { editor, filters, sourcing, configPath, acceptedConfig } = await test.step(sections.steps.setup, async () => {
+  const { editor, filters, sourcing, acceptedConfig } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
     const filters = new FilterPanelComponent(page, expect);
     const sourcing = new SourcingWorkspacePage(page, expect);
-    const configPath = path.join(testServer.configDir, 'bundles/sourcing-review/config/bundle_node_config.yaml');
+
     await sourceCommand(() => list.goto());
     await sourceCommand(() => list.clickBundle('sourcing-review'));
     await sourceCommand(() => editor.waitForLoad('sourcing-review'));
-    const acceptedConfig = fs.readFileSync(configPath, 'utf8');
+    const acceptedConfig = new MeadowHomeBundleConfig(testServer.configDir, "sourcing-review", expect).readNodesText();
     await sourceCommand(() => checkpoint('the accepted graph is ready for the common editing tools'));
-    return { editor, filters, sourcing, configPath, acceptedConfig };
+    return { editor, filters, sourcing, acceptedConfig };
   });
 
   await test.step(sections.steps.verifyScenarioCurationSuppliesFullGraphList, async () => {
@@ -85,13 +84,13 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '8200e571-332
       } else {
         await sourceCommand(() => sourcing.expectNoSelectedSourceChange());
         await sourceCommand(() => sourcing.untrackSelected());
-        expect(fs.readFileSync(configPath, 'utf8')).toBe(acceptedConfig);
+        expect(new MeadowHomeBundleConfig(testServer.configDir, "sourcing-review", expect).readNodesText()).toBe(acceptedConfig);
         await sourceCommand(() => addKeyFrame(sourceReviewWorkspace));
         await sourceCommand(() => checkpoint('sourcing supplies the same editor and isolated tracking without change evidence for unchanged pages'));
       }
     }
     await sourceCommand(() => sourcing.later());
-    expect(fs.readFileSync(configPath, 'utf8')).toBe(acceptedConfig);
+    expect(new MeadowHomeBundleConfig(testServer.configDir, "sourcing-review", expect).readNodesText()).toBe(acceptedConfig);
     await sourceCommand(() => editor.clickListViewRowByExactName('Reference'));
     await sourceCommand(() => expect(page.getByTestId('selected-page-file:Routes/Reference.md').getByText('Tracked', { exact: true })).toBeVisible());
     await sourceCommand(() => sourcing.open());

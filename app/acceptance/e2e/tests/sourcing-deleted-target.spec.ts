@@ -38,6 +38,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'b6e58804-dcb
   const handoff = fs.mkdtempSync(path.join(os.tmpdir(), 'meadow-open-'));
   const opener = path.join(handoff, 'open.sh');
   const launched = path.join(handoff, 'launched-url');
+  // e2e-allow-raw-data: Install a scenario-only URL opener that records the external handoff.
   fs.writeFileSync(opener, `#!/bin/sh\nprintf '%s' "$1" > ${JSON.stringify(launched)}\n`, { mode: 0o755 });
   const previousOpener = process.env.MEADOW_BROWSER_OPEN_EXECUTABLE;
   let opened: { url: string; requested: string; reached: string | null };
@@ -50,6 +51,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'b6e58804-dcb
         { artifactName: 'open-source-review' },
       );
       await sourceCommand(() => expect.poll(() => fs.existsSync(launched), { timeout: 30_000 }).toBe(true));
+      // e2e-allow-raw-data: Read the URL captured by the scenario-only external opener.
       await sourceCommand(() => page.goto(fs.readFileSync(launched, 'utf8')));
       opened = await sourceCommand(() => command);
     });

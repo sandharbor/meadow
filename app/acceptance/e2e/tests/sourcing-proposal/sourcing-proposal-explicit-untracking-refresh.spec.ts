@@ -1,14 +1,12 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import fs from 'node:fs';
-import path from 'node:path';
-import YAML from 'yaml';
+import { MeadowHomeBundleConfig } from '../../src/run/utils/index.js';
 import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { SourcingProposalState } from '../../src/run/state/SourcingProposalState.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { scenarioSections, sourceReviewSensitivity, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../../concepts/index.js';
+import { trackAddedPages, changesTray, scenarioSections, sourceReviewSensitivity, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
 test.use({ fixtureHome: Fixture.SourcingReview });
@@ -69,10 +67,10 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '9be967e0-107
 
   await test.step(sections.steps.acceptancePersistsOverrideMakesItAvailableFor, async () => {
     await sourceCommand(() => sourcing.accept());
-    const directory = path.join(testServer.configDir, 'bundles/sourcing-review');
-    const nodes = YAML.parse(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).nodes as { bundleNodeName: string }[];
-    expect(nodes.some(node => node.bundleNodeName === 'Safe One')).toBe(true);
-    expect(nodes.some(node => node.bundleNodeName === 'Safe Two')).toBe(false);
+
+    const nodeConfig = new MeadowHomeBundleConfig(testServer.configDir, "sourcing-review", expect);
+    expect(nodeConfig.findNode({ bundleNodeName: 'Safe One' })).toBeDefined();
+    expect(nodeConfig.findNode({ bundleNodeName: 'Safe Two' })).toBeUndefined();
     await sourceCommand(() => editor.switchToListView());
     await sourceCommand(() => filters.enableAndSoloFilter('Untracked'));
     await sourceCommand(() => editor.expectListViewRowByExactNamePresent('Safe Two'));

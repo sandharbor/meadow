@@ -1,13 +1,14 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import fs from 'node:fs';
+import { MeadowHomeBundleConfig } from '../../src/run/utils/index.js';
 import path from 'node:path';
-import YAML from 'yaml';
+
 import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { scenarioSections, sourceReviewCleanup, sourceReviewAcceptance, orphan, blacklist, overrides, scopeExclusion, bridgeExclusion, conceptText, conceptLink, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../../concepts/index.js';
+import { trackAddedPages, changesTray, scenarioSections, sourceReviewCleanup, sourceReviewAcceptance, orphan, blacklist, overrides, scopeExclusion, bridgeExclusion, conceptText, conceptLink, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });
@@ -26,18 +27,18 @@ const sections = scenarioSections({
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
 
 test(name.name, { annotation: [{ type: 'scenario-id', description: '98d3a524-50f8-46a4-9213-a5404ef8c6ce' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
-  const { editor, sourcing, nodes, original } = await test.step(sections.steps.setup, async () => {
+  const { editor, sourcing, nodeConfig, original } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
     const sourcing = new SourcingWorkspacePage(page, expect);
     await sourceCommand(() => list.goto());
     await sourceCommand(() => list.clickBundle('sourcing-review'));
     await sourceCommand(() => editor.waitForLoad('sourcing-review'));
-    const configPath = path.join(testServer.configDir, 'bundles/sourcing-review/config/bundle_node_config.yaml');
-    const nodes = () => YAML.parse(fs.readFileSync(configPath, 'utf8')).nodes as Array<{ bundleNodeId: string; bundleNodeName: string; listType: string; outlinksDepth?: number }>;
-    const original = nodes();
+
+    const nodeConfig = new MeadowHomeBundleConfig(testServer.configDir, "sourcing-review", expect);
+    const original = nodeConfig.readNodes();
     await sourceCommand(() => checkpoint('accepted configuration includes the bridge dependents and the externally linked leaf'));
-    return { editor, sourcing, nodes, original };
+    return { editor, sourcing, nodeConfig, original };
   });
 
   await test.step(sections.steps.verifyScenarioBothExternalIntentionalDeparturesRequire, async () => {
@@ -54,13 +55,13 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '98d3a524-50f
       await sourceCommand(() => expect(sourcing.changeKind).toHaveText('Remove'));
       await sourceCommand(() => sourcing.expectSelectedRemovalReason('Not reachable'));
     }
-    expect(nodes()).toEqual(original);
+    expect(nodeConfig.readNodes()).toEqual(original);
     await sourceCommand(() => expect(page.getByRole('button', { name: 'Keep in config', exact: true })).toHaveCount(0));
     await sourceCommand(() => addKeyFrame(sourceReviewCleanup));
     await sourceCommand(() => checkpoint('both external and intentional departures require cleanup on acceptance'));
     await sourceCommand(() => sourcing.accept());
-    for (const name of ['Leaf', 'Departing', 'Outside']) expect(nodes().some(node => node.bundleNodeName === name)).toBe(false);
-    expect(nodes().find(node => node.bundleNodeName === 'Bridge')?.listType).toBe('blacklist');
+    for (const name of ['Leaf', 'Departing', 'Outside']) expect(nodeConfig.findNode({ bundleNodeName: name })).toBeUndefined();
+    expect(nodeConfig.findNode({ bundleNodeName: 'Bridge' })?.listType).toBe('blacklist');
     for (const name of ['Leaf', 'Departing', 'Outside']) expect(fs.existsSync(path.join(testServer.sourceGraphsDir, 'sourcing-review-data', `${name}.md`))).toBe(true);
     await sourceCommand(() => checkpoint('accepted configuration is cleaned while the blacklist and external files remain'));
 
@@ -83,7 +84,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '98d3a524-50f
   });
 
   await test.step(sections.steps.departingTrackedAfreshNewIdentityWithoutCleaned, async () => {
-    const returning = nodes().find(node => node.bundleNodeName === 'Departing') as { bundleNodeId: string; outlinksDepth?: number } | undefined;
+    const returning = nodeConfig.findNode({ bundleNodeName: 'Departing' }) as { bundleNodeId: string; outlinksDepth?: number } | undefined;
     expect(returning?.bundleNodeId).not.toBe('100000000004');
     expect(returning?.outlinksDepth).toBeUndefined();
     await sourceCommand(() => checkpoint('accepted re-expansion admits returning material without resurrecting its old configuration'));

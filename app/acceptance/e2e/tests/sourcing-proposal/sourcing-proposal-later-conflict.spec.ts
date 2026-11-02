@@ -1,13 +1,11 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import fs from 'node:fs';
-import path from 'node:path';
-import YAML from 'yaml';
+import { MeadowHomeBundleConfig } from '../../src/run/utils/index.js';
 import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { scenarioSections, pendingSourceProposal, pendingProposalRevalidation, sourceReviewConfigurationMerge, proposalConfigurationDraft, tracking, blacklist, checkpointViewRestoration, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../../concepts/index.js';
+import { configurationConflictsDialog, changesTray, conceptLink, scenarioSections, pendingSourceProposal, pendingProposalRevalidation, sourceReviewConfigurationMerge, proposalConfigurationDraft, tracking, blacklist, checkpointViewRestoration, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });
@@ -15,7 +13,7 @@ test.use({ fixtureHome: Fixture.SourcingReview });
 const name = linkedScenarioName(conceptText`Pending sourcing proposals preserve later curation decisions and require conflict resolution`);
 
 const description = linkedScenarioDescription(conceptText`Untrack two pages in a proposal, defer it, and blacklist the same pages in accepted curation. A separate
-tracking edit must survive either resolution. The conflicts are captured open before choosing, then
+tracking edit must survive either resolution. The ${conceptLink(configurationConflictsDialog.id, 'Configuration Conflicts Dialog')} from the ${conceptLink(changesTray.id, 'Changes Tray')} is captured open before choosing, then
 one keeps the saved blacklist and the other applies the proposed untrack.`);
 const sections = scenarioSections({
   setup: { type: 'setup', text: conceptText`Establish the starting state: an unrelated page is available for a later accepted tracking edit.` },
@@ -25,22 +23,22 @@ const sections = scenarioSections({
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: 'b5ad609f-77b6-4cbf-9e1f-80ff8d52db07' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
-  const { editor, sourcing, nodes } = await test.step(sections.steps.setup, async () => {
+  const { editor, sourcing, nodeConfig } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
     const sourcing = new SourcingWorkspacePage(page, expect);
-    const filename = path.join(testServer.configDir, 'bundles/sourcing-review/config/bundle_node_config.yaml');
-    const nodes = () => YAML.parse(fs.readFileSync(filename, 'utf8')).nodes;
+
+    const nodeConfig = new MeadowHomeBundleConfig(testServer.configDir, "sourcing-review", expect);
     await sourceCommand(() => list.goto());
     await sourceCommand(() => list.clickBundle('sourcing-review'));
     await sourceCommand(() => editor.waitForLoad('sourcing-review'));
     await sourceCommand(() => editor.switchToListView());
     await sourceCommand(() => editor.rightClickRow('Reference'));
     await sourceCommand(() => editor.clickContextMenuItemAndAwaitAutoSave('Untrack'));
-    expect(nodes().some((node: { bundleNodeName: string }) => node.bundleNodeName === 'Reference')).toBe(false);
+    expect(nodeConfig.findNode({ bundleNodeName: 'Reference' })).toBeUndefined();
     await sourceCommand(() => sourcing.openByLink('sourcing-review'));
     await sourceCommand(() => checkpoint('an unrelated page is available for a later accepted tracking edit'));
-    return { editor, sourcing, nodes };
+    return { editor, sourcing, nodeConfig };
   });
 
   const { referenceId } = await test.step(sections.steps.proposalSUntracksRemainIsolatedWhileAccepted, async () => {
@@ -62,8 +60,8 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'b5ad609f-77b
       page.waitForResponse(response => response.url().includes('/curation/node/track') && response.request().method() === 'POST' && response.ok()),
       page.getByTestId('selected-page-file:Routes/Reference.md').getByRole('button', { name: 'Track', exact: true }).click(),
     ]));
-    const referenceId = nodes().find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Reference').bundleNodeId;
-    for (const name of ['Leaf', 'Retained']) expect(nodes().find((node: { bundleNodeName: string }) => node.bundleNodeName === name).listType).toBe('blacklist');
+    const referenceId = nodeConfig.requireNode({ bundleNodeName: 'Reference' }).bundleNodeId;
+    for (const name of ['Leaf', 'Retained']) expect(nodeConfig.requireNode({ bundleNodeName: name }).listType).toBe('blacklist');
     await sourceCommand(() => checkpoint('accepted curation blacklists Leaf and Retained and retains the independent tracked page'));
     return { referenceId };
   });
@@ -76,7 +74,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'b5ad609f-77b
     await sourceCommand(() => sourcing.resolveConflicts(2));
     const conflict = sourcing.conflictReview;
     for (const text of ['Leaf', 'Retained', 'blacklist', 'Removed']) await sourceCommand(() => expect(conflict).toContainText(text));
-    await sourceCommand(() => addKeyFrame(sourceReviewConfigurationMerge));
+    await sourceCommand(() => addKeyFrame(sourceReviewConfigurationMerge, configurationConflictsDialog));
     await sourceCommand(() => checkpoint('both conflicts are open and unresolved before choosing'));
     return { conflict };
   });
@@ -87,9 +85,9 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'b5ad609f-77b
     await sourceCommand(() => expect(conflict).toContainText('All conflicts resolved.'));
     await sourceCommand(() => conflict.getByRole('button', { name: 'Close', exact: true }).click());
     await sourceCommand(() => sourcing.accept());
-    expect(nodes().find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Reference').bundleNodeId).toBe(referenceId);
-    expect(nodes().find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Leaf').listType).toBe('blacklist');
-    expect(nodes().find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Retained')).toBeUndefined();
+    expect(nodeConfig.requireNode({ bundleNodeName: 'Reference' }).bundleNodeId).toBe(referenceId);
+    expect(nodeConfig.requireNode({ bundleNodeName: 'Leaf' }).listType).toBe('blacklist');
+    expect(nodeConfig.findNode({ bundleNodeName: 'Retained' })).toBeUndefined();
     await sourceCommand(() => checkpoint('saved and proposed resolutions are accepted with unrelated tracking preserved'));
   });
 

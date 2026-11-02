@@ -1,7 +1,6 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import fs from 'node:fs';
-import path from 'node:path';
+import { AcceptedSourcingState, GenerationRecords } from '../src/run/utils/index.js';
 import { fileURLToPath } from 'node:url';
 import { getNodespecBlock, getNodespecForBundle } from '../../../runtime/system_tests/nodespecs/index.js';
 import { extractMainSectionLinkPaths, extractFooterBacklinkPaths } from '../../../runtime/system_tests/helpers/htmlLinkExtractor.js';
@@ -29,15 +28,15 @@ const sections = scenarioSections({
 });
 const areas = scenarioAreas([bundleSourcing, bundleGeneration], { subAreas: [sourceReviewWorkspace] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: '7fcae7e6-194d-4a16-99bd-326d24679ee5' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, sourceChanges, testServer, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
-  const { editor, previewModal, retainedPath, before } = await test.step(sections.steps.setup, async () => {
+  const { editor, previewModal, before } = await test.step(sections.steps.setup, async () => {
     const wf = new Workflows(page, expect);
     const editor = new BundleEditorPage(page, expect);
     const previewModal = new PreviewPublishModal(page, expect);
     await sourceCommand(() => wf.navigateToBigBundlePreview());
-    const retainedPath = path.join(testServer.configDir, 'bundles', slug, 'raw/tracked_page_content', `${originalTitle}.md`);
-    const before = fs.readFileSync(retainedPath, 'utf8');
+
+    const before = new AcceptedSourcingState(testServer.configDir, "meadow-test-bundle-big").retainedPageText(`${originalTitle}.md`);
     await sourceCommand(() => checkpoint('the accepted source state is established before changing files'));
-    return { editor, previewModal, retainedPath, before };
+    return { editor, previewModal, before };
   });
 
   await test.step(sections.steps.replaceSourcePage, async () => {
@@ -49,7 +48,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '7fcae7e6-194
     await sourceCommand(() => editor.clickPreview());
     await sourceCommand(() => previewModal.waitForPreviewComplete());
     await sourceCommand(() => previewModal.expectUntrackedPagesWarning());
-    expect(fs.readFileSync(retainedPath, 'utf8')).toBe(before);
+    expect(new AcceptedSourcingState(testServer.configDir, "meadow-test-bundle-big").retainedPageText(`${originalTitle}.md`)).toBe(before);
     await sourceCommand(() => addKeyFrame(sourceSnapshot));
     await sourceCommand(() => checkpoint('generation continues using the accepted checkpoint while live source differs'));
   });
@@ -66,10 +65,10 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '7fcae7e6-194
     await sourceCommand(() => editor.clickPreview());
     await sourceCommand(() => previewModal.waitForPreviewComplete());
     await sourceCommand(() => previewModal.expectUntrackedPagesWarning());
-    expect(fs.readFileSync(retainedPath, 'utf8')).not.toBe(before);
-    const generationInputs = path.join(testServer.configDir, 'bundles', slug, 'raw/generation_inputs');
-    const record = JSON.parse(fs.readFileSync(path.join(generationInputs, fs.readdirSync(generationInputs)[0]), 'utf8'));
-    const accepted = JSON.parse(fs.readFileSync(path.join(testServer.configDir, 'bundles', slug, 'raw/sourcing/state.json'), 'utf8'));
+    expect(new AcceptedSourcingState(testServer.configDir, "meadow-test-bundle-big").retainedPageText(`${originalTitle}.md`)).not.toBe(before);
+
+    const record = new GenerationRecords(testServer.configDir, slug).onlyInputs();
+    const accepted = new AcceptedSourcingState(testServer.configDir, "meadow-test-bundle-big").current;
     expect(record.sourceSnapshotId).toBe(accepted.acceptedId);
   });
 
@@ -82,8 +81,8 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '7fcae7e6-194
     const node = graph.nodes.find((item: { bundleNodeName: string }) => item.bundleNodeName === originalTitle);
     expect(Boolean(node)).toBe(nodeSpec.sourcing.isInWorkingGraph);
     expect(node.tracked).toBe(nodeSpec.curation.isTracked);
-    const versionsRoot = path.join(testServer.configDir, 'bundles', slug, 'html/generated_bundle_versions');
-    const html = fs.readFileSync(path.join(versionsRoot, fs.readdirSync(versionsRoot).find(name => /^v[A-Za-z0-9]{6}$/.test(name))!, `${originalTitle}.html`), 'utf8');
+
+    const html = new GenerationRecords(testServer.configDir, slug).onlyVersionPageText(`${originalTitle}.html`);
     expect(extractMainSectionLinkPaths(html).sort()).toEqual(nodeSpec.generation.htmlRenderedLinks.mainSectionLinks.map(link => link.relativeLinkPath).sort());
     expect(extractFooterBacklinkPaths(html).sort()).toEqual(nodeSpec.generation.htmlRenderedLinks.footerSectionBacklinks.map(link => link.relativeLinkPath).sort());
     await sourceCommand(() => addKeyFrame(sourceSnapshot));

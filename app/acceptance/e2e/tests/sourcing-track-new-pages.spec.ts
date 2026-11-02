@@ -3,13 +3,13 @@
 import { test, expect } from '../src/run/test-fixtures.js';
 import { Workflows } from '../src/run/workflows.js';
 import { BundleEditorPage, Pill, SelectedPageDetailComponent } from '../src/run/pages/index.js';
-import { scenarioSections, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../concepts/index.js';
+import { trackAddedPages, changesTray, conceptLink, scenarioSections, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 
 const name = linkedScenarioName(conceptText`Sourcing tracks safe additions by default and Track added pages can be turned off`);
 
-const description = linkedScenarioDescription(conceptText`Add a reachable page and review the source changes. Track added pages starts on, so the
+const description = linkedScenarioDescription(conceptText`Add a reachable page and review the source changes. ${conceptLink(trackAddedPages.id, 'Track Added Pages')} in the ${conceptLink(changesTray.id, 'Changes Tray')} starts on, so the
 page is counted among the tracking changes and arrives tracked. Turning it off leaves the page untracked until it is
 turned back on; acceptance applies whichever choice is current.`);
 const sections = scenarioSections({
@@ -35,7 +35,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '7437de34-d54
     await sourceCommand(() => review.open());
     await sourceCommand(() => review.expectTrackAdditions(true));
     await sourceCommand(() => expect(review.acceptedChange('1 tracking change')).toBeVisible());
-    await sourceCommand(() => addKeyFrame(sourceSnapshot));
+    await sourceCommand(() => addKeyFrame(sourceSnapshot, changesTray, trackAddedPages));
     await sourceCommand(() => checkpoint('the added page is tracked by default'));
   });
 

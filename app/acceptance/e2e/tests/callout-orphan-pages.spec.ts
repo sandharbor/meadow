@@ -17,7 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleEditorPage } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { scenarioSections, orphan, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from "../../../concepts/index.js";
+import { configurationRemovalsPanel, changesTray, conceptLink, scenarioSections, orphan, sourceSnapshot, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 const EXPECTED_ORPHAN_COUNT = 13;
@@ -29,11 +29,11 @@ test.use({ bundleMode: "single-file" });
 const name = linkedScenarioName(conceptText`Sourcing reviews existing and candidate orphans with removal on acceptance`);
 
 const description = linkedScenarioDescription(conceptText`Remove a link that leaves previously captured pages orphaned. Review the existing and
-proposed orphans, then confirm that acceptance removes the chosen configuration.`);
+proposed orphans through the ${conceptLink(changesTray.id, 'Changes Tray')}, then confirm that acceptance removes the chosen configuration.`);
 const sections = scenarioSections({
   setup: { type: 'setup', text: conceptText`Establish the starting state: bundle editor loaded.` },
   inspectOrphanSummary: { type: 'test', text: conceptText`Inspect the orphan summary.` },
-  openSourceReview: { type: 'test', text: conceptText`Open source review.` },
+  openSourceReview: { type: 'test', text: conceptText`Open the ${conceptLink(configurationRemovalsPanel.id, 'Configuration Removals Panel')} and inspect an existing orphan’s explanation.` },
   deferThenAcceptOrphanCleanup: { type: 'test', text: conceptText`Defer, then accept the orphan cleanup.` },
   removeIncomingLink: { type: 'test', text: conceptText`Remove the incoming link.` },
   acceptSourceUpdate: { type: 'test', text: conceptText`Accept the source update.` },
@@ -66,7 +66,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'fc541bcb-6df
     await sourceCommand(() => orphansModal.expectOrphanCount(EXPECTED_ORPHAN_COUNT));
     await sourceCommand(() => orphansModal.expectOrphanListed(CHILD_OF_BLACKLISTED));
     await sourceCommand(() => orphansModal.showExplanation(CHILD_OF_BLACKLISTED));
-    await sourceCommand(() => addKeyFrame(orphan));
+    await sourceCommand(() => addKeyFrame(orphan, changesTray, configurationRemovalsPanel));
     await sourceCommand(() => checkpoint("configuration removals beside Accept changes list unreachable config pages"));
     return { review, orphansModal };
   });

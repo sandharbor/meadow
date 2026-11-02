@@ -14,9 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { readFileSync, readdirSync } from "fs";
+import { readdirSync } from "fs";
+import { MeadowHomeBundleConfig, AcceptedSourcingState } from '../src/run/utils/index.js';
 import path from "path";
-import YAML from "yaml";
+
 import type {
   CreateBundleCliResult,
   GenerateBundleCliResult,
@@ -391,19 +392,13 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '5d8ab79c-23c
     });
 
     await test.step(sections.steps.inspectSavedConfigurationContent, async () => {
-      const bundleConfig = YAML.parse(readFileSync(
-        path.join(testServer.configDir, "bundles/notable-mental-models/config/bundle_config.yaml"),
-        "utf8",
-      )) as Record<string, unknown>;
+      const bundleConfig = new MeadowHomeBundleConfig(testServer.configDir, "notable-mental-models", expect).read() as Record<string, unknown>;
       expect(bundleConfig).toMatchObject({
         sourceDirectory: source.directory,
         defaultOutlinksDepth: 3,
         defaultInlinksDepth: 1,
       });
-      const nodeConfig = YAML.parse(readFileSync(
-        path.join(testServer.configDir, "bundles/notable-mental-models/config/bundle_node_config.yaml"),
-        "utf8",
-      )) as { nodes: Array<Record<string, unknown>> };
+      const nodeConfig = { nodes: new MeadowHomeBundleConfig(testServer.configDir, "notable-mental-models", expect).readNodes() };
       expect(nodeConfig.nodes).toHaveLength(32);
       const entryNode = nodeConfig.nodes.find(node => node.bundleNodeName === "Notable Mental Models");
       expect(entryNode).toMatchObject({
@@ -414,16 +409,10 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '5d8ab79c-23c
       });
       expect(bundleConfig.entryBundleNodeId).toBe(entryNode?.bundleNodeId);
       expect(bundleConfig.defaultTraversalBundleNodeId).toBe(entryNode?.bundleNodeId);
-      const trackedContentDirectory = path.join(
-        testServer.configDir,
-        "bundles/notable-mental-models/raw/tracked_page_content",
-      );
-      expect(readFileSync(path.join(trackedContentDirectory, "2025 taxes.md"), "utf8")).toContain("Tax preparation");
-      expect(() => readFileSync(path.join(trackedContentDirectory, "2026-02-02.md"), "utf8")).toThrow();
-      expect(() => readFileSync(
-        path.join(trackedContentDirectory, "Thoughts on Munger's Investment Portfolio.md"),
-        "utf8",
-      )).toThrow();
+
+      expect(new AcceptedSourcingState(testServer.configDir, "notable-mental-models").retainedPageText("2025 taxes.md")).toContain("Tax preparation");
+      expect(() => new AcceptedSourcingState(testServer.configDir, "notable-mental-models").retainedPageText("2026-02-02.md")).toThrow();
+      expect(() => new AcceptedSourcingState(testServer.configDir, "notable-mental-models").retainedPageText("Thoughts on Munger's Investment Portfolio.md")).toThrow();
 
       await sourceCommand(() => checkpoint("saved files agree with the accepted graph"));
     });

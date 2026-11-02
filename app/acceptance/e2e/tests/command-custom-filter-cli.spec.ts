@@ -1,7 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import fs from 'node:fs';
 import path from 'node:path';
+import { SourceGraphFiles } from '../src/run/utils/index.js';
 import { test, expect } from '../src/run/test-fixtures.js';
 import { filters, filterSensitivity, cli, bundleCuration, scenarioAreas, scenarioSections, linkedScenarioName, linkedScenarioDescription, conceptText, conceptLink } from '../../../concepts/index.js';
 import type { CustomFilterConfig } from '../../../contracts/types/shared/curation/customFilters.js';
@@ -53,7 +53,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'e86ae72b-15a
     fixture.flag('release');
     await sourceCommand(() => meadowCli.run(command('resume', id), { artifactName: 'resume-classifier' }));
     const failed = await sourceCommand(() => meadowCli.runFailure(command('wait', id), { artifactName: 'failed-classifier' }));
-    const result = JSON.parse(failed.stdout) as ExecutionResponse;
+    const result = meadowCli.failureResponse<ExecutionResponse>(failed);
     expect(result.status).toBe('failed');
     expect(result.evaluations[0].completed).toBeGreaterThan(0);
     expect(result.evaluations[0].diagnostics.some(item => item.stderr.includes('Intentional classifier failure'))).toBe(true);
@@ -103,7 +103,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'e86ae72b-15a
   await test.step(sections.steps.changed, async () => {
     const sourcePath = selected.nodes[0].bundleNodeKey.slice(5);
     const sourceRoot = path.join(testServer.sourceGraphsDir, 'meadow-test-bundles-data');
-    fs.appendFileSync(path.join(sourceRoot, sourcePath), '\nCommand classifier source input changed.\n');
+    new SourceGraphFiles(sourceRoot).append(sourcePath, '\nCommand classifier source input changed.\n');
     const reviewed = await sourceCommand(() => meadowCli.runJson<{ candidate: { id: string }; reviewToken: string }>(['bundle', 'sources', 'refresh', slug], { artifactName: 'capture-changed-input' }));
     await sourceCommand(() => meadowCli.run(['bundle', 'sources', 'accept', slug, '--snapshot', reviewed.candidate.id, '--review-token', reviewed.reviewToken], { artifactName: 'accept-changed-input' }));
     const changed = await sourceCommand(() => meadowCli.runJson<ExecutionResponse>(command('wait', id), { artifactName: 'changed-input-evaluation' }));

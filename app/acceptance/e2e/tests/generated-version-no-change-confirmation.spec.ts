@@ -14,11 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import fs from "fs";
-import path from "path";
+import { MeadowHomeFiles, GeneratedBundleVersions } from '../src/run/utils/index.js';
 import { test, expect } from "../src/run/test-fixtures.js";
 import { ChangesTab, PreviewPublishModal } from "../src/run/pages/index.js";
-import { GeneratedBundleVersions } from "../src/run/utils/index.js";
 import { Bundle, Workflows } from "../src/run/workflows.js";
 import { scenarioSections, versioning, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleGeneration } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
@@ -93,8 +91,8 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'ec53dab3-295
   });
 
   await test.step(sections.steps.checkRecordedVersionOperation, async () => {
-    const logPath = path.join(testServer.configDir, "logs", "meadow.log");
-    await sourceCommand(() => expect.poll(() => fs.readFileSync(logPath, "utf8"))
+
+    await sourceCommand(() => expect.poll(() => new MeadowHomeFiles(testServer.configDir).logText())
       .toMatch(/\[operation ([0-9a-f-]+)] \[version-create] Started[\s\S]*\[operation \1] \[version-create] Created version/));
 
     void bigBundle;

@@ -1,8 +1,8 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import fs from 'node:fs';
+import { MeadowHomeBundleConfig } from '../../src/run/utils/index.js';
 import { SourcingProposalState } from '../../src/run/state/SourcingProposalState.js';
-import path from 'node:path';
+
 import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
@@ -24,7 +24,7 @@ const sections = scenarioSections({
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: 'ba79e6c7-4b50-4a72-882a-de0230a677f0' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
-  const { editor, sourcing, proposal, configPath, saved } = await test.step(sections.steps.setup, async () => {
+  const { editor, sourcing, proposal, saved } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
     const sourcing = new SourcingWorkspacePage(page, expect);
@@ -34,17 +34,17 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'ba79e6c7-4b5
     await sourceCommand(() => editor.waitForLoad('sourcing-review'));
     await sourceCommand(() => editor.switchToListView());
     await sourceCommand(() => editor.expectListViewRowByExactNamePresent('Outside'));
-    const configPath = path.join(testServer.configDir, 'bundles/sourcing-review/config/bundle_node_config.yaml');
-    const saved = fs.readFileSync(configPath, 'utf8');
+
+    const saved = new MeadowHomeBundleConfig(testServer.configDir, "sourcing-review", expect).readNodesText();
     await sourceCommand(() => checkpoint('the bridge supplies the sole route to configured pages outside its folder'));
-    return { editor, sourcing, proposal, configPath, saved };
+    return { editor, sourcing, proposal, saved };
   });
 
   await test.step(sections.steps.completeImpactAutomaticallyEntersSourcingInsteadSaving, async () => {
     await sourceCommand(() => editor.rightClickRow('Bridge'));
     await sourceCommand(() => page.getByRole('button', { name: 'Blacklist', exact: true }).click());
     await sourceCommand(() => expect(sourcing.root).toBeVisible());
-    expect(fs.readFileSync(configPath, 'utf8')).toBe(saved);
+    expect(new MeadowHomeBundleConfig(testServer.configDir, "sourcing-review", expect).readNodesText()).toBe(saved);
     await sourceCommand(() => sourcing.select('Outside'));
     await sourceCommand(() => expect(sourcing.changeKind).toHaveText('Remove'));
     await sourceCommand(() => sourcing.expectSelectedRemovalReason('Not reachable'));
@@ -62,7 +62,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'ba79e6c7-4b5
     await sourceCommand(() => sourcing.select('Departing'));
     await sourceCommand(() => sourcing.expectNoSelectedSourceChange());
     expect(proposal.current.proposed.nodes.find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Departing')?.outlinksDepth).toBe(1);
-    expect(fs.readFileSync(configPath, 'utf8')).toBe(saved);
+    expect(new MeadowHomeBundleConfig(testServer.configDir, "sourcing-review", expect).readNodesText()).toBe(saved);
     await sourceCommand(() => checkpoint('reversing the exclusion restores the page and its saved depth setting'));
 
     await sourceCommand(() => sourcing.discard());

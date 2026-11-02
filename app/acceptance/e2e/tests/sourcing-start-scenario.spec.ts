@@ -42,6 +42,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '673d01ca-cd3
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'meadow-dev-scenario-')));
   const realHome = path.join(root, 'MeadowHome');
   fs.mkdirSync(realHome);
+  // e2e-allow-raw-data: Place a sentinel in the simulated real home to prove scenario opening preserves it.
   fs.writeFileSync(path.join(realHome, 'original-home.txt'), 'Preserve the original home');
   const devHomes = path.join(root, 'dev-homes');
   const devTools = await sourceCommand(() => startDevTools(expect, { MEADOW_HOME_DIRECTORY_OVERRIDE: realHome, MEADOW_DEV_HOMES_DIRECTORY: devHomes }));
@@ -84,6 +85,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '673d01ca-cd3
     });
 
     const { second } = await test.step(sections.steps.startAgainAfterExploring, async () => {
+      // e2e-allow-raw-data: Simulate an earlier manual exploration before opening a fresh scenario.
       fs.writeFileSync(path.join(opened[0], 'exploration.txt'), 'An earlier exploration');
       const second = await sourceCommand(() => startScenario());
       expect(opened[1]).not.toBe(opened[0]);

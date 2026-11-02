@@ -139,6 +139,22 @@ export function validateDocuments(documents: readonly MeadowDocument[]): string[
     if (document.kind === 'ui-sub-area' && document.appAreaIds?.length !== 1) {
       errors.push(`UI sub-area "${document.id}" must have exactly one owning app area.`);
     }
+    if (document.kind === 'ui-sub-area') {
+      const parent = document.parentId ? ids.get(document.parentId) : undefined;
+      if (parent?.kind === 'ui-sub-area' && parent.appAreaIds?.[0] !== document.appAreaIds?.[0]) {
+        errors.push(`UI sub-area "${document.id}" must have the same owning area as its parent.`);
+      }
+      const visited = new Set([document.id]);
+      let ancestor = parent;
+      while (ancestor?.kind === 'ui-sub-area') {
+        if (visited.has(ancestor.id)) {
+          errors.push(`UI sub-area "${document.id}" has a cycle in its parent hierarchy.`);
+          break;
+        }
+        visited.add(ancestor.id);
+        ancestor = ancestor.parentId ? ids.get(ancestor.parentId) : undefined;
+      }
+    }
     for (const area of document.appAreaIds ?? []) if (ids.get(area)?.kind !== 'app-area') errors.push(`Document "${document.id}" has invalid app area "${area}".`);
     if (document.parentId && !ids.has(document.parentId)) errors.push(`Document "${document.id}" has unknown parent "${document.parentId}".`);
   }

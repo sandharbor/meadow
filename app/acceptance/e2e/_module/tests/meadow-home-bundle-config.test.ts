@@ -59,3 +59,14 @@ test('missing node documents fail and invalid documents report their configurati
   fs.unlinkSync(nodesFile);
   assert.throws(() => config.readNodes());
 });
+
+test('independent saved depth edits preserve identity and reject ambiguous names', t => {
+  const { config, nodesFile, nodes } = fixture(t);
+  assert.throws(() => config.saveNodeDepths('Inside', { outlinksDepth: 0 }));
+  nodes[1].bundleNodeName = 'Other';
+  fs.writeFileSync(nodesFile, YAML.stringify({ nodes }));
+  const original = config.nodeNamed('Inside');
+  config.saveNodeDepths('Inside', { outlinksDepth: 0, inlinksDepth: 2 });
+  assert.deepEqual(config.nodeNamed('Inside'), { ...original, outlinksDepth: 0, inlinksDepth: 2 });
+  assert.equal(config.nodeNamed('Other').bundleNodeId, nodes[1].bundleNodeId);
+});

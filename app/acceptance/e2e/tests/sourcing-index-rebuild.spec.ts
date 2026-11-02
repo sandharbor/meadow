@@ -1,11 +1,11 @@
+import { SourceIndexState } from '../src/run/state/SourceIndexState.js';
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import fs from 'node:fs';
+import { MeadowHomeBundleConfig, AcceptedSourcingState } from '../src/run/utils/index.js';
 import { SourcingProposalState } from '../src/run/state/SourcingProposalState.js';
-import path from 'node:path';
-import { createHash } from 'node:crypto';
+
 import { execFileSync } from 'node:child_process';
-import YAML from 'yaml';
+
 import { test, expect } from '../src/run/test-fixtures.js';
 import { Workflows } from '../src/run/workflows.js';
 import { BundleEditorPage } from '../src/run/pages/index.js';
@@ -35,15 +35,11 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '2fd097fe-192
     // Freeze wall time before pausing timers so protocol latency cannot put the target in the past.
     await sourceCommand(() => page.clock.setFixedTime(pausedAt));
     await sourceCommand(() => page.clock.pauseAt(pausedAt));
-    const bundle = path.join(testServer.configDir, 'bundles/meadow-test-bundle-big');
-    const config = YAML.parse(fs.readFileSync(path.join(bundle, 'config/bundle_config.yaml'), 'utf8')) as { sourceDirectory: string };
-    const root = fs.realpathSync(config.sourceDirectory);
-    const key = createHash('sha256').update(root).digest('hex');
-    const indexPath = path.join(testServer.configDir, 'cache/source-index', key, 'last-run.json');
-    const readIndex = () => JSON.parse(fs.readFileSync(indexPath, 'utf8')) as {
-      sourceRoot: string; completedAtNanos: number; metrics: { cacheRebuilt: boolean; filesRead: number; indexedFiles: number };
-    };
-    const readState = () => JSON.parse(fs.readFileSync(path.join(bundle, 'raw/sourcing/state.json'), 'utf8')) as { acceptedId: string; candidateId?: string };
+    const index = new SourceIndexState(testServer.configDir, 'meadow-test-bundle-big', expect);
+    const root = index.sourceRoot;
+    const indexPath = index.diagnosticsPath;
+    const readIndex = () => index.current;
+    const readState = () => new AcceptedSourcingState(testServer.configDir, "meadow-test-bundle-big").current as { acceptedId: string; candidateId?: string };
     const before = readIndex();
     expect(before.sourceRoot).toBe(root);
     const acceptedId = readState().acceptedId;

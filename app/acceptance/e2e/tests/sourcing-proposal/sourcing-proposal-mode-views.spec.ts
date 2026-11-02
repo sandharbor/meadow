@@ -4,7 +4,7 @@ import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { scenarioSections, sourceReviewViewState, sourceReviewWorkspace, sourceReviewAcceptance, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration, bundleSourcing } from '../../../../concepts/index.js';
+import { pageChangesFilters, scenarioSections, sourceReviewViewState, sourceReviewWorkspace, sourceReviewAcceptance, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration, bundleSourcing } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });
@@ -26,7 +26,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '859397f6-6a4
     const editor = new BundleEditorPage(page, expect);
     const sourcing = new SourcingWorkspacePage(page, expect);
     const filters = new FilterPanelComponent(page, expect);
-    const savedView = (mode: string) => page.evaluate(mode => JSON.parse(localStorage.getItem(`meadow.editor-view.v1:sourcing-review:${mode}`) ?? '{}'), mode);
+    const savedView = (mode: string) => editor.savedView('sourcing-review', mode);
     const frameGraph = async (delta: number) => {
       const graph = page.getByTestId('graph-canvas');
       const box = (await graph.boundingBox())!;

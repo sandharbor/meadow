@@ -44,11 +44,14 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'e990e4cb-341
   ]) {
     const directory = path.join(reports, run, slug);
     fs.mkdirSync(directory, { recursive: true });
+    // e2e-allow-raw-data: Arrange a synthetic report artifact to exercise Dev Tools scenario discovery.
     fs.writeFileSync(path.join(directory, 'test-file.txt'), path.join(projectRoot, 'app/acceptance/e2e/tests', spec));
+    // e2e-allow-raw-data: Arrange a synthetic report manifest to exercise Dev Tools scenario discovery.
     fs.writeFileSync(path.join(directory, 'manifest.json'), JSON.stringify({ testName: title }));
   }
   // Dev Tools adopts this scenario's running home as its open saved state.
   const devHomes = fs.mkdtempSync(path.join(os.tmpdir(), 'meadow-dev-homes-'));
+  // e2e-allow-raw-data: Arrange a scenario-only Dev Tools saved-state registry.
   fs.writeFileSync(path.join(devHomes, 'current.json'), JSON.stringify({
     id: 'e2e-scenario-home',
     origin: { kind: 'fixture', fixture: 'home_fixture_big_and_small' },

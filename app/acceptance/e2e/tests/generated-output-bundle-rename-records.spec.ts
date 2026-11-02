@@ -1,7 +1,6 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import fs from 'fs';
-import path from 'path';
+import { AcceptedSourcingState, GenerationRecords } from '../src/run/utils/index.js';
 import { test, expect } from '../src/run/test-fixtures.js';
 import { BundleEditorPage, BundleListPage, ChangesTab, PreviewPublishModal } from '../src/run/pages/index.js';
 import { acceptSourceBaseline } from '../../../shared_code/shared_dev/sourceScenario.js';
@@ -39,10 +38,10 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '9f9993e2-874
 
   await test.step(sections.steps.renameBundleWhichRegeneratesCurrentVersion, async () => {
     await sourceCommand(() => meadowCli.runJson(['bundles', 'rename', slug, '--to', renamedSlug], { artifactName: 'rename' }));
-    const records = path.join(testServer.configDir, 'bundles', renamedSlug, 'raw', 'generation_inputs');
-    const inputs = JSON.parse(fs.readFileSync(path.join(records, `${generated.versionId}.json`), 'utf8'));
-    const output = JSON.parse(fs.readFileSync(path.join(records, `${generated.versionId}.output.json`), 'utf8'));
-    const accepted = JSON.parse(fs.readFileSync(path.join(testServer.configDir, 'bundles', renamedSlug, 'raw', 'sourcing', 'state.json'), 'utf8'));
+
+    const inputs = new GenerationRecords(testServer.configDir, renamedSlug).inputs(generated.versionId);
+    const output = new GenerationRecords(testServer.configDir, renamedSlug).output(generated.versionId);
+    const accepted = new AcceptedSourcingState(testServer.configDir, "meadow-test-bundle-big-renamed").current;
     expect(inputs).toMatchObject({ schemaVersion: 2, sourceSnapshotId: accepted.acceptedId, generationId: output.generationId });
     expect(output.output.owners.some((owner: { role: string }) => owner.role === 'page')).toBe(true);
     expect(output.includedSources.length).toBeGreaterThan(0);

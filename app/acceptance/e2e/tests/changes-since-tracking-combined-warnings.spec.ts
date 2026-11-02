@@ -1,7 +1,6 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import fs from 'node:fs';
-import path from 'node:path';
+import { AcceptedSourcingState } from '../src/run/utils/index.js';
 import { test, expect } from '../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent, PreviewPublishModal } from '../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
@@ -31,12 +30,12 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'c04a7606-5b1
     const review = new SourcingWorkspacePage(page, expect);
     const preview = new PreviewPublishModal(page, expect);
     const proposal = new SourcingProposalState(testServer, 'multi-source-mixed');
-    const directory = path.join(testServer.configDir, 'bundles/multi-source-mixed');
+
     await sourceCommand(() => list.goto());
     await sourceCommand(() => list.clickBundle('multi-source-mixed'));
     await sourceCommand(() => editor.waitForLoad('multi-source-mixed'));
     await sourceCommand(() => editor.waitForSourceCheck());
-    const accepted = JSON.parse(fs.readFileSync(path.join(directory, 'raw/sourcing/state.json'), 'utf8')).acceptedId;
+    const accepted = new AcceptedSourcingState(testServer.configDir, "multi-source-mixed").current.acceptedId;
     await sourceCommand(() => checkpoint('tracked nodes use the accepted source capture'));
     return { editor, filters, review, preview, proposal, accepted };
   });

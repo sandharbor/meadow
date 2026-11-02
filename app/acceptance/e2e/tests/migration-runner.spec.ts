@@ -36,6 +36,7 @@ const test = baseTest.extend({
   },
   _preSpawnSeed: async ({}, use) => {
     await use(async ({ configDir }) => {
+      // e2e-allow-raw-data: Seed the test-only migration document in its legacy schema before runtime starts.
       fs.writeFileSync(
         path.join(configDir, "migration-system-e2e.yaml"),
         YAML.stringify({
@@ -76,6 +77,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'ec8d200b-55a
     await sourceCommand(() => migrations.expectCompleted(MIGRATION_ID));
 
     const markerPath = path.join(testServer.configDir, "migration-system-e2e.yaml");
+    // e2e-allow-raw-data: The test-only migration must transform this exact legacy document schema.
     expect(YAML.parse(fs.readFileSync(markerPath, "utf8"))).toEqual({
       schemaVersion: 1,
       greeting: "migration system ready",

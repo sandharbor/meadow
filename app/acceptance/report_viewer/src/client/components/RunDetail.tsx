@@ -53,7 +53,7 @@ import type { FilterExpression } from '../../../../../contracts/types/shared/cur
 import { FilterMixPanel } from './FilterMixPanel.tsx'
 import { DocumentFilterPill } from './DocumentFilterPill.tsx'
 import { surfaceDocumentIds, sourceChangeDocumentIds } from '../filterDocuments.ts'
-import { groupSubAreas, groupUiSubAreas, subAreaAncestors, subAreaContains } from '../subAreaGroups.ts'
+import { groupSubAreas, groupUiSubAreas, subAreaAncestors, subAreaContains, uiSubAreaAncestors, uiSubAreaContains } from '../subAreaGroups.ts'
 import {
   SCENARIO_FILTER_SECTION_LABELS,
   addScenarioFilterTerm,
@@ -109,7 +109,7 @@ const FILTER_MIX_ALLOWED_VALUES: Partial<Record<ScenarioFilterSection, readonly 
 
 /** Rows whose own selection is ignored when listing a row's alternatives. */
 const AVAILABILITY_IGNORES: Record<ScenarioFilterSection, ScenarioFilterSection[]> = {
-  surface: ['surface'], mode: ['mode'], area: ['area', 'subarea', 'uisubarea', 'sourcechange', 'sourcechangesubtype'], subarea: ['subarea'], uisubarea: ['uisubarea'],
+  surface: ['surface'], mode: ['mode'], area: ['area', 'subarea', 'uisubarea', 'sourcechange', 'sourcechangesubtype'], subarea: ['subarea'], uisubarea: ['uisubarea', 'sourcechange', 'sourcechangesubtype'],
   sourcechange: ['sourcechange', 'sourcechangesubtype'], sourcechangesubtype: ['sourcechangesubtype'], doc: [], pressure: ['pressure'], bundle: ['bundle'],
 }
 
@@ -377,7 +377,10 @@ export default function RunDetail() {
   const selectedSourceChangeCategories = customMix || sourcingSelected ? selectedValues('sourcechange').filter(isSourceChangeCategory) : []
   const selectedSourceChangeSubtypeIds = selectedValues('sourcechangesubtype').filter(isSourceChangeSubtypeId)
     .filter(id => customMix || sourceChangeSubtypes.some(subtype => subtype.id === id && selectedSourceChangeCategories.includes(subtype.parent)))
-  const showSourceChanges = sourcingSelected || selectedSourceChangeCategories.length > 0 || selectedSourceChangeSubtypeIds.length > 0
+  const hasPageChangesFilters = uiSubAreaIds.has('page-changes-filters')
+  const pageChangesFiltersSelected = selectedUiSubAreaIds.includes('page-changes-filters')
+  const showSourceChanges = (!hasPageChangesFilters && sourcingSelected) || pageChangesFiltersSelected || selectedSourceChangeCategories.length > 0 || selectedSourceChangeSubtypeIds.length > 0
+  const leafUiSubAreaIds = selectedUiSubAreaIds.filter(id => !selectedUiSubAreaIds.some(other => other !== id && uiSubAreaContains(id, other, allDocs)))
   const detailAreas = appAreas.filter(area => subAreaGroups.some(group => group.area.id === area.id)
     || uiSubAreaGroups.some(group => group.area.id === area.id) || area.id === SOURCING_AREA_ID && showSourceChanges)
   const detailContextCount = new Set([...selectedAreas.map(area => area.id), ...detailAreas.map(area => area.id)]).size
@@ -425,7 +428,8 @@ export default function RunDetail() {
   /** Plain rows keep only sub-areas of the selected areas, and source changes only under Sourcing. */
   const plainFilters = (next: Partial<FilterValues>): FilterValues => {
     const areaIds = next.areaIds ?? selectedAreaIds
-    const categories = areaIds.includes(SOURCING_AREA_ID) ? next.sourceChangeCategories ?? selectedSourceChangeCategories : []
+    const keepSourceChanges = areaIds.includes(SOURCING_AREA_ID) && (!hasPageChangesFilters || next.uiSubAreaIds === undefined || next.uiSubAreaIds.includes('page-changes-filters'))
+    const categories = keepSourceChanges ? next.sourceChangeCategories ?? selectedSourceChangeCategories : []
     return {
       areaIds,
       subAreaIds: (next.subAreaIds ?? selectedSubAreaIds).filter(id => subAreaFitsAreas(id, areaIds)),
@@ -477,6 +481,10 @@ export default function RunDetail() {
     const removed = (section: ScenarioFilterSection, value: string) => {
       const key = FILTER_VALUE_KEYS[section]
       return (currentFilters[key] as string[]).includes(value) && !(nextFilters[key] as string[]).includes(value)
+    }
+    if (removed('uisubarea', 'page-changes-filters')) {
+      nextFilters.sourceChangeCategories = []
+      nextFilters.sourceChangeSubtypeIds = []
     }
     let expression = removeScenarioFilterTerms(customMix, removed)
     if (currentFilters.areaIds.some(id => removed('area', id))) {
@@ -623,7 +631,7 @@ export default function RunDetail() {
     return sets[section] ??= section === 'surface' ? new Set(executionSurfacesFor(scenario))
       : section === 'mode' ? new Set(scenario.bundleMode ? [scenario.bundleMode] : [])
       : section === 'area' ? new Set(scenario.appAreaDocIds)
-      : section === 'uisubarea' ? new Set([...scenarioConceptIds(scenario)].filter(id => uiSubAreaIds.has(id)))
+      : section === 'uisubarea' ? new Set([...scenarioConceptIds(scenario)].filter(id => uiSubAreaIds.has(id)).flatMap(id => [id, ...uiSubAreaAncestors(id, allDocs)]))
       : section === 'subarea' ? new Set(scenario.subAreaDocIds ?? [])
       : section === 'sourcechange' ? new Set([...(scenario.sourceChangeCategories ?? []), ...sourceChangeSubtypes.filter(subtype => scenarioConceptIds(scenario).has(subtype.id)).map(subtype => subtype.parent)])
       : section === 'sourcechangesubtype' ? new Set(sourceChangeSubtypes.filter(subtype => scenarioConceptIds(scenario).has(subtype.id)).map(subtype => subtype.id))
@@ -635,7 +643,7 @@ export default function RunDetail() {
     scenarioMatchesFilterExpression(expression, (section, value) => scenarioFilterValues(scenario, section).has(value))
 
   const plainSelections: ScenarioFilterSelections = {
-    surface: selectedExecutionSurfaces, mode: selectedBundleModes, area: selectedAreas.map(area => area.id), subarea: leafSubAreaIds, uisubarea: selectedUiSubAreaIds,
+    surface: selectedExecutionSurfaces, mode: selectedBundleModes, area: selectedAreas.map(area => area.id), subarea: leafSubAreaIds, uisubarea: leafUiSubAreaIds,
     sourcechange: selectedSourceChangeCategories, sourcechangesubtype: selectedSourceChangeSubtypeIds, doc: selectedDocIds, pressure: selectedPressureIds, bundle: selectedBundles.map(bundle => bundle.id),
   }
   const plainExpressionIgnoring = (sections: readonly ScenarioFilterSection[]) =>
@@ -880,20 +888,42 @@ export default function RunDetail() {
                   </div>
                 </div>
               })}
-            {uiSubAreaGroups.filter(group => group.area.id === area.id).map(({ uiSubAreas }) => <div key={`ui-${area.id}`} className="filter-section filter-areas area-subareas mb-1 rounded-md px-3 py-1.5">
-              <div className="filter-row" role="group" aria-label={`${area.name} UI sub-areas`}>
-                <span className="filter-label text-xs font-medium text-neutral-600">UI sub-areas</span>
-                <div className="filter-all"><button className="filter-default text-neutral-600 px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
-                  aria-pressed={!uiSubAreas.some(doc => selectedUiSubAreaIds.includes(doc.id))}
-                  onClick={() => setFilters({ uiSubAreaIds: selectedUiSubAreaIds.filter(id => !uiSubAreas.some(doc => doc.id === id)) })}>All</button></div>
-                <div className="filter-choices">{uiSubAreas.map(doc => {
-                  const selected = selectedUiSubAreaIds.includes(doc.id), available = availableUiSubAreaIds.has(doc.id)
-                  return <DocumentFilterPill key={doc.id} document={doc} selected={selected} available={available} title={available ? doc.description : undefined} onOpen={openConcept}
-                    onFilter={() => setFilters({ uiSubAreaIds: selected ? selectedUiSubAreaIds.filter(id => id !== doc.id) : [...selectedUiSubAreaIds, doc.id] })}>{doc.name}</DocumentFilterPill>
-                })}</div>
-              </div>
-            </div>)}
-            {area.id === SOURCING_AREA_ID && showSourceChanges && <div className="filter-section filter-areas area-subareas mb-1 rounded-md px-3 py-1.5">
+            {uiSubAreaGroups.filter(group => group.area.id === area.id).flatMap(({ rows }) => rows
+              .filter(row => !row.parent || selectedUiSubAreaIds.some(id => uiSubAreaContains(row.parent!.id, id, allDocs)))
+              .map(({ parent, ancestors, uiSubAreas }) => {
+                const inRow = (id: string) => uiSubAreas.some(doc => uiSubAreaContains(doc.id, id, allDocs))
+                const expandedParents = allDocs.filter(doc => doc.kind === 'ui-sub-area' && doc.appAreaIds?.includes(area.id)
+                  && selectedUiSubAreaIds.some(id => uiSubAreaContains(doc.id, id, allDocs))
+                  && (doc.id === 'page-changes-filters' || allDocs.some(child => child.kind === 'ui-sub-area' && child.parentId === doc.id)))
+                const showParentHeading = !!parent && expandedParents.length > 1
+                const clearRow = () => {
+                  const remaining = selectedUiSubAreaIds.filter(id => !inRow(id))
+                  setFilters({ uiSubAreaIds: parent && !remaining.includes(parent.id) ? [...remaining, parent.id] : remaining })
+                }
+                return <div key={`ui-${parent?.id ?? area.id}`} style={{ marginLeft: `${(ancestors.length + 1) * 16}px` }}>
+                  {showParentHeading && <h4 className="mb-0.5 ml-2 text-[11px] font-medium text-neutral-500">{parent.name}</h4>}
+                  <div className="filter-section filter-areas area-subareas mb-1 rounded-md px-3 py-1.5" style={{ marginLeft: 0 }}>
+                    <div className="filter-row" role="group" aria-label={`${parent?.name ?? area.name} UI sub-areas`}>
+                      <span className="filter-label text-xs font-medium text-neutral-600">UI sub-areas</span>
+                      <div className="filter-all"><button className="filter-default text-neutral-600 px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
+                        aria-pressed={!selectedUiSubAreaIds.some(inRow)} onClick={clearRow}>All</button></div>
+                      <div className="filter-choices">{uiSubAreas.map(doc => {
+                        const selected = selectedUiSubAreaIds.some(id => uiSubAreaContains(doc.id, id, allDocs)), available = availableUiSubAreaIds.has(doc.id)
+                        const toggle = () => {
+                          const remaining = selectedUiSubAreaIds.filter(id => selected ? !uiSubAreaContains(doc.id, id, allDocs) : !uiSubAreaAncestors(doc.id, allDocs).includes(id))
+                          if (selected && parent && !remaining.some(id => uiSubAreaContains(parent.id, id, allDocs))) remaining.push(parent.id)
+                          setFilters({ uiSubAreaIds: selected ? remaining : [...remaining, doc.id] })
+                        }
+                        return <DocumentFilterPill key={doc.id} document={doc} selected={selected} available={available} title={available ? doc.description : undefined} onOpen={openConcept}
+                          onFilter={toggle}>{doc.name}</DocumentFilterPill>
+                      })}</div>
+                    </div>
+                  </div>
+                </div>
+              }))}
+            {area.id === SOURCING_AREA_ID && showSourceChanges && <div style={hasPageChangesFilters ? { marginLeft: '32px' } : undefined}>
+              {hasPageChangesFilters && selectedUiSubAreaIds.some(id => uiSubAreaContains('changes-tray', id, allDocs)) && <h4 className="mb-0.5 ml-2 text-[11px] font-medium text-neutral-500">Page Changes Filters</h4>}
+              <div className="filter-section filter-areas area-subareas mb-1 rounded-md px-3 py-1.5" style={hasPageChangesFilters ? { marginLeft: 0 } : undefined}>
               <div className="filter-row" role="group" aria-label="Source changes">
                 <span className="filter-label text-xs font-medium text-neutral-600">Source changes</span>
                 <div className="filter-all"><button className="filter-default text-neutral-600 px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
@@ -905,13 +935,13 @@ export default function RunDetail() {
                     onFilter={() => setFilters({ sourceChangeCategories: selected ? selectedSourceChangeCategories.filter(item => item !== category) : [...selectedSourceChangeCategories, category] })}><span className="capitalize">{category}</span></DocumentFilterPill>
                 })}</div>
               </div>
-            </div>}
-            {area.id === SOURCING_AREA_ID && (['modify', 'remove'] as const).filter(category => selectedSourceChangeCategories.includes(category)
+            </div>
+            {(['modify', 'remove'] as const).filter(category => selectedSourceChangeCategories.includes(category)
               || customMix && selectedSourceChangeSubtypeIds.some(id => sourceChangeSubtypes.some(subtype => subtype.id === id && subtype.parent === category))).map(category => {
               const options = sourceChangeSubtypes.filter(subtype => subtype.parent === category)
               const selected = selectedSourceChangeSubtypeIds.filter(id => options.some(option => option.id === id))
               const parentName = category === 'modify' ? 'Modify' : 'Remove'
-              return <div key={category} className="filter-section filter-areas area-subareas source-change-subtypes mb-1 rounded-md px-3 py-1.5">
+              return <div key={category} className="filter-section filter-areas area-subareas source-change-subtypes mb-1 rounded-md px-3 py-1.5" style={hasPageChangesFilters ? { marginLeft: '16px' } : undefined}>
                 <div className="filter-row" role="group" aria-label={`${parentName} source change subtypes`}>
                   <span className="filter-label text-xs font-medium text-neutral-600">Source changes → {parentName}</span>
                   <div className="filter-all"><button className="filter-default text-neutral-600 px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
@@ -925,6 +955,7 @@ export default function RunDetail() {
                 </div>
               </div>
             })}
+            </div>}
           </section>
         })}
       </div>}

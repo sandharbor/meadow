@@ -31,6 +31,14 @@ import type { Expect } from "@playwright/test";
  * MeadowHomeGit — constructor takes connection info + Playwright expect.
  */
 export class MinioS3 {
+  async successorManifest(key: string): Promise<import('../../../../../contracts/types/shared/publishing-provider-host/publicationVersioning.js').ProviderSuccessorManifest> {
+    return JSON.parse(await this.getObjectContent(key));
+  }
+
+  async readerRouteIndex(key: string): Promise<import('../../../../../contracts/types/shared/generated-bundle-versioning/generatedBundleVersioning.js').GeneratedBundleReaderRouteIndex> {
+    return JSON.parse(await this.getObjectContent(key));
+  }
+
   private client: S3Client;
 
   constructor(

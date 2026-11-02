@@ -103,6 +103,17 @@ export function defaultScenarioFilterExpression(selections: ScenarioFilterSelect
         }),
       }
     })
+  // Page-change categories refine the Page Changes Filters branch of the UI row.
+  // Other selected UI regions remain alternatives to that refined branch.
+  if (selections.uisubarea.includes('page-changes-filters')) {
+    const ui = children.find(group => group.id === 'section-uisubarea')
+    const changes = children.filter(group => group.id === 'section-sourcechange' || group.id === 'section-sourcechangesubtype')
+    if (ui && changes.length) {
+      ui.children = ui.children.map(term => term.type === 'filter' && scenarioFilterTermParts(term)?.value === 'page-changes-filters'
+        ? { type: 'group', id: 'ui-page-changes', operator: 'intersection', children: [term, ...changes] } : term)
+      children.splice(0, children.length, ...children.filter(group => !changes.includes(group)))
+    }
+  }
   return children.length > 0 ? { type: 'group', id: ROOT_GROUP_ID, operator: 'intersection', children } : null
 }
 

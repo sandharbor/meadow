@@ -1,9 +1,8 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import fs from 'node:fs';
+import { MeadowHomeBundleConfig } from '../../src/run/utils/index.js';
 import { SourcingProposalState } from '../../src/run/state/SourcingProposalState.js';
-import path from 'node:path';
-import YAML from 'yaml';
+
 import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
@@ -24,7 +23,7 @@ const sections = scenarioSections({
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: 'e6c2836c-da56-4f84-9488-64b007b3989a' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
-  const { sourcing, proposal, directory, saved } = await test.step(sections.steps.setup, async () => {
+  const { sourcing, proposal, saved } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
     const sourcing = new SourcingWorkspacePage(page, expect);
@@ -32,15 +31,15 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'e6c2836c-da5
     await sourceCommand(() => list.goto());
     await sourceCommand(() => list.clickBundle('sourcing-review'));
     await sourceCommand(() => editor.waitForLoad('sourcing-review'));
-    const directory = path.join(testServer.configDir, 'bundles/sourcing-review');
-    const saved = fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8');
+
+    const saved = new MeadowHomeBundleConfig(testServer.configDir, "sourcing-review", expect).readNodesText();
     await sourceCommand(() => sourcing.openByLink('sourcing-review'));
     await sourceCommand(() => sourcing.select('Bridge'));
     await sourceCommand(() => sourcing.setSelectedOutlinkDepth(0));
     await sourceCommand(() => sourcing.select('Reference'));
     await sourceCommand(() => sourcing.untrackSelected());
     await sourceCommand(() => checkpoint('the proposed graph contains an eligible untracked page and departing configured pages'));
-    return { sourcing, proposal, directory, saved };
+    return { sourcing, proposal, saved };
   });
 
   await test.step(sections.steps.verifyScenarioMixedSelectionContainsCandidateDeparting, async () => {
@@ -51,13 +50,13 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'e6c2836c-da5
     await sourceCommand(() => expect(sourcing.root.getByRole('status')).toContainText('Skipped 1 selected page: Departing'));
     expect(proposal.current.tracking['file:Routes/Reference.md']).toMatchObject({ track: true, origin: 'explicit' });
     expect(proposal.current.tracking['file:Departing.md']).toBeUndefined();
-    expect(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).toBe(saved);
+    expect(new MeadowHomeBundleConfig(testServer.configDir, "sourcing-review", expect).readNodesText()).toBe(saved);
     await sourceCommand(() => addKeyFrame(sourceReviewWorkspace));
     await sourceCommand(() => checkpoint('the bulk action explicitly reports the skipped departure and stages only the eligible page'));
     await sourceCommand(() => sourcing.accept());
-    const nodes = YAML.parse(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).nodes;
-    expect(nodes.some((node: { bundleNodeName: string }) => node.bundleNodeName === 'Reference')).toBe(true);
-    expect(nodes.some((node: { bundleNodeName: string }) => node.bundleNodeName === 'Departing')).toBe(false);
+    const nodeConfig = new MeadowHomeBundleConfig(testServer.configDir, "sourcing-review", expect);
+    expect(nodeConfig.findNode({ bundleNodeName: 'Reference' })).toBeDefined();
+    expect(nodeConfig.findNode({ bundleNodeName: 'Departing' })).toBeUndefined();
     await sourceCommand(() => checkpoint('acceptance applies the full source proposal including cleanup of the skipped departure'));
   });
 

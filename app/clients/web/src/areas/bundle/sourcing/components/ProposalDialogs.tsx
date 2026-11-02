@@ -165,3 +165,10 @@ export function ProposalDialogs({ dialog, review, busy, close, later, discard, m
     {comparison && <SourcingComponentContentComparison evidence={comparison} request={request} onClose={() => onIdentityComparison(undefined)} />}
   </>;
 }
+
+import type { ParticipatesIn, pageIdentityPanel, configurationConflictsDialog, trackingSensitivityDialog } from '../../../../../../../concepts/index.js';
+export type ProposalDialogsMeadowConceptParticipations = [
+  ParticipatesIn<typeof pageIdentityPanel, 'render', typeof ProposalDialogs>,
+  ParticipatesIn<typeof configurationConflictsDialog, 'render', typeof ProposalDialogs>,
+  ParticipatesIn<typeof trackingSensitivityDialog, 'render', typeof ProposalDialogs>,
+];

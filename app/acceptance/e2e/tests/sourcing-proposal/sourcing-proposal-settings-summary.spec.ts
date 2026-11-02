@@ -1,13 +1,11 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import fs from 'node:fs';
-import path from 'node:path';
-import YAML from 'yaml';
+import { MeadowHomeBundleConfig, MeadowHomeFilters } from '../../src/run/utils/index.js';
 import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { scenarioSections, sourceConfigurationChange, proposalConfigurationDraft, sourceReviewWorkspace, tracking, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing } from '../../../../concepts/index.js';
+import { pageChangesFilters, pageChangesPanel, trackingChangesPanel, settingChangesPanel, changesTray, conceptLink, scenarioSections, sourceConfigurationChange, proposalConfigurationDraft, sourceReviewWorkspace, tracking, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });
@@ -15,17 +13,17 @@ test.use({ fixtureHome: Fixture.SourcingReview });
 const name = linkedScenarioName(conceptText`Sourcing summarizes staged settings and tracking edits without adding a graph change category`);
 
 const description = linkedScenarioDescription(conceptText`Review a changed source alongside staged traversal, tracking, bundle and global filters. The
-tray attached to Accept changes counts the page changes, staged settings, and tracking changes; each
+${conceptLink(changesTray.id, 'Changes Tray')} beside Accept changes counts the page changes, staged settings, and tracking changes; each
 item opens readable details, including before/after values, global scope, and pages that can be
 selected in the graph. Soloing Untracked changes presentation, while acceptance still applies the
 complete proposal.`);
 const sections = scenarioSections({
-  setup: { type: 'setup', text: conceptText`Establish the starting state: ordinary source changes are visible before staging additional settings.` },
-  verifyScenarioTrayUnderAcceptChangesLists: { type: 'test', text: conceptText`Verify the scenario: the tray under Accept changes lists each kind of staged change.` },
-  inspectStagedSettings: { type: 'test', text: conceptText`Inspect the staged settings.` },
-  inspectStagedTrackingChangeRemovalsUntrackPages: { type: 'test', text: conceptText`Inspect the staged tracking change; removals that untrack pages follow behind a toggle.` },
-  inspectPageChangeTray: { type: 'test', text: conceptText`Inspect a page change from the tray.` },
-  soloUntrackedPages: { type: 'test', text: conceptText`Solo untracked pages.` },
+  setup: { type: 'setup', text: conceptText`Establish the starting state: ordinary source changes are visible in ${conceptLink(sourceReviewWorkspace.id, 'Source Review Workspace')} before staging additional settings.` },
+  verifyScenarioTrayUnderAcceptChangesLists: { type: 'test', text: conceptText`Verify that the ${conceptLink(changesTray.id, 'Changes Tray')} lists each kind of staged change.` },
+  inspectStagedSettings: { type: 'test', text: conceptText`Inspect previous and proposed values in the ${conceptLink(settingChangesPanel.id, 'Setting Changes Panel')}.` },
+  inspectStagedTrackingChangeRemovalsUntrackPages: { type: 'test', text: conceptText`Inspect the staged tracking change in the ${conceptLink(trackingChangesPanel.id, 'Tracking Changes Panel')}; removals that untrack pages follow behind a toggle.` },
+  inspectPageChangeTray: { type: 'test', text: conceptText`Inspect a page in the ${conceptLink(pageChangesPanel.id, 'Page Changes Panel')} and select it in the graph.` },
+  soloUntrackedPages: { type: 'test', text: conceptText`Solo untracked pages while the ${conceptLink(changesTray.id, 'Changes Tray')} retains the complete proposal.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: 'd1647330-ccf7-428a-8bb5-87e69537129a' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
@@ -61,7 +59,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'd1647330-ccf
     await sourceCommand(() => filters.clickAddCustomFilter());
     await sourceCommand(() => filters.fillAndSaveCustomFilter({ name: 'Shared retained review', field: 'title', matchType: 'substring', value: 'Retained', scope: 'global' }));
     await sourceCommand(() => sourcing.expectAcceptedChanges([/^\d+ page changes$/, '3 setting changes', '4 tracking changes']));
-    await sourceCommand(() => addKeyFrame(proposalConfigurationDraft));
+    await sourceCommand(() => addKeyFrame(proposalConfigurationDraft, changesTray));
     await sourceCommand(() => checkpoint('the tray under Accept changes lists each kind of staged change'));
   });
 
@@ -75,7 +73,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'd1647330-ccf
     await sourceCommand(() => expect(settings).toContainText('All bundles'));
     await sourceCommand(() => expect(settings).not.toContainText('Reference'));
     await sourceCommand(() => expect(settings).not.toContainText('bundleNodeId'));
-    await sourceCommand(() => addKeyFrame(proposalConfigurationDraft));
+    await sourceCommand(() => addKeyFrame(proposalConfigurationDraft, settingChangesPanel));
     await sourceCommand(() => checkpoint('setting changes show each staged setting before and after'));
     return { settings };
   });
@@ -89,7 +87,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'd1647330-ccf
     await sourceCommand(() => trackingChanges.getByTestId('tracking-removals-toggle').click());
     await sourceCommand(() => expect(trackingChanges.getByTestId('tracking-removal')).toHaveCount(3));
     await sourceCommand(() => expect(trackingChanges.getByTestId('tracking-removal').first()).toContainText('Not Tracked (removed)'));
-    await sourceCommand(() => addKeyFrame(proposalConfigurationDraft));
+    await sourceCommand(() => addKeyFrame(proposalConfigurationDraft, trackingChangesPanel));
     await sourceCommand(() => checkpoint('tracking changes show the untracked page and the removals that untrack pages'));
   });
 
@@ -97,7 +95,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'd1647330-ccf
     const pageChanges = await sourceCommand(() => sourcing.openAcceptedChangeDetail(/^\d+ page changes$/, 'Page changes'));
     await sourceCommand(() => expect(pageChanges.getByRole('region', { name: 'Modify', exact: true })).toContainText('Start'));
     await sourceCommand(() => expect(pageChanges.getByRole('region', { name: 'Remove', exact: true })).toContainText('Leaf'));
-    await sourceCommand(() => addKeyFrame(sourceReviewWorkspace));
+    await sourceCommand(() => addKeyFrame(sourceReviewWorkspace, pageChangesPanel));
     await sourceCommand(() => sourcing.selectAcceptedPageChange('Leaf'));
     await sourceCommand(() => sourcing.expectSelectedChangeSummary('Leaf', 'Remove'));
     await sourceCommand(() => addKeyFrame(sourceReviewWorkspace));
@@ -112,12 +110,12 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'd1647330-ccf
     await sourceCommand(() => expect(sourcing.root.getByRole('checkbox', { name: /Staged decision/ })).toHaveCount(0));
     await sourceCommand(() => checkpoint('the ordinary Untracked filter shows an unchanged page with a staged untrack choice'));
     await sourceCommand(() => sourcing.accept());
-    const directory = path.join(testServer.configDir, 'bundles/sourcing-review/config');
-    const nodes = YAML.parse(fs.readFileSync(path.join(directory, 'bundle_node_config.yaml'), 'utf8')).nodes;
-    expect(nodes.find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Bridge').outlinksDepth).toBe(0);
-    expect(nodes.some((node: { bundleNodeName: string }) => node.bundleNodeName === 'Reference')).toBe(false);
-    expect(JSON.parse(fs.readFileSync(path.join(directory, 'custom_filters.json'), 'utf8')).filters.some((filter: { name: string }) => filter.name === 'Bridge emphasis')).toBe(true);
-    expect(JSON.parse(fs.readFileSync(path.join(testServer.configDir, 'app/global_custom_filters.json'), 'utf8')).filters.some((filter: { name: string }) => filter.name === 'Shared retained review')).toBe(true);
+    const bundleConfig = new MeadowHomeBundleConfig(testServer.configDir, 'sourcing-review', expect);
+    const savedFilters = new MeadowHomeFilters(testServer.configDir, 'sourcing-review');
+    expect(bundleConfig.nodeNamed('Bridge').outlinksDepth).toBe(0);
+    expect(bundleConfig.findNode({ bundleNodeName: 'Reference' })).toBeUndefined();
+    expect(savedFilters.bundleFilterNamed('Bridge emphasis')).toBeDefined();
+    expect(savedFilters.globalFilterNamed('Shared retained review')).toBeDefined();
     await sourceCommand(() => checkpoint('acceptance applies all settings filters tracking and source changes despite the solo'));
   });
 

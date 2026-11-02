@@ -1,14 +1,12 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import fs from 'node:fs';
-import path from 'node:path';
-import YAML from 'yaml';
+import { MeadowHomeBundleConfig } from '../../src/run/utils/index.js';
 import { SourcingProposalState } from '../../src/run/state/SourcingProposalState.js';
 import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { scenarioSections, sourceReviewIdentity, sourceChangesDuringReview, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing } from '../../../../concepts/index.js';
+import { pageIdentityPanel, changesTray, scenarioSections, sourceReviewIdentity, sourceChangesDuringReview, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });
@@ -27,12 +25,12 @@ const sections = scenarioSections({
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewIdentity] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: '3f58ea0a-6f02-4de3-869d-2965c0b497d2' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
-  const { sourcing, proposal, directory, earlier } = await test.step(sections.steps.setup, async () => {
+  const { sourcing, proposal, earlier } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
     const sourcing = new SourcingWorkspacePage(page, expect);
     const proposal = new SourcingProposalState(testServer, 'sourcing-review');
-    const directory = path.join(testServer.configDir, 'bundles/sourcing-review');
+
     await sourceCommand(() => list.goto());
     await sourceCommand(() => list.clickBundle('sourcing-review'));
     await sourceCommand(() => editor.waitForLoad('sourcing-review'));
@@ -47,7 +45,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '3f58ea0a-6f0
     const earlier = { ...proposal.current.identities };
     expect(Object.keys(earlier).sort()).toEqual(['100000000002', '100000000003', '100000000006', '100000000007']);
     await sourceCommand(() => checkpoint('every identity in the first rename review is decided'));
-    return { sourcing, proposal, directory, earlier };
+    return { sourcing, proposal, earlier };
   });
 
   await test.step(sections.steps.prepareScenarioVerifyStartingState, async () => {
@@ -86,11 +84,11 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '3f58ea0a-6f0
     await sourceCommand(() => checkpoint('the new decision and the changed earlier one are both kept'));
 
     await sourceCommand(() => sourcing.accept());
-    const nodes = YAML.parse(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).nodes as Array<{ bundleNodeId: string; bundleNodeName: string }>;
-    expect(nodes.find(node => node.bundleNodeId === '100000000005')?.bundleNodeName).toBe('Beyond');
-    expect(nodes.find(node => node.bundleNodeId === '100000000002')?.bundleNodeName).toBe('Gateway');
-    expect(nodes.some(node => node.bundleNodeId === '100000000003')).toBe(false);
-    expect(nodes.some(node => node.bundleNodeId === '100000000007')).toBe(false);
+    const nodeConfig = new MeadowHomeBundleConfig(testServer.configDir, "sourcing-review", expect);
+    expect(nodeConfig.findNode({ bundleNodeId: '100000000005' })?.bundleNodeName).toBe('Beyond');
+    expect(nodeConfig.findNode({ bundleNodeId: '100000000002' })?.bundleNodeName).toBe('Gateway');
+    expect(nodeConfig.findNode({ bundleNodeId: '100000000003' })).toBeUndefined();
+    expect(nodeConfig.findNode({ bundleNodeId: '100000000007' })).toBeUndefined();
     await sourceCommand(() => checkpoint('acceptance applies earlier and later identity decisions together'));
   });
 

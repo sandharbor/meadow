@@ -1,9 +1,8 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import fs from 'node:fs';
+import { MeadowHomeBundleConfig } from '../../src/run/utils/index.js';
 import { SourcingProposalState } from '../../src/run/state/SourcingProposalState.js';
-import path from 'node:path';
-import YAML from 'yaml';
+
 import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
@@ -24,7 +23,7 @@ const sections = scenarioSections({
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: '3edbe143-aa65-47b7-bdec-8422d2c3d888' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
-  const { editor, sourcing, proposal, directory, saved, original } = await test.step(sections.steps.setup, async () => {
+  const { editor, sourcing, proposal, saved, original } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
     const sourcing = new SourcingWorkspacePage(page, expect);
@@ -32,12 +31,12 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '3edbe143-aa6
     await sourceCommand(() => list.goto());
     await sourceCommand(() => list.clickBundle('sourcing-review'));
     await sourceCommand(() => editor.waitForLoad('sourcing-review'));
-    const directory = path.join(testServer.configDir, 'bundles/sourcing-review');
-    const saved = fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8');
-    const original = YAML.parse(saved).nodes.find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Departing');
+
+    const saved = new MeadowHomeBundleConfig(testServer.configDir, "sourcing-review", expect).readNodesText();
+    const original = new MeadowHomeBundleConfig(testServer.configDir, 'sourcing-review', expect).nodeNamed('Departing');
     await sourceCommand(() => sourcing.openByLink('sourcing-review'));
     await sourceCommand(() => checkpoint('configured pages are present before either provisional exclusion'));
-    return { editor, sourcing, proposal, directory, saved, original };
+    return { editor, sourcing, proposal, saved, original };
   });
 
   await test.step(sections.steps.verifyScenarioReducedDepthLeavesExcludedPage, async () => {
@@ -75,7 +74,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '3edbe143-aa6
     await sourceCommand(() => sourcing.expectNoSelectedSourceChange());
     await sourceCommand(() => expect(sourcing.selectedPage.getByText('Tracked', { exact: true })).toBeVisible());
     expect(proposal.current.proposed.nodes.find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Departing')).toEqual(original);
-    expect(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).toBe(saved);
+    expect(new MeadowHomeBundleConfig(testServer.configDir, "sourcing-review", expect).readNodesText()).toBe(saved);
     await sourceCommand(() => addKeyFrame(sourceReviewCleanup));
     await sourceCommand(() => checkpoint('reversing both exclusions restores the saved identity tracking and depth settings'));
     await sourceCommand(() => sourcing.discard());

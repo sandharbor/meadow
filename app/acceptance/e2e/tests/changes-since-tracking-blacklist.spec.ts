@@ -1,13 +1,13 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import fs from 'node:fs';
+import { MeadowHomeBundleConfig } from '../src/run/utils/index.js';
 import path from 'node:path';
-import YAML from 'yaml';
+
 import { test, expect } from '../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent, PreviewPublishModal } from '../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { SourcingProposalState } from '../src/run/state/SourcingProposalState.js';
-import { MeadowHomeBundleConfig } from '../src/run/utils/MeadowHomeBundleConfig.js';
 import { Fixture } from '../src/run/workflows.js';
 import { scenarioSections, trackedNodeBecomesSensitive, changesSinceTracking, blacklist, bridgeExclusion, conceptText, conceptLink,
   linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleCuration, bundleSourcing,
@@ -28,22 +28,20 @@ const sections = scenarioSections({
 const areas = scenarioAreas([bundleCuration, bundleSourcing, bundleGeneration], { subAreas: [sourceReviewWorkspace] });
 const pressures = scenarioDesignPressures([preventAccidentalSharing]);
 test(name.name, { annotation: [{ type: 'scenario-id', description: '738d7515-a266-4466-9a1c-46351067981b' }, name.annotation, description.annotation, areas.annotation, pressures.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
-  const { editor, filters, review, proposal, nodes, saved } = await test.step(sections.steps.setup, async () => {
+  const { editor, filters, review, proposal, nodeConfig, saved } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
     const filters = new FilterPanelComponent(page, expect);
     const review = new SourcingWorkspacePage(page, expect);
     const proposal = new SourcingProposalState(testServer, 'sourcing-review');
-    const directory = path.join(testServer.configDir, 'bundles/sourcing-review');
-    const filename = path.join(directory, 'config/bundle_node_config.yaml');
-    const nodes = () => YAML.parse(fs.readFileSync(filename, 'utf8')).nodes as { bundleNodeName: string; listType: string }[];
+    const nodeConfig = new MeadowHomeBundleConfig(testServer.configDir, "sourcing-review", expect);
     await sourceCommand(() => list.goto());
     await sourceCommand(() => list.clickBundle('sourcing-review'));
     await sourceCommand(() => editor.waitForLoad('sourcing-review'));
     await sourceCommand(() => editor.waitForSourceCheck());
-    const saved = nodes();
+    const saved = nodeConfig.readNodes();
     await sourceCommand(() => checkpoint('the tracked bridge has dependent pages and an independent route'));
-    return { editor, filters, review, proposal, nodes, saved };
+    return { editor, filters, review, proposal, nodeConfig, saved };
   });
 
   await test.step(sections.steps.surfaceBridgeOneDependentAsNewlySensitive, async () => {
@@ -59,7 +57,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '738d7515-a26
     await sourceCommand(() => review.blacklistSensitiveTracking('Bridge.md'));
     await sourceCommand(() => expect(review.sensitivityReview).toContainText('All tracking choices reviewed.'));
     expect(proposal.current.proposed.nodes.find(node => node.bundleNodeName === 'Bridge')?.listType).toBe('blacklist');
-    expect(nodes()).toEqual(saved);
+    expect(nodeConfig.readNodes()).toEqual(saved);
     await sourceCommand(() => review.sensitivityReview.getByRole('button', { name: 'Close', exact: true }).click());
     for (const title of ['Departing', 'Outside']) {
       await sourceCommand(() => review.select(title));
@@ -74,7 +72,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '738d7515-a26
 
   await test.step(sections.steps.discardRestoresAcceptedInclusionSavedSensitivityPolicy, async () => {
     await sourceCommand(() => review.discard());
-    expect(nodes()).toEqual(saved);
+    expect(nodeConfig.readNodes()).toEqual(saved);
     await sourceCommand(() => page.reload());
     await sourceCommand(() => review.expectSensitivityReviewReady());
     await sourceCommand(() => expect(review.sensitivityReviewNodes).toHaveCount(2));
@@ -85,9 +83,9 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '738d7515-a26
     await sourceCommand(() => review.blacklistSensitiveTracking('Bridge.md'));
     await sourceCommand(() => review.sensitivityReview.getByRole('button', { name: 'Close', exact: true }).click());
     await sourceCommand(() => review.accept());
-    expect(nodes().find(node => node.bundleNodeName === 'Bridge')?.listType).toBe('blacklist');
-    for (const title of ['Departing', 'Outside']) expect(nodes().some(node => node.bundleNodeName === title)).toBe(false);
-    expect(nodes().find(node => node.bundleNodeName === 'Retained')?.listType).toBe('whitelist');
+    expect(nodeConfig.findNode({ bundleNodeName: 'Bridge' })?.listType).toBe('blacklist');
+    for (const title of ['Departing', 'Outside']) expect(nodeConfig.findNode({ bundleNodeName: title })).toBeUndefined();
+    expect(nodeConfig.findNode({ bundleNodeName: 'Retained' })?.listType).toBe('whitelist');
     expect(fs.existsSync(path.join(testServer.sourceGraphsDir, 'sourcing-review-data/Departing.md'))).toBe(true);
     await sourceCommand(() => editor.clickPreview());
     await sourceCommand(() => new PreviewPublishModal(page, expect).waitForPreviewComplete());

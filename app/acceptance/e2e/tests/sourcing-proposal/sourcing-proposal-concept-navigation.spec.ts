@@ -45,6 +45,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '646aabe1-ce3
       const file = address.searchParams.get('file')!;
       const line = Number(address.searchParams.get('line'));
       expect(file).toBe('runtime/service/src/shared/source-snapshot/sourceSnapshots.ts');
+      // e2e-allow-raw-data: Verify a navigated concept implementation link against the actual source line.
       const actual = fs.readFileSync(path.resolve(import.meta.dirname, '../../../..', file), 'utf8').split('\n')[line - 1];
       expect(actual).toContain('export async function captureSourceSnapshot');
       await sourceCommand(() => expect(page.getByText(actual.trim(), { exact: false }).last()).toBeVisible());

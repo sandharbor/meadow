@@ -16,11 +16,11 @@ test.beforeEach(async ({ page }) => {
   ] as const;
   await page.route('**/api/runs/change-subtypes', route => route.fulfill({ json: { runId: 'change-subtypes', scenarios: examples.map(([name, conceptIds, categories]) => ({
     slug: name.replaceAll(' ', '-'), testName: name, status: 'passed', duration: 1,
-    bundleMode: 'single-file', executionSurface: 'browser', conceptIds, appAreaDocIds: ['bundle/sourcing'],
+    bundleMode: 'single-file', executionSurface: 'browser', conceptIds: ['page-changes-filters', ...conceptIds], appAreaDocIds: ['bundle/sourcing'],
     subAreaDocIds: [], sourceChangeCategories: categories, bundleDocIds: [], keyFrames: [], hasIssues: false,
   })) } }));
   await page.route('**/api/runs/change-subtypes/health', route => route.fulfill({ json: {} }));
-  await page.goto('/change-subtypes?view=list&area=bundle%2Fsourcing');
+  await page.goto('/change-subtypes?view=list&area=bundle%2Fsourcing&uisubarea=page-changes-filters');
 });
 
 test('selected parents reveal further-indented subtype rows on desktop and mobile', async ({ page }, testInfo) => {

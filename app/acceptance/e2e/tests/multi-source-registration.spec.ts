@@ -1,8 +1,8 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import fs from 'node:fs';
+import { MeadowHomeBundleConfig } from '../src/run/utils/index.js';
 import path from 'node:path';
-import YAML from 'yaml';
+
 import { test, expect } from '../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent, SelectedPageDetailComponent, Pill } from '../src/run/pages/index.js';
 import { SourcesControl } from '../src/run/pages/areas/bundle/sourcing/SourcesControl.js';
@@ -65,7 +65,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '01fdc497-043
 
   await test.step(sections.steps.inspectSavedSourceRegistration, async () => {
     await sourceCommand(() => sources.expectNotice());
-    const config = YAML.parse(fs.readFileSync(path.join(testServer.configDir, 'bundles', slug, 'config/bundle_config.yaml'), 'utf8')) as BundleConfig;
+    const config = new MeadowHomeBundleConfig(testServer.configDir, "multi-source-omitted", expect).read() as BundleConfig;
     const referenceId = config.sources!.find(source => source.name === 'reference')!.id;
     await sourceCommand(() => filters.disableFilter('Frontier'));
     await sourceCommand(() => filters.expandFilterGroup('Folders'));

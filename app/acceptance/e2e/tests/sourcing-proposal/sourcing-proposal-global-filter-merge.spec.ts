@@ -1,13 +1,11 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import fs from 'node:fs';
-import path from 'node:path';
-import YAML from 'yaml';
+import { MeadowHomeFilters } from '../../src/run/utils/MeadowHomeFilters.js';
 import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { scenarioSections, pendingSourceProposal, proposalConfigurationDraft, pendingProposalRevalidation, sourceReviewConfigurationMerge, filters, filterSensitivity, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../../concepts/index.js';
+import { configurationConflictsDialog, changesTray, scenarioSections, pendingSourceProposal, proposalConfigurationDraft, pendingProposalRevalidation, sourceReviewConfigurationMerge, filters, filterSensitivity, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });
@@ -31,8 +29,8 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'fe6156b8-57d
     const editor = new BundleEditorPage(page, expect);
     const panel = new FilterPanelComponent(page, expect);
     const sourcing = new SourcingWorkspacePage(page, expect);
-    const globalPath = path.join(testServer.configDir, 'app/global_custom_filters.json');
-    const globals = () => JSON.parse(fs.readFileSync(globalPath, 'utf8')).filters as { id: string; name: string; note?: string; enabled: boolean }[];
+
+    const globals = () => new MeadowHomeFilters(testServer.configDir, 'sourcing-review').globalFilters() as { id: string; name: string; note?: string; enabled: boolean }[];
     const create = async (name: string) => {
       await panel.clickAddCustomFilter();
       await panel.fillAndSaveCustomFilter({ name, field: 'title', matchType: 'substring', value: 'Reference', scope: 'global' });
@@ -42,7 +40,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'fe6156b8-57d
     await sourceCommand(() => editor.waitForLoad('sourcing-review'));
     for (const name of ['Shared review', 'Independent review', 'Obsolete review']) await sourceCommand(() => create(name));
     const defaultId = globals().find(filter => filter.name === 'Daily Notes (Sensitive)')!.id;
-    const original = fs.readFileSync(globalPath, 'utf8');
+    const original = globals();
     await sourceCommand(() => sourcing.openByLink('sourcing-review'));
     await sourceCommand(() => checkpoint('accepted global filters are available to both editor modes'));
     return { editor, panel, sourcing, globals, create, defaultId, original };
@@ -59,7 +57,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'fe6156b8-57d
   });
 
   await test.step(sections.steps.sensitivityPolicySavesImmediatelyOrdinaryPresentationDrafts, async () => {
-    expect(globals()).toEqual(JSON.parse(original).filters.filter((filter: { id: string }) => filter.id !== defaultId));
+    expect(globals()).toEqual(original.filter((filter: { id: string }) => filter.id !== defaultId));
     await sourceCommand(() => addKeyFrame(proposalConfigurationDraft));
     await sourceCommand(() => checkpoint('presentation drafts stay isolated while sensitivity default deletion saves immediately'));
     await sourceCommand(() => sourcing.later());
@@ -94,8 +92,8 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'fe6156b8-57d
     expect(globals().find(filter => filter.name === 'Independent review')).toMatchObject({ note: 'Independent accepted description', enabled: false });
     for (const name of ['Created in proposal', 'Created in curation']) expect(globals().some(filter => filter.name === name)).toBe(true);
     for (const name of ['Obsolete review', 'Daily Notes (Sensitive)']) expect(globals().some(filter => filter.name === name)).toBe(false);
-    const config = YAML.parse(fs.readFileSync(path.join(testServer.configDir, 'app/app_config.yaml'), 'utf8'));
-    expect(config.deletedDefaultFilterIds).toContain(defaultId);
+    const deletedDefaults = new MeadowHomeFilters(testServer.configDir, 'sourcing-review').deletedDefaultFilterIds();
+    expect(deletedDefaults).toContain(defaultId);
     await sourceCommand(() => page.reload());
     await sourceCommand(() => editor.waitForLoad('sourcing-review'));
     await sourceCommand(() => panel.expectFilterVisible('Created in proposal'));

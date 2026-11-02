@@ -1,13 +1,11 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import fs from 'node:fs';
-import path from 'node:path';
-import YAML from 'yaml';
+import { MeadowHomeBundleConfig } from '../../src/run/utils/index.js';
 import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { scenarioSections, sourceReviewIdentity, sourceReviewFiltering, sourceReviewWorkspace, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing } from '../../../../concepts/index.js';
+import { pageIdentityPanel, pageChangesPanel, changesTray, pageChangesFilters, conceptLink, scenarioSections, sourceReviewIdentity, sourceReviewFiltering, sourceReviewWorkspace, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
 test.use({ fixtureHome: Fixture.SourceIdentity });
@@ -60,7 +58,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '7b8dce45-84e
       Rename: ['Both Renamed', 'Renamed Only'],
       Modify: ['Bridge', 'Start'],
     }));
-    await sourceCommand(() => addKeyFrame(sourceReviewFiltering));
+    await sourceCommand(() => addKeyFrame(sourceReviewFiltering, pageChangesFilters));
     await sourceCommand(() => checkpoint('the combined page appears in both categories and once in the eight-page total'));
     await sourceCommand(() => sourcing.closeAcceptedChangeDetail());
     await sourceCommand(() => sourcing.clearSelection());
@@ -75,9 +73,9 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '7b8dce45-84e
     await sourceCommand(() => editor.expectListViewRowCount(6));
     await sourceCommand(() => checkpoint('Move and Rename solos include the combined page without duplicating its row'));
     await sourceCommand(() => sourcing.accept());
-    const config = YAML.parse(fs.readFileSync(path.join(testServer.configDir, 'bundles/source-identity/config/bundle_node_config.yaml'), 'utf8')) as { nodes: Array<{ bundleNodeId: string; bundleNodeName: string; sourceGraphSubdirectory: string; listType: string }> };
-    expect(config.nodes.find(node => node.bundleNodeId === '200000000005')).toMatchObject({ bundleNodeName: 'Both Renamed', sourceGraphSubdirectory: 'New', listType: 'whitelist' });
-    for (const id of ['200000000006', '200000000007', '200000000008']) expect(config.nodes.find(node => node.bundleNodeId === id)).toMatchObject({ sourceGraphSubdirectory: 'New', listType: 'whitelist' });
+    const config = new MeadowHomeBundleConfig(testServer.configDir, "source-identity", expect);
+    expect(config.findNode({ bundleNodeId: '200000000005' })).toMatchObject({ bundleNodeName: 'Both Renamed', sourceGraphSubdirectory: 'New', listType: 'whitelist' });
+    for (const id of ['200000000006', '200000000007', '200000000008']) expect(config.findNode({ bundleNodeId: id })).toMatchObject({ sourceGraphSubdirectory: 'New', listType: 'whitelist' });
     await sourceCommand(() => checkpoint('acceptance preserves identities and tracking across moves and renames'));
   });
   await sourceCommand(() => assertMeadowHomeState({ allowedUntracked: ['source_graphs/.source-changes.jsonl', 'source_graphs/source-identity-data/New/', 'source_graphs/source-identity-data/Old/Renamed Only.md'], allowedModified: ['source_graphs/source-identity-data/Start.md', 'source_graphs/source-identity-data/Bridge.md', 'source_graphs/source-identity-data/Old/Move Only.md', 'source_graphs/source-identity-data/Old/Rename Only.md', 'source_graphs/source-identity-data/Old/Both.md', 'source_graphs/source-identity-data/Old/Unique Empty.md', 'source_graphs/source-identity-data/Old/Common Empty.md', 'source_graphs/source-identity-data/Old/Changed Links Empty.md'] }));

@@ -5,7 +5,6 @@ import { Workflows } from '../src/run/workflows.js';
 import { BundleEditorPage } from '../src/run/pages/index.js';
 import { scenarioSections, sourceChange, orphan, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../concepts/index.js';
 
-
 test.use({ bundleMode: "single-file" });
 
 const name = linkedScenarioName(conceptText`Sourcing accepts a shared link deletion only when requested and explains its broken route`);

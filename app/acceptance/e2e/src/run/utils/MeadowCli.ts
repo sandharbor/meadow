@@ -77,6 +77,17 @@ export class MeadowCli {
     }
   }
 
+  /** CLI failures may prefix the structured diagnostic with human-readable context. */
+  failureDiagnostic<T>(failure: MeadowCliFailure): T {
+    const start = failure.stderr.indexOf('{');
+    if (start < 0) throw new Error('Expected a structured CLI failure diagnostic.');
+    return JSON.parse(failure.stderr.slice(start)) as T;
+  }
+
+  failureResponse<T>(failure: MeadowCliFailure): T {
+    return JSON.parse(failure.stdout) as T;
+  }
+
   async runFailure(
     args: string[],
     options: MeadowCliArtifactOptions,

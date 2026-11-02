@@ -3,6 +3,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { AcceptedSourcingState, SourceGraphFiles } from '../src/run/utils/index.js';
 import { test, expect } from '../src/run/test-fixtures.js';
 import { startDevTools } from '../src/run/devTools.js';
 import { BundleListPage, BundleEditorPage } from '../src/run/pages/index.js';
@@ -66,8 +67,8 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '2e2a6687-437
       expect(opened.ok).toBe(true);
       const { state, destination } = await sourceCommand(() => opened.json()) as { state: { homeDirectory: string }; destination: string };
       forkHome = state.homeDirectory;
-      const statePath = path.join(forkHome, 'bundles/multi-source-page/raw/sourcing/state.json');
-      const acceptedId = (JSON.parse(fs.readFileSync(statePath, 'utf8')) as { acceptedId: string }).acceptedId;
+
+      const acceptedId = new AcceptedSourcingState(forkHome, 'multi-source-page').current.acceptedId;
       await sourceCommand(() => page.goto(destination));
       const forkEditor = new BundleEditorPage(page, expect);
       await sourceCommand(() => forkEditor.waitForLoad('multi-source-page'));
@@ -78,15 +79,15 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '2e2a6687-437
       ]);
       await sourceCommand(() => refresh());
       await sourceCommand(() => expect(page.getByTestId('sourcing-status').getByRole('button', { name: /source changes.*Review/i })).toHaveCount(0));
-      expect(JSON.parse(fs.readFileSync(statePath, 'utf8'))).toMatchObject({ acceptedId });
-      expect(JSON.parse(fs.readFileSync(statePath, 'utf8')).candidateId).toBeUndefined();
+      expect(new AcceptedSourcingState(forkHome, 'multi-source-page').current).toMatchObject({ acceptedId });
+      expect(new AcceptedSourcingState(forkHome, 'multi-source-page').current.candidateId).toBeUndefined();
       await sourceCommand(() => addKeyFrame(checkpointConcept, startingSelection));
       await sourceCommand(() => checkpoint('the restored collection has no phantom changes after refreshing sources'));
       return { forkEditor, refresh };
     });
 
     await test.step(sections.steps.realChangeInForkStillDiscoveredExplained, async () => {
-      fs.appendFileSync(path.join(forkHome, 'source_graphs/multi-source/notes/Overview.md'), '\nA real edit after restoring the checkpoint.\n');
+      new SourceGraphFiles(path.join(forkHome, 'source_graphs')).append('multi-source/notes/Overview.md', '\nA real edit after restoring the checkpoint.\n');
       await sourceCommand(() => refresh());
       await sourceCommand(() => forkEditor.sourceReview.open());
       await sourceCommand(() => forkEditor.sourceReview.expectModified('_mw_sources/source000001/Overview.md'));

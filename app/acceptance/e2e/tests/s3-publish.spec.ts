@@ -20,7 +20,8 @@ import {
   test,
   expect,
 } from "../src/run/test-fixtures.js";
-import fs from "fs";
+
+import { MeadowHomeFiles } from '../src/run/utils/index.js';
 import path from "path";
 import { PreviewPublishModal, PublishToS3Tab, PublishedBundlePage } from "../src/run/pages/index.js";
 import { Workflows, Bundle } from "../src/run/workflows.js";
@@ -115,7 +116,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'f133eb45-0c0
     await sourceCommand(() => minioS3.expectHasHtmlFiles(`${versionNamespace}/`));
     const successorManifestKey = `${publishSlug}-versions.json`;
     expect(await sourceCommand(() => minioS3.listKeys(successorManifestKey))).toEqual([successorManifestKey]);
-    expect(JSON.parse(await sourceCommand(() => minioS3.getObjectContent(successorManifestKey)))).toEqual({
+    expect(await sourceCommand(() => minioS3.successorManifest(successorManifestKey))).toEqual({
       schemaVersion: 1,
       successors: {},
     });
@@ -189,7 +190,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'f133eb45-0c0
     const successorUrl = (await sourceCommand(() => publishSuccessorResponse.json()) as { publishedUrl: string }).publishedUrl;
     const successorNamespace = `${publishSlug}-${successorVersionId}`;
     await sourceCommand(() => minioS3.expectHasHtmlFiles(`${successorNamespace}/`));
-    const successorManifest = JSON.parse(await sourceCommand(() => minioS3.getObjectContent(successorManifestKey))) as {
+    const successorManifest = await sourceCommand(() => minioS3.successorManifest(successorManifestKey)) as {
       successors: Record<string, { versionId: string; versionRoot: string; entryPath: string }>;
     };
     expect(successorManifest.successors[versionId]).toMatchObject({
@@ -206,7 +207,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'f133eb45-0c0
   const { successorRouteKey, routeIndex } = await test.step(sections.steps.checkSuccessorRouteMappingRemoveStableIdentity, async () => {
     const successorRouteKey = (await sourceCommand(() => minioS3.listKeys(`${successorNamespace}/_mw_assets/versioning/routes.`)))[0];
     expect(successorRouteKey).toBeTruthy();
-    const routeIndex = JSON.parse(await sourceCommand(() => minioS3.getObjectContent(successorRouteKey))) as {
+    const routeIndex = await sourceCommand(() => minioS3.readerRouteIndex(successorRouteKey)) as {
       schemaVersion: 1;
       entryPath: string;
       routesByBundleNodeId: Record<string, string>;
@@ -310,7 +311,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'f133eb45-0c0
   await test.step(sections.steps.checkRetainedHistory, async () => {
     await sourceCommand(() => minioS3.expectEmpty(`${successorNamespace}/`));
     await sourceCommand(() => minioS3.expectHasFiles(`${versionNamespace}/`));
-    expect(JSON.parse(await sourceCommand(() => minioS3.getObjectContent(successorManifestKey)))).toEqual({
+    expect(await sourceCommand(() => minioS3.successorManifest(successorManifestKey))).toEqual({
       schemaVersion: 1,
       successors: {},
     });
@@ -333,7 +334,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'f133eb45-0c0
     expect(deletedState.status.kind).toBe("removed");
     expect(deletedState.revisions.map(revision => revision.remoteState)).toEqual(["deleted", "deleted", "deleted"]);
 
-    await sourceCommand(() => expect.poll(() => fs.readFileSync(path.join(testServer.configDir, "logs", "meadow.log"), "utf8"))
+    await sourceCommand(() => expect.poll(() => new MeadowHomeFiles(testServer.configDir).logText())
       .toMatch(/\[operation ([0-9a-f-]+)] \[s3-publish] Started[\s\S]*\[operation \1] \[s3-publish] Published version/));
     void bigBundle;
 

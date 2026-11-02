@@ -34,5 +34,8 @@ NODE_OPTIONS="${NODE_OPTIONS:-} --preserve-symlinks" npx tsx _module/scripts/lin
 echo "Linting page-object boundary in specs..."
 npx tsx _module/scripts/lint-no-direct-locators.ts
 
+echo "Linting intent-level data access in specs..."
+npx tsx _module/scripts/lint-no-raw-data.ts
+
 echo "Linting final-assertion placement in specs..."
 npx tsx _module/scripts/lint-final-assertion.ts

@@ -1,12 +1,11 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import fs from 'node:fs';
 import path from 'node:path';
-import YAML from 'yaml';
+
+import { SourceGraphFiles, GeneratedBundleVersions, MeadowHomeBundleConfig } from '../src/run/utils/index.js';
 import { test, expect } from '../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, PreviewPublishModal, PublishToS3Tab, PublishedBundlePage } from '../src/run/pages/index.js';
 import { SourcesControl } from '../src/run/pages/areas/bundle/sourcing/SourcesControl.js';
-import { GeneratedBundleVersions } from '../src/run/utils/index.js';
 import { scenarioSections, bundleSource, versioning, publicationRevision, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, bundleSharing, sourceSetupEdit } from '../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
@@ -35,7 +34,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'ee4a97bf-6ca
     await sourceCommand(() => editor.waitForLoad(slug));
     await sourceCommand(() => editor.waitForSourceCheck());
     const authored = path.join(testServer.sourceGraphsDir, 'multi-source/notes/Start.md');
-    const originalContent = fs.readFileSync(authored, 'utf8');
+    const originalContent = new SourceGraphFiles(path.dirname(authored)).text(path.basename(authored));
     await sourceCommand(() => editor.clickPreview());
     const modal = new PreviewPublishModal(page, expect);
     await sourceCommand(() => modal.waitForPreviewComplete());
@@ -73,11 +72,11 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'ee4a97bf-6ca
 
   const { successorUrl } = await test.step(sections.steps.openOldPublishedPage, async () => {
     await sourceCommand(() => sources.saveWithoutMaterialChanges());
-    expect(fs.readFileSync(authored, 'utf8')).toBe(originalContent);
-    const config = YAML.parse(fs.readFileSync(path.join(testServer.configDir, 'bundles', slug, 'config/bundle_config.yaml'), 'utf8'));
-    expect(config.sources.find((source: { id: string }) => source.id === 'source000001')).toMatchObject({ name: 'notebook', aliases: ['notes'] });
-    const other = YAML.parse(fs.readFileSync(path.join(testServer.configDir, 'bundles/multi-source-mixed/config/bundle_config.yaml'), 'utf8'));
-    expect(other.sources[0].name).toBe('notes');
+    expect(new SourceGraphFiles(path.dirname(authored)).text(path.basename(authored))).toBe(originalContent);
+    const config = new MeadowHomeBundleConfig(testServer.configDir, "multi-source-page", expect).read();
+    expect(config.sources!.find((source: { id: string }) => source.id === 'source000001')).toMatchObject({ name: 'notebook', aliases: ['notes'] });
+    const other = new MeadowHomeBundleConfig(testServer.configDir, "multi-source-mixed", expect).read();
+    expect(other.sources![0].name).toBe('notes');
     const providerApi = `/api/sharing/publishing-providers/S3PublishingProvider/bundles/${slug}`;
     const stateAfterAcceptance = await sourceCommand(() => page.request.get(`${providerApi}/publication-state`));
     expect(stateAfterAcceptance.ok()).toBe(true);
@@ -101,7 +100,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'ee4a97bf-6ca
     expect(successorKeys).toContain(`${successorNamespace}/sources/notebook/Overview.html`);
     expect(successorKeys).not.toContain(`${successorNamespace}/sources/notes/Overview.html`);
     const routeKey = successorKeys.find(key => /\/_mw_assets\/versioning\/routes\./.test(key))!;
-    const routes = JSON.parse(await sourceCommand(() => minioS3.getObjectContent(routeKey)));
+    const routes = await sourceCommand(() => minioS3.readerRouteIndex(routeKey));
     expect(routes.routesByBundleNodeId['95b568da6b98']).toBe('sources/notebook/Overview.html');
     await sourceCommand(() => addKeyFrame(versioning, publicationRevision));
     await sourceCommand(() => checkpoint('a connected successor is published while its predecessor remains available'));

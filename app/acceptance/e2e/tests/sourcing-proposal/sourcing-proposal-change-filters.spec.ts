@@ -1,14 +1,13 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import fs from 'node:fs';
+import { MeadowHomeBundleConfig } from '../../src/run/utils/index.js';
 import { SourcingProposalState } from '../../src/run/state/SourcingProposalState.js';
-import path from 'node:path';
-import YAML from 'yaml';
+
 import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { scenarioSections, sourceContentChange, sourceMissingRemoval, sourceUnreachableRemoval, sourceReviewWorkspace, sourceReviewFiltering, sourceReviewAcceptance, orphan, sourceMove, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing } from '../../../../concepts/index.js';
+import { pageIdentityPanel, changesTray, pageChangesFilters, conceptLink, scenarioSections, sourceContentChange, sourceMissingRemoval, sourceUnreachableRemoval, sourceReviewWorkspace, sourceReviewFiltering, sourceReviewAcceptance, orphan, sourceMove, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });
@@ -16,7 +15,7 @@ test.use({ fixtureHome: Fixture.SourcingReview });
 const name = linkedScenarioName(conceptText`Source-change filters alter only presentation and expose removal reasons and evidence`);
 
 const description = linkedScenarioDescription(conceptText`One capture includes additions, modifications, a rename, missing and unreachable departures, and
-unchanged context. Orphans overlap the departures rather than inflating their count. Category and
+unchanged context. Orphans overlap the departures rather than inflating their count. ${conceptLink(pageChangesFilters.id, 'Page Changes Filters')} and
 folder solos/hides affect only the view; acceptance still installs the entire reviewed proposal.`);
 const sections = scenarioSections({
   setup: { type: 'setup', text: conceptText`Establish the starting state: accepted material contains the original routes and identities.` },
@@ -26,18 +25,18 @@ const sections = scenarioSections({
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: 'cf10d7e1-184d-4c62-b964-54361693c518' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
-  const { editor, filters, sourcing, proposal, directory } = await test.step(sections.steps.setup, async () => {
+  const { editor, filters, sourcing, proposal } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
     const filters = new FilterPanelComponent(page, expect);
     const sourcing = new SourcingWorkspacePage(page, expect);
     const proposal = new SourcingProposalState(testServer, 'sourcing-review');
-    const directory = path.join(testServer.configDir, 'bundles/sourcing-review');
+
     await sourceCommand(() => list.goto());
     await sourceCommand(() => list.clickBundle('sourcing-review'));
     await sourceCommand(() => editor.waitForLoad('sourcing-review'));
     await sourceCommand(() => checkpoint('accepted material contains the original routes and identities'));
-    return { editor, filters, sourcing, proposal, directory };
+    return { editor, filters, sourcing, proposal };
   });
 
   const { reviewed } = await test.step(sections.steps.verifyScenarioCapturedEvidenceDistinguishesMissingFile, async () => {
@@ -82,12 +81,12 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'cf10d7e1-184
     await sourceCommand(() => addKeyFrame(sourceReviewWorkspace));
     await sourceCommand(() => sourcing.clearSelection());
     const reviewed = proposal.current;
-    await sourceCommand(() => addKeyFrame(sourceReviewFiltering));
+    await sourceCommand(() => addKeyFrame(sourceReviewFiltering, pageChangesFilters));
     await sourceCommand(() => checkpoint('each category has an exact count and the confirmed rename is one comparison node'));
     return { reviewed };
   });
 
-  const { nodes } = await test.step(sections.steps.soloHideCanCombineFolderFiltersWithout, async () => {
+  const { nodeConfig } = await test.step(sections.steps.soloHideCanCombineFolderFiltersWithout, async () => {
     await sourceCommand(() => filters.clickSoloOnFilter('Remove'));
     await sourceCommand(() => editor.expectListViewRowCount(3));
     await sourceCommand(() => filters.clickSoloOnFilter('Remove'));
@@ -102,14 +101,14 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'cf10d7e1-184
     expect(proposal.current).toEqual(reviewed);
     await sourceCommand(() => checkpoint('combined category and folder presentation leaves the complete proposal unchanged'));
     await sourceCommand(() => sourcing.accept());
-    const nodes = YAML.parse(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).nodes;
-    for (const name of ['Leaf', 'Departing', 'Outside', 'Reference']) expect(nodes.some((node: { bundleNodeName: string }) => node.bundleNodeName === name)).toBe(false);
-    expect(nodes.find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Reference Renamed')?.bundleNodeId).toBe('100000000003');
-    return { nodes };
+    const nodeConfig = new MeadowHomeBundleConfig(testServer.configDir, "sourcing-review", expect);
+    for (const name of ['Leaf', 'Departing', 'Outside', 'Reference']) expect(nodeConfig.findNode({ bundleNodeName: name })).toBeUndefined();
+    expect(nodeConfig.findNode({ bundleNodeName: 'Reference Renamed' })?.bundleNodeId).toBe('100000000003');
+    return { nodeConfig };
   });
 
   await test.step(sections.steps.safeOneAdditionTrackedByTrackAdded, async () => {
-    expect(nodes.some((node: { bundleNodeName: string }) => node.bundleNodeName === 'Safe One')).toBe(true);
+    expect(nodeConfig.findNode({ bundleNodeName: 'Safe One' })).toBeDefined();
     await sourceCommand(() => editor.switchToListView());
     await sourceCommand(() => editor.expectListViewRowByExactNamePresent('Safe One'));
     await sourceCommand(() => editor.expectListViewRowByExactNamePresent('Reference Renamed'));

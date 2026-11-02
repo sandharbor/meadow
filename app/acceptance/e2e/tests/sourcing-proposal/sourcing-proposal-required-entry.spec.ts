@@ -1,9 +1,10 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import fs from 'node:fs';
+import { MeadowHomeBundleConfig } from '../../src/run/utils/index.js';
 import { SourcingProposalState } from '../../src/run/state/SourcingProposalState.js';
 import path from 'node:path';
-import YAML from 'yaml';
+
 import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent } from '../../src/run/pages/index.js';
 import { SourcesControl } from '../../src/run/pages/areas/bundle/sourcing/SourcesControl.js';
@@ -24,16 +25,15 @@ const sections = scenarioSections({
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceSetupEdit, sourceReviewWorkspace] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: '12fd5e89-e493-47f3-b84f-03cb00e65e32' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
-  const { sourcing, proposal, sources, panel, directory, bundlePath, before, pendingId } = await test.step(sections.steps.setup, async () => {
+  const { sourcing, proposal, sources, panel, before, pendingId } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
     const sourcing = new SourcingWorkspacePage(page, expect);
     const proposal = new SourcingProposalState(testServer, 'multi-source-page');
     const sources = new SourcesControl(page, expect);
     const panel = new FilterPanelComponent(page, expect);
-    const directory = path.join(testServer.configDir, 'bundles/multi-source-page');
-    const bundlePath = path.join(directory, 'config/bundle_config.yaml');
-    const before = fs.readFileSync(bundlePath, 'utf8');
+
+    const before = new MeadowHomeBundleConfig(testServer.configDir, "multi-source-page", expect).readText();
     await sourceCommand(() => list.goto());
     await sourceCommand(() => list.clickBundle('multi-source-page'));
     await sourceCommand(() => editor.waitForLoad('multi-source-page'));
@@ -44,7 +44,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '12fd5e89-e49
     await sourceCommand(() => panel.fillAndSaveCustomFilter({ name: 'Preserved during repair', field: 'title', matchType: 'substring', value: 'Overview' }));
     const pendingId = proposal.current.id;
     await sourceCommand(() => checkpoint('page and filter edits are pending before the required start disappears'));
-    return { sourcing, proposal, sources, panel, directory, bundlePath, before, pendingId };
+    return { sourcing, proposal, sources, panel, before, pendingId };
   });
 
   await test.step(sections.steps.verifyScenarioMissingRequiredEntryBlocksGraph, async () => {
@@ -54,7 +54,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '12fd5e89-e49
     await sourceCommand(() => expect(sourcing.root.getByRole('alert')).toContainText('Start'));
     await sourceCommand(() => expect(sourcing.root.getByRole('button', { name: 'Accept changes', exact: true })).toBeDisabled());
     await sourceCommand(() => expect(page.getByTestId('graph-canvas')).toHaveCount(0));
-    expect(fs.readFileSync(bundlePath, 'utf8')).toBe(before);
+    expect(new MeadowHomeBundleConfig(testServer.configDir, "multi-source-page", expect).readText()).toBe(before);
     expect(proposal.current.id).toBe(pendingId);
     await sourceCommand(() => addKeyFrame(sourceReviewCleanup));
     await sourceCommand(() => checkpoint('the missing required entry blocks graph entry and acceptance without removing its configuration'));
@@ -69,7 +69,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '12fd5e89-e49
     expect(proposal.current.id).toBe(pendingId);
     expect(proposal.current.tracking['file:_mw_sources/source000003/Study.md']).toMatchObject({ track: false, origin: 'explicit' });
     expect(proposal.current.proposed.bundleFilters.some((filter: { name: string }) => filter.name === 'Preserved during repair')).toBe(true);
-    expect(fs.readFileSync(bundlePath, 'utf8')).toBe(before);
+    expect(new MeadowHomeBundleConfig(testServer.configDir, "multi-source-page", expect).readText()).toBe(before);
     await sourceCommand(() => sourcing.select('Incoming'));
     await sourceCommand(() => sourcing.expectSelectedRemovalReason('Disconnected'));
     await sourceCommand(() => expect(sourcing.evidence).not.toContainText('source was missing'));
@@ -77,12 +77,12 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '12fd5e89-e49
     await sourceCommand(() => addKeyFrame(startingSelection));
     await sourceCommand(() => checkpoint('the repaired proposal keeps its pending decisions and distinguishes disconnected material'));
     await sourceCommand(() => sourcing.accept());
-    const accepted = YAML.parse(fs.readFileSync(bundlePath, 'utf8'));
+    const accepted = new MeadowHomeBundleConfig(testServer.configDir, "multi-source-page", expect).read();
     expect(accepted.entryBundleNodeId).toBe('95b568da6b98');
     expect(accepted.defaultTraversalBundleNodeId).toBe('95b568da6b98');
-    expect(accepted.sources.map((source: { name: string }) => source.name)).toEqual(['notes', 'reference']);
-    const nodes = YAML.parse(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).nodes;
-    expect(nodes.some((node: { bundleNodeId: string }) => node.bundleNodeId === '3265a081dc61')).toBe(false);
+    expect(accepted.sources!.map((source: { name: string }) => source.name)).toEqual(['notes', 'reference']);
+    const nodeConfig = new MeadowHomeBundleConfig(testServer.configDir, "multi-source-page", expect);
+    expect(nodeConfig.findNode({ bundleNodeId: '3265a081dc61' })).toBeUndefined();
     await sourceCommand(() => panel.expectFilterVisible('Preserved during repair'));
     await sourceCommand(() => checkpoint('acceptance installs the repaired required entries pending filter and mandatory cleanup'));
   });

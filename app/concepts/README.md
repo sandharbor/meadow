@@ -122,7 +122,7 @@ The current product UI inventory is:
 | Owning app area | UI sub-areas |
 | --- | --- |
 | Bundles | Find in Bundles |
-| Sourcing | Tracking Changes Panel |
+| Sourcing | Changes Tray (Page Identity Panel, Page Changes Panel, Configuration Removals Panel, Setting Changes Panel, Tracking Changes Panel, Configuration Conflicts Dialog, Tracking Sensitivity Dialog, Track Added Pages); Page Changes Filters |
 | Curation | Graph Search, Graph Title Labels, Node Details, Node Path Details, Node Link Details, Source Folder Filter |
 | Review | Changes Tab, Preview Browser |
 
@@ -161,7 +161,19 @@ The catalog already captures `kind` and `appAreaIds`. A captured run retains its
 original classification, including older interface/workflow groupings. It needs
 a fresh run capture to acquire new grouping metadata. Runs with no catalog use
 the existing visibly labeled current-documentation fallback. Reassembly never
-rewrites a captured catalog. UI sub-area nesting is not currently a filter hierarchy.
+rewrites a captured catalog. A UI sub-area's `parentId` nests it under another
+UI sub-area with the same owner. Only the top-level regions appear initially;
+selecting one reveals its children in an indented row. A single expanded region
+needs no repeated heading; multiple expanded regions each show their name above
+their children. Children refine their parent branch and combine by Any with other
+UI branches. All in a child row returns to the parent; All in the area's UI row
+clears every branch. Child-only bookmarks reveal their ancestors.
+
+Sourcing exposes Changes Tray beside Page Changes Filters. The latter reveals
+Source changes and its existing Modify/Remove subtype rows. These categories
+refine only the Page Changes Filters branch when other UI branches are selected.
+UI ancestors are derived only from the captured UI hierarchy; old flat catalogs
+and source-change bookmarks retain their original behavior.
 
 ## Scenario areas
 

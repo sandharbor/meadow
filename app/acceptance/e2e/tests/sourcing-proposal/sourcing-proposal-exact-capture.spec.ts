@@ -1,6 +1,6 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import fs from 'node:fs';
+import { AcceptedSourcingState, SourceGraphFiles } from '../../src/run/utils/index.js';
 import path from 'node:path';
 import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, PreviewPublishModal } from '../../src/run/pages/index.js';
@@ -26,7 +26,7 @@ const sections = scenarioSections({
 });
 const areas = scenarioAreas([bundleSourcing, bundleGeneration], { subAreas: [sourceReviewWorkspace] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: 'a1240dd2-45c4-4c32-a1e7-6fc8ff7e2786' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, sourceChanges, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
-  const { editor, sourcing, directory, state } = await test.step(sections.steps.setup, async () => {
+  const { editor, sourcing, state } = await test.step(sections.steps.setup, async () => {
     await sourceCommand(() => page.clock.install());
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
@@ -34,10 +34,10 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'a1240dd2-45c
     await sourceCommand(() => list.goto());
     await sourceCommand(() => list.clickBundle('example-bundle'));
     await sourceCommand(() => editor.waitForLoad('example-bundle'));
-    const directory = path.join(testServer.configDir, 'bundles/example-bundle');
-    const state = () => JSON.parse(fs.readFileSync(path.join(directory, 'raw/sourcing/state.json'), 'utf8'));
+
+    const state = () => new AcceptedSourcingState(testServer.configDir, "example-bundle").current;
     await sourceCommand(() => checkpoint('accepted text and diagram are the original revision A'));
-    return { editor, sourcing, directory, state };
+    return { editor, sourcing, state };
   });
 
   const { candidateB } = await test.step(sections.steps.captureBReviewBothTextImageBefore, async () => {
@@ -60,8 +60,8 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'a1240dd2-45c
   await test.step(sections.steps.secondEditDuringReviewDeliberatelyEphemeralIt, async () => {
     const sourceRoot = path.join(testServer.sourceGraphsDir, 'example-bundle-data');
     for (const relative of ['Cognitive Biases.md', 'images/Mental Models Diagram.svg']) {
-      const filename = path.join(sourceRoot, relative);
-      fs.writeFileSync(filename, fs.readFileSync(filename, 'utf8').replaceAll('Reviewed revision B', 'Live revision C'));
+
+      new SourceGraphFiles(sourceRoot).replaceText(relative, 'Reviewed revision B', 'Live revision C');
     }
     await sourceCommand(() => page.clock.fastForward(30000));
     await sourceCommand(() => expect(sourcing.root.getByRole('status').filter({ hasText: 'Newer sources available' })).toBeVisible());
@@ -81,7 +81,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'a1240dd2-45c
     const preview = new PreviewPublishModal(page, expect);
     await sourceCommand(() => preview.waitForPreviewComplete());
     await sourceCommand(() => preview.expectUntrackedPagesWarning());
-    const generatedText = fs.readFileSync(path.join(directory, 'raw/tracked_page_content/Cognitive Biases.md'), 'utf8');
+    const generatedText = new AcceptedSourcingState(testServer.configDir, "example-bundle").retainedPageText("Cognitive Biases.md");
     expect(generatedText).toContain('Reviewed revision B');
     expect(generatedText).not.toContain('Live revision C');
     const imageResponse = await sourceCommand(() => page.request.get('/api/bundles/example-bundle/generation/source-file/images%2FMental%20Models%20Diagram.svg'));

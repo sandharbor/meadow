@@ -123,8 +123,10 @@ test('semantic titles participate in checked passages, backlinks, and immutable 
 test('UI sub-areas have one real owner and preserve their captured classification across catalog changes', t => {
   const ui = allCoreConcepts.filter(concept => concept.kind === 'ui-sub-area');
   assert.deepEqual(ui.map(concept => concept.name).sort(), [
-    'Changes Tab', 'Find in Bundles', 'Graph Search', 'Graph Title Labels', 'Node Details',
-    'Node Link Details', 'Node Path Details', 'Preview Browser', 'Source Folder Filter', 'Tracking Changes Panel',
+    'Changes Tab', 'Changes Tray', 'Configuration Conflicts Dialog', 'Configuration Removals Panel',
+    'Find in Bundles', 'Graph Search', 'Graph Title Labels', 'Node Details',
+    'Node Link Details', 'Node Path Details', 'Page Changes Filters', 'Page Changes Panel', 'Page Identity Panel',
+    'Preview Browser', 'Setting Changes Panel', 'Source Folder Filter', 'Track Added Pages', 'Tracking Changes Panel', 'Tracking Sensitivity Dialog',
   ]);
   for (const concept of ui) {
     assert.equal(concept.appAreaIds?.length, 1);
@@ -132,6 +134,10 @@ test('UI sub-areas have one real owner and preserve their captured classificatio
     assert.ok(validateConceptRegistry(allCoreConcepts.map(original => original.id === concept.id
       ? { ...concept, appAreaIds: [] } : original)).some(error => error.includes('exactly one owning app area')));
   }
+  assert.ok(validateConceptRegistry(allCoreConcepts.map(concept => concept.id === 'node-details'
+    ? { ...concept, parentId: 'changes-tray' } : concept)).some(error => error.includes('same owning area')));
+  assert.ok(validateConceptRegistry(allCoreConcepts.map(concept => concept.id === 'changes-tray'
+    ? { ...concept, parentId: 'tracking-changes-panel' } : concept)).some(error => error.includes('cycle')));
   const root = mkdtempSync(path.join(os.tmpdir(), 'meadow-ui-catalog-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   writeFileSync(path.join(root, 'scenario.spec.ts'), source);

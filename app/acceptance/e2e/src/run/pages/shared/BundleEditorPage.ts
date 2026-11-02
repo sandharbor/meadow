@@ -39,6 +39,11 @@ function isBundleConfigResponse(response: Response): boolean {
 }
 
 export class BundleEditorPage {
+  savedView(bundleSlug: string, mode: string) {
+    return this.page.evaluate(({ bundleSlug, mode }) =>
+      JSON.parse(localStorage.getItem(`meadow.editor-view.v1:${bundleSlug}:${mode}`) ?? '{}'), { bundleSlug, mode });
+  }
+
   readonly sourceReview: SourceReviewWorkspace;
 
   constructor(

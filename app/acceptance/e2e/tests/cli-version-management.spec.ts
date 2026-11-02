@@ -157,12 +157,15 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '8b742038-630
     );
     const frozenIndexPath = findGeneratedHtmlFile(frozenVersionDirectory);
     expect(frozenIndexPath).not.toBe("");
+    // e2e-allow-raw-data: Retain the original frozen HTML bytes to prove repair restores them exactly.
     const frozenIndex = fs.readFileSync(frozenIndexPath, "utf8");
+    // e2e-allow-raw-data: Inject accidental edits into frozen HTML to exercise integrity repair.
     fs.appendFileSync(frozenIndexPath, "\n<!-- simulated accidental edit -->\n", "utf8");
     const restored = await sourceCommand(() => meadowCli.runJson<{ operation: string; success: boolean }>([
       "bundle", "versions", "restore", Bundle.Big, originalVersionId,
     ], { artifactName: "versions-restore-frozen" }));
     expect(restored).toMatchObject({ operation: "bundle.versions.restore", success: true });
+    // e2e-allow-raw-data: Repair must restore the exact original frozen HTML bytes.
     expect(fs.readFileSync(frozenIndexPath, "utf8")).toBe(frozenIndex);
 
     await sourceCommand(() => checkpoint("restoration recovers the original content"));

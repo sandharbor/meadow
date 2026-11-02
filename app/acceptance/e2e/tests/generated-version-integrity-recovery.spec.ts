@@ -85,6 +85,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '2a0ec475-6a3
       .find(relativePath => relativePath.endsWith(".html"));
     expect(frozenHtmlPath).toBeTruthy();
     const frozenHtmlFile = path.join(frozenDirectory, frozenHtmlPath!);
+    // e2e-allow-raw-data: Inject a corrupt frozen generation to exercise recovery through the UI.
     fs.appendFileSync(frozenHtmlFile, "\n<!-- injected frozen edit -->\n");
     return { frozenHtmlFile };
   });
@@ -105,6 +106,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '2a0ec475-6a3
       .filter({ hasText: initialVersion.versionId })
       .getByRole("button", { name: "Delete Local Files", exact: true })).toBeEnabled());
     await sourceCommand(() => expect(page.getByText("Integrity Problem", { exact: true })).toHaveCount(0));
+    // e2e-allow-raw-data: Inspect repaired HTML bytes for the injected corruption marker.
     expect(fs.readFileSync(frozenHtmlFile, "utf8")).not.toContain("injected frozen edit");
 
     await sourceCommand(() => addKeyFrame(restoringFrozenVersion));

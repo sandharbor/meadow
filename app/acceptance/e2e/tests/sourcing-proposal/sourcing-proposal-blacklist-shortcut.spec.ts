@@ -1,9 +1,8 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import fs from 'node:fs';
+import { MeadowHomeBundleConfig } from '../../src/run/utils/index.js';
 import { SourcingProposalState } from '../../src/run/state/SourcingProposalState.js';
-import path from 'node:path';
-import YAML from 'yaml';
+
 import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
@@ -35,8 +34,8 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '09fc160a-3e3
     await sourceCommand(() => list.clickBundle('sourcing-review'));
     await sourceCommand(() => editor.waitForLoad('sourcing-review'));
     await sourceCommand(() => editor.switchToListView());
-    const configPath = path.join(testServer.configDir, 'bundles/sourcing-review/config/bundle_node_config.yaml');
-    const configuration = () => YAML.parse(fs.readFileSync(configPath, 'utf8'));
+
+    const configuration = () => ({ nodes: new MeadowHomeBundleConfig(testServer.configDir, "sourcing-review", expect).readNodes() });
     const original = configuration();
     await sourceCommand(() => checkpoint('a leaf and a bridge have different effects on the complete graph'));
     return { editor, sourcing, proposal, configuration, original };

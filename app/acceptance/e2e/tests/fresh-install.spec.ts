@@ -1,8 +1,8 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import { execFileSync } from "node:child_process";
-import fs from "node:fs";
-import path from "node:path";
+
+import { MeadowHomeFiles } from '../src/run/utils/index.js';
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage } from "../src/run/pages/index.js";
 import { scenarioSections, emptyHome, homeCommit, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundles } from "../../../concepts/index.js";
@@ -32,10 +32,10 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '793de8b7-838
 
   await test.step(sections.steps.checkHomeApplicationCreated, async () => {
     const home = testServer.configDir;
-    expect(fs.readFileSync(path.join(home, "meadow_home.yaml"), "utf8")).toContain("formatVersion: 1");
+    expect(new MeadowHomeFiles(home).formatVersion()).toBe(1);
     const commits = execFileSync("git", ["log", "--format=%s"], { cwd: home, encoding: "utf8" }).trim().split("\n");
     expect(commits.at(-1)).toBe("meadow_app: initial Meadow Home commit");
-    const ignored = fs.readFileSync(path.join(home, ".gitignore"), "utf8");
+    const ignored = new MeadowHomeFiles(home).ignoreRules();
     expect(ignored).toContain("app/resources.local.yaml");
     await sourceCommand(() => addKeyFrame(homeCommit));
     await sourceCommand(() => checkpoint("the application made the initial Meadow Home commit"));

@@ -23,8 +23,8 @@ import type { BundleNodeConfig } from '../../../../../contracts/types/shared/bun
 import { BundleConfigPaths } from '../../../../../shared_code/paths/bundleConfigPaths.js';
 import { parseBundleNodeConfig } from '../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 
-type NodeQuery = Partial<Pick<BundleNodeConfig,
-  'bundleNodeId' | 'bundleNodeName' | 'sourceId' | 'sourceGraphSubdirectory' | 'bundleNodeKind' | 'fileType'
+type NodeQuery = { bundleNodeId?: string } & Partial<Pick<BundleNodeConfig,
+  'bundleNodeName' | 'sourceId' | 'sourceGraphSubdirectory' | 'bundleNodeKind' | 'fileType'
 >>;
 
 /**
@@ -86,6 +86,18 @@ export class MeadowHomeBundleConfig {
     const node = this.findNode(query);
     this.expect(node, `Expected configured node in ${this.bundleSlug}: ${JSON.stringify(query)}`).toBeDefined();
     return node!;
+  }
+
+  nodeNamed(name: string): BundleNodeConfig {
+    return this.requireNode({ bundleNodeName: name });
+  }
+
+  /** Simulate an independent client's saved traversal edit while a proposal is open. */
+  saveNodeDepths(name: string, depths: { outlinksDepth: number; inlinksDepth?: number }): void {
+    const document = YAML.parse(this.readNodesText()) as { nodes: BundleNodeConfig[] };
+    this.nodeNamed(name);
+    Object.assign(document.nodes.find(node => node.bundleNodeName === name)!, depths);
+    fs.writeFileSync(BundleConfigPaths.getBundleNodeConfigFile(this.bundleDirectory()), YAML.stringify(document));
   }
 
   /** Content pages in the current generated version, excluding Meadow's generated support routes. */

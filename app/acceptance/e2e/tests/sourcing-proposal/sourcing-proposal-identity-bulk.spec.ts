@@ -1,14 +1,13 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import fs from 'node:fs';
+import { MeadowHomeBundleConfig } from '../../src/run/utils/index.js';
 import { SourcingProposalState } from '../../src/run/state/SourcingProposalState.js';
-import path from 'node:path';
-import YAML from 'yaml';
+
 import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { scenarioSections, sourceReviewIdentity, sourceMove, bundleNodeId, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../../concepts/index.js';
+import { pageIdentityPanel, changesTray, scenarioSections, sourceReviewIdentity, sourceMove, bundleNodeId, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });
@@ -26,18 +25,18 @@ const sections = scenarioSections({
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewIdentity, sourceReviewWorkspace] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: '92083d13-2373-432c-8fd9-600e73c0c653' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
-  const { editor, sourcing, proposal, directory, saved } = await test.step(sections.steps.setup, async () => {
+  const { editor, sourcing, proposal, saved } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
     const sourcing = new SourcingWorkspacePage(page, expect);
     const proposal = new SourcingProposalState(testServer, 'sourcing-review');
-    const directory = path.join(testServer.configDir, 'bundles/sourcing-review');
+
     await sourceCommand(() => list.goto());
     await sourceCommand(() => list.clickBundle('sourcing-review'));
     await sourceCommand(() => editor.waitForLoad('sourcing-review'));
-    const saved = fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8');
+    const saved = new MeadowHomeBundleConfig(testServer.configDir, "sourcing-review", expect).readNodesText();
     await sourceCommand(() => checkpoint('accepted identities are configured before the rename batch'));
-    return { editor, sourcing, proposal, directory, saved };
+    return { editor, sourcing, proposal, saved };
   });
 
   const { gateway, competing } = await test.step(sections.steps.verifyScenarioLikelyRenamesArePreselectedFor, async () => {
@@ -88,7 +87,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '92083d13-237
     await sourceCommand(() => checkpoint('saving suggestions preserves the saved rejection and unresolved uncertain files'));
   });
 
-  const { nodes } = await test.step(sections.steps.chooseUncertainMatchesReviseConfirmedSuggestionSelect, async () => {
+  const { nodeConfig } = await test.step(sections.steps.chooseUncertainMatchesReviseConfirmedSuggestionSelect, async () => {
     await sourceCommand(() => sourcing.chooseInputIdentity('100000000002', 'Routes/Branch/Gateway.md'));
     await sourceCommand(() => sourcing.expectInputIdentity('100000000002', 'Routes/Branch/Gateway.md'));
     await sourceCommand(() => sourcing.chooseIdentity('100000000003', 'Routes/Independent.md'));
@@ -106,17 +105,17 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '92083d13-237
     await sourceCommand(() => sourcing.expectSelectedRemovalReason('Source missing'));
     await sourceCommand(() => sourcing.select('Petal'));
     await sourceCommand(() => expect(sourcing.changeKind).toHaveText('Add'));
-    expect(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).toBe(saved);
+    expect(new MeadowHomeBundleConfig(testServer.configDir, "sourcing-review", expect).readNodesText()).toBe(saved);
     await sourceCommand(() => checkpoint('resolved identities are visible in the comparison without accepting the sources'));
     await sourceCommand(() => sourcing.accept());
-    const nodes = YAML.parse(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).nodes;
-    expect(nodes.find((node: { bundleNodeId: string }) => node.bundleNodeId === '100000000002').bundleNodeName).toBe('Gateway');
-    expect(nodes.some((node: { bundleNodeId: string }) => node.bundleNodeId === '100000000007')).toBe(false);
-    return { nodes };
+    const nodeConfig = new MeadowHomeBundleConfig(testServer.configDir, "sourcing-review", expect);
+    expect(nodeConfig.requireNode({ bundleNodeId: '100000000002' }).bundleNodeName).toBe('Gateway');
+    expect(nodeConfig.findNode({ bundleNodeId: '100000000007' })).toBeUndefined();
+    return { nodeConfig };
   });
 
   await test.step(sections.steps.petalStartsFreshAsNewFileTracked, async () => {
-    expect(nodes.find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Petal')?.bundleNodeId).not.toBe('100000000007');
+    expect(nodeConfig.findNode({ bundleNodeName: 'Petal' })?.bundleNodeId).not.toBe('100000000007');
     await sourceCommand(() => checkpoint('acceptance preserves confirmed identities and removes the rejected old configuration'));
   });
 

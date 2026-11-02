@@ -30,7 +30,7 @@ export const proposalConfigurationDraft = define({
     text`Reuse the existing separate node-configuration draft pattern rather than applying accepted edits and attempting to reverse them. Each configuration type keeps its own validation; the proposal coordinates preservation, discard, merging, and atomic application.`,
     text`Retain the original value and the proposed value for each edited setting or filter so later accepted changes can be compared. Sensitivity filter mutations save immediately and must be preserved when rebasing a pending proposal; do not overwrite unrelated shared policy.`,
     text`Global edits remain available in sourcing. Sensitivity policy changes take effect for all affected bundles immediately. Discard removes staged inclusion decisions, preserving saved policy. Per-mode view choices remain separate.`,
-    text`A changes tray below the sourcing header points up to Accept changes and lists what acceptance applies: page changes, identity decisions, setting changes, and tracking choices, followed by blocking conflicts and tracking confirmations nearest the button. Page identity is always available for inspection and manual pairing, including when no match was suggested. Identity inspection alone does not require acceptance: an empty review offers Done and exits directly. Other categories appear when they have staged changes. Page, setting, and tracking items open a detail panel with the affected pages or before and after values; selecting a listed page selects it in the graph. Identity, conflict, and confirmation items open their review dialogs. This complements graph-based source review and is not a second per-page approval gate.`,
+    text`The ${link(id.changesTray, 'Changes Tray')} beside the sourcing header points to Accept changes and lists what acceptance applies: page changes, identity decisions, setting changes, and tracking choices, followed by blocking conflicts and tracking confirmations nearest the button. Page identity is always available for inspection and manual pairing, including when no match was suggested. Identity inspection alone does not require acceptance: an empty review offers Done and exits directly. Other categories appear when they have staged changes. Page, setting, and tracking items open a detail panel with the affected pages or before and after values; selecting a listed page selects it in the graph. Identity, conflict, and confirmation items open their review dialogs. This complements graph-based source review and is not a second per-page approval gate.`,
   ],
   interplay: text`${link(id.sourceReviewConfigurationMerge, 'Proposal Configuration Merge')} resolves competing saved edits. ${link(id.sourceReviewAcceptance, 'Proposal Acceptance')} applies validated drafts with the captured material.`,
 });
@@ -196,9 +196,93 @@ export const sourceReviewWorkspace = define({
   interplay: text`${link(id.sharedSourcingCuration, 'Shared Sourcing and Curation')} owns reusable editor behavior. ${link(id.sourceReviewFiltering, 'Source Review Filtering')} and ${link(id.sourceReviewViewState, 'Mode View State')} preserve the existing tools.`,
 });
 
+export const changesTray = define({
+  id: id.changesTray, name: 'Changes Tray', kind: 'ui-sub-area', searchFacet: true,
+  parentId: id.sourceReviewWorkspace, appAreaIds: [id.bundleSourcing],
+  implementationRoles: ['render-tray'],
+  definition: text`The summary beside Accept changes in ${link(id.sourceReviewWorkspace, 'Source Review Workspace')} that opens the details and decisions acceptance will apply.`,
+  mechanics: [
+    text`Page identity remains available even when there is nothing to accept. Page changes, configuration removals, setting changes, and tracking changes appear when relevant. Blocking configuration conflicts and tracking confirmations appear nearest Accept changes.`,
+    text`Each chip opens its panel or review dialog. Track added pages controls automatic tracking of safe additions; its sensitive-skipped count opens the ${link(id.trackingChangesPanel, 'Tracking Changes Panel')}. Inspecting details does not accept the proposal.`,
+  ],
+  interplay: text`${link(id.proposalConfigurationDraft, 'Proposal Configuration Draft')} holds staged edits. ${link(id.sourceReviewAcceptance, 'Proposal Acceptance')} applies the reviewed proposal independently of ${link(id.pageChangesFilters, 'Page Changes Filters')}.`,
+});
+
+export const pageChangesFilters = define({
+  id: id.pageChangesFilters, name: 'Page Changes Filters', kind: 'ui-sub-area', searchFacet: true,
+  parentId: id.sourceReviewWorkspace, appAreaIds: [id.bundleSourcing],
+  implementationRoles: ['define-filters'],
+  definition: text`The Source changes filter group in ${link(id.sourceReviewWorkspace, 'Source Review Workspace')} for choosing how page-change categories appear in the comparison graph.`,
+  mechanics: [text`Add, Move, Rename, Modify, Remove, and Unchanged use the ordinary filter controls. Modify and Remove expand into their subtypes. Filtering changes presentation without changing what acceptance applies.`],
+  interplay: text`${link(id.sourceReviewFiltering, 'Source Review Filtering')} defines the presentation behavior. The ${link(id.changesTray, 'Changes Tray')} summarizes and opens changes to accept.`,
+});
+
+export const pageIdentityPanel = define({
+  id: id.pageIdentityPanel, name: 'Page Identity Panel', kind: 'ui-sub-area', searchFacet: true,
+  parentId: id.changesTray, appAreaIds: [id.bundleSourcing],
+  implementationRoles: ['render'],
+  definition: text`The Page identity panel opened from the Changes Tray for inspecting suggested and unmatched pages and reviewing identity correspondences.`,
+  mechanics: [text`It supports manual pairing and revising pending decisions. Unresolved identities require confirmation before the comparison graph opens.`],
+  interplay: text`Part of the ${link(id.changesTray, 'Changes Tray')}. ${link(id.sourceReviewIdentity, 'Source Review Identity')} defines the reviewed behavior.`,
+});
+
+export const pageChangesPanel = define({
+  id: id.pageChangesPanel, name: 'Page Changes Panel', kind: 'ui-sub-area', searchFacet: true,
+  parentId: id.changesTray, appAreaIds: [id.bundleSourcing],
+  implementationRoles: ['render'],
+  definition: text`The Page changes panel opened from the Changes Tray, listing affected pages by source-change category.`,
+  mechanics: [text`Rows show captured line counts where available. View opens content comparison; selecting a page closes the panel and selects that page in the graph.`],
+  interplay: text`Part of the ${link(id.changesTray, 'Changes Tray')}. ${link(id.sourceReviewWorkspace, 'Source Review Workspace')} defines the reviewed behavior.`,
+});
+
+export const configurationRemovalsPanel = define({
+  id: id.configurationRemovalsPanel, name: 'Configuration Removals Panel', kind: 'ui-sub-area', searchFacet: true,
+  parentId: id.changesTray, appAreaIds: [id.bundleSourcing],
+  implementationRoles: ['render'],
+  definition: text`The Configuration removals panel in the Changes Tray for saved configuration whose page was already unreachable before the proposal.`,
+  mechanics: [text`These entries have no comparison node. Expand a row to inspect why acceptance removes its saved configuration while leaving source files untouched.`],
+  interplay: text`Part of the ${link(id.changesTray, 'Changes Tray')}. ${link(id.sourceReviewCleanup, 'Accepted Scope Cleanup')} defines the reviewed behavior.`,
+});
+
+export const settingChangesPanel = define({
+  id: id.settingChangesPanel, name: 'Setting Changes Panel', kind: 'ui-sub-area', searchFacet: true,
+  parentId: id.changesTray, appAreaIds: [id.bundleSourcing],
+  implementationRoles: ['render'],
+  definition: text`The Setting changes panel opened from the Changes Tray for inspecting staged configuration and filter edits.`,
+  mechanics: [text`Entries show previous and proposed values and identify global settings that affect all bundles. Selecting a page-specific entry selects it in the comparison graph.`],
+  interplay: text`Part of the ${link(id.changesTray, 'Changes Tray')}. ${link(id.proposalConfigurationDraft, 'Proposal Configuration Draft')} defines the reviewed behavior.`,
+});
+
+export const configurationConflictsDialog = define({
+  id: id.configurationConflictsDialog, name: 'Configuration Conflicts Dialog', kind: 'ui-sub-area', searchFacet: true,
+  parentId: id.changesTray, appAreaIds: [id.bundleSourcing],
+  implementationRoles: ['render'],
+  definition: text`The Resolve configuration conflicts dialog opened from the Changes Tray when saved and proposed configuration edits compete.`,
+  mechanics: [text`Each conflict shows original, saved, and proposed values. Choose the saved or proposed value before acceptance can proceed.`],
+  interplay: text`Part of the ${link(id.changesTray, 'Changes Tray')}. ${link(id.sourceReviewConfigurationMerge, 'Proposal Configuration Merge')} defines the reviewed behavior.`,
+});
+
+export const trackingSensitivityDialog = define({
+  id: id.trackingSensitivityDialog, name: 'Tracking Sensitivity Dialog', kind: 'ui-sub-area', searchFacet: true,
+  parentId: id.changesTray, appAreaIds: [id.bundleSourcing],
+  implementationRoles: ['render'],
+  definition: text`The Review tracking sensitivity dialog opened from the Changes Tray for provisional tracking choices that need renewed approval.`,
+  mechanics: [text`Inspect each affected page, confirm its inclusion, untrack it for further curation, or blacklist it where allowed. Required nodes retain their inclusion constraints.`],
+  interplay: text`Part of the ${link(id.changesTray, 'Changes Tray')}. ${link(id.sourceReviewSensitivity, 'Proposal Tracking Sensitivity')} defines the reviewed behavior.`,
+});
+
+export const trackAddedPages = define({
+  id: id.trackAddedPages, name: 'Track Added Pages', kind: 'ui-sub-area', searchFacet: true,
+  parentId: id.changesTray, appAreaIds: [id.bundleSourcing],
+  implementationRoles: ['render'],
+  definition: text`The automatic addition-tracking control in the Changes Tray, including the sensitive-skipped count.`,
+  mechanics: [text`The checkbox is enabled by default. Safe additions are provisionally tracked while it is on; sensitive additions remain untracked and the skipped count opens their tracking details.`],
+  interplay: text`Part of the ${link(id.changesTray, 'Changes Tray')}. ${link(id.sourceReviewSensitivity, 'Proposal Tracking Sensitivity')} defines the reviewed behavior.`,
+});
+
 export const trackingChangesPanel = define({
   id: id.trackingChangesPanel, name: 'Tracking Changes Panel', kind: 'ui-sub-area', searchFacet: true,
-  parentId: id.sourceReviewWorkspace, appAreaIds: [id.bundleSourcing],
+  parentId: id.changesTray, appAreaIds: [id.bundleSourcing],
   implementationRoles: ['render-panel', 'render-tracking-rows'],
   definition: text`The panel in ${link(id.sourceReviewWorkspace, 'Source Review Workspace')} for inspecting pages' previous and proposed tracking states before accepting a ${link(id.pendingSourceProposal, 'Pending Source Proposal')}.`,
   mechanics: [
@@ -264,6 +348,7 @@ export const sourceReviewSensitivity = define({
 export const proposedSourceReviewConcepts = [
   pendingSourceProposal, proposalConfigurationDraft, pendingProposalRevalidation,
   sourceReviewConfigurationMerge, sourceReviewTrigger, sourceReviewIdentity, sourceIdentityMatching, manuallyOverrideSourceIdentityMatching, treatAsDifferentPages,
-  sourceReviewAcceptance, scopeExclusion, bridgeExclusion, sourceReviewCleanup, sourceReviewWorkspace, trackingChangesPanel,
+  sourceReviewAcceptance, scopeExclusion, bridgeExclusion, sourceReviewCleanup, sourceReviewWorkspace, changesTray, pageChangesFilters,
+  pageIdentityPanel, pageChangesPanel, configurationRemovalsPanel, settingChangesPanel, configurationConflictsDialog, trackingSensitivityDialog, trackAddedPages, trackingChangesPanel,
   sourceReviewFiltering, graphFade, sourceReviewViewState, sourceReviewSensitivity,
 ] as const;

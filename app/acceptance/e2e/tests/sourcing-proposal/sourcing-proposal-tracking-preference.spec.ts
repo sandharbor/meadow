@@ -1,13 +1,11 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import fs from 'node:fs';
-import path from 'node:path';
-import YAML from 'yaml';
+import { MeadowHomeBundleConfig } from '../../src/run/utils/index.js';
 import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent, PreviewPublishModal } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { pendingSourceProposal, sourceReviewSensitivity, tracking, sensitive, sourceSensitivity, filterSensitivity, conceptText, conceptLink, linkedScenarioName, linkedScenarioDescription, scenarioSections, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../../concepts/index.js';
+import { trackAddedPages, changesTray, pendingSourceProposal, sourceReviewSensitivity, tracking, sensitive, sourceSensitivity, filterSensitivity, conceptText, conceptLink, linkedScenarioName, linkedScenarioDescription, scenarioSections, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../../concepts/index.js';
 import { scenarioDesignPressures, preventAccidentalSharing } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
@@ -64,10 +62,10 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '33353032-44b
   await test.step(sections.steps.accept, async () => {
     await sourceCommand(() => filters.clickSoloOnFilter('Untracked'));
     await sourceCommand(() => sourcing.accept());
-    const directory = path.join(testServer.configDir, 'bundles/sourcing-review');
-    const nodes = YAML.parse(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).nodes;
-    for (const name of ['Safe One', 'Safe Two']) expect(nodes.some((node: { bundleNodeName: string }) => node.bundleNodeName === name)).toBe(true);
-    for (const name of ['Secret', 'Policy Draft']) expect(nodes.some((node: { bundleNodeName: string }) => node.bundleNodeName === name)).toBe(false);
+
+    const nodeConfig = new MeadowHomeBundleConfig(testServer.configDir, "sourcing-review", expect);
+    for (const name of ['Safe One', 'Safe Two']) expect(nodeConfig.findNode({ bundleNodeName: name })).toBeDefined();
+    for (const name of ['Secret', 'Policy Draft']) expect(nodeConfig.findNode({ bundleNodeName: name })).toBeUndefined();
     await sourceCommand(() => editor.switchToListView());
     await sourceCommand(() => filters.enableAndSoloFilter('Untracked'));
     for (const name of ['Secret', 'Policy Draft']) await sourceCommand(() => editor.expectListViewRowByExactNamePresent(name));

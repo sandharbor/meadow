@@ -1,3 +1,4 @@
+import { MeadowHomeBundleConfig, MeadowHomeFilters, AcceptedSourcingState } from '../../src/run/utils/index.js';
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import fs from 'node:fs';
@@ -5,12 +6,12 @@ import { SourcingProposalState } from '../../src/run/state/SourcingProposalState
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import YAML from 'yaml';
+
 import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { scenarioSections, sourceReviewAcceptance, proposalConfigurationDraft, pendingProposalRevalidation, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../../concepts/index.js';
+import { trackAddedPages, changesTray, scenarioSections, sourceReviewAcceptance, proposalConfigurationDraft, pendingProposalRevalidation, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
 test.use({ fixtureHome: Fixture.SourcingReview, _backendExtraEnv: {
@@ -41,11 +42,13 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '585e9b0e-3c4
     const bundle = path.join(home, 'bundles/sourcing-review');
     const journalPath = path.join(home, 'app/sourcing-transaction.json');
     const faultPath = path.join(home, 'cache/sourcing-acceptance-fault.json');
+    // e2e-allow-raw-data: Capture every transaction document byte-for-byte, including absent documents, to verify rollback.
     const read = (file: string) => fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null;
     const documents = () => Object.fromEntries([
       ...['config/bundle_config.yaml', 'config/bundle_node_config.yaml', 'config/custom_filters.json', 'raw/sourcing/state.json', 'raw/sourcing/tracking.json', 'raw/sourcing/last-acceptance.json', 'raw/sourcing/acceptance-history.json'].map(file => path.join(bundle, file)),
       path.join(home, 'app/global_custom_filters.json'), path.join(home, 'app/app_config.yaml'),
     ].map(file => [file, read(file)]));
+    // e2e-allow-raw-data: Arm the runtime fault-injection hook to fail or interrupt a real acceptance transaction.
     const arm = (mode: 'error' | 'interrupt') => { fs.mkdirSync(path.dirname(faultPath), { recursive: true }); fs.writeFileSync(faultPath, JSON.stringify({ mode })); };
     await sourceCommand(() => list.goto());
     await sourceCommand(() => list.clickBundle('sourcing-review'));
@@ -97,7 +100,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '585e9b0e-3c4
     await sourceCommand(() => expect.poll(() => fs.existsSync(journalPath)).toBe(true));
     await sourceCommand(() => expect.poll(() => fs.existsSync(testServer.runtimeSessionPath)).toBe(false));
     expect(documents()).not.toEqual(before);
-    expect(read(path.join(home, 'app/global_custom_filters.json'))).toContain('Recovered shared rule');
+    expect(new MeadowHomeFilters(home, 'sourcing-review').globalText()).toContain('Recovered shared rule');
     expect(proposal.serialized).toBe(pending);
     await sourceCommand(() => page.goto('about:blank'));
     await sourceCommand(() => testServer.restartRuntime());
@@ -122,16 +125,16 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '585e9b0e-3c4
     expect(accepted).not.toEqual(before);
     expect(proposal.exists).toBe(false);
     expect(fs.existsSync(journalPath)).toBe(false);
-    const nodes = YAML.parse(read(path.join(bundle, 'config/bundle_node_config.yaml'))!).nodes;
+    const nodes = new MeadowHomeBundleConfig(testServer.configDir, 'sourcing-review', expect).readNodes();
     expect(nodes.some((node: { bundleNodeName: string }) => node.bundleNodeName === 'Leaf')).toBe(false);
     expect(nodes.some((node: { bundleNodeName: string }) => node.bundleNodeName === 'Departing')).toBe(false);
     expect(nodes.some((node: { bundleNodeName: string }) => node.bundleNodeName === 'Reference')).toBe(false);
     expect(nodes.some((node: { bundleNodeName: string }) => node.bundleNodeName === 'Safe One')).toBe(true);
-    expect(JSON.parse(read(path.join(bundle, 'raw/sourcing/state.json'))!).acceptedId).toBe(proposed.candidateSnapshotId);
-    expect(read(path.join(bundle, 'config/custom_filters.json'))).toContain('Recovered bundle rule');
-    expect(read(path.join(home, 'app/global_custom_filters.json'))).toContain('Recovered shared rule');
-    expect(YAML.parse(read(path.join(home, 'app/app_config.yaml'))!).deletedDefaultFilterIds).toContain('default-daily-notes-sensitive');
-    expect(JSON.parse(read(path.join(bundle, 'raw/sourcing/acceptance-history.json'))!)).toHaveLength(1);
+    expect(new AcceptedSourcingState(testServer.configDir, 'sourcing-review').acceptedId).toBe(proposed.candidateSnapshotId);
+    expect(new MeadowHomeFilters(home, 'sourcing-review').bundleFilterNamed('Recovered bundle rule')).toBeDefined();
+    expect(new MeadowHomeFilters(home, 'sourcing-review').globalText()).toContain('Recovered shared rule');
+    expect(new MeadowHomeFilters(testServer.configDir, 'sourcing-review').deletedDefaultFilterIds()).toContain('default-daily-notes-sensitive');
+    expect(new AcceptedSourcingState(testServer.configDir, 'sourcing-review').acceptanceHistory).toHaveLength(1);
     await sourceCommand(() => addKeyFrame(pendingProposalRevalidation));
     await sourceCommand(() => checkpoint('successful retry accepts the reviewed capture settings shared policy tracking and cleanup together'));
   });

@@ -97,6 +97,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '88cdda07-2ad
     expect(fs.existsSync(path.join(allDirectory, `${Bundle.Big}-${firstVersionId}`))).toBe(true);
     expect(fs.existsSync(path.join(allDirectory, `${Bundle.Big}-${secondVersionId}`))).toBe(true);
     const allManifestPath = path.join(allDirectory, `${Bundle.Big}-versions.json`);
+    // e2e-allow-raw-data: Inspect exported manifest bytes to prove private notes and local paths do not leak.
     const allManifestText = fs.readFileSync(allManifestPath, "utf8");
     expect(allManifestText).not.toContain("private editorial note");
     expect(allManifestText).not.toContain(testServer.sourceGraphsDir);
@@ -118,7 +119,9 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '88cdda07-2ad
     const currentHtml = recursiveFiles(currentDirectory).find(file => file.endsWith(".html"));
     expect(currentHtml).toBeTruthy();
     const currentHtmlPath = path.join(currentDirectory, currentHtml!);
+    // e2e-allow-raw-data: Retain exact current HTML bytes for restoration after deliberate corruption.
     const savedBytes = fs.readFileSync(currentHtmlPath);
+    // e2e-allow-raw-data: Dirty generated HTML is the input to the export refusal contract.
     fs.appendFileSync(currentHtmlPath, "\n<!-- dirty current -->\n");
 
     expect((await sourceCommand(() => exportTo(path.join(artifactDir, "dirty-current-export"), { versionId: secondVersionId }))).status()).toBe(409);
@@ -130,11 +133,13 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '88cdda07-2ad
   });
 
   await test.step(sections.steps.restoreCurrentFilesDeleteFrozenVersion, async () => {
+    // e2e-allow-raw-data: Restore the deliberately dirtied HTML before testing tombstone export.
     fs.writeFileSync(currentHtmlPath, savedBytes);
     const deleteLocalResponse = await sourceCommand(() => page.request.delete(`${bundleApi}/review/versions/${firstVersionId}`));
     expect(deleteLocalResponse.ok()).toBe(true);
     const tombstoneDirectory = path.join(artifactDir, "all-versions-with-tombstone");
     expect((await sourceCommand(() => exportTo(tombstoneDirectory, { allVersions: true }))).ok()).toBe(true);
+    // e2e-allow-raw-data: Inspect the public exported version manifest after deletion, outside Meadow Home.
     const tombstoneManifest = JSON.parse(
       fs.readFileSync(path.join(tombstoneDirectory, `${Bundle.Big}-versions.json`), "utf8"),
     ) as { versions: Array<{ versionId: string; localFilesState: string }> };

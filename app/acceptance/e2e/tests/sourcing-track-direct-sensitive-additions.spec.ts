@@ -5,7 +5,7 @@ import { sourceSensitivity } from '../src/run/utils/sourceSensitivity.js';
 import { test, expect } from '../src/run/test-fixtures.js';
 import { Workflows } from '../src/run/workflows.js';
 import { BundleEditorPage, FilterPanelComponent, Pill, SelectedPageDetailComponent } from '../src/run/pages/index.js';
-import { scenarioSections, sourceSnapshot, sensitive, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../concepts/index.js';
+import { trackAddedPages, trackingChangesPanel, changesTray, conceptLink, scenarioSections, sourceSnapshot, sensitive, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../concepts/index.js';
 import { scenarioDesignPressures, preventAccidentalSharing } from '../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
@@ -17,7 +17,7 @@ safe additions and leaves the sensitive ones untracked in the ordinary Untracked
 const sections = scenarioSections({
   setup: { type: 'setup', text: conceptText`Establish the starting state: the accepted bundle is ready for new additions.` },
   establishEarlierAdditionTrackedByDefault: { type: 'test', text: conceptText`Establish an earlier addition, tracked by default.` },
-  addSensitivePagesSafePeer: { type: 'test', text: conceptText`Add sensitive pages and a safe peer.` },
+  addSensitivePagesSafePeer: { type: 'test', text: conceptText`Add sensitive pages and a safe peer, then inspect the ${conceptLink(trackingChangesPanel.id, 'Tracking Changes Panel')} from the ${conceptLink(changesTray.id, 'Changes Tray')}.` },
   selectExactlyOneSkippedAdditionWithoutIncluding: { type: 'test', text: conceptText`Select exactly one skipped addition without including safe or unrelated pages.` },
   acceptAdditionsSafeOnesAreTrackedSensitive: { type: 'test', text: conceptText`Accept the additions: the safe ones are tracked, and the sensitive ones remain in the normal Untracked filter.` },
 });
@@ -52,7 +52,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '0b132f4e-f39
       expect(sourceSensitivity(path.join(testServer.sourceGraphsDir, 'meadow-test-bundles-data', 'source-changes', `${name}.md`))).toBe(true);
     }
     await sourceCommand(() => editor.sourceReview.expectSensitiveSkippedPages(privateNames));
-    await sourceCommand(() => addKeyFrame(sourceSnapshot));
+    await sourceCommand(() => addKeyFrame(sourceSnapshot, changesTray, trackAddedPages, trackingChangesPanel));
     await sourceCommand(() => checkpoint('source review identifies sensitive additions before acceptance'));
     return { privateNames };
   });

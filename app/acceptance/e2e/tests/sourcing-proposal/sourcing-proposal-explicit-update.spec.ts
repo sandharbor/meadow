@@ -1,14 +1,15 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import fs from 'node:fs';
+import { MeadowHomeBundleConfig } from '../../src/run/utils/index.js';
 import { SourcingProposalState } from '../../src/run/state/SourcingProposalState.js';
 import path from 'node:path';
-import YAML from 'yaml';
+
 import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { scenarioSections, pendingProposalRevalidation, sourceChangesDuringReview, pendingSourceProposal, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../../concepts/index.js';
+import { trackingSensitivityDialog, changesTray, scenarioSections, pendingProposalRevalidation, sourceChangesDuringReview, pendingSourceProposal, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });
@@ -27,12 +28,12 @@ const sections = scenarioSections({
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: '47eff446-9951-43f2-9c24-e60fea06abfc' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState, expectLogErrors }) => {
-  const { editor, sourcing, proposal, directory, captured } = await test.step(sections.steps.setup, async () => {
+  const { editor, sourcing, proposal, captured } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
     const sourcing = new SourcingWorkspacePage(page, expect);
     const proposal = new SourcingProposalState(testServer, 'sourcing-review');
-    const directory = path.join(testServer.configDir, 'bundles/sourcing-review');
+
     await sourceCommand(() => list.goto());
     await sourceCommand(() => list.clickBundle('sourcing-review'));
     await sourceCommand(() => editor.waitForLoad('sourcing-review'));
@@ -44,7 +45,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '47eff446-995
     await sourceCommand(() => sourcing.trackSelected());
     const captured = proposal.current.candidateSnapshotId;
     await sourceCommand(() => checkpoint('the reviewed capture has explicit tracking and untracking choices'));
-    return { editor, sourcing, proposal, directory, captured };
+    return { editor, sourcing, proposal, captured };
   });
 
   await test.step(sections.steps.discoveryAnnouncesNewerMaterialWithoutReplacingCapture, async () => {
@@ -92,8 +93,8 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '47eff446-995
     await sourceCommand(() => sourcing.resolveSensitiveTracking('Leaf.md', false));
     await sourceCommand(() => sourcing.sensitivityReview.getByRole('button', { name: 'Close', exact: true }).click());
     await sourceCommand(() => sourcing.accept());
-    const nodes = YAML.parse(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).nodes;
-    for (const name of ['Leaf', 'Reference']) await sourceCommand(() => expect(nodes.some((node: { bundleNodeName: string }) => node.bundleNodeName === name)).toBe(false));
+    const nodeConfig = new MeadowHomeBundleConfig(testServer.configDir, "sourcing-review", expect);
+    for (const name of ['Leaf', 'Reference']) await sourceCommand(() => expect(nodeConfig.findNode({ bundleNodeName: name })).toBeUndefined());
     await sourceCommand(() => expect(fs.existsSync(path.join(source, 'Leaf.md'))).toBe(true));
     await sourceCommand(() => checkpoint('acceptance installs the refreshed scope and both resolved untrack choices'));
   });

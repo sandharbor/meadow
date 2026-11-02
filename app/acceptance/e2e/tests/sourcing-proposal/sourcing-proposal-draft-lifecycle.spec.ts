@@ -1,13 +1,14 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import fs from 'node:fs';
+import { MeadowHomeBundleConfig, AcceptedSourcingState, SourceGraphFiles } from '../../src/run/utils/index.js';
 import { SourcingProposalState } from '../../src/run/state/SourcingProposalState.js';
-import path from 'node:path';
+
+import { MeadowHomeFilters } from '../../src/run/utils/MeadowHomeFilters.js';
 import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { scenarioSections, pendingSourceProposal, proposalConfigurationDraft, sourceReviewConfigurationMerge, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../../concepts/index.js';
+import { changesTray, scenarioSections, pendingSourceProposal, proposalConfigurationDraft, sourceReviewConfigurationMerge, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewWorkspace } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.SourcingReview });
@@ -25,7 +26,7 @@ const sections = scenarioSections({
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: 'c4ae489a-82e5-46c2-b64e-64e07f42afdb' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
-  const { list, editor, sourcing, proposal, filters, directory, savedNodes, globalPath, savedGlobal } = await test.step(sections.steps.setup, async () => {
+  const { list, editor, sourcing, proposal, filters, savedNodes, savedGlobal } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
     const sourcing = new SourcingWorkspacePage(page, expect);
@@ -34,13 +35,13 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'c4ae489a-82e
     await sourceCommand(() => list.goto());
     await sourceCommand(() => list.clickBundle('sourcing-review'));
     await sourceCommand(() => editor.waitForLoad('sourcing-review'));
-    const directory = path.join(testServer.configDir, 'bundles/sourcing-review');
-    const savedNodes = fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8');
-    const globalPath = path.join(testServer.configDir, 'app/global_custom_filters.json');
-    const savedGlobal = fs.readFileSync(globalPath, 'utf8');
+
+    const savedNodes = new MeadowHomeBundleConfig(testServer.configDir, "sourcing-review", expect).readNodesText();
+
+    const savedGlobal = new MeadowHomeFilters(testServer.configDir, 'sourcing-review').globalText();
     await sourceCommand(() => sourcing.openByLink('sourcing-review'));
     await sourceCommand(() => checkpoint('the new proposal begins with the saved node and filter configuration'));
-    return { list, editor, sourcing, proposal, filters, directory, savedNodes, globalPath, savedGlobal };
+    return { list, editor, sourcing, proposal, filters, savedNodes, savedGlobal };
   });
 
   await test.step(sections.steps.headerKeepsRefreshExitAcceptUnchangedReview, async () => {
@@ -60,8 +61,8 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'c4ae489a-82e
     const staged = proposal.current;
     expect(staged.proposed.bundleFilters.some((filter: { name: string }) => filter.name === 'Draft bridge')).toBe(true);
     expect(staged.proposed.globalFilters.some((filter: { name: string }) => filter.name === 'Draft shared emphasis')).toBe(true);
-    expect(fs.readFileSync(globalPath, 'utf8')).toBe(savedGlobal);
-    expect(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).toBe(savedNodes);
+    expect(new MeadowHomeFilters(testServer.configDir, 'sourcing-review').globalText()).toBe(savedGlobal);
+    expect(new MeadowHomeBundleConfig(testServer.configDir, "sourcing-review", expect).readNodesText()).toBe(savedNodes);
     await sourceCommand(() => addKeyFrame(proposalConfigurationDraft));
     await sourceCommand(() => checkpoint('node tracking bundle-filter and global-filter drafts accumulate in one proposal'));
     return { staged };
@@ -83,7 +84,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'c4ae489a-82e
     await sourceCommand(() => filters.clickAddCustomFilter());
     await sourceCommand(() => filters.fillAndSaveCustomFilter({ name: 'Accepted later emphasis', field: 'title', matchType: 'substring', value: 'Reference', scope: 'global' }));
     await sourceCommand(() => sourceChanges.apply('remove-leaf-link', 'sourcing-review-data'));
-    const acceptedLaterGlobal = fs.readFileSync(globalPath, 'utf8');
+    const acceptedLaterGlobal = new MeadowHomeFilters(testServer.configDir, 'sourcing-review').globalText();
     await sourceCommand(() => checkpoint('another bundle uses saved policy and receives an independent accepted global filter'));
 
     await sourceCommand(() => list.goto());
@@ -106,14 +107,14 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'c4ae489a-82e
     ]));
     await sourceCommand(() => expect(sourcing.root).toBeHidden());
     expect(proposal.exists).toBe(false);
-    expect(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).toBe(savedNodes);
-    expect(fs.readFileSync(globalPath, 'utf8')).toBe(acceptedLaterGlobal);
-    expect(fs.readFileSync(path.join(testServer.sourceGraphsDir, 'sourcing-review-data/Start.md'), 'utf8')).toContain('The former leaf link has been removed.');
+    expect(new MeadowHomeBundleConfig(testServer.configDir, "sourcing-review", expect).readNodesText()).toBe(savedNodes);
+    expect(new MeadowHomeFilters(testServer.configDir, 'sourcing-review').globalText()).toBe(acceptedLaterGlobal);
+    expect(new SourceGraphFiles(testServer.sourceGraphsDir).text('sourcing-review-data/Start.md')).toContain('The former leaf link has been removed.');
     await sourceCommand(() => expect(page.getByRole('checkbox', { name: /Draft shared emphasis/ })).toHaveCount(0));
     await sourceCommand(() => expect(page.getByRole('checkbox', { name: /Accepted later emphasis/ })).toBeVisible());
     await sourceCommand(() => editor.switchToListView());
     await sourceCommand(() => editor.expectListViewRowByExactNamePresent('Leaf'));
-    const rediscovered = JSON.parse(fs.readFileSync(path.join(directory, 'raw/sourcing/state.json'), 'utf8'));
+    const rediscovered = new AcceptedSourcingState(testServer.configDir, "sourcing-review").current;
     expect(rediscovered.candidateId).toBeTruthy();
     expect(rediscovered.candidateId).not.toBe(staged.candidateSnapshotId);
     await sourceCommand(() => checkpoint('discard removes only the proposal drafts and preserves later accepted edits and external files'));

@@ -1,13 +1,12 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import fs from 'node:fs';
-import path from 'node:path';
+import { MeadowHomeBundleConfig } from '../../src/run/utils/index.js';
 import { SourcingProposalState } from '../../src/run/state/SourcingProposalState.js';
 import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
 import { Fixture } from '../../src/run/workflows.js';
-import { scenarioSections, sourceReviewIdentity, pendingSourceProposal, conceptText, conceptLink, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing } from '../../../../concepts/index.js';
+import { pageIdentityPanel, changesTray, scenarioSections, sourceReviewIdentity, pendingSourceProposal, conceptText, conceptLink, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
 test.use({ fixtureHome: Fixture.SourcingReview });
@@ -22,17 +21,17 @@ const sections = scenarioSections({
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewIdentity] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: 'f98553cf-a072-43b5-9855-b1dea5bd8118' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
-  const { editor, sourcing, proposal, directory, saved, decisions } = await test.step(sections.steps.setup, async () => {
+  const { editor, sourcing, proposal, saved, decisions } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
     const sourcing = new SourcingWorkspacePage(page, expect);
     const proposal = new SourcingProposalState(testServer, 'sourcing-review');
-    const directory = path.join(testServer.configDir, 'bundles/sourcing-review');
+
     await sourceCommand(() => list.goto());
     await sourceCommand(() => list.clickBundle('sourcing-review'));
     await sourceCommand(() => editor.waitForLoad('sourcing-review'));
     await sourceCommand(() => editor.waitForSourceCheck());
-    const saved = fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8');
+    const saved = new MeadowHomeBundleConfig(testServer.configDir, "sourcing-review", expect).readNodesText();
     await sourceCommand(() => sourceChanges.apply('rename-review-pages', 'sourcing-review-data'));
     await sourceCommand(() => editor.checkSourceChanges());
     await sourceCommand(() => sourcing.open());
@@ -40,13 +39,13 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'f98553cf-a07
     const decisions = { ...proposal.current.identities };
     expect(decisions).toEqual({ '100000000002': 'Routes/Branch/Gateway.md' });
     await sourceCommand(() => checkpoint('one identity is decided and the rest of the review remains unfinished'));
-    return { editor, sourcing, proposal, directory, saved, decisions };
+    return { editor, sourcing, proposal, saved, decisions };
   });
 
   await test.step(sections.steps.cancelPartialReview, async () => {
     await sourceCommand(() => sourcing.identityButton('Cancel').click());
     await sourceCommand(() => expect(sourcing.root).toBeHidden());
-    expect(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).toBe(saved);
+    expect(new MeadowHomeBundleConfig(testServer.configDir, "sourcing-review", expect).readNodesText()).toBe(saved);
     expect(proposal.current.identities).toEqual(decisions);
     await sourceCommand(() => addKeyFrame(pendingSourceProposal));
     await sourceCommand(() => checkpoint('Cancel returns to curation with the partial proposal saved and accepted configuration unchanged'));
@@ -62,7 +61,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'f98553cf-a07
     expect(proposal.current.identities).toEqual(decisions);
     await sourceCommand(() => sourcing.showIdentity('100000000006'));
     await sourceCommand(() => sourcing.expectPickRequired('100000000006'));
-    expect(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).toBe(saved);
+    expect(new MeadowHomeBundleConfig(testServer.configDir, "sourcing-review", expect).readNodesText()).toBe(saved);
     await sourceCommand(() => addKeyFrame(sourceReviewIdentity));
     await sourceCommand(() => checkpoint('reopening restores the saved identity choice while the other identities remain unresolved'));
   });

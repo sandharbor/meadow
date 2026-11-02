@@ -469,6 +469,7 @@ export class SourcingWorkspacePage {
     if (!await detail.isVisible()) await this.acceptedChange(chip).click();
     await this.expect(detail).toBeVisible();
     await this.expect(this.acceptedChange(chip)).toHaveAttribute('aria-expanded', 'true');
+    await this.expect(detail).toHaveCSS('opacity', '1');
     return detail;
   }
   async closeAcceptedChangeDetail() {

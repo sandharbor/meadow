@@ -1,8 +1,6 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import fs from 'node:fs';
-import path from 'node:path';
-import YAML from 'yaml';
+import { MeadowHomeBundleConfig } from '../../src/run/utils/index.js';
 import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
@@ -31,8 +29,8 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'c18a4909-4de
     await sourceCommand(() => list.clickBundle('sourcing-folders'));
     await sourceCommand(() => editor.waitForLoad('sourcing-folders'));
     await sourceCommand(() => editor.switchToListView());
-    const configPath = path.join(testServer.configDir, 'bundles/sourcing-folders/config/bundle_node_config.yaml');
-    const configuration = () => YAML.parse(fs.readFileSync(configPath, 'utf8'));
+
+    const configuration = () => ({ nodes: new MeadowHomeBundleConfig(testServer.configDir, "sourcing-folders", expect).readNodes() });
     const original = configuration();
     await sourceCommand(() => checkpoint('the folder graph has an empty folder and a branch reaching outside its subtree'));
     return { editor, sourcing, configuration, original };

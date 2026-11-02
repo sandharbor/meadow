@@ -4,13 +4,13 @@ import { test, expect } from '../src/run/test-fixtures.js';
 import { Fixture, Workflows } from '../src/run/workflows.js';
 import { BundleEditorPage } from '../src/run/pages/index.js';
 import { SourcingProposalState } from '../src/run/state/SourcingProposalState.js';
-import { exemplarySpec, sourceSensitivity, sourceReviewWorkspace, trackingChangesPanel, scenarioSections, conceptText, conceptLink, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing } from '../../../concepts/index.js';
+import { trackAddedPages, changesTray, exemplarySpec, sourceSensitivity, sourceReviewWorkspace, trackingChangesPanel, scenarioSections, conceptText, conceptLink, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing } from '../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
 test.use({ fixtureHome: Fixture.SourcingReview });
 
 const name = linkedScenarioName(conceptText`Selecting a skipped sensitive addition selects only that page for review`);
-const description = linkedScenarioDescription(conceptText`Open ${conceptLink(sourceReviewWorkspace.id, 'Source Review Workspace')} with an addition carrying ${conceptLink(sourceSensitivity.id, 'Source-Marked Sensitivity')} skipped by automatic tracking. Select it from the ${conceptLink(trackingChangesPanel.id, 'Tracking Changes Panel')} and verify that only that page is selected for inspection.`);
+const description = linkedScenarioDescription(conceptText`Open ${conceptLink(sourceReviewWorkspace.id, 'Source Review Workspace')} with an addition carrying ${conceptLink(sourceSensitivity.id, 'Source-Marked Sensitivity')} skipped by automatic tracking. Select it from the ${conceptLink(trackingChangesPanel.id, 'Tracking Changes Panel')} in the ${conceptLink(changesTray.id, 'Changes Tray')} and verify that only that page is selected for inspection.`);
 const sections = scenarioSections({
   setup: { type: 'setup', text: conceptText`Open review with an addition carrying ${conceptLink(sourceSensitivity.id, 'Source-Marked Sensitivity')} listed as skipped by automatic tracking.` },
   selectSkippedPage: { type: 'test', text: conceptText`Select the skipped page from the ${conceptLink(trackingChangesPanel.id, 'Tracking Changes Panel')}. ${conceptLink(sourceReviewWorkspace.id, 'Source Review Workspace')} shows that page as the only selection.` },

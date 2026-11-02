@@ -168,3 +168,40 @@ live in `shared/` and expose area-owned page objects as nested members, e.g.
    generated bundle), place it in `shared/`.
 3. Keep area folders flat; split a large page object into sibling files in the
    same area rather than nesting `components/` folders.
+
+## Keep storage details behind intent-level utilities
+
+Scenarios should state what the user does and what is true afterward. File
+paths, raw file reads/writes, JSON/YAML parsing, and serialization boilerplate
+obscure that story and couple scenarios to persistence details. Put them in the
+reusable utility or page class responsible for that functionality under
+`src/run`; a spec-local helper or a generic `readJson` wrapper is not the
+intended abstraction. Reuse and extend existing utilities before adding one.
+
+For example, use `bundleConfig.nodeNamed('Bridge').outlinksDepth` and
+`bundleConfig.findNode({ bundleNodeName: 'Reference' })`, or
+`savedFilters.globalFilterNamed('Shared retained review')`. Preserve independent
+persisted-state evidence when the claim requires it; replacing storage checks
+with UI text alone may weaken the scenario. Utilities should read fresh state
+on each query and make missing or ambiguous required lookups fail clearly.
+Keep exact-byte snapshots for claims that no write occurred.
+
+Quickcheck's `lint-no-raw-data.ts` rejects direct JSON/YAML parsing and raw file
+reads/writes in every discovered spec, including test-local helpers. Its error
+explains the rationale and the intended layer. When the raw access itself is
+necessary to the scenario (such as corrupting frozen HTML or checking a
+scenario-only migration schema), put a specific reason immediately before the
+smallest statement or explicit block:
+
+```ts
+// e2e-allow-raw-data: Inject malformed YAML bytes to exercise recovery.
+{
+  fs.writeFileSync(filename, 'nodes: [invalid');
+}
+```
+
+The exception covers only that statement/block, needs a substantive reason, and
+fails lint when unused or misplaced. Do not use exceptions to retain ordinary
+configuration parsing or bypass a reusable domain abstraction. A comment on a
+function body does not exempt the function; annotate the particular raw
+operation instead.

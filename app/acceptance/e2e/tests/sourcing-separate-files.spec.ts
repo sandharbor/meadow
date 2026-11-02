@@ -3,7 +3,7 @@
 import { test, expect } from '../src/run/test-fixtures.js';
 import { Workflows } from '../src/run/workflows.js';
 import { BundleEditorPage } from '../src/run/pages/index.js';
-import { scenarioSections, exemplarySpec, orphan, conceptText, conceptLink, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceReviewIdentity, sourceIdentityMatching, manuallyOverrideSourceIdentityMatching, treatAsDifferentPages } from '../../../concepts/index.js';
+import { scenarioSections, exemplarySpec, orphan, conceptText, conceptLink, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSourcing, sourceSnapshot, bundleConfig as bundleNodeConfiguration, sourceReviewIdentity, sourceIdentityMatching, manuallyOverrideSourceIdentityMatching, treatAsDifferentPages, sourceReviewAcceptance, sourceReviewCleanup } from '../../../concepts/index.js';
 import { MeadowHomeBundleConfig } from '../src/run/utils/index.js';
 
 const originalTitle = 't003 ---- page with section to link to';
@@ -11,13 +11,13 @@ const renamedTitle = 't003 ---- renamed section page';
 
 test.use({ bundleMode: "single-file" });
 
-const name = linkedScenarioName(conceptText`Sourcing treats a rejected rename as different pages and removes the old configuration on acceptance`);
+const name = linkedScenarioName(conceptText`Rejecting a suggested rename keeps the pages separate and removes the old page's configuration on acceptance`);
 
-const description = linkedScenarioDescription(conceptText`${conceptLink(manuallyOverrideSourceIdentityMatching.id, 'Manually override source identity matching')} by choosing to ${conceptLink(treatAsDifferentPages.id, 'treat the files as different pages')}. Acceptance removes the old configuration and admits the renamed destination as a new page.`);
+const description = linkedScenarioDescription(conceptText`Rename a configured source page and update its incoming link. ${conceptLink(sourceIdentityMatching.id, 'Source Identity Matching')} suggests Same file. Choose New file to ${conceptLink(manuallyOverrideSourceIdentityMatching.id, 'Manually Override Source Identity Matching')} and ${conceptLink(treatAsDifferentPages.id, 'Treat as Different Pages')}. The original page's saved configuration stays unchanged while the decision is pending. ${conceptLink(sourceReviewAcceptance.id, 'Proposal Acceptance')} removes the old configuration and makes the renamed page available in the bundle.`);
 const sections = scenarioSections({
-  setup: { type: 'setup', text: conceptText`Establish the starting state: the accepted source state is established before changing files.` },
-  rejectSuggestedMatch: { type: 'test', text: conceptText`Rename the page and its links, and ${conceptLink(manuallyOverrideSourceIdentityMatching.id, 'manually override source identity matching')} to ${conceptLink(treatAsDifferentPages.id, 'treat them as different pages')}.` },
-  acceptSeparatePages: { type: 'test', text: conceptText`Accept the update: remove the old configuration and admit the renamed destination as a new page.` },
+  setup: { type: 'setup', text: conceptText`Open a bundle with an accepted ${conceptLink(sourceSnapshot.id, 'Source Snapshot')} and saved ${conceptLink(bundleNodeConfiguration.id, 'Bundle Node Configuration')} for the page that will be renamed.` },
+  rejectSuggestedMatch: { type: 'test', text: conceptText`Rename the page and update its incoming link. ${conceptLink(manuallyOverrideSourceIdentityMatching.id, 'Manually Override Source Identity Matching')} by choosing New file to ${conceptLink(treatAsDifferentPages.id, 'Treat as Different Pages')}; the original page's saved configuration remains unchanged.` },
+  acceptSeparatePages: { type: 'test', text: conceptText`Accept the changes: ${conceptLink(sourceReviewCleanup.id, 'Accepted Scope Cleanup')} removes the old page's saved configuration, and the renamed page appears in the bundle.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewIdentity] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: '30c13a6a-547f-4c87-ac13-cc68a5a6592a' }, { type: 'concept', description: exemplarySpec.id }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
@@ -27,7 +27,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '30c13a6a-547
     await sourceCommand(() => editor.waitForSourceCheck());
     const bundleConfig = new MeadowHomeBundleConfig(testServer.configDir, 'meadow-test-bundle-big', expect);
     const original = bundleConfig.requireNode({ bundleNodeName: originalTitle });
-    await sourceCommand(() => checkpoint('the accepted source state is established before changing files'));
+    await sourceCommand(() => checkpoint(conceptText`The original page has saved ${conceptLink(bundleNodeConfiguration.id, 'Bundle Node Configuration')} in the accepted bundle.`));
     return { editor, bundleConfig, original };
   });
 
@@ -44,7 +44,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '30c13a6a-547
     await sourceCommand(() => rename.expectPreviousRoute('t003 - link to section.md'));
     expect(bundleConfig.findNode({ bundleNodeId: original.bundleNodeId })).toEqual(original);
     await sourceCommand(() => checkpoint(
-      conceptText`${conceptLink(treatAsDifferentPages.id, 'Different pages')} shows the previous route and proposes removing the ${conceptLink(orphan.id, 'orphaned configuration')}.`,
+      conceptText`New file is selected for ${conceptLink(treatAsDifferentPages.id, 'Treat as Different Pages')}. Review shows the previous route and explains that acceptance removes the old page's configuration; its saved configuration remains unchanged.`,
       { keyFrames: [treatAsDifferentPages, orphan] },
     ));
     return { review };
@@ -59,7 +59,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '30c13a6a-547
     await sourceCommand(() => editor.expectListViewRowByExactNamePresent(renamedTitle));
     await sourceCommand(() => editor.expectListViewRowByExactNameNotPresent(originalTitle));
     await sourceCommand(() => checkpoint(
-      conceptText`Acceptance removes the old configuration and admits the renamed destination as a new page.`,
+      conceptText`${conceptLink(sourceReviewAcceptance.id, 'Proposal Acceptance')} removes the original page's saved configuration and leaves no ${conceptLink(orphan.id, 'Orphaned Configuration')} entries. The renamed page is listed in the bundle and the original name is absent.`,
       { keyFrames: [treatAsDifferentPages] },
     ));
   });
