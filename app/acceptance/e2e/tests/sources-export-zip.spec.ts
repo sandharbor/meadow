@@ -44,7 +44,7 @@ const sections = scenarioSections({
 });
 const areas = scenarioAreas([bundleGeneration, bundleReview], { subAreas: [customize, changesTabDoc] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: '0ec721cf-af7a-4c07-8787-42294412e324' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
-  page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame, testServer,
+  page, checkpoint, skipMeadowHomeStateCheck, testServer,
 }) => {
   const { modal, editor } = await test.step(sections.steps.setup, async () => {
     const wf = new Workflows(page, expect);
@@ -63,9 +63,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '0ec721cf-af7
     await sourceCommand(() => changesTab.waitForRegenerationComplete());
     await sourceCommand(() => applyGenerationOptionAndWait(page, () => customizeTab.generationOptions.enableSourcesExport()));
     await sourceCommand(() => changesTab.waitForRegenerationComplete());
-    await sourceCommand(() => addKeyFrame(customize));
-    await sourceCommand(() => addKeyFrame(sourcesExport));
-    await sourceCommand(() => checkpoint("regeneration complete with sources export"));
+    await sourceCommand(() => checkpoint("regeneration complete with sources export", { keyFrames: [customize, sourcesExport] }));
     return { customizeTab, changesTab };
   });
 
@@ -80,8 +78,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '0ec721cf-af7
     const bundleDir = path.join(testServer.configDir, "bundles", Bundle.Big);
     const meadowGit = new MeadowHomeGit(testServer.configDir, expect);
     await sourceCommand(() => meadowGit.expectDirFullyCommitted(bundleDir));
-    await sourceCommand(() => addKeyFrame(git));
-    await sourceCommand(() => checkpoint("bundle directory fully committed"));
+    await sourceCommand(() => checkpoint("bundle directory fully committed", { keyFrames: [git] }));
   });
 
   await test.step(sections.steps.disableSourceExportInspectDiffReopenReview, async () => {
@@ -103,9 +100,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '0ec721cf-af7
     await sourceCommand(() => changesTab.expectOnlySectionsWithChanges(["<header>"]));
     await sourceCommand(() => changesTab.expectSectionCount("<header>", modifiedCount));
     await sourceCommand(() => changesTab.expectNoHiddenFilesByFilter());
-    await sourceCommand(() => addKeyFrame(changesTabDoc));
-    await sourceCommand(() => addKeyFrame(filters));
-    await sourceCommand(() => checkpoint("all sources zip HTML changes remain visible"));
+    await sourceCommand(() => checkpoint("all sources zip HTML changes remain visible", { keyFrames: [changesTabDoc, filters] }));
   });
 
   void bigBundle;

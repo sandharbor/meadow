@@ -35,7 +35,6 @@ const areas = scenarioAreas([bundleCuration]);
 test(name.name, { annotation: [{ type: 'scenario-id', description: '65e907d8-cdfb-4082-8465-601adb3f75bc' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
-  addKeyFrame,
   assertMeadowHomeState,
 }) => {
   const { editor } = await test.step(sections.steps.setup, async () => {
@@ -77,9 +76,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '65e907d8-cdf
     ]) {
       await sourceCommand(() => editor.expectListViewRowByExactNameNotPresent(removedTitle));
     }
-    await sourceCommand(() => addKeyFrame(folderBundles));
-    await sourceCommand(() => addKeyFrame(blacklist));
-    await sourceCommand(() => checkpoint("Alpha folder blacklist hides its working-graph subtree"));
+    await sourceCommand(() => checkpoint("Alpha folder blacklist hides its working-graph subtree", { keyFrames: [folderBundles, blacklist] }));
   });
 
   await test.step(sections.steps.restoreFolder, async () => {

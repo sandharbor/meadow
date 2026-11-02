@@ -38,7 +38,7 @@ const sections = scenarioSections({
 });
 const areas = scenarioAreas([bundlesArea, bundleReview]);
 test(name.name, { annotation: [{ type: 'scenario-id', description: 'a309795d-d7b8-4abd-8ca6-74c7f5ea2ea9' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
-  page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame,
+  page, checkpoint, skipMeadowHomeStateCheck,
 }) => {
   const { bundleList, editor, previewModal } = await test.step(sections.steps.setup, async () => {
     const bundleList = new BundleListPage(page, expect);
@@ -69,8 +69,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'a309795d-d7b
 
   await test.step(sections.steps.checkGeneratedHomePage, async () => {
     await sourceCommand(() => previewModal.expectPreviewIframeHeading("Notable Mental Models"));
-    await sourceCommand(() => addKeyFrame(htmlGeneration));
-    await sourceCommand(() => checkpoint("example bundle preview visible"));
+    await sourceCommand(() => checkpoint("example bundle preview visible", { keyFrames: [htmlGeneration] }));
   });
 
   void exampleBundle;

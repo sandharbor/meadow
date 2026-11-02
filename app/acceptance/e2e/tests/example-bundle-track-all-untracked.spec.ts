@@ -40,7 +40,6 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'f7ebd9d2-d56
   page,
   checkpoint,
   assertMeadowHomeState,
-  addKeyFrame,
 }) => {
   const { editor } = await test.step(sections.steps.setup, async () => {
     const bundleList = new BundleListPage(page, expect);
@@ -66,15 +65,13 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'f7ebd9d2-d56
   await test.step(sections.steps.deselectSensitivePagesExampleBundleShipsSensitive, async () => {
     await sourceCommand(() => editor.clickDeselectSensitivePagesIfVisible());
     await sourceCommand(() => page.waitForTimeout(250));
-    await sourceCommand(() => addKeyFrame(sensitive));
-    await sourceCommand(() => checkpoint("sensitive pages deselected"));
+    await sourceCommand(() => checkpoint("sensitive pages deselected", { keyFrames: [sensitive] }));
   });
 
   await test.step(sections.steps.trackSelectedPagesTrackAllSimpleOp, async () => {
     await sourceCommand(() => editor.clickTrackAll());
     await sourceCommand(() => editor.expectUndoNotVisible());
-    await sourceCommand(() => addKeyFrame(tracking));
-    await sourceCommand(() => checkpoint("track all applied — no save button"));
+    await sourceCommand(() => checkpoint("track all applied — no save button", { keyFrames: [tracking] }));
   });
 
   void exampleBundle;

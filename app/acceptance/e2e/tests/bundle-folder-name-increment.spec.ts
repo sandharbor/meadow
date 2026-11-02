@@ -44,7 +44,6 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'c43f1ffb-20a
   page,
   checkpoint,
   assertMeadowHomeState,
-  addKeyFrame,
 }) => {
   const { bundleList, editor, createModal } = await test.step(sections.steps.setup, async () => {
     const wf = new Workflows(page, expect);
@@ -96,8 +95,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'c43f1ffb-20a
   await test.step(sections.steps.verifySlugAlreadyUniqueT001DeeplyNested, async () => {
     const slugText = await sourceCommand(() => createModal.getSlugDisplayText());
     expect(slugText).toBe("t001-deeply-nested-1");
-    await sourceCommand(() => addKeyFrame(bundleConfig));
-    await sourceCommand(() => checkpoint("second create modal shows incremented slug"));
+    await sourceCommand(() => checkpoint("second create modal shows incremented slug", { keyFrames: [bundleConfig] }));
   });
 
   await test.step(sections.steps.tryOccupiedFolderName, async () => {
@@ -108,8 +106,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'c43f1ffb-20a
   await test.step(sections.steps.shouldShowConflictErrorDisableCreateBundle, async () => {
     await sourceCommand(() => createModal.expectSlugConflictError('already exists'));
     await sourceCommand(() => createModal.expectCreateBundleDisabled());
-    await sourceCommand(() => addKeyFrame(callout));
-    await sourceCommand(() => checkpoint("slug conflict error shown"));
+    await sourceCommand(() => checkpoint("slug conflict error shown", { keyFrames: [callout] }));
   });
 
   await test.step(sections.steps.restoreAvailableNameCreate, async () => {

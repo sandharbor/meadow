@@ -20,7 +20,7 @@ const sections = scenarioSections({
   acceptSourceUpdate2: { type: 'test', text: conceptText`Accept the source update.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '1529fd21-a754-4e10-aa6e-d48eff2a6f10' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '1529fd21-a754-4e10-aa6e-d48eff2a6f10' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, sourceChanges, checkpoint, skipMeadowHomeStateCheck }) => {
   const { editor } = await test.step(sections.steps.setup, async () => {
     const workflows = new Workflows(page, expect);
     await sourceCommand(() => workflows.navigateToBigBundle());
@@ -44,8 +44,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '1529fd21-a75
     await sourceCommand(() => editor.switchToListView());
     await sourceCommand(() => editor.clickListViewRowByExactName('added field notes'));
     await sourceCommand(() => new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect).expectPill(Pill.NotTracked));
-    await sourceCommand(() => addKeyFrame(sourceSnapshot));
-    await sourceCommand(() => checkpoint('acceptance leaves the accepted addition untracked'));
+    await sourceCommand(() => checkpoint('acceptance leaves the accepted addition untracked', { keyFrames: [sourceSnapshot] }));
   });
 
   await test.step(sections.steps.reopenBundle, async () => {
@@ -61,8 +60,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '1529fd21-a75
     await sourceCommand(() => editor.checkSourceChanges());
     await sourceCommand(() => editor.sourceReview.open());
     await sourceCommand(() => editor.sourceReview.expectTrackAdditions(true));
-    await sourceCommand(() => addKeyFrame(sourceSnapshot));
-    await sourceCommand(() => checkpoint('a later source review starts with Track added pages on again'));
+    await sourceCommand(() => checkpoint('a later source review starts with Track added pages on again', { keyFrames: [sourceSnapshot] }));
   });
 
   await test.step(sections.steps.acceptSourceUpdate2, async () => {

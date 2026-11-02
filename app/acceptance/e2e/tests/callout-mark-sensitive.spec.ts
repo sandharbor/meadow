@@ -56,7 +56,6 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'b6df7a57-471
   testServer,
   checkpoint,
   skipMeadowHomeStateCheck,
-  addKeyFrame,
 }) => {
   const { sourceFile, markedNames } = await test.step(sections.steps.setup, async () => {
     const wf = new Workflows(page, expect);
@@ -89,8 +88,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'b6df7a57-471
 
   await test.step(sections.steps.shouldSeeConsentModalHeadsUpSince, async () => {
     await sourceCommand(() => editor.expectConsentModalVisible());
-    await sourceCommand(() => addKeyFrame(callout));
-    await sourceCommand(() => checkpoint("consent modal visible for first sensitive marking"));
+    await sourceCommand(() => checkpoint("consent modal visible for first sensitive marking", { keyFrames: [callout] }));
   });
 
   await test.step(sections.steps.acceptExplanation, async () => {
@@ -136,8 +134,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'b6df7a57-471
     await sourceCommand(() => page.waitForTimeout(250));
     const selectedTitles = await sourceCommand(() => editor.getSelectedPageTitles());
     expect(selectedTitles.sort()).toEqual([...markedNames, 't004 ---- sensitive page'].sort());
-    await sourceCommand(() => addKeyFrame(sensitive));
-    await sourceCommand(() => checkpoint("3 sensitive pages selected after solo"));
+    await sourceCommand(() => checkpoint("3 sensitive pages selected after solo", { keyFrames: [sensitive] }));
   });
 
   await test.step(sections.steps.removeSolo, async () => {
@@ -173,8 +170,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'b6df7a57-471
     const selectedTitlesAfter = await sourceCommand(() => editor.getSelectedPageTitles());
     expect(selectedTitlesAfter).toEqual(['t004 ---- sensitive page']);
     expect(sourceSensitivity(sourceFile('t004 ---- sensitive page'))).toBe(true);
-    await sourceCommand(() => addKeyFrame(sensitive));
-    await sourceCommand(() => checkpoint("1 sensitive page remaining after unmarking two"));
+    await sourceCommand(() => checkpoint("1 sensitive page remaining after unmarking two", { keyFrames: [sensitive] }));
   });
 
   void bigBundle;

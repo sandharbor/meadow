@@ -38,7 +38,7 @@ const sections = scenarioSections({
 });
 const areas = scenarioAreas([bundleCuration]);
 test(name.name, { annotation: [{ type: 'scenario-id', description: '234c4657-7b31-4f5a-9e4c-750bbbf1c5e7' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
-  page, checkpoint, assertMeadowHomeState, addKeyFrame,
+  page, checkpoint, assertMeadowHomeState,
 }) => {
   const { editor, filterPanel } = await test.step(sections.steps.setup, async () => {
     const bundleList = new BundleListPage(page, expect);
@@ -55,8 +55,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '234c4657-7b3
 
   await test.step(sections.steps.enableOverrideFilter, async () => {
     await sourceCommand(() => filterPanel.enableFilter("Depth Override"));
-    await sourceCommand(() => addKeyFrame(filters));
-    await sourceCommand(() => checkpoint("overrides filter enabled"));
+    await sourceCommand(() => checkpoint("overrides filter enabled", { keyFrames: [filters] }));
   });
 
   await test.step(sections.steps.soloOverriddenPages, async () => {
@@ -76,9 +75,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '234c4657-7b3
 
   await test.step(sections.steps.initialPageMustNOTAppearDepthSetting, async () => {
     await sourceCommand(() => editor.expectListViewRowByExactNameNotPresent(exampleBundleInitialPageTitle));
-    await sourceCommand(() => addKeyFrame(overrides));
-    await sourceCommand(() => addKeyFrame(initialPage));
-    await sourceCommand(() => checkpoint("overrides soloed without initial page"));
+    await sourceCommand(() => checkpoint("overrides soloed without initial page", { keyFrames: [overrides, initialPage] }));
   });
 
   void exampleBundle;

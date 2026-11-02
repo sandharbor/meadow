@@ -13,6 +13,8 @@ import { scenarioDocumentMembership } from '../../../../concepts/scenarioMembers
 import { captureDocumentSnapshot, readDocumentSnapshot, readScenarioDocuments, SCENARIO_DOCUMENTS_FILE } from '../../src/artifacts/documentSnapshot.js';
 import { resolveScenarioDocuments } from '../../src/artifacts/scenarioDocuments.js';
 import { scenarioMetadataIssues } from '../scripts/scenario-metadata.js';
+import { coreConceptIds } from '../../../../concepts/ids.js';
+import { startingSelectionDocumentIds } from '../../../../concepts/startingSelectionShapes.js';
 
 const registry = await loadDocumentRegistry();
 
@@ -37,6 +39,18 @@ const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace
 const pressures = associate([pressure]);
 test.skip(name.name, { annotation: [{ type: 'scenario-id', description: 'stable-scenario' }, name.annotation, description.annotation, areas.annotation, pressures.annotation] }, async () => {});
 `;
+
+test('declared starting shapes capture the canonical variant and Starting Selection parent, including skipped scenarios', () => {
+  for (const [mode, id] of Object.entries(startingSelectionDocumentIds)) {
+    const documents = resolveScenarioDocuments(`test.use({ bundleMode: '${mode}' });\n${source}`, registry);
+    assert.ok(documents.conceptIds.includes(id));
+    assert.ok(documents.conceptIds.includes(coreConceptIds.startingSelection));
+    assert.equal(documents.conceptIds.filter(value => value === coreConceptIds.startingSelection).length, 1);
+    const concept = registry.acceptanceConcepts.find(value => value.id === id)!;
+    assert.equal(concept.parentId, coreConceptIds.startingSelection);
+  }
+  assert.ok(!resolveScenarioDocuments(source, registry).conceptIds.includes(coreConceptIds.startingSelection));
+});
 
 test('shared sections preserve canonical identity and derive contextual backlinks once per passage', () => {
   assert.equal(conceptDocument(sensitive).id, sensitive.id);

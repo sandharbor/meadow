@@ -43,7 +43,6 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '74ff8663-eed
   page,
   checkpoint,
   skipMeadowHomeStateCheck,
-  addKeyFrame,
 }) => {
   const { modal, changesTab, versions, initialVersion } = await test.step(sections.steps.setup, async () => {
     const workflows = new Workflows(page, expect);
@@ -78,9 +77,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '74ff8663-eed
     await sourceCommand(() => changesTab.fileDetails.ensureOnDiffTab());
     await sourceCommand(() => changesTab.fileDetails.clickCodeSubTab());
     await sourceCommand(() => changesTab.fileDetails.expectChangesHeader());
-    await sourceCommand(() => addKeyFrame(customize));
-    await sourceCommand(() => addKeyFrame(changesTabDoc));
-    await sourceCommand(() => checkpoint("pending successor contains modified files"));
+    await sourceCommand(() => checkpoint("pending successor contains modified files", { keyFrames: [customize, changesTabDoc] }));
   });
 
   const { predecessor, successor } = await test.step(sections.steps.createConnectedVersion, async () => {
@@ -107,8 +104,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '74ff8663-eed
     await sourceCommand(() => modal.expectVersionCardsNewestFirst(successor.versionId, predecessor.versionId));
     await sourceCommand(() => expect(page.getByRole("heading", { name: "Compare generated files" })).toBeVisible());
     await sourceCommand(() => expect(page.getByText("modified", { exact: true }).first()).toBeVisible());
-    await sourceCommand(() => addKeyFrame(versioning));
-    await sourceCommand(() => checkpoint("connected successor created and compared"));
+    await sourceCommand(() => checkpoint("connected successor created and compared", { keyFrames: [versioning] }));
     return { predecessor, successor };
   });
 
@@ -128,8 +124,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '74ff8663-eed
     await sourceCommand(() => modal.expectShareVersionOptionsNewestFirst(successor.versionId, predecessor.versionId));
     await sourceCommand(() => modal.selectShareVersion(predecessor.versionId));
     await sourceCommand(() => modal.expectOlderShareVersionWarning("v1", "v2"));
-    await sourceCommand(() => addKeyFrame(versioning));
-    await sourceCommand(() => checkpoint("publish identifies the selected generated version and warns before using an older one"));
+    await sourceCommand(() => checkpoint("publish identifies the selected generated version and warns before using an older one", { keyFrames: [versioning] }));
   });
 
   await test.step(sections.steps.returnNewVersion, async () => {

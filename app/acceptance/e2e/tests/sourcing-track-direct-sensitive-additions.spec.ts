@@ -23,7 +23,7 @@ const sections = scenarioSections({
 });
 const pressures = scenarioDesignPressures([preventAccidentalSharing]);
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '0b132f4e-f39f-47eb-b609-dc8151afb48e' }, name.annotation, description.annotation, areas.annotation, pressures.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '0b132f4e-f39f-47eb-b609-dc8151afb48e' }, name.annotation, description.annotation, areas.annotation, pressures.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, skipMeadowHomeStateCheck }) => {
   const { editor } = await test.step(sections.steps.setup, async () => {
     await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
     const editor = new BundleEditorPage(page, expect);
@@ -52,8 +52,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '0b132f4e-f39
       expect(sourceSensitivity(path.join(testServer.sourceGraphsDir, 'meadow-test-bundles-data', 'source-changes', `${name}.md`))).toBe(true);
     }
     await sourceCommand(() => editor.sourceReview.expectSensitiveSkippedPages(privateNames));
-    await sourceCommand(() => addKeyFrame(sourceSnapshot, changesTray, trackAddedPages, trackingChangesPanel));
-    await sourceCommand(() => checkpoint('source review identifies sensitive additions before acceptance'));
+    await sourceCommand(() => checkpoint('source review identifies sensitive additions before acceptance', { keyFrames: [sourceSnapshot, changesTray, trackAddedPages, trackingChangesPanel] }));
     return { privateNames };
   });
 
@@ -73,8 +72,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '0b132f4e-f39
       await sourceCommand(() => editor.clickSelectNone());
     }
     for (const name of ['added sunflower', 'added public update']) await sourceCommand(() => editor.expectListViewRowByExactNameNotPresent(name));
-    await sourceCommand(() => addKeyFrame(sensitive));
-    await sourceCommand(() => checkpoint('sensitive additions remain untracked for ordinary curation while safe additions are tracked'));
+    await sourceCommand(() => checkpoint('sensitive additions remain untracked for ordinary curation while safe additions are tracked', { keyFrames: [sensitive] }));
   });
 
   await sourceCommand(() => skipMeadowHomeStateCheck());

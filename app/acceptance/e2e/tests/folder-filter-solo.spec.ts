@@ -35,7 +35,6 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '2a6ce90c-a04
   page,
   checkpoint,
   assertMeadowHomeState,
-  addKeyFrame,
 }) => {
   const { editor, filterPanel } = await test.step(sections.steps.setup, async () => {
     const workflows = new Workflows(page, expect);
@@ -50,8 +49,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '2a6ce90c-a04
     await sourceCommand(() => filterPanel.expandFolder("t024"));
     await sourceCommand(() => filterPanel.expectFolderVisible("t024/deeper"));
     await sourceCommand(() => filterPanel.expectFolderCount("t024/deeper", 1));
-    await sourceCommand(() => addKeyFrame(folderFilter));
-    await sourceCommand(() => checkpoint("folder tree expanded with recursive counts"));
+    await sourceCommand(() => checkpoint("folder tree expanded with recursive counts", { keyFrames: [folderFilter] }));
     return { editor, filterPanel };
   });
 
@@ -60,9 +58,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '2a6ce90c-a04
     await sourceCommand(() => page.waitForTimeout(250));
     await sourceCommand(() => editor.switchToListView());
     await sourceCommand(() => expect.poll(() => editor.getListViewPageCount()).toBe(1));
-    await sourceCommand(() => addKeyFrame(filters));
-    await sourceCommand(() => addKeyFrame(folderFilter));
-    await sourceCommand(() => checkpoint("nested folder soloed"));
+    await sourceCommand(() => checkpoint("nested folder soloed", { keyFrames: [filters, folderFilter] }));
   });
 
   void bigBundle;

@@ -20,7 +20,7 @@ const sections = scenarioSections({
 });
 const pressures = scenarioDesignPressures([preventAccidentalSharing]);
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '4d83d151-9db8-4af0-8e65-7b701110951f' }, { type: 'concept', description: exemplarySpec.id }, name.annotation, description.annotation, areas.annotation, pressures.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '4d83d151-9db8-4af0-8e65-7b701110951f' }, { type: 'concept', description: exemplarySpec.id }, name.annotation, description.annotation, areas.annotation, pressures.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, skipMeadowHomeStateCheck }) => {
   const { editor, filters } = await test.step(sections.steps.setup, async () => {
     await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
     const editor = new BundleEditorPage(page, expect);
@@ -44,8 +44,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '4d83d151-9db
       expect(sourceSensitivity(path.join(testServer.sourceGraphsDir, 'meadow-test-bundles-data', 'source-changes', `${name}.md`))).toBeUndefined();
     }
     await sourceCommand(() => editor.sourceReview.expectSensitiveSkippedPages(privateNames));
-    await sourceCommand(() => addKeyFrame(sourceSnapshot, filterSensitivity, changesTray, trackAddedPages, trackingChangesPanel));
-    await sourceCommand(() => checkpoint(conceptText`${conceptLink(filterSensitivity.id, 'Filter-Derived Sensitivity')} identifies the unmarked matching additions, and only those additions appear in the sensitive-skipped list.`));
+    await sourceCommand(() => checkpoint(conceptText`${conceptLink(filterSensitivity.id, 'Filter-Derived Sensitivity')} identifies the unmarked matching additions, and only those additions appear in the sensitive-skipped list.`, { keyFrames: [sourceSnapshot, filterSensitivity, changesTray, trackAddedPages, trackingChangesPanel] }));
     return { privateNames };
   });
 
@@ -63,8 +62,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '4d83d151-9db
       await sourceCommand(() => editor.clickSelectNone());
     }
     await sourceCommand(() => editor.expectListViewRowByExactNameNotPresent('added public update'));
-    await sourceCommand(() => addKeyFrame(sensitive, filterSensitivity));
-    await sourceCommand(() => checkpoint(conceptText`After ${conceptLink(sourceReviewAcceptance.id, 'Proposal Acceptance')}, the safe addition is tracked and the additions with ${conceptLink(filterSensitivity.id, 'Filter-Derived Sensitivity')} remain untracked in curation.`));
+    await sourceCommand(() => checkpoint(conceptText`After ${conceptLink(sourceReviewAcceptance.id, 'Proposal Acceptance')}, the safe addition is tracked and the additions with ${conceptLink(filterSensitivity.id, 'Filter-Derived Sensitivity')} remain untracked in curation.`, { keyFrames: [sensitive, filterSensitivity] }));
   });
 
   await sourceCommand(() => skipMeadowHomeStateCheck());

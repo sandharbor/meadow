@@ -82,8 +82,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '6f8a8ed1-f84
       "t001 ---- child 2",
       "t001 - deeply nested",
     ));
-    await sourceCommand(() => addKeyFrame(htmlGeneration));
-    await sourceCommand(() => checkpoint("hover preview exposes a navigable nested-page link"));
+    await sourceCommand(() => checkpoint("hover preview exposes a navigable nested-page link", { keyFrames: [htmlGeneration] }));
   });
 
   await test.step(sections.steps.followLinkInHoverPreview, async () => {

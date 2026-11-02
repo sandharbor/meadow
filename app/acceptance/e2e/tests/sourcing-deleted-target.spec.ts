@@ -90,8 +90,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'b6e58804-dcb
 
   await test.step(sections.steps.showPreviousRoute, async () => {
     await sourceCommand(() => review.expectSelectedRoute(['main page']));
-    await sourceCommand(() => addKeyFrame(orphan));
-    await sourceCommand(() => checkpoint('the previous route is available when requested'));
+    await sourceCommand(() => checkpoint('the previous route is available when requested', { keyFrames: [orphan] }));
   });
 
   await test.step(sections.steps.acceptSourceUpdate, async () => {

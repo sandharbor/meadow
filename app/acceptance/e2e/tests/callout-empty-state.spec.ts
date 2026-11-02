@@ -32,7 +32,7 @@ const sections = scenarioSections({
   checkInvitationCreateBundle: { type: 'test', text: conceptText`Check the invitation to create a bundle.` },
 });
 const areas = scenarioAreas([bundlesArea]);
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'dbc2cba3-81b2-4fc8-9f2b-886298b8a570' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, checkpoint, assertMeadowHomeState, addKeyFrame }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'dbc2cba3-81b2-4fc8-9f2b-886298b8a570' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, checkpoint, assertMeadowHomeState }) => {
   const { bundleList } = await test.step(sections.steps.setup, async () => {
     const bundleList = new BundleListPage(page, expect);
     await sourceCommand(() => bundleList.goto());
@@ -42,8 +42,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'dbc2cba3-81b
 
   await test.step(sections.steps.checkInvitationCreateBundle, async () => {
     await sourceCommand(() => bundleList.expectCalloutVisible("Turn your notes into bundles"));
-    await sourceCommand(() => addKeyFrame(callout));
-    await sourceCommand(() => checkpoint("turn your notes into bundles callout visible"));
+    await sourceCommand(() => checkpoint("turn your notes into bundles callout visible", { keyFrames: [callout] }));
   });
 
   void bundles;

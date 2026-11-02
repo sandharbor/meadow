@@ -1,57 +1,15 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
-
-import fs from 'node:fs';
-import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import ts from 'typescript';
-import { fixtureSourceGraphs, loadSourceChanges } from '../../../../shared_code/shared_dev/sourceChanges.js';
+import { auditSourceChangeCoverage } from './source-change-coverage.js';
+import { renderLintRule } from './lint-rule.js';
+import { sourceChangeCoverageRule } from './rules/project-rule-definitions.js';
 
 const root = fileURLToPath(new URL('../../../../../', import.meta.url));
-const tests = path.join(root, 'app/acceptance/e2e/tests');
-const definitions = path.join(root, 'app/shared_data/source_changes');
-function scenarioFiles(directory: string): string[] {
-  return fs.readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
-    const filename = path.join(directory, entry.name);
-    return entry.isDirectory() ? scenarioFiles(filename) : entry.name.endsWith('.spec.ts') ? [filename] : [];
-  });
+try {
+  const { sourceChangeCount, fixtureCount } = auditSourceChangeCoverage(root);
+  console.log(`✅ ${sourceChangeCount} source changes each have one E2E scenario, covering all ${fixtureCount} fixture menus.`);
+} catch (error) {
+  console.error(error instanceof Error ? error.message : String(error));
+  console.error(renderLintRule(sourceChangeCoverageRule));
+  process.exitCode = 1;
 }
-const scenarios = scenarioFiles(tests);
-const owners = new Map<string, string>();
-for (const graph of fs.readdirSync(definitions)) {
-  for (const change of loadSourceChanges(root, graph)) {
-    const key = `${graph}/${change.id}`;
-    if (owners.has(change.e2e)) throw new Error(`${change.e2e} owns both ${owners.get(change.e2e)} and ${key}; each change needs its own scenario`);
-    owners.set(change.e2e, key);
-    const matches = scenarios.filter(filename => path.basename(filename) === change.e2e);
-    if (matches.length !== 1) throw new Error(`${key}: expected one scenario named ${change.e2e}, found ${matches.length}`);
-    const file = matches[0];
-    const ast = ts.createSourceFile(file, fs.readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true);
-    let applies = false;
-    const visit = (node: ts.Node) => {
-      if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)
-        && node.expression.expression.getText(ast) === 'sourceChanges' && node.expression.name.text === 'apply') {
-        const [id, sourceGraph] = node.arguments;
-        if (id && ts.isStringLiteral(id) && id.text === change.id
-          && (sourceGraph && ts.isStringLiteral(sourceGraph) ? sourceGraph.text : 'meadow-test-bundles-data') === graph) applies = true;
-      }
-      ts.forEachChild(node, visit);
-    };
-    visit(ast);
-    if (!applies) throw new Error(`${change.e2e} must apply its shared source change ${key}`);
-  }
-}
-
-// Every fixture exposing changes uses the same checked definitions, including
-// nested and SRS, whose graphs are shared with the big-and-small fixture.
-let fixtureCount = 0;
-const fixtures = path.join(root, 'app/shared_data/home_fixtures');
-for (const fixture of fs.readdirSync(fixtures)) {
-  if (!/^home_fixture_[a-z0-9_]+$/.test(fixture)) continue;
-  const changes = fixtureSourceGraphs(root, fixture).flatMap(graph => loadSourceChanges(root, graph));
-  if (!changes.length) continue;
-  fixtureCount++;
-  for (const change of changes) {
-    if (!owners.has(change.e2e)) throw new Error(`${fixture}: ${change.id} has no checked E2E scenario`);
-  }
-}
-console.log(`✅ ${owners.size} source changes each have one E2E scenario, covering all ${fixtureCount} fixture menus.`);

@@ -14,7 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { loadDocumentRegistry } from '../../../../concepts/loadRegistry.js';
+import { renderLintRule } from './lint-rule.js';
+import { conceptsRule } from './rules/project-rule-definitions.js';
 
-const registry = await loadDocumentRegistry();
-console.log(`Document registry passed: ${registry.documents.length} documents, ${registry.appAreas.length} app areas.`);
+try {
+  const { loadDocumentRegistry } = await import('../../../../concepts/loadRegistry.js');
+  const registry = await loadDocumentRegistry();
+  console.log(`Document registry passed: ${registry.documents.length} documents, ${registry.appAreas.length} app areas.`);
+} catch (error) {
+  console.error(error instanceof Error ? error.message : String(error));
+  console.error(renderLintRule(conceptsRule));
+  process.exitCode = 1;
+}

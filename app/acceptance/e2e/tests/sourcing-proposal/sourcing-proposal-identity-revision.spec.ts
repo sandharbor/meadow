@@ -25,7 +25,7 @@ const sections = scenarioSections({
   acceptanceClosedProposalSoThereNothingLeft: { type: 'test', text: conceptText`Acceptance closed the proposal, so there is nothing left to reopen.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewIdentity, sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '0724132a-c64b-45a4-b38f-84ec951f6b49' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '0724132a-c64b-45a4-b38f-84ec951f6b49' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, assertMeadowHomeState }) => {
   const { editor, sourcing, proposal, pendingId } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
@@ -63,8 +63,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '0724132a-c64
     await sourceCommand(() => expect(sourcing.root.getByRole('button', { name: 'Accept changes', exact: true })).toBeDisabled());
     await sourceCommand(() => sourcing.reviewTrackingChoices(1));
     await sourceCommand(() => expect(sourcing.sensitivityReview).toContainText('The page identity changed'));
-    await sourceCommand(() => addKeyFrame(sourceReviewIdentity));
-    await sourceCommand(() => checkpoint('revised identity exposes an unresolved dependent tracking choice'));
+    await sourceCommand(() => checkpoint('revised identity exposes an unresolved dependent tracking choice', { keyFrames: [sourceReviewIdentity] }));
   });
 
   await test.step(sections.steps.explicitConfirmationTracksNewFileFreshIdentity, async () => {
@@ -94,8 +93,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '0724132a-c64
     await sourceCommand(() => expect(history).toContainText('Routes/Branch/Bridge.md'));
     await sourceCommand(() => expect(history).toContainText('Different files; old configuration removed'));
     await sourceCommand(() => expect(history.getByRole('radio')).toHaveCount(0));
-    await sourceCommand(() => addKeyFrame(sourceReviewAcceptance));
-    await sourceCommand(() => checkpoint('accepted identity evidence is inspectable as read-only history'));
+    await sourceCommand(() => checkpoint('accepted identity evidence is inspectable as read-only history', { keyFrames: [sourceReviewAcceptance] }));
     await sourceCommand(() => history.getByRole('button', { name: 'Close source snapshots', exact: true }).click());
   });
 

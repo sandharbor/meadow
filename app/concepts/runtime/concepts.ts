@@ -20,7 +20,12 @@ import { conceptLink as link, conceptText as text, defineMeadowConcept as define
 export const meadowHome = define({
   id: id.meadowHome, name: "Meadow Home", kind: "artifact", aliases: ["Home"],
   definition: text`The file-backed durable store that survives ${link(id.officialClient, "Official Clients")} and ${link(id.runtimeInstance, "Runtime Instances")}.`,
-  mechanics: [text`Exactly one ${link(id.runtimeInstance, "Runtime Instance")} may mutate it at a time.`, text`Its runtime metadata includes a ${link(id.homeOwnershipLock, "Home Ownership Lock")} and ${link(id.runtimeSessionDescriptor, "Runtime Session Descriptor")}.`],
+  mechanics: [
+    text`Exactly one ${link(id.runtimeInstance, "Runtime Instance")} may mutate it at a time. Its runtime metadata includes a ${link(id.homeOwnershipLock, "Home Ownership Lock")} and ${link(id.runtimeSessionDescriptor, "Runtime Session Descriptor")}.`,
+    text`The root meadow_home.yaml manifest is the compatibility authority. It records the format version, minimum reader and writer application versions, creating and most recent writer versions, and required capabilities. Startup validates it before Git initialization, defaults, migrations, or any other Home mutation.`,
+    text`A new empty Home receives the manifest before other persisted state. A valid legacy Home is checkpointed and upgraded. Invalid manifests, unsupported capabilities, future formats, and application versions below the minimum writer version stop before writing. Production startup also refuses to write when the running application version is missing or unknown.`,
+    text`Changes to durable Home documents follow ${link(id.dataIntegrity, "Data Integrity")} guarantees. ${link(id.migration, "Meadow Home Migration")} advances supported formats; ${link(id.startupRecovery, "Safe Startup Recovery")} presents failures before ordinary application use.`,
+  ],
   interplay: text`${link(id.officialClient, "Official Clients")} never edit it directly; they ask its owning ${link(id.runtimeInstance, "Runtime Instance")} to perform operations.`,
 });
 
@@ -51,7 +56,12 @@ export const runtimeLaunchSpec = define({
 export const runtimeService = define({
   id: id.runtimeService, name: "Runtime Service", kind: "service",
   definition: text`The backend process that performs domain operations and is the sole writer of the ${link(id.meadowHome, "Meadow Home")}.`,
-  mechanics: [text`It is created only by the ${link(id.runtimeSupervisor, "Runtime Supervisor")}.`, text`${link(id.officialClient, "Official Clients")} reach it through the Runtime's control and application interfaces.`],
+  mechanics: [
+    text`It is created only by the ${link(id.runtimeSupervisor, "Runtime Supervisor")}. ${link(id.officialClient, "Official Clients")} reach it through the Runtime's control and application interfaces.`,
+    text`Production selects ephemeral ports and binds the backend to IPv4 loopback at 127.0.0.1. Except for a minimal readiness endpoint, every API route uses centralized per-Runtime capability authentication and exact-origin checks. Capabilities contain at least 256 bits of randomness. Native clients obtain the capability from the private ${link(id.runtimeSessionDescriptor, "Runtime Session Descriptor")}; it must not enter Meadow Home documents, Git, logs, URLs, diagnostics, snapshots, or renderer storage. The context-isolated preload exposes only the narrowly shaped connection and desktop operations needed by the UI; renderer Node integration stays disabled and web security stays enabled.`,
+    text`Saved credentials are backend-owned and write-only from renderer-accessible APIs. The UI can report presence and accept replacement or clearing but never receives stored values. Plaintext credential documents use mode 0600: this protects against other ordinary local accounts, not code running as the same user, privileged access, or unencrypted backups. An OS-backed credential design is needed to improve that boundary.`,
+    text`A migration that touches credentials must be Git-checkpointed and byte-idempotent, declare the ignored credential paths it may modify, preserve unrelated secret fields, and refuse conflicting sources. Config exploration, logs, diagnostics, snapshots, screenshots, URLs, and Git must not contain credentials.`,
+  ],
   interplay: text`The Supervisor controls its lifecycle; the ${link(id.homeOwnershipLock, "Home Ownership Lock")} prevents a second Runtime service from writing the same Home.`,
   implementationRoles: ["start-service", "mutate-home"] as const,
 });
@@ -75,7 +85,11 @@ export const homeOwnershipLock = define({
 export const runtimeSessionDescriptor = define({
   id: id.runtimeSessionDescriptor, name: "Runtime Session Descriptor", aliases: ["Session Descriptor", "descriptor"], kind: "artifact",
   definition: text`The discovery artifact that advertises a Runtime's connection and compatibility information.`,
-  mechanics: [text`It records the owning instance, protocol, ${link(id.runtimePayload, "Runtime Payload")} identity, readiness, and local endpoints.`, text`Clients validate it before attaching or asking a Supervisor to start anything.`, text`It is removed before final shutdown completes.`],
+  mechanics: [
+    text`It records the owning instance, protocol, ${link(id.runtimePayload, "Runtime Payload")} identity, readiness, local endpoints, and the capability native clients need to authenticate to that Runtime.`,
+    text`The descriptor is stored outside Meadow Home in the operating system's temporary meadow-runtime directory, partitioned by the Home's hash. Its directory uses mode 0700. The Supervisor writes a unique temporary file with mode 0600 and atomically renames it to session.json, whose final mode is also 0600. This private discovery artifact does not enter Home snapshots or Git.`,
+    text`Clients validate it before attaching or asking a Supervisor to start anything. It is removed before final shutdown completes.`,
+  ],
   interplay: text`The descriptor helps clients find the owner; the ${link(id.homeOwnershipLock, "Home Ownership Lock")} separately proves authority to mutate the Home.`,
   implementationRoles: ["publish", "discover", "remove-stale"] as const,
 });

@@ -20,7 +20,7 @@ const sections = scenarioSections({
   acceptSourceUpdate: { type: 'test', text: conceptText`Accept the source update.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace, sourceReviewIdentity] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '2ed45de5-8a69-4a5f-abab-ff8388828500' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '2ed45de5-8a69-4a5f-abab-ff8388828500' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, skipMeadowHomeStateCheck }) => {
   const { editor, bundleConfig, original } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     await sourceCommand(() => list.goto());
@@ -41,8 +41,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '2ed45de5-8a6
     await sourceCommand(() => editor.sourceReview.open());
     await sourceCommand(() => editor.sourceReview.expectNoRenames());
     await sourceCommand(() => editor.sourceReview.orphans.expectOrphanListed('Inside'));
-    await sourceCommand(() => addKeyFrame(sourceMove));
-    await sourceCommand(() => checkpoint('an indexed but unreachable destination does not justify a move match'));
+    await sourceCommand(() => checkpoint('an indexed but unreachable destination does not justify a move match', { keyFrames: [sourceMove] }));
   });
 
   await test.step(sections.steps.acceptSourceUpdate, async () => {
@@ -51,8 +50,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '2ed45de5-8a6
     await sourceCommand(() => editor.switchToListView());
     await sourceCommand(() => editor.expectListViewNodeVisible('file:_mw_sources/source000002/Unreachable/Inside.md', false));
     await sourceCommand(() => editor.expectListViewNodeVisible('file:_mw_sources/source000002/Same/Inside.md', true));
-    await sourceCommand(() => addKeyFrame(sourceSnapshot));
-    await sourceCommand(() => checkpoint('the unrelated reachable namesake remains and the unreachable destination stays outside the bundle'));
+    await sourceCommand(() => checkpoint('the unrelated reachable namesake remains and the unreachable destination stays outside the bundle', { keyFrames: [sourceSnapshot] }));
   });
 
   await sourceCommand(() => skipMeadowHomeStateCheck());

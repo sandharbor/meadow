@@ -23,7 +23,7 @@ const sections = scenarioSections({
   refreshBringsNewUncertainRenameMakesIdentity: { type: 'test', text: conceptText`A refresh that brings a new uncertain rename makes identity review required again.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewIdentity] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'cce81862-5cfe-4ddd-9ed5-915904993c7a' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'cce81862-5cfe-4ddd-9ed5-915904993c7a' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, assertMeadowHomeState }) => {
   const { editor, sourcing, proposal } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
@@ -49,8 +49,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'cce81862-5cf
     await sourceCommand(() => sourcing.identityBackdrop.click({ position: { x: 40, y: 300 } }));
     await sourceCommand(() => page.keyboard.press('Escape'));
     await sourceCommand(() => expect(sourcing.identities).toBeVisible());
-    await sourceCommand(() => addKeyFrame(sourceReviewIdentity));
-    await sourceCommand(() => checkpoint('the first identity review is required and stays open'));
+    await sourceCommand(() => checkpoint('the first identity review is required and stays open', { keyFrames: [sourceReviewIdentity] }));
 
     await sourceCommand(() => sourcing.decideIdentity('100000000002', 'Routes/Branch/Gateway.md'));
     await sourceCommand(() => sourcing.decideIdentity('100000000003', 'Routes/Independent.md'));
@@ -80,8 +79,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'cce81862-5cf
     await sourceCommand(() => sourcing.openIdentities());
     await sourceCommand(() => sourcing.expectIdentityDecision('100000000003', 'New file'));
     await sourceCommand(() => sourcing.identityButton('Cancel').click());
-    await sourceCommand(() => addKeyFrame(sourceReviewIdentity));
-    await sourceCommand(() => checkpoint('a revisit changes an earlier decision only when Update is chosen'));
+    await sourceCommand(() => checkpoint('a revisit changes an earlier decision only when Update is chosen', { keyFrames: [sourceReviewIdentity] }));
   });
 
   await test.step(sections.steps.refreshBringsNewUncertainRenameMakesIdentity, async () => {
@@ -91,8 +89,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'cce81862-5cf
     await sourceCommand(() => expect(sourcing.identityBackdrop).toBeVisible());
     await sourceCommand(() => expect(sourcing.identitySection('Choose a match').getByTestId('source-move-100000000005')).toBeVisible());
     await sourceCommand(() => expect(sourcing.identityButton('Confirm')).toBeDisabled());
-    await sourceCommand(() => addKeyFrame(sourceChangesDuringReview));
-    await sourceCommand(() => checkpoint('a refresh with a new identity makes review required again'));
+    await sourceCommand(() => checkpoint('a refresh with a new identity makes review required again', { keyFrames: [sourceChangesDuringReview] }));
 
     await sourceCommand(() => sourcing.decideIdentity('100000000005', 'Beyond.md'));
     await sourceCommand(() => sourcing.confirmIdentities());

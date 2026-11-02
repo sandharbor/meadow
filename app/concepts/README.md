@@ -147,9 +147,13 @@ combine with workflow choices and other filter rows by All. All clears only that
 owner's UI choices. Document-backed filter pills have a filtering body and a separate lighter right
 segment with a gray document arrow. Only the arrow opens details, preserving all
 filters. Areas, workflow and UI sub-areas, fixture bundles, and core or contributed
-concepts use this control. Source-change types and execution surfaces use it only
-when the captured catalog contains their canonical counterpart. Starts-with shapes,
-All, and status options have no per-option canonical document and no arrow.
+concepts use this control. Source-change types, execution surfaces, and Starts with
+use it when the captured catalog contains their canonical counterpart. Starting
+shapes have typed concepts under Starting Selection; run capture associates both
+the parent and the variant from the explicit bundleMode declaration. These
+associations describe the scenario's declared structure, not proof of a behavior.
+Starts with carries the shape pill, so generic Concepts metadata omits this duplicate.
+All and status options have no per-option canonical document and no arrow.
 Documentation links and direct concept bookmarks still work.
 Existing `scenarioAreas([...], { subAreas: [...] })` entries naming reclassified UI concepts
 remain accepted through the actual owning area, and old `subarea` bookmarks for

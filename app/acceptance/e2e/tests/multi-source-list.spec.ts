@@ -19,7 +19,7 @@ const sections = scenarioSections({
   filterOneSource: { type: 'test', text: conceptText`Filter to one source.` },
 });
 const areas = scenarioAreas([bundleCuration]);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '47643e99-1c78-4bf4-8431-3f8bc651479e' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, addKeyFrame, skipMeadowHomeStateCheck, checkpoint }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '47643e99-1c78-4bf4-8431-3f8bc651479e' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, skipMeadowHomeStateCheck, checkpoint }) => {
   const { editor } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     await sourceCommand(() => list.goto());
@@ -45,8 +45,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '47643e99-1c7
     ];
     await sourceCommand(() => editor.clickListSort('Source'));
     await sourceCommand(() => editor.expectListViewSourceOrder(ascendingSources, 'ascending'));
-    await sourceCommand(() => addKeyFrame(bundleSource));
-    await sourceCommand(() => checkpoint("flat rows are sorted by ascending source name"));
+    await sourceCommand(() => checkpoint("flat rows are sorted by ascending source name", { keyFrames: [bundleSource] }));
     return { ascendingSources };
   });
 
@@ -70,9 +69,8 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '47643e99-1c7
     await sourceCommand(() => editor.clickListSort('Source'));
     await sourceCommand(() => editor.expectListViewSourceOrder(['—', 'notes', 'research', 'research'], 'ascending', 'selected-folders'));
     await sourceCommand(() => editor.expectListViewSourceOrder(outsideSources, 'ascending', 'outside'));
-    await sourceCommand(() => addKeyFrame(bundleSource, folderBundles));
 
-    await sourceCommand(() => checkpoint("both structural groups sort by canonical source name"));
+    await sourceCommand(() => checkpoint("both structural groups sort by canonical source name", { keyFrames: [bundleSource, folderBundles] }));
   });
 
   await test.step(sections.steps.filterOneSource, async () => {

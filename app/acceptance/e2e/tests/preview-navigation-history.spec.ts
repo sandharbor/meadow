@@ -33,7 +33,7 @@ const sections = scenarioSections({
 });
 const areas = scenarioAreas([bundleReview], { subAreas: [previewBrowser] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: '862fa2d0-3ce1-4398-a5cc-821eb8ba8549' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
-  page, checkpoint, addKeyFrame, skipMeadowHomeStateCheck,
+  page, checkpoint, skipMeadowHomeStateCheck,
 }) => {
   const { modal } = await test.step(sections.steps.setup, async () => {
     const modal = new PreviewPublishModal(page, expect);
@@ -50,8 +50,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '862fa2d0-3ce
     await sourceCommand(() => modal.expectPreviewNavigation(true, false));
     await sourceCommand(() => modal.generatedBundle.clickPageLink('t001 ---- child 1'));
     await sourceCommand(() => modal.generatedBundle.expectSingleHeading('t001 ---- child 1'));
-    await sourceCommand(() => addKeyFrame(previewBrowser));
-    await sourceCommand(() => checkpoint('two followed links appear in preview history'));
+    await sourceCommand(() => checkpoint('two followed links appear in preview history', { keyFrames: [previewBrowser] }));
   });
 
   await test.step(sections.steps.returnThroughHistoryThenMoveForwardAgain, async () => {
@@ -66,8 +65,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '862fa2d0-3ce
     await sourceCommand(() => modal.goForwardInPreview());
     await sourceCommand(() => modal.generatedBundle.expectSingleHeading('t001 ---- child 1'));
     await sourceCommand(() => modal.expectPreviewNavigation(true, false));
-    await sourceCommand(() => addKeyFrame(previewBrowser));
-    await sourceCommand(() => checkpoint('back and forward restore the expected generated pages'));
+    await sourceCommand(() => checkpoint('back and forward restore the expected generated pages', { keyFrames: [previewBrowser] }));
   });
 
   await test.step(sections.steps.differentLinkMiddleReplacesOldForwardBranch, async () => {

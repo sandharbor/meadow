@@ -49,7 +49,6 @@ const areas = scenarioAreas([]);
 test(name.name, { annotation: [{ type: 'scenario-id', description: 'f367e5cb-e72f-4b64-b120-ba1012226a1b' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
-  addKeyFrame,
   assertMeadowHomeState,
 }) => {
   const { show } = await test.step(sections.steps.setup, async () => {
@@ -74,8 +73,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'f367e5cb-e72
     await sourceCommand(() => expect(page.getByRole('button', { name: 'Restore verified checkpoint' })).toHaveCount(0));
     await sourceCommand(() => page.evaluate(() => window.scrollTo(0, 0)));
     await sourceCommand(() => expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0));
-    await sourceCommand(() => addKeyFrame(startupRecovery, callout));
-    await sourceCommand(() => checkpoint('invalid bootstrap recovery screen'));
+    await sourceCommand(() => checkpoint('invalid bootstrap recovery screen', { keyFrames: [startupRecovery, callout] }));
     return { show };
   });
 
@@ -91,8 +89,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'f367e5cb-e72
     await sourceCommand(() => expect(page.getByRole('button', { name: 'Show this Home' })).toBeVisible());
     await sourceCommand(() => page.evaluate(() => window.scrollTo(0, 0)));
     await sourceCommand(() => expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0));
-    await sourceCommand(() => addKeyFrame(startupRecovery, callout));
-    await sourceCommand(() => checkpoint('unsupported Home recovery screen'));
+    await sourceCommand(() => checkpoint('unsupported Home recovery screen', { keyFrames: [startupRecovery, callout] }));
   });
 
   await test.step(sections.steps.checkIncompleteMigration, async () => {
@@ -113,8 +110,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'f367e5cb-e72
     await sourceCommand(() => expect(page.getByRole('button', { name: 'Restore verified checkpoint' })).toHaveCount(0));
     await sourceCommand(() => page.evaluate(() => window.scrollTo(0, 0)));
     await sourceCommand(() => expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0));
-    await sourceCommand(() => addKeyFrame(startupRecovery, callout));
-    await sourceCommand(() => checkpoint('incomplete migration recovery screen'));
+    await sourceCommand(() => checkpoint('incomplete migration recovery screen', { keyFrames: [startupRecovery, callout] }));
   });
 
   await sourceCommand(() => assertMeadowHomeState());

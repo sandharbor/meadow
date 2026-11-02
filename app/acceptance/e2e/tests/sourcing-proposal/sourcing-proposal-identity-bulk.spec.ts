@@ -51,8 +51,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '92083d13-237
     await sourceCommand(() => expect(sourcing.identitySection('Likely renamed').getByTestId('source-move-100000000007')).toBeVisible());
     await sourceCommand(() => sourcing.expectIdentityDecision('100000000007', 'Same file'));
     expect(proposal.current.identities).toEqual({});
-    await sourceCommand(() => addKeyFrame(sourceMove));
-    await sourceCommand(() => checkpoint('likely renames are preselected for review before they are saved'));
+    await sourceCommand(() => checkpoint('likely renames are preselected for review before they are saved', { keyFrames: [sourceMove] }));
     return { gateway, competing };
   });
 

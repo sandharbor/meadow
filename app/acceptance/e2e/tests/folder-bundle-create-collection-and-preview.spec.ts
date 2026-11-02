@@ -43,7 +43,6 @@ const areas = scenarioAreas([bundleCuration, bundleGeneration]);
 test(name.name, { annotation: [{ type: 'scenario-id', description: 'df33875b-e30f-4dba-8c86-b342facc6d2e' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
-  addKeyFrame,
   assertMeadowHomeState,
 }) => {
   const { editor, previewModal } = await test.step(sections.steps.setup, async () => {
@@ -55,8 +54,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'df33875b-e30
     await sourceCommand(() => bundleList.clickBundle(Bundle.FolderStructureMultiple));
     await sourceCommand(() => editor.waitForLoad(Bundle.FolderStructureMultiple));
     await sourceCommand(() => editor.expectGraphViewHasPages());
-    await sourceCommand(() => addKeyFrame(folderBundles));
-    await sourceCommand(() => checkpoint("multiple folder graph with two linked depth rows"));
+    await sourceCommand(() => checkpoint("multiple folder graph with two linked depth rows", { keyFrames: [folderBundles] }));
     return { editor, previewModal };
   });
 
@@ -82,8 +80,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'df33875b-e30
 
   await test.step(sections.steps.trackFoldersContentsFolderStartsTrackOnly, async () => {
     await sourceCommand(() => editor.trackAllReachablePages());
-    await sourceCommand(() => addKeyFrame(tracking));
-    await sourceCommand(() => checkpoint("ordered folder contents tracked for publishing"));
+    await sourceCommand(() => checkpoint("ordered folder contents tracked for publishing", { keyFrames: [tracking] }));
   });
 
   const { folderNavigation } = await test.step(sections.steps.previewCollectionHome, async () => {
@@ -112,8 +109,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'df33875b-e30
     ]));
     await sourceCommand(() => previewModal.generatedBundle.expectStructuralChildNames(["Beta", "Alpha"]));
     await sourceCommand(() => folderNavigation.close());
-    await sourceCommand(() => addKeyFrame(htmlGeneration));
-    await sourceCommand(() => checkpoint("ordered collection generated home"));
+    await sourceCommand(() => checkpoint("ordered collection generated home", { keyFrames: [htmlGeneration] }));
     return { folderNavigation };
   });
 

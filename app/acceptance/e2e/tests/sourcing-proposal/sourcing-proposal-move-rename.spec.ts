@@ -36,8 +36,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '7b8dce45-84e
     await sourceCommand(() => sourcing.expectIdentityEvidence('200000000006', 'Likely renamed', 'Filename occurs 1 time(s) before and 1 time(s) after'));
     await sourceCommand(() => sourcing.expectIdentityEvidence('200000000007', 'Choose a match', 'Filename occurs 2 time(s) before and 2 time(s) after'));
     await sourceCommand(() => sourcing.expectIdentityEvidence('200000000008', 'Choose a match', 'The recorded link sets differ.'));
-    await sourceCommand(() => addKeyFrame(sourceReviewIdentity));
-    await sourceCommand(() => checkpoint('unique names support a move while common names and conflicting incoming links remain uncertain'));
+    await sourceCommand(() => checkpoint('unique names support a move while common names and conflicting incoming links remain uncertain', { keyFrames: [sourceReviewIdentity] }));
     await sourceCommand(() => sourcing.decideIdentity('200000000007', 'New/Common Empty.md'));
     await sourceCommand(() => sourcing.decideIdentity('200000000008', 'New/Changed Links Empty.md'));
     await sourceCommand(() => sourcing.confirmIdentities());
@@ -58,8 +57,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '7b8dce45-84e
       Rename: ['Both Renamed', 'Renamed Only'],
       Modify: ['Bridge', 'Start'],
     }));
-    await sourceCommand(() => addKeyFrame(sourceReviewFiltering, pageChangesFilters));
-    await sourceCommand(() => checkpoint('the combined page appears in both categories and once in the eight-page total'));
+    await sourceCommand(() => checkpoint('the combined page appears in both categories and once in the eight-page total', { keyFrames: [sourceReviewFiltering, pageChangesFilters] }));
     await sourceCommand(() => sourcing.closeAcceptedChangeDetail());
     await sourceCommand(() => sourcing.clearSelection());
   });

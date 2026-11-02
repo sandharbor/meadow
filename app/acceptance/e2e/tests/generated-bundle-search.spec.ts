@@ -46,7 +46,6 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'becacc26-9e4
   page,
   checkpoint,
   skipMeadowHomeStateCheck,
-  addKeyFrame,
   testServer,
 }) => {
   const { modal, generatedBundle, customizeTab } = await test.step(sections.steps.setup, async () => {
@@ -71,8 +70,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'becacc26-9e4
       "t021 ---- inlink gap",
       "t021 ---- outlink gap",
     ]));
-    await sourceCommand(() => addKeyFrame(generatedBundleSearch));
-    await sourceCommand(() => checkpoint("generated bundle title search results"));
+    await sourceCommand(() => checkpoint("generated bundle title search results", { keyFrames: [generatedBundleSearch] }));
   });
 
   await test.step(sections.steps.followTitleResultSearchContent, async () => {
@@ -140,8 +138,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'becacc26-9e4
     const changesTab = new ChangesTab(page, expect);
     await sourceCommand(() => changesTab.waitForRegenerationComplete());
     await sourceCommand(() => generatedBundle.search.expectUnavailable());
-    await sourceCommand(() => addKeyFrame(customize));
-    await sourceCommand(() => checkpoint("generated bundle search disabled"));
+    await sourceCommand(() => checkpoint("generated bundle search disabled", { keyFrames: [customize] }));
   });
 
   void bigBundle;

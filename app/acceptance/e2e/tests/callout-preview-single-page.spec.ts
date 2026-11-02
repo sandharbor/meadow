@@ -40,7 +40,6 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'f4209c12-21a
   testServer,
   checkpoint,
   assertMeadowHomeState,
-  addKeyFrame,
 }) => {
   const { editor } = await test.step(sections.steps.setup, async () => {
     const bundleList = new BundleListPage(page, expect);
@@ -69,8 +68,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'f4209c12-21a
   await test.step(sections.steps.previewSinglePageBundleClickPreviewShould, async () => {
     await sourceCommand(() => editor.clickPreview());
     await sourceCommand(() => editor.expectSinglePagePreviewWarningVisible());
-    await sourceCommand(() => addKeyFrame(callout));
-    await sourceCommand(() => checkpoint("single page preview warning shown"));
+    await sourceCommand(() => checkpoint("single page preview warning shown", { keyFrames: [callout] }));
   });
 
   await test.step(sections.steps.returnTrackingPages, async () => {

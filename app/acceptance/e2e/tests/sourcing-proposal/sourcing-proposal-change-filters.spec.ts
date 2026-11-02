@@ -81,8 +81,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'cf10d7e1-184
     await sourceCommand(() => addKeyFrame(sourceReviewWorkspace));
     await sourceCommand(() => sourcing.clearSelection());
     const reviewed = proposal.current;
-    await sourceCommand(() => addKeyFrame(sourceReviewFiltering, pageChangesFilters));
-    await sourceCommand(() => checkpoint('each category has an exact count and the confirmed rename is one comparison node'));
+    await sourceCommand(() => checkpoint('each category has an exact count and the confirmed rename is one comparison node', { keyFrames: [sourceReviewFiltering, pageChangesFilters] }));
     return { reviewed };
   });
 

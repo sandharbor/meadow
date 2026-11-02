@@ -20,7 +20,7 @@ const sections = scenarioSections({
   reloadReopenPreserveSourcingSListWhile: { type: 'test', text: conceptText`Reload and reopen preserve sourcing's list while retaining its previous graph framing.` },
 });
 const areas = scenarioAreas([bundleCuration, bundleSourcing], { subAreas: [sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '859397f6-6a44-4c43-814a-dd65f147754d' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '859397f6-6a44-4c43-814a-dd65f147754d' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, sourceChanges, checkpoint, assertMeadowHomeState }) => {
   const { editor, sourcing, filters, savedView, frameGraph, curationFrame, curation } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
@@ -85,8 +85,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '859397f6-6a4
     await sourceCommand(() => editor.expectLabelVisible('Safe One'));
     await sourceCommand(() => editor.switchToListView());
     await sourceCommand(() => expect(page.getByRole('columnheader', { name: /^Title/ })).toHaveAttribute('aria-sort', 'descending'));
-    await sourceCommand(() => addKeyFrame(sourceReviewViewState));
-    await sourceCommand(() => checkpoint('sourcing remembers a different mix selection labels and descending list'));
+    await sourceCommand(() => checkpoint('sourcing remembers a different mix selection labels and descending list', { keyFrames: [sourceReviewViewState] }));
     const proposalView = await sourceCommand(() => savedView('sourcing'));
     await sourceCommand(() => sourcing.later());
     await sourceCommand(() => editor.expectGraphViewActive());

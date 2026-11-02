@@ -55,7 +55,6 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'e141c6a7-5f9
   page,
   checkpoint,
   skipMeadowHomeStateCheck,
-  addKeyFrame,
 }) => {
   const { modal, changesTab } = await test.step(sections.steps.setup, async () => {
     const wf = new Workflows(page, expect);
@@ -84,9 +83,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'e141c6a7-5f9
     await sourceCommand(() => changesTab.uncheckChangeType("Added"));
     await sourceCommand(() => changesTab.expectNoVisibleHtmlSections());
     await sourceCommand(() => changesTab.expectHiddenCount(addedCount));
-    await sourceCommand(() => addKeyFrame(filters));
-    await sourceCommand(() => addKeyFrame(changesTabDoc));
-    await sourceCommand(() => checkpoint("unchecked added - html sections hidden and hidden count matches"));
+    await sourceCommand(() => checkpoint("unchecked added - html sections hidden and hidden count matches", { keyFrames: [filters, changesTabDoc] }));
   });
 
   await test.step(sections.steps.restoreAddedFilesSave, async () => {
@@ -136,8 +133,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'e141c6a7-5f9
 
   await test.step(sections.steps.trackingPageSimpleOpAutoSavesCommits, async () => {
     await sourceCommand(() => selectedPage.clickAction(ActionButton.Track, page));
-    await sourceCommand(() => addKeyFrame(tracking));
-    await sourceCommand(() => checkpoint("tracked sensitive page"));
+    await sourceCommand(() => checkpoint("tracked sensitive page", { keyFrames: [tracking] }));
   });
 
   await test.step(sections.steps.previewNewSelection, async () => {
@@ -161,8 +157,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'e141c6a7-5f9
 
   await test.step(sections.steps.shouldSeeChangesInMainSection, async () => {
     await sourceCommand(() => changesTab.expectSectionCount("<main>", 2));
-    await sourceCommand(() => addKeyFrame(htmlGeneration));
-    await sourceCommand(() => checkpoint("search-aware file totals and 2 main section changes"));
+    await sourceCommand(() => checkpoint("search-aware file totals and 2 main section changes", { keyFrames: [htmlGeneration] }));
   });
 
   await test.step(sections.steps.hideModifiedFiles, async () => {

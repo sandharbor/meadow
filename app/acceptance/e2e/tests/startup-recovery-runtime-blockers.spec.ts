@@ -49,7 +49,6 @@ const areas = scenarioAreas([]);
 test(name.name, { annotation: [{ type: 'scenario-id', description: '02011ac3-f228-454b-8be1-3bb2acbbf912' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
-  addKeyFrame,
   assertMeadowHomeState,
 }) => {
   const { show } = await test.step(sections.steps.setup, async () => {
@@ -79,8 +78,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '02011ac3-f22
     await sourceCommand(() => expect(page.getByText('Meadow 0.5.40 · 1 browser window')).toBeVisible());
     await sourceCommand(() => expect(page.getByRole('button', { name: 'Open here instead' })).toBeVisible());
     await sourceCommand(() => expect(page.getByRole('button', { name: 'Return to browser' })).toBeVisible());
-    await sourceCommand(() => addKeyFrame(startupRecovery, callout));
-    await sourceCommand(() => checkpoint('browser session blocks a Runtime handoff'));
+    await sourceCommand(() => checkpoint('browser session blocks a Runtime handoff', { keyFrames: [startupRecovery, callout] }));
     return { show };
   });
 
@@ -104,8 +102,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '02011ac3-f22
     await sourceCommand(() => expect(page.getByText('Background operation', { exact: true })).toBeVisible());
     await sourceCommand(() => expect(page.getByRole('button', { name: 'Try again' })).toBeVisible());
     await sourceCommand(() => expect(page.getByRole('button', { name: 'Stop other session and open here' })).toBeVisible());
-    await sourceCommand(() => addKeyFrame(startupRecovery, callout));
-    await sourceCommand(() => checkpoint('active operation blocks a Runtime handoff'));
+    await sourceCommand(() => checkpoint('active operation blocks a Runtime handoff', { keyFrames: [startupRecovery, callout] }));
   });
 
   await test.step(sections.steps.checkDelayedOwnershipRelease, async () => {
@@ -127,8 +124,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '02011ac3-f22
     }));
     await sourceCommand(() => expect(page.getByRole('button', { name: 'Try again' })).toBeVisible());
     await sourceCommand(() => expect(page.getByRole('button', { name: 'Open here instead' })).toHaveCount(0));
-    await sourceCommand(() => addKeyFrame(startupRecovery, callout));
-    await sourceCommand(() => checkpoint('previous Runtime is still releasing Home ownership'));
+    await sourceCommand(() => checkpoint('previous Runtime is still releasing Home ownership', { keyFrames: [startupRecovery, callout] }));
   });
 
   await sourceCommand(() => assertMeadowHomeState());

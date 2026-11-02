@@ -1,2 +1,0 @@
-[[navigational component -- ncPreviewModalTab]]
-

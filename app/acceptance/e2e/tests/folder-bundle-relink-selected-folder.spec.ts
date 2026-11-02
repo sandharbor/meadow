@@ -25,7 +25,6 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '61372431-391
   page,
   testServer,
   checkpoint,
-  addKeyFrame,
   assertMeadowHomeState,
 }) => {
   const { bundleList, editor, moved } = await test.step(sections.steps.setup, async () => {
@@ -42,8 +41,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '61372431-391
   await test.step(sections.steps.openingBundleAsksForFolderSNew, async () => {
     await sourceCommand(() => bundleList.clickBundle(Bundle.FolderStructureSingle));
     await sourceCommand(() => bundleList.expectRelinkRequired("Alpha"));
-    await sourceCommand(() => addKeyFrame(folderBundles));
-    await sourceCommand(() => checkpoint("opening the bundle asks to relink its missing folder"));
+    await sourceCommand(() => checkpoint("opening the bundle asks to relink its missing folder", { keyFrames: [folderBundles] }));
   });
 
   await test.step(sections.steps.relinkItOpenBundle, async () => {

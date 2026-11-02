@@ -42,15 +42,13 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '2f0bd0e6-f5e
     await sourceCommand(() => editor.sourceReview.expectMoveCount(3));
     await sourceCommand(() => editor.sourceReview.expectDirectoryGroupCollapsed('t001', 'source-changes/nested', 3));
     await sourceCommand(() => editor.sourceReview.refreshIdentitySources());
-    await sourceCommand(() => addKeyFrame(sourceMove));
-    await sourceCommand(() => checkpoint('a collapsed overview summarizes the shared change for three files'));
+    await sourceCommand(() => checkpoint('a collapsed overview summarizes the shared change for three files', { keyFrames: [sourceMove] }));
   });
 
   await test.step(sections.steps.changeEveryIdentityDirectlyCollapsedGroupS, async () => {
     await sourceCommand(() => editor.sourceReview.chooseCompactIdentity(original[0].bundleNodeId, 'Different'));
     await sourceCommand(() => editor.sourceReview.expectCompactIdentity(original[0].bundleNodeId, 'Different', 3));
-    await sourceCommand(() => addKeyFrame(sourceMove));
-    await sourceCommand(() => checkpoint('the compact group choice applies Different to all three files'));
+    await sourceCommand(() => checkpoint('the compact group choice applies Different to all three files', { keyFrames: [sourceMove] }));
     await sourceCommand(() => editor.sourceReview.chooseCompactIdentity(original[0].bundleNodeId, 'Same'));
     await sourceCommand(() => editor.sourceReview.expectCompactIdentity(original[0].bundleNodeId, 'Same', 3));
     for (const node of original) {
@@ -90,8 +88,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '2f0bd0e6-f5e
     await sourceCommand(() => editor.sourceReview.expectDirectoryGroupExpanded('t001', 'source-changes/nested', 3));
     await sourceCommand(() => editor.sourceReview.expectMixedIdentityGroup(original[0].bundleNodeId));
     await sourceCommand(() => editor.sourceReview.expectIdentityDecision(original[1].bundleNodeId, 'Same file'));
-    await sourceCommand(() => addKeyFrame(sourceMove));
-    await sourceCommand(() => checkpoint('one expanded group keeps all three files and shows mixed choices'));
+    await sourceCommand(() => checkpoint('one expanded group keeps all three files and shows mixed choices', { keyFrames: [sourceMove] }));
   });
 
   await test.step(sections.steps.setWholeGroupBackSameFile, async () => {
@@ -100,8 +97,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '2f0bd0e6-f5e
     await sourceCommand(() => editor.sourceReview.expectDirectoryGroupExpanded('t001', 'source-changes/nested', 3));
     await sourceCommand(() => editor.sourceReview.continueToGraph());
     for (const node of original) await sourceCommand(() => editor.sourceReview.orphans.expectNotListed(node.bundleNodeName));
-    await sourceCommand(() => addKeyFrame(sourceMove));
-    await sourceCommand(() => checkpoint('all three reachable pages are proposed as moves'));
+    await sourceCommand(() => checkpoint('all three reachable pages are proposed as moves', { keyFrames: [sourceMove] }));
   });
 
   await test.step(sections.steps.acceptSourceUpdate, async () => {
@@ -113,8 +109,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '2f0bd0e6-f5e
       expect(updated.find(item => item.bundleNodeId === node.bundleNodeId)).toEqual({ ...node, sourceGraphSubdirectory: directory });
       await sourceCommand(() => editor.expectListViewNodeVisible(`file:${directory}/${node.bundleNodeName}.md`, true));
     }
-    await sourceCommand(() => addKeyFrame(sourceSnapshot));
-    await sourceCommand(() => checkpoint('unchanged links reach the relocated group after acceptance'));
+    await sourceCommand(() => checkpoint('unchanged links reach the relocated group after acceptance', { keyFrames: [sourceSnapshot] }));
   });
 
   await sourceCommand(() => skipMeadowHomeStateCheck());

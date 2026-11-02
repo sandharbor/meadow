@@ -37,7 +37,7 @@ const sections = scenarioSections({
   inspectSourceReviewHandoff: { type: 'test', text: conceptText`Inspect the source review handoff.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '673d01ca-cd33-43b5-9c5b-224d1bdbe26c' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, addKeyFrame, skipMeadowHomeStateCheck, checkpoint }, testInfo) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '673d01ca-cd33-43b5-9c5b-224d1bdbe26c' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, skipMeadowHomeStateCheck, checkpoint }, testInfo) => {
 
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'meadow-dev-scenario-')));
   const realHome = path.join(root, 'MeadowHome');
@@ -59,8 +59,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '673d01ca-cd3
       await sourceCommand(() => fixture.getByRole('tab', { name: 'remove', exact: true }).click());
       const change = fixture.getByTestId('source-change-delete-linked-section');
       await sourceCommand(() => expect(change.getByRole('button', { name: 'Apply', exact: true })).toBeDisabled());
-      await sourceCommand(() => addKeyFrame(sourceChange));
-      await sourceCommand(() => checkpoint('source changes are browsable while the real home is open'));
+      await sourceCommand(() => checkpoint('source changes are browsable while the real home is open', { keyFrames: [sourceChange] }));
       return { savedStates, fixture, change };
     });
 
@@ -79,8 +78,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '673d01ca-cd3
       };
       const first = await sourceCommand(() => startScenario());
       expect(first.targetPath).toBe('/bundle/meadow-test-bundle-big?surface=source-review');
-      await sourceCommand(() => addKeyFrame(savedState));
-      await sourceCommand(() => checkpoint('starting the scenario opens its fixture with Local services'));
+      await sourceCommand(() => checkpoint('starting the scenario opens its fixture with Local services', { keyFrames: [savedState] }));
       return { startScenario };
     });
 
@@ -104,8 +102,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '673d01ca-cd3
       const orphans = await sourceCommand(() => editor.sourceReview.reviewOrphans());
       await sourceCommand(() => orphans.showExplanation('t003 ---- page with section to link to'));
       await sourceCommand(() => orphans.expectMissingLinkedFile('t003 ---- page with section to link to', 't003 - link to section.md', 't003 ---- page with section to link to.md'));
-      await sourceCommand(() => addKeyFrame(sourceChange));
-      await sourceCommand(() => checkpoint('the handoff opens the missing linked page explanation'));
+      await sourceCommand(() => checkpoint('the handoff opens the missing linked page explanation', { keyFrames: [sourceChange] }));
     });
   } finally {
     await sourceCommand(() => page.goto('about:blank').catch(() => undefined));

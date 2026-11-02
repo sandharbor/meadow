@@ -16,7 +16,7 @@ const sections = scenarioSections({
   compareMovedContent: { type: 'test', text: conceptText`Compare the moved content.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewIdentity] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '465772d6-3cc4-4f5d-8cc7-081292592343' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, meadowCli, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '465772d6-3cc4-4f5d-8cc7-081292592343' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, meadowCli, sourceChanges, checkpoint, skipMeadowHomeStateCheck }) => {
   const { move } = await test.step(sections.steps.setup, async () => {
     let command = 0;
     const destination = await sourceCommand(() => prepareSourceScenario(
@@ -34,8 +34,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '465772d6-3cc
     await sourceCommand(() => move.expectSingleRoute(['main page.md']));
     await sourceCommand(() => move.compareContent());
     await sourceCommand(() => move.expectContentEdit('This test covers standard markdown link syntax.', 'This updated page demonstrates standard Markdown links after a directory move.'));
-    await sourceCommand(() => addKeyFrame(sourceMove));
-    await sourceCommand(() => checkpoint('a moved page with edited content offers an actual diff and one leading route'));
+    await sourceCommand(() => checkpoint('a moved page with edited content offers an actual diff and one leading route', { keyFrames: [sourceMove] }));
   });
 
   await sourceCommand(() => skipMeadowHomeStateCheck());

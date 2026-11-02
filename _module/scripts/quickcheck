@@ -63,7 +63,7 @@ REQUIRED_FILES=(
     "quickcheck"
 )
 OK_FILES=(".DS_Store" "prepare" "ui.png")
-OK_DIRS=(".agents" ".github" "_module" "cloud" "docs")
+OK_DIRS=(".agents" ".github" "_module" "cloud")
 
 echo_and_exit() {
     echo "$1"

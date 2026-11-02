@@ -18,7 +18,7 @@ const sections = scenarioSections({
   acceptSourceUpdate: { type: 'test', text: conceptText`Accept the source update.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewIdentity, sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '25840ba8-3533-4257-8e57-ecd39d614a23' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '25840ba8-3533-4257-8e57-ecd39d614a23' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, skipMeadowHomeStateCheck }) => {
   const { editor, bundleConfig, original } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     await sourceCommand(() => list.goto());
@@ -42,8 +42,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '25840ba8-353
     await sourceCommand(() => editor.sourceReview.confirmSuggestedIdentities());
     await sourceCommand(() => editor.sourceReview.continueToGraph());
     await sourceCommand(() => editor.sourceReview.orphans.expectNotListed('Inside'));
-    await sourceCommand(() => addKeyFrame(sourceMove));
-    await sourceCommand(() => checkpoint('content and link context support a move into another source'));
+    await sourceCommand(() => checkpoint('content and link context support a move into another source', { keyFrames: [sourceMove] }));
   });
 
   await test.step(sections.steps.acceptSourceUpdate, async () => {
@@ -57,8 +56,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '25840ba8-353
     const details = new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect);
     await sourceCommand(() => details.openDetails());
     await sourceCommand(() => details.expectFolder('research://Moved'));
-    await sourceCommand(() => addKeyFrame(sourceSnapshot));
-    await sourceCommand(() => checkpoint('the moved page retains its durable identity and tracking'));
+    await sourceCommand(() => checkpoint('the moved page retains its durable identity and tracking', { keyFrames: [sourceSnapshot] }));
   });
 
   await sourceCommand(() => skipMeadowHomeStateCheck());

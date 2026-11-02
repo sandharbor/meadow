@@ -20,7 +20,7 @@ const sections = scenarioSections({
   restorePartialReview: { type: 'test', text: conceptText`Reload and reopen review to restore the saved choice and the remaining unresolved identities.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewIdentity] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'f98553cf-a072-43b5-9855-b1dea5bd8118' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'f98553cf-a072-43b5-9855-b1dea5bd8118' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, assertMeadowHomeState }) => {
   const { editor, sourcing, proposal, saved, decisions } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
@@ -47,8 +47,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'f98553cf-a07
     await sourceCommand(() => expect(sourcing.root).toBeHidden());
     expect(new MeadowHomeBundleConfig(testServer.configDir, "sourcing-review", expect).readNodesText()).toBe(saved);
     expect(proposal.current.identities).toEqual(decisions);
-    await sourceCommand(() => addKeyFrame(pendingSourceProposal));
-    await sourceCommand(() => checkpoint('Cancel returns to curation with the partial proposal saved and accepted configuration unchanged'));
+    await sourceCommand(() => checkpoint('Cancel returns to curation with the partial proposal saved and accepted configuration unchanged', { keyFrames: [pendingSourceProposal] }));
   });
 
   await test.step(sections.steps.restorePartialReview, async () => {
@@ -62,8 +61,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'f98553cf-a07
     await sourceCommand(() => sourcing.showIdentity('100000000006'));
     await sourceCommand(() => sourcing.expectPickRequired('100000000006'));
     expect(new MeadowHomeBundleConfig(testServer.configDir, "sourcing-review", expect).readNodesText()).toBe(saved);
-    await sourceCommand(() => addKeyFrame(sourceReviewIdentity));
-    await sourceCommand(() => checkpoint('reopening restores the saved identity choice while the other identities remain unresolved'));
+    await sourceCommand(() => checkpoint('reopening restores the saved identity choice while the other identities remain unresolved', { keyFrames: [sourceReviewIdentity] }));
   });
 
   await sourceCommand(() => assertMeadowHomeState({

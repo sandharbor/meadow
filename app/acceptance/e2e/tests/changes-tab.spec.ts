@@ -41,7 +41,7 @@ const sections = scenarioSections({
   goChangesTabAssertNoChangedFiles: { type: 'test', text: conceptText`Go to Changes tab — assert "No changed files"` },
 });
 const areas = scenarioAreas([bundleReview], { subAreas: [changesTabDoc] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'cd2d2768-5c81-4558-8fbe-8dc5d4c5f09b' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'cd2d2768-5c81-4558-8fbe-8dc5d4c5f09b' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, checkpoint, skipMeadowHomeStateCheck }) => {
   const { modal, changesTab, versions } = await test.step(sections.steps.setup, async () => {
     const wf = new Workflows(page, expect);
     await sourceCommand(() => wf.navigateToBigBundlePreview());
@@ -66,8 +66,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'cd2d2768-5c8
     await sourceCommand(() => modal.expectCreateNewVersionVisible());
     await sourceCommand(() => modal.expectSingleVersionExplanation());
     await sourceCommand(() => expect(page.getByText(versionId, { exact: true })).toHaveCount(0));
-    await sourceCommand(() => addKeyFrame(versioning));
-    await sourceCommand(() => checkpoint("first generated version shown as unsaved"));
+    await sourceCommand(() => checkpoint("first generated version shown as unsaved", { keyFrames: [versioning] }));
     return { versionId };
   });
 
@@ -95,9 +94,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'cd2d2768-5c8
     await sourceCommand(() => changesTab.fileDetails.ensureOnDiffTab());
     await sourceCommand(() => changesTab.fileDetails.clickCodeSubTab());
     await sourceCommand(() => changesTab.fileDetails.expectNewFileHeader());
-    await sourceCommand(() => addKeyFrame(htmlGeneration));
-    await sourceCommand(() => addKeyFrame(changesTabDoc));
-    await sourceCommand(() => checkpoint("new file diff header shown"));
+    await sourceCommand(() => checkpoint("new file diff header shown", { keyFrames: [htmlGeneration, changesTabDoc] }));
   });
 
   await test.step(sections.steps.saveGeneratedVersion, async () => {

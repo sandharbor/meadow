@@ -121,4 +121,11 @@ export class Workflows {
     await this.previewModal.saveChangesIfNeeded();
     await this.previewModal.clickShareTab();
   }
+
+  /** navigateToSmallBundlePreview → save changes if needed → click Share tab. */
+  async navigateToSmallBundleShareTab() {
+    await this.navigateToSmallBundlePreview();
+    await this.previewModal.saveChangesIfNeeded();
+    await this.previewModal.clickShareTab();
+  }
 }

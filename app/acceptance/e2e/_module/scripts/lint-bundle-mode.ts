@@ -18,8 +18,11 @@ import { readdirSync, readFileSync, statSync } from "fs";
 import path from "path";
 import { BUNDLE_MODES } from "../../src/run/bundleMode.js";
 
+import { auditBundleMode } from './spec-bundle-mode.js';
+import { renderLintRule } from './lint-rule.js';
+import { bundleModeGuidance } from './rules/scenario-rule-definitions.js';
+
 const testsDir = path.resolve(import.meta.dirname, "../../tests");
-const declaration = /\btest\.use\(\{\s*bundleMode:\s*["']([^"']+)["']\s*\}\);/g;
 
 function listSpecFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -36,25 +39,16 @@ const counts = new Map(BUNDLE_MODES.map((mode) => [mode, 0]));
 
 for (const specFile of listSpecFiles(testsDir)) {
   const source = readFileSync(specFile, "utf8");
-  const values = [...source.matchAll(declaration)].map((match) => match[1]);
+  const audit = auditBundleMode(source);
   const relativePath = path.relative(testsDir, specFile);
-
-  if (values.length !== 1) {
-    failures.push(`${relativePath}: expected exactly one standalone test.use({ bundleMode: "..." }) declaration, found ${values.length}`);
-    continue;
-  }
-
-  const mode = values[0];
-  if (!BUNDLE_MODES.includes(mode as (typeof BUNDLE_MODES)[number])) {
-    failures.push(`${relativePath}: unsupported bundle mode "${mode}"`);
-    continue;
-  }
-  counts.set(mode as (typeof BUNDLE_MODES)[number], counts.get(mode as (typeof BUNDLE_MODES)[number])! + 1);
+  failures.push(...audit.issues.map(issue => `${relativePath}: ${issue}`));
+  if (audit.mode) counts.set(audit.mode, counts.get(audit.mode)! + 1);
 }
 
 if (failures.length > 0) {
   console.error("E2E bundle-mode classification failed:\n");
   for (const failure of failures) console.error(`  ${failure}`);
+  console.error(renderLintRule(bundleModeGuidance));
   process.exit(1);
 }
 

@@ -52,7 +52,7 @@ import {
 import type { FilterExpression } from '../../../../../contracts/types/shared/curation/filterExpression.ts'
 import { FilterMixPanel } from './FilterMixPanel.tsx'
 import { DocumentFilterPill } from './DocumentFilterPill.tsx'
-import { surfaceDocumentIds, sourceChangeDocumentIds } from '../filterDocuments.ts'
+import { surfaceDocumentIds, sourceChangeDocumentIds, startingSelectionDocumentIds, startingSelectionConceptIds } from '../filterDocuments.ts'
 import { groupSubAreas, groupUiSubAreas, subAreaAncestors, subAreaContains, uiSubAreaAncestors, uiSubAreaContains } from '../subAreaGroups.ts'
 import {
   SCENARIO_FILTER_SECTION_LABELS,
@@ -1007,24 +1007,16 @@ export default function RunDetail() {
             {(mode, available) => {
               const isSelected = selectedBundleModes.includes(mode.id)
               return (
-                <button
-                  key={mode.id}
-                  title={available ? undefined : 'No matching scenarios with the current filters.'}
-                  className={`px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors ${
-                    isSelected
-                      ? 'bg-violet-500 text-white'
-                      : available ? 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
-                      : 'bg-neutral-50 text-neutral-400 hover:bg-neutral-100'
-                  }${isSelected && !available ? ' opacity-60' : ''}`}
-                  aria-pressed={isSelected}
-                  onClick={() => setFilters({
+                <DocumentFilterPill key={mode.id} document={allDocs.find(doc => doc.id === startingSelectionDocumentIds[mode.id])}
+                  selected={isSelected} available={available} tone="violet" onOpen={openConcept}
+                  onFilter={() => setFilters({
                     bundleModes: isSelected
                       ? selectedBundleModes.filter((selected) => selected !== mode.id)
                       : [...selectedBundleModes, mode.id],
                   })}
                 >
                   {mode.label}
-                </button>
+                </DocumentFilterPill>
               )
             }}
           </FilterOptions>
@@ -1461,7 +1453,7 @@ export default function RunDetail() {
                               availableIds={availableBundleIds} selectedIds={selectedBundleIds}
                               onChoose={(id, action) => chooseMetadataFilter({ bundleIds: [id] }, action)} />
                             <ScenarioMetadataGroup documents={[...documentCatalog, ...allDocs, ...appAreas, ...bundleDocs]} onOpen={openConcept} label="Starts with" accent="filter-starts-with"
-                              options={BUNDLE_MODE_OPTIONS.filter(mode => mode.id === scenario.bundleMode).map(mode => ({ id: mode.id, name: mode.label }))}
+                              options={BUNDLE_MODE_OPTIONS.filter(mode => mode.id === scenario.bundleMode).map(mode => ({ id: mode.id, name: mode.label, documentId: startingSelectionDocumentIds[mode.id] }))}
                               availableIds={availableModeIds} selectedIds={selectedBundleModes}
                               onChoose={(id, action) => { if (isBundleMode(id)) chooseMetadataFilter({ bundleModes: [id] }, action) }} />
                             <ScenarioMetadataGroup documents={[...documentCatalog, ...allDocs, ...appAreas, ...bundleDocs]} onOpen={openConcept} label="Design pressures" accent="filter-tags"
@@ -1469,7 +1461,7 @@ export default function RunDetail() {
                               availableIds={availableValues('pressure')} selectedIds={selectedPressureIds}
                               onChoose={(id, action) => chooseMetadataFilter({ pressureIds: [id] }, action)} />
                             <ScenarioMetadataGroup documents={[...documentCatalog, ...allDocs, ...appAreas, ...bundleDocs]} onOpen={openConcept} label="Concepts" accent="filter-tags"
-                              options={docs.filter(doc => !doc.isContribution && scenario.conceptIds.includes(doc.id))}
+                              options={docs.filter(doc => !doc.isContribution && !startingSelectionConceptIds.some(id => id === doc.id) && scenario.conceptIds.includes(doc.id))}
                               availableIds={visibleFacetDocIds} selectedIds={selectedDocIds}
                               onChoose={(id, action) => chooseMetadataFilter({ docIds: [id] }, action)} />
                             <ScenarioMetadataGroup documents={[...documentCatalog, ...allDocs, ...appAreas, ...bundleDocs]} onOpen={openConcept} label="meadow-extension" accent="filter-contributed-tags"

@@ -50,7 +50,6 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '7e00589f-d58
   page,
   checkpoint,
   skipMeadowHomeStateCheck,
-  addKeyFrame,
   testServer,
 }) => {
   const { modal } = await test.step(sections.steps.setup, async () => {
@@ -68,8 +67,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '7e00589f-d58
     await sourceCommand(() => okf.expectSelectedIndex(sourceIndexPageName, "root"));
     await sourceCommand(() => okf.expectNoReachableLogPageFound());
     await sourceCommand(() => okf.chooseNoLog());
-    await sourceCommand(() => addKeyFrame(customize));
-    await sourceCommand(() => checkpoint("auto index and no log selected"));
+    await sourceCommand(() => checkpoint("auto index and no log selected", { keyFrames: [customize] }));
     return { okf };
   });
 
@@ -78,8 +76,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '7e00589f-d58
 
     const changesTab = new ChangesTab(page, expect);
     await sourceCommand(() => changesTab.waitForRegenerationComplete());
-    await sourceCommand(() => addKeyFrame(openKnowledgeFormat));
-    await sourceCommand(() => checkpoint("okf generation complete with auto index and no log"));
+    await sourceCommand(() => checkpoint("okf generation complete with auto index and no log", { keyFrames: [openKnowledgeFormat] }));
   });
 
   await test.step(sections.steps.inspectGeneratedPackageFiles, async () => {

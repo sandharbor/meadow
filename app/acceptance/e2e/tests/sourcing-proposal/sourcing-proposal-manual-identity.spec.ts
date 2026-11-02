@@ -19,7 +19,7 @@ const sections = scenarioSections({
   accept: { type: 'test', text: conceptText`Accept the proposal and verify that the rewritten page retains its old identity and tracking.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewIdentity] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'b6890333-6e25-46ac-88df-8c35d6a0aef5' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'b6890333-6e25-46ac-88df-8c35d6a0aef5' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, assertMeadowHomeState }) => {
   const { editor, sourcing, proposal } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect), editor = new BundleEditorPage(page, expect);
     const sourcing = new SourcingWorkspacePage(page, expect), proposal = new SourcingProposalState(testServer, 'sourcing-review');
@@ -37,8 +37,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'b6890333-6e2
     await sourceCommand(() => sourcing.expectPageIdentityAvailable());
     await sourceCommand(() => sourcing.openIdentities());
     await sourceCommand(() => sourcing.expectUnmatchedIdentityExplanation());
-    await sourceCommand(() => addKeyFrame(sourceReviewIdentity, changesTray, pageIdentityPanel));
-    await sourceCommand(() => checkpoint('unmatched pages explain why no identity was suggested'));
+    await sourceCommand(() => checkpoint('unmatched pages explain why no identity was suggested', { keyFrames: [sourceReviewIdentity, changesTray, pageIdentityPanel] }));
   });
   await test.step(sections.steps.pair, async () => {
     await sourceCommand(() => sourcing.pairManually('100000000007', 'Revised Leaf.md'));
@@ -47,8 +46,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'b6890333-6e2
     expect(proposal.current.identities['100000000007']).toBe('Revised Leaf.md');
     await sourceCommand(() => sourcing.openIdentities());
     await sourceCommand(() => sourcing.expectIdentityDecision('100000000007', 'Same file'));
-    await sourceCommand(() => addKeyFrame(sourceReviewIdentity));
-    await sourceCommand(() => checkpoint('the manual identity is recorded and revisitable'));
+    await sourceCommand(() => checkpoint('the manual identity is recorded and revisitable', { keyFrames: [sourceReviewIdentity] }));
     await sourceCommand(() => sourcing.identityButton('Cancel').click());
   });
   await test.step(sections.steps.accept, async () => {

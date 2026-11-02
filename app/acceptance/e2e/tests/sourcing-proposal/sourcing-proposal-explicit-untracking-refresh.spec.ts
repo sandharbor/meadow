@@ -21,7 +21,7 @@ const sections = scenarioSections({
   acceptancePersistsOverrideMakesItAvailableFor: { type: 'test', text: conceptText`Acceptance persists the override and makes it available for ordinary curation.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '9be967e0-107e-4e85-9223-4f67e83810ca' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '9be967e0-107e-4e85-9223-4f67e83810ca' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, assertMeadowHomeState }) => {
   const { editor, sourcing, proposal, filters } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
@@ -49,8 +49,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '9be967e0-107
     expect(proposal.current.tracking['file:Additions/Safe Two.md']).toMatchObject({ origin: 'explicit', track: false });
     await sourceCommand(() => sourcing.expectTrackAdditions(true));
     await sourceCommand(() => expect(sourcing.selectedPage.getByText('Not Tracked', { exact: true })).toBeVisible());
-    await sourceCommand(() => addKeyFrame(sourceReviewSensitivity));
-    await sourceCommand(() => checkpoint('explicit untracking overrides the still-enabled automatic preference'));
+    await sourceCommand(() => checkpoint('explicit untracking overrides the still-enabled automatic preference', { keyFrames: [sourceReviewSensitivity] }));
   });
 
   await test.step(sections.steps.refreshMustPreserveOverrideWhileContinuingTrack, async () => {
@@ -61,8 +60,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '9be967e0-107
     await sourceCommand(() => expect(sourcing.selectedPage.getByText('Tracked', { exact: true })).toBeVisible());
     await sourceCommand(() => sourcing.select('Safe Two'));
     await sourceCommand(() => expect(sourcing.selectedPage.getByText('Not Tracked', { exact: true })).toBeVisible());
-    await sourceCommand(() => addKeyFrame(sourceReviewSensitivity));
-    await sourceCommand(() => checkpoint('refresh preserves explicit untracking instead of restoring the automatic choice'));
+    await sourceCommand(() => checkpoint('refresh preserves explicit untracking instead of restoring the automatic choice', { keyFrames: [sourceReviewSensitivity] }));
   });
 
   await test.step(sections.steps.acceptancePersistsOverrideMakesItAvailableFor, async () => {
@@ -75,8 +73,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '9be967e0-107
     await sourceCommand(() => filters.enableAndSoloFilter('Untracked'));
     await sourceCommand(() => editor.expectListViewRowByExactNamePresent('Safe Two'));
     await sourceCommand(() => editor.expectListViewRowByExactNameNotPresent('Safe One'));
-    await sourceCommand(() => addKeyFrame(sourceReviewSensitivity));
-    await sourceCommand(() => checkpoint('accepted curation preserves the explicit untrack and the other automatic inclusion'));
+    await sourceCommand(() => checkpoint('accepted curation preserves the explicit untrack and the other automatic inclusion', { keyFrames: [sourceReviewSensitivity] }));
   });
 
   await sourceCommand(() => assertMeadowHomeState({ allowedUntracked: ['source_graphs/.source-changes.jsonl'], allowedModified: ['source_graphs/sourcing-review-data/Start.md'] }));

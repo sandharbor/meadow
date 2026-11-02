@@ -36,7 +36,7 @@ const sections = scenarioSections({
 });
 const areas = scenarioAreas([bundleCuration]);
 test(name.name, { annotation: [{ type: 'scenario-id', description: 'c0c45455-93e3-4e43-9a7e-ff6d7660d483' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
-  page, checkpoint, assertMeadowHomeState, addKeyFrame,
+  page, checkpoint, assertMeadowHomeState,
 }) => {
   const { editor, filterPanel } = await test.step(sections.steps.setup, async () => {
     const bundleList = new BundleListPage(page, expect);
@@ -54,8 +54,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'c0c45455-93e
   await test.step(sections.steps.enableFrontierPagesInCuration, async () => {
     await sourceCommand(() => filterPanel.enableFilter("Frontier"));
     await sourceCommand(() => page.waitForTimeout(500));
-    await sourceCommand(() => addKeyFrame(frontier));
-    await sourceCommand(() => checkpoint("frontier filter visible"));
+    await sourceCommand(() => checkpoint("frontier filter visible", { keyFrames: [frontier] }));
   });
 
   await test.step(sections.steps.soloFrontier, async () => {
@@ -68,8 +67,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'c0c45455-93e
     await sourceCommand(() => page.waitForTimeout(250));
     const frontierPageCount = await sourceCommand(() => editor.getListViewPageCount());
     expect(frontierPageCount).toBeGreaterThan(1);
-    await sourceCommand(() => addKeyFrame(filters));
-    await sourceCommand(() => checkpoint("frontier filter soloed with multiple pages"));
+    await sourceCommand(() => checkpoint("frontier filter soloed with multiple pages", { keyFrames: [filters] }));
 
     void exampleBundle;
 

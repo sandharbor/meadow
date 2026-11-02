@@ -46,7 +46,6 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '37d9c264-c86
   page,
   checkpoint,
   assertMeadowHomeState,
-  addKeyFrame,
 }) => {
   const { editor, filterPanel } = await test.step(sections.steps.setup, async () => {
     const bundleList = new BundleListPage(page, expect);
@@ -85,8 +84,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '37d9c264-c86
   await test.step(sections.steps.stageTraversalOverrideWithoutChangingAcceptedCuration, async () => {
     await sourceCommand(() => detail.addOutlinksDepthOverride(0));
     await sourceCommand(() => expect(editor.sourceReview.root).toBeVisible());
-    await sourceCommand(() => addKeyFrame(bundleConfig));
-    await sourceCommand(() => checkpoint("override is captured in the sourcing proposal"));
+    await sourceCommand(() => checkpoint("override is captured in the sourcing proposal", { keyFrames: [bundleConfig] }));
     await sourceCommand(() => editor.sourceReview.defer());
     await sourceCommand(() => editor.expectUndoNotVisible());
     await sourceCommand(() => editor.sourceReview.open());
@@ -102,8 +100,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '37d9c264-c86
     await sourceCommand(() => page.waitForTimeout(250));
 
     await sourceCommand(() => editor.expectListViewRowByExactNamePresent("First Principles Thinking"));
-    await sourceCommand(() => addKeyFrame(overrides));
-    await sourceCommand(() => checkpoint("override page appears under Depth Override filter"));
+    await sourceCommand(() => checkpoint("override page appears under Depth Override filter", { keyFrames: [overrides] }));
   });
 
   void exampleBundle;

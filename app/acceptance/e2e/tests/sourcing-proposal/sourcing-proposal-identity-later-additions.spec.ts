@@ -24,7 +24,7 @@ const sections = scenarioSections({
   earlierDecisionCanStillChangeItStays: { type: 'test', text: conceptText`An earlier decision can still change, and it stays with the decided files.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewIdentity] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '3f58ea0a-6f02-4de3-869d-2965c0b497d2' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '3f58ea0a-6f02-4de3-869d-2965c0b497d2' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, assertMeadowHomeState }) => {
   const { sourcing, proposal, earlier } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
@@ -70,8 +70,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '3f58ea0a-6f0
     await sourceCommand(() => sourcing.expectIdentityDecision('100000000007', 'Same file'));
     await sourceCommand(() => sourcing.expectIdentityMatch('100000000006', 'Retained One.md'));
     expect(proposal.current.identities).toEqual(earlier);
-    await sourceCommand(() => addKeyFrame(sourceChangesDuringReview));
-    await sourceCommand(() => checkpoint('after a refresh only the new file needs a choice and earlier decisions stay decided'));
+    await sourceCommand(() => checkpoint('after a refresh only the new file needs a choice and earlier decisions stay decided', { keyFrames: [sourceChangesDuringReview] }));
     return { decided };
   });
 
@@ -80,8 +79,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '3f58ea0a-6f0
     await sourceCommand(() => expect(decided.getByTestId('source-move-100000000007')).toBeVisible());
     await sourceCommand(() => sourcing.decideIdentity('100000000005', 'Beyond.md'));
     await sourceCommand(() => sourcing.confirmIdentities());
-    await sourceCommand(() => addKeyFrame(sourceReviewIdentity));
-    await sourceCommand(() => checkpoint('the new decision and the changed earlier one are both kept'));
+    await sourceCommand(() => checkpoint('the new decision and the changed earlier one are both kept', { keyFrames: [sourceReviewIdentity] }));
 
     await sourceCommand(() => sourcing.accept());
     const nodeConfig = new MeadowHomeBundleConfig(testServer.configDir, "sourcing-review", expect);

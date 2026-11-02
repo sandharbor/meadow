@@ -57,9 +57,8 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '0c8889cc-f2c
     await sourceCommand(() => createModal.addFolders([path.join(sourceDir, "Alpha")]));
     expect(await sourceCommand(() => createModal.getSlugDisplayText())).toBe("alpha");
     await sourceCommand(() => createModal.expectFolderSelectionValid());
-    await sourceCommand(() => addKeyFrame(folderBundles));
 
-    await sourceCommand(() => checkpoint("the selected folder supplies the initial name"));
+    await sourceCommand(() => checkpoint("the selected folder supplies the initial name", { keyFrames: [folderBundles] }));
     return { bundleList, createModal, editor, previewModal, sourceDir };
   });
 
@@ -81,8 +80,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '0c8889cc-f2c
     expect(await sourceCommand(() => createModal.getSlugDisplayText())).toBe("collected-notes");
     await sourceCommand(() => createModal.clickEditSlug());
     await sourceCommand(() => createModal.fillSlug("reading-room"));
-    await sourceCommand(() => addKeyFrame(bundleSlug));
-    await sourceCommand(() => checkpoint("the home title and bundle slug are chosen independently"));
+    await sourceCommand(() => checkpoint("the home title and bundle slug are chosen independently", { keyFrames: [bundleSlug] }));
   });
 
   await test.step(sections.steps.createFolderBundle, async () => {
@@ -101,8 +99,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '0c8889cc-f2c
     await sourceCommand(() => previewModal.waitForPreviewComplete());
     await sourceCommand(() => previewModal.generatedBundle.expectSingleHeading("Collected Notes", 60_000));
     await sourceCommand(() => previewModal.generatedBundle.expectStructuralChildNames(["Alpha", "Beta"]));
-    await sourceCommand(() => addKeyFrame(folderBundles));
-    await sourceCommand(() => checkpoint("published home uses the chosen title and folder order"));
+    await sourceCommand(() => checkpoint("published home uses the chosen title and folder order", { keyFrames: [folderBundles] }));
   });
 
   void customBundle;

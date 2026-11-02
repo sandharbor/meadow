@@ -63,8 +63,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'c4ae489a-82e
     expect(staged.proposed.globalFilters.some((filter: { name: string }) => filter.name === 'Draft shared emphasis')).toBe(true);
     expect(new MeadowHomeFilters(testServer.configDir, 'sourcing-review').globalText()).toBe(savedGlobal);
     expect(new MeadowHomeBundleConfig(testServer.configDir, "sourcing-review", expect).readNodesText()).toBe(savedNodes);
-    await sourceCommand(() => addKeyFrame(proposalConfigurationDraft));
-    await sourceCommand(() => checkpoint('node tracking bundle-filter and global-filter drafts accumulate in one proposal'));
+    await sourceCommand(() => checkpoint('node tracking bundle-filter and global-filter drafts accumulate in one proposal', { keyFrames: [proposalConfigurationDraft] }));
     return { staged };
   });
 

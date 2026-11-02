@@ -87,7 +87,6 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '9a5da1c5-dbc
   page,
   checkpoint,
   skipMeadowHomeStateCheck,
-  addKeyFrame,
 }) => {
   const { modal, generatedBundle, folderNavigation } = await test.step(sections.steps.setup, async () => {
     const workflows = new Workflows(page, expect);
@@ -134,8 +133,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '9a5da1c5-dbc
     await sourceCommand(() => folderNavigation.close());
     await sourceCommand(() => folderNavigation.expectMobileHeaderControlsAligned());
     await sourceCommand(() => folderNavigation.expectNoBreadcrumbs());
-    await sourceCommand(() => addKeyFrame(customize));
-    await sourceCommand(() => checkpoint("mobile generated bundle header without breadcrumbs"));
+    await sourceCommand(() => checkpoint("mobile generated bundle header without breadcrumbs", { keyFrames: [customize] }));
     return { modal, generatedBundle, folderNavigation };
   });
 
@@ -169,8 +167,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '9a5da1c5-dbc
     ));
     await sourceCommand(() => generatedBundle.expectHeading("normalized t001 ---- child 1"));
     await sourceCommand(() => folderNavigation.expectSelectedFile("normalized t001 ---- child 1.html"));
-    await sourceCommand(() => addKeyFrame(htmlGeneration));
-    await sourceCommand(() => checkpoint("folder navigation selected page"));
+    await sourceCommand(() => checkpoint("folder navigation selected page", { keyFrames: [htmlGeneration] }));
   });
 
   await test.step(sections.steps.reloadSelectedPage, async () => {

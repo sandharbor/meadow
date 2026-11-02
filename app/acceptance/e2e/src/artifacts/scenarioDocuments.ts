@@ -3,6 +3,9 @@
 import ts from 'typescript';
 import { declaredScenarioAreaIds } from './declaredScenarioAreas.js';
 import type { DocumentRegistry } from '../../../../concepts/loadRegistry.js';
+import { coreConceptIds } from '../../../../concepts/ids.js';
+import { startingSelectionDocumentIds } from '../../../../concepts/startingSelectionShapes.js';
+import { declaredScenarioOptions } from './declaredScenarioOptions.js';
 
 export interface ScenarioDocuments {
   conceptIds: string[];
@@ -51,6 +54,8 @@ export function declaredScenarioPressures(source: string | ts.SourceFile): strin
 export function resolveScenarioDocuments(source: string, registry: DocumentRegistry): ScenarioDocuments {
   const file = ts.createSourceFile('scenario.ts', source, ts.ScriptTarget.Latest, true);
   const importedIds = [...new Set([...importedNames(file).values()].flatMap(name => registry.exportNameToId.get(name) ?? []))];
+  const { bundleMode } = declaredScenarioOptions(source);
+  const startingIds = bundleMode ? [coreConceptIds.startingSelection, startingSelectionDocumentIds[bundleMode]] : [];
   const pressureNames = declaredScenarioPressures(file) ?? [];
   const designPressureIds = pressureNames.map(name => {
     const id = registry.exportNameToId.get(name);
@@ -60,7 +65,7 @@ export function resolveScenarioDocuments(source: string, registry: DocumentRegis
   if (new Set(designPressureIds).size !== designPressureIds.length) throw new Error('Duplicate scenario design pressure.');
   const areas = declaredScenarioAreaIds(source, registry.exportNameToId);
   return {
-    conceptIds: importedIds.filter(id => registry.acceptanceConcepts.some(concept => concept.id === id)),
+    conceptIds: [...new Set([...importedIds, ...startingIds])].filter(id => registry.acceptanceConcepts.some(concept => concept.id === id)),
     bundleDocIds: importedIds.filter(id => registry.fixtureIds.includes(id)),
     appAreaDocIds: areas.appAreaIds, subAreaDocIds: areas.subAreaIds, designPressureIds,
   };

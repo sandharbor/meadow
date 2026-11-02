@@ -12,6 +12,5 @@ _agent/agent/.agent_info
 /app/publishing_providers/MeadowPublishingProvider
 /app/acceptance/e2e/tests/meadow-extension
 /app/acceptance/e2e/src/run/meadow-extension
-/app/acceptance/e2e/src/scenario-docs/meadow-extension
 /app/concepts/meadow-extension
 /app/acceptance/e2e/fixtures/pre-migration/meadow-extension

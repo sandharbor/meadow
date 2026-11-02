@@ -33,7 +33,6 @@ const areas = scenarioAreas([]);
 test(name.name, { annotation: [{ type: 'scenario-id', description: 'd482e3bd-67e5-4162-b047-bcd9875615ea' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
-  addKeyFrame,
   assertMeadowHomeState,
 }) => {
   await test.step(sections.steps.setup, async () => {
@@ -61,8 +60,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'd482e3bd-67e
     await sourceCommand(() => expect(page.getByRole('button', { name: 'Try again' })).toBeVisible());
     await sourceCommand(() => expect(page.getByText('Selected Meadow Home')).toBeHidden());
     await sourceCommand(() => expect(page.getByText('Running app')).toBeHidden());
-    await sourceCommand(() => addKeyFrame(startupRecovery, callout));
-    await sourceCommand(() => checkpoint('unknown startup failure'));
+    await sourceCommand(() => checkpoint('unknown startup failure', { keyFrames: [startupRecovery, callout] }));
   });
 
   await sourceCommand(() => assertMeadowHomeState());

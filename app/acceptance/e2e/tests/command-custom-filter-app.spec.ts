@@ -41,8 +41,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'e5500f1a-57f
     await expect(dialog.getByLabel('Concurrency', { exact: true })).toHaveValue('4');
     await sourceCommand(() => panel.addCommandSensitivityAction());
     await sourceCommand(() => dialog.getByLabel('Executable', { exact: true }).scrollIntoViewIfNeeded());
-    await sourceCommand(() => addKeyFrame(filters, filterSensitivity));
-    await sourceCommand(() => checkpoint('Command filter is configured with default 4/4 execution and both actions'));
+    await sourceCommand(() => checkpoint('Command filter is configured with default 4/4 execution and both actions', { keyFrames: [filters, filterSensitivity] }));
     await sourceCommand(() => dialog.getByRole('button', { name: 'Save Filter', exact: true }).click());
     await expect(dialog).toBeHidden();
     await expect.poll(fixture.started).toBe(4);
@@ -56,15 +55,13 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'e5500f1a-57f
     await sourceCommand(() => editor.sourceReview.open());
     await expect(editor.sourceReview.root).toContainText('Command filter sensitivity assessment is incomplete');
     await expect(editor.sourceReview.root.getByRole('button', { name: 'Accept changes', exact: true })).toBeDisabled();
-    await sourceCommand(() => addKeyFrame(filters, filterSensitivity));
-    await sourceCommand(() => checkpoint('source review stays available while incomplete sensitivity prevents acceptance'));
+    await sourceCommand(() => checkpoint('source review stays available while incomplete sensitivity prevents acceptance', { keyFrames: [filters, filterSensitivity] }));
     await sourceCommand(() => editor.sourceReview.close());
     fixture.flag('release');
     await expect(progress.getByRole('status')).toContainText('0 running');
     expect(fixture.started()).toBe(4);
     await sourceCommand(() => progress.scrollIntoViewIfNeeded());
-    await sourceCommand(() => addKeyFrame(filters));
-    await sourceCommand(() => checkpoint('paused classification preserves finished work and leaves the remaining batches pending'));
+    await sourceCommand(() => checkpoint('paused classification preserves finished work and leaves the remaining batches pending', { keyFrames: [filters] }));
     await sourceCommand(() => progress.getByRole('button', { name: 'Resume', exact: true }).click());
     await expect(progress.getByRole('status')).toContainText('0 pending');
     await expect(progress.getByRole('status')).toContainText('0 running');
@@ -75,8 +72,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'e5500f1a-57f
     await expect(errors).toContainText('Intentional classifier failure for inlink nodes');
     await expect(errors).toContainText('Affected nodes:');
     await expect(errors).toContainText('Exit status: 7');
-    await sourceCommand(() => addKeyFrame(filters));
-    await sourceCommand(() => checkpoint('command failure modal explains affected batches and retains stderr diagnostics'));
+    await sourceCommand(() => checkpoint('command failure modal explains affected batches and retains stderr diagnostics', { keyFrames: [filters] }));
     await sourceCommand(() => errors.getByRole('button', { name: 'Close', exact: true }).click());
     await expect(progress.getByRole('button', { name: /^Errors/ })).toBeVisible();
   });
@@ -104,8 +100,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'e5500f1a-57f
     await sourceCommand(() => editor.clickSelectNone());
     await sourceCommand(() => editor.switchToGraphView());
     await expect(page.getByTestId('graph-page-node').first()).toBeInViewport();
-    await sourceCommand(() => addKeyFrame(filters, filterSensitivity));
-    await sourceCommand(() => checkpoint('recovered classifier highlights and marks the expected seven nodes sensitive'));
+    await sourceCommand(() => checkpoint('recovered classifier highlights and marks the expected seven nodes sensitive', { keyFrames: [filters, filterSensitivity] }));
   });
   await test.step(sections.steps.reuse, async () => {
     const invocations = fixture.started();
@@ -124,8 +119,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'e5500f1a-57f
     await sourceCommand(() => progress.getByRole('button', { name: 'Rerun', exact: true }).click());
     await expect(progress.getByText(/Assessment incomplete/)).toHaveCount(0);
     await sourceCommand(() => editor.expectGraphHighlightCount('#FFD700', 7));
-    await sourceCommand(() => addKeyFrame(filters, filterSensitivity));
-    await sourceCommand(() => checkpoint('reopening reuses decisions and an explicit rerun refreshes unchanged inputs'));
+    await sourceCommand(() => checkpoint('reopening reuses decisions and an explicit rerun refreshes unchanged inputs', { keyFrames: [filters, filterSensitivity] }));
   });
   await sourceCommand(() => skipMeadowHomeStateCheck());
 });

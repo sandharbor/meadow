@@ -50,6 +50,7 @@ import {
 import { CheckpointOpenControl } from './CheckpointOpenControl.tsx'
 import { bundleModeLabel, type BundleMode } from '../../bundleModes.ts'
 import { DocumentPillFrame } from './DocumentFilterPill.tsx'
+import { startingSelectionDocumentIds, startingSelectionConceptIds } from '../filterDocuments.ts'
 import { groupSubAreas, groupUiSubAreas } from '../subAreaGroups.ts'
 
 // --- Types ---
@@ -757,7 +758,7 @@ export default function ScenarioViewer() {
   const matchingDocs = useMemo(() => {
     const docIds = manifest?.conceptIds || []
     if (docIds.length === 0) return []
-    return concepts.filter((doc) => docIds.includes(doc.id) && !manifest?.subAreaDocIds?.includes(doc.id) && !(doc.kind === 'ui-sub-area' && doc.appAreaIds?.some(id => manifest?.appAreaDocIds?.includes(id))))
+    return concepts.filter((doc) => docIds.includes(doc.id) && !startingSelectionConceptIds.some(id => id === doc.id) && !manifest?.subAreaDocIds?.includes(doc.id) && !(doc.kind === 'ui-sub-area' && doc.appAreaIds?.some(id => manifest?.appAreaDocIds?.includes(id))))
   }, [concepts, manifest])
 
   const matchingAppAreas = useMemo(() => {
@@ -1975,28 +1976,32 @@ export default function ScenarioViewer() {
           {manifest?.bundleMode && (
             <div role="group" aria-label="Starts with" className={`scenario-metadata-group filter-starts-with flex items-center gap-1.5 ${expanded ? 'min-w-0 flex-wrap' : 'shrink-0'}`}>
               <span className="text-[11px] text-neutral-400">{isMobile ? 'Starts:' : 'Starts with:'}</span>
+              <DocumentPillFrame document={concepts.find(doc => doc.id === startingSelectionDocumentIds[manifest.bundleMode!])}
+                selected={false} onOpen={openConcept} className="text-[11px] font-medium text-neutral-600">
               <Link
                 to={`/${runId}?mode=${encodeURIComponent(manifest.bundleMode)}`}
                 data-selected="false"
-                className="scenario-metadata-chip max-w-full break-words px-2 py-0.5 rounded-full text-[11px] font-medium text-neutral-600 transition-colors"
+                className={`scenario-metadata-chip max-w-full break-words px-2 py-0.5 ${concepts.some(doc => doc.id === startingSelectionDocumentIds[manifest.bundleMode!]) ? 'rounded-l-full' : 'rounded-full'} text-[11px] font-medium text-neutral-600 transition-colors`}
               >
                 {bundleModeLabel(manifest.bundleMode)}
               </Link>
+              </DocumentPillFrame>
             </div>
           )}
           {matchingAppAreas.length > 0 && (
             <div role="group" aria-label="Areas" className={`scenario-metadata-group filter-areas flex items-center gap-1.5 ${expanded ? 'min-w-0 flex-wrap' : 'shrink-0'}`}>
               <span className="text-[11px] text-neutral-400">Areas:</span>
               {matchingAppAreas.map((area) => (
+                <DocumentPillFrame key={area.id} document={area} selected={false} onOpen={openConcept} className="text-[11px] font-medium text-neutral-600">
                 <Link
-                  key={area.id}
                   to={`/${runId}?area=${encodeURIComponent(area.id)}`}
                   title={area.description}
                   data-selected="false"
-                  className="scenario-metadata-chip max-w-full break-words px-2 py-0.5 rounded-full text-[11px] font-medium text-neutral-600 transition-colors"
+                  className="scenario-metadata-chip max-w-full break-words px-2 py-0.5 rounded-l-full transition-colors"
                 >
                   {area.name}
                 </Link>
+                </DocumentPillFrame>
               ))}
             </div>
           )}
@@ -2006,26 +2011,32 @@ export default function ScenarioViewer() {
               className={`scenario-metadata-group filter-areas flex items-center gap-1.5 ${expanded ? 'area-subareas min-w-0 flex-wrap rounded-r-md px-3 py-1.5' : 'shrink-0'}`}>
               <span className="text-[11px] text-neutral-500">{[area.name.replace(/^Bundle /, ''), ...ancestors.map(doc => doc.name)].join(' → ')} sub-areas:</span>
               {subAreas.map(doc => (
-                <Link key={doc.id} to={`/${runId}?area=${encodeURIComponent(area.id)}&subarea=${encodeURIComponent(doc.id)}`}
-                  title={doc.description} data-selected="false" data-highlighted={hoveredDocId === doc.id}
+                <DocumentPillFrame key={doc.id} document={doc} selected={false} highlighted={hoveredDocId === doc.id} onOpen={openConcept} className="text-[11px] font-medium text-neutral-600">
+                <Link to={`/${runId}?area=${encodeURIComponent(area.id)}&subarea=${encodeURIComponent(doc.id)}`}
+                  title={doc.description} data-selected="false"
                   onMouseEnter={() => manifest.keyFrames?.some(frame => frame.docId === doc.id) ? setHoveredDocId(doc.id) : undefined}
                   onMouseLeave={() => setHoveredDocId(null)}
-                  className="scenario-metadata-chip max-w-full break-words px-2 py-0.5 rounded-full text-[11px] font-medium text-neutral-600 transition-colors">
+                  className="scenario-metadata-chip max-w-full break-words px-2 py-0.5 rounded-l-full transition-colors">
                   {doc.name}
                 </Link>
+                </DocumentPillFrame>
               ))}
             </div>
           )))}
           {matchingUiSubAreaGroups.map(({ area, uiSubAreas }) => <div key={`ui-${area.id}`} role="group" aria-label={`${area.name} UI sub-areas`}
             className={`scenario-metadata-group filter-areas flex items-center gap-1.5 ${expanded ? 'area-subareas min-w-0 flex-wrap rounded-r-md px-3 py-1.5' : 'shrink-0'}`}>
             <span className="text-[11px] text-neutral-500">{area.name.replace(/^Bundle /, '')} UI sub-areas:</span>
-            {uiSubAreas.map(doc => <DocumentPillFrame key={doc.id} document={doc} onOpen={openConcept} className="bg-neutral-100 text-neutral-600"><Link to={`/${runId}?area=${encodeURIComponent(area.id)}&uisubarea=${encodeURIComponent(doc.id)}`}
-              title={doc.description} data-selected="false" className="scenario-metadata-chip max-w-full break-words px-2 py-0.5 rounded-l-full text-[11px] font-medium text-neutral-600 transition-colors">{doc.name}</Link></DocumentPillFrame>)}
+            {uiSubAreas.map(doc => <DocumentPillFrame key={doc.id} document={doc} selected={false} onOpen={openConcept} className="text-[11px] font-medium text-neutral-600"><Link to={`/${runId}?area=${encodeURIComponent(area.id)}&uisubarea=${encodeURIComponent(doc.id)}`}
+              title={doc.description} data-selected="false" className="scenario-metadata-chip max-w-full break-words px-2 py-0.5 rounded-l-full transition-colors">{doc.name}</Link></DocumentPillFrame>)}
           </div>)}
-          {!!manifest.designPressureIds?.length && <div role="group" aria-label="Design pressures" className="flex flex-wrap items-center gap-1.5">
+          {!!manifest.designPressureIds?.length && <div role="group" aria-label="Design pressures" className="scenario-metadata-group filter-tags flex flex-wrap items-center gap-1.5">
             <span className="text-[11px] text-neutral-400">Design pressures:</span>
-            {pressures.filter(pressure => manifest.designPressureIds?.includes(pressure.id)).map(pressure => <button key={pressure.id}
-              className="rounded-full bg-violet-50 px-2 py-0.5 text-[11px] text-violet-800" onClick={() => openConcept(pressure)}>{pressure.name}</button>)}
+            {pressures.filter(pressure => manifest.designPressureIds?.includes(pressure.id)).map(pressure => (
+              <DocumentPillFrame key={pressure.id} document={pressure} selected={false} onOpen={openConcept} className="text-[11px] font-medium text-neutral-600">
+                <Link to={`/${runId}?pressure=${encodeURIComponent(pressure.id)}`} title={pressure.description} data-selected="false"
+                  className="scenario-metadata-chip max-w-full break-words px-2 py-0.5 rounded-l-full transition-colors">{pressure.name}</Link>
+              </DocumentPillFrame>
+            ))}
           </div>}
           {matchingDocs.length > 0 && (
             <div role="group" aria-label="Concepts" className={`flex items-center gap-1.5 ${expanded ? 'min-w-0 flex-wrap' : 'shrink-0'}`}>
@@ -2033,20 +2044,26 @@ export default function ScenarioViewer() {
               {matchingDocs.map((doc) => {
                 const hasKeyFrame = manifest?.keyFrames?.some(kf => kf.docId === doc.id)
                 return (
-                  <button
+                  <DocumentPillFrame
                     key={doc.id}
-                    type="button"
-                    onClick={() => { setHoveredDocId(null); openConcept({ id: doc.id, name: doc.name }) }}
+                    document={doc}
+                    selected={false}
+                    highlighted={hoveredDocId === doc.id}
+                    onOpen={document => { setHoveredDocId(null); openConcept(document) }}
+                    className={`scenario-metadata-group ${doc.isContribution ? 'filter-contributed-tags' : 'filter-tags'} text-[11px] font-medium text-neutral-600`}
+                  >
+                  <Link
+                    to={`/${runId}?doc=${encodeURIComponent(doc.id)}`}
                     title={doc.isContribution ? 'Contributed Meadow concept' : undefined}
                     data-selected="false"
-                    data-highlighted={hoveredDocId === doc.id}
-                    className={`scenario-metadata-group scenario-metadata-chip ${doc.isContribution ? 'filter-contributed-tags' : 'filter-tags'} max-w-full break-words cursor-pointer px-2 py-0.5 rounded-full text-[11px] font-medium text-neutral-600 transition-colors`}
+                    className="scenario-metadata-chip max-w-full break-words px-2 py-0.5 rounded-l-full transition-colors"
                     onMouseEnter={() => hasKeyFrame ? setHoveredDocId(doc.id) : undefined}
                     onMouseLeave={() => setHoveredDocId(null)}
                   >
                     {doc.isContribution && <span className="mr-0.5" aria-hidden>☁</span>}
                     {doc.name}
-                  </button>
+                  </Link>
+                  </DocumentPillFrame>
                 )
               })}
             </div>
@@ -2817,9 +2834,11 @@ export default function ScenarioViewer() {
                             {checkpointBlock.checkpointId !== undefined && manifest.keyFrames?.some(frame => frame.checkpointId === checkpointBlock.checkpointId) && <div aria-label="Checkpoint keyframes" className="mt-2 flex flex-wrap gap-2">
                               {manifest.keyFrames?.filter(frame => frame.checkpointId === checkpointBlock.checkpointId).map(frame => {
                                 const concept = concepts.find(concept => concept.id === frame.docId)
-                                return <span key={`${frame.filename}:${frame.docId}`} className="inline-flex items-center gap-2 rounded border border-neutral-200 bg-[#fbf2e6] pr-2 text-[11px] text-brand-700 hover:border-brand-300">
+                                return <DocumentPillFrame key={`${frame.filename}:${frame.docId}`} document={concept}
+                                  onOpen={document => { setHoveredKeyFrame(null); openConcept(document) }}
+                                  className="border border-neutral-200 bg-[#fbf2e6] text-[11px] text-brand-700 hover:border-brand-300">
                                 <button type="button"
-                                className="inline-flex cursor-pointer items-center gap-2 rounded py-1 pl-1 focus-visible:ring-2 focus-visible:ring-brand-300"
+                                className={`inline-flex min-w-0 cursor-pointer items-center gap-2 ${concept ? 'rounded-l-full' : 'rounded-full'} py-1 pl-2 pr-2 focus-visible:ring-2 focus-visible:ring-brand-300`}
                                 onMouseEnter={event => {
                                   showKeyFramePreview(frame, event.currentTarget)
                                 }}
@@ -2835,10 +2854,7 @@ export default function ScenarioViewer() {
                                 <img src={`${API}/keyframe-file/${frame.filename}`} alt="" className="h-7 w-11 rounded-sm border border-neutral-200 object-cover" />
                                 {concept?.name ?? frame.docId}
                                 </button>
-                                {concept && <button type="button" aria-label={`About ${concept.name}`} title={`Open ${concept.name} documentation`}
-                                  className="inline-flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center rounded-full border border-brand-300 font-sans text-[10px] font-semibold text-brand-600 hover:bg-brand-50 focus-visible:ring-2 focus-visible:ring-brand-300"
-                                  onClick={event => { event.stopPropagation(); setHoveredKeyFrame(null); openConcept(concept) }}>?</button>}
-                                </span>
+                                </DocumentPillFrame>
                               })}
                             </div>}
                           </div> : <span dangerouslySetInnerHTML={{ __html: lineHtml || '&nbsp;' }} />}

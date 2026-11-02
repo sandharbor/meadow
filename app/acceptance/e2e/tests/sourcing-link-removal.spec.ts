@@ -18,7 +18,7 @@ const sections = scenarioSections({
   acceptSourceUpdate: { type: 'test', text: conceptText`Accept the source update.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '4fb06514-5b88-41e5-a377-234c3f5b85e4' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '4fb06514-5b88-41e5-a377-234c3f5b85e4' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, sourceChanges, checkpoint, skipMeadowHomeStateCheck }) => {
   const { editor } = await test.step(sections.steps.setup, async () => {
     await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
     const editor = new BundleEditorPage(page, expect);
@@ -40,8 +40,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '4fb06514-5b8
       removed: /\[\[t001 ---- child 2\]\]/,
       added: /child 2 \(link removed\)/,
     }));
-    await sourceCommand(() => addKeyFrame(sourceChange));
-    await sourceCommand(() => checkpoint('link deletion is reviewed as a source edit'));
+    await sourceCommand(() => checkpoint('link deletion is reviewed as a source edit', { keyFrames: [sourceChange] }));
     return { review, modifiedPath };
   });
 
@@ -52,8 +51,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '4fb06514-5b8
     const orphans = await sourceCommand(() => review.reviewOrphans());
     await sourceCommand(() => orphans.showExplanation('t001 ---- child 2'));
     await sourceCommand(() => orphans.expectExplanation('t001 ---- child 2', 'no longer links to'));
-    await sourceCommand(() => addKeyFrame(orphan));
-    await sourceCommand(() => checkpoint('orphan details identify the removed connection before acceptance'));
+    await sourceCommand(() => checkpoint('orphan details identify the removed connection before acceptance', { keyFrames: [orphan] }));
   });
 
   await test.step(sections.steps.acceptSourceUpdate, async () => {

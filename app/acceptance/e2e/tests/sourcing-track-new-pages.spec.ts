@@ -19,7 +19,7 @@ const sections = scenarioSections({
   acceptSourceUpdate: { type: 'test', text: conceptText`Accept the source update.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '7437de34-d543-4c52-950b-c3d7c192ee15' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '7437de34-d543-4c52-950b-c3d7c192ee15' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, sourceChanges, checkpoint, skipMeadowHomeStateCheck }) => {
   const { editor, review } = await test.step(sections.steps.setup, async () => {
     await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
     const editor = new BundleEditorPage(page, expect);
@@ -35,8 +35,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '7437de34-d54
     await sourceCommand(() => review.open());
     await sourceCommand(() => review.expectTrackAdditions(true));
     await sourceCommand(() => expect(review.acceptedChange('1 tracking change')).toBeVisible());
-    await sourceCommand(() => addKeyFrame(sourceSnapshot, changesTray, trackAddedPages));
-    await sourceCommand(() => checkpoint('the added page is tracked by default'));
+    await sourceCommand(() => checkpoint('the added page is tracked by default', { keyFrames: [sourceSnapshot, changesTray, trackAddedPages] }));
   });
 
   await test.step(sections.steps.turningItOffLeavesPageUntrackedTurning, async () => {
@@ -52,8 +51,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '7437de34-d54
     await sourceCommand(() => editor.switchToListView());
     await sourceCommand(() => editor.clickListViewRowByExactName('added field notes'));
     await sourceCommand(() => new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect).expectPill(Pill.Tracked));
-    await sourceCommand(() => addKeyFrame(sourceSnapshot));
-    await sourceCommand(() => checkpoint('the accepted addition is tracked in curation'));
+    await sourceCommand(() => checkpoint('the accepted addition is tracked in curation', { keyFrames: [sourceSnapshot] }));
   });
 
   await sourceCommand(() => skipMeadowHomeStateCheck());

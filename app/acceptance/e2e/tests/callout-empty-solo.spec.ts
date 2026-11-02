@@ -36,7 +36,7 @@ const sections = scenarioSections({
   checkRestoredPages: { type: 'test', text: conceptText`Check the restored pages.` },
 });
 const areas = scenarioAreas([bundleCuration], { subAreas: [filters] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'bbf7cb88-2a18-46dc-b338-41f4305ce162' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'bbf7cb88-2a18-46dc-b338-41f4305ce162' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, checkpoint, skipMeadowHomeStateCheck }) => {
   const { bundleList } = await test.step(sections.steps.setup, async () => {
     const bundleList = new BundleListPage(page, expect);
     await sourceCommand(() => bundleList.goto());
@@ -79,8 +79,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'bbf7cb88-2a1
 
   await test.step(sections.steps.checkEmptyViewExplanation, async () => {
     await sourceCommand(() => editor.expectEmptySoloCalloutVisible());
-    await sourceCommand(() => addKeyFrame(callout));
-    await sourceCommand(() => checkpoint("empty solo callout visible"));
+    await sourceCommand(() => checkpoint("empty solo callout visible", { keyFrames: [callout] }));
   });
 
   await test.step(sections.steps.turnOffSolos, async () => {

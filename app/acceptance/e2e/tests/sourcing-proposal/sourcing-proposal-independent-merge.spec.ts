@@ -22,7 +22,7 @@ const sections = scenarioSections({
   leafStillSelectedEarlierLabelCheckSelect: { type: 'test', text: conceptText`Leaf is still selected from the earlier label check; select it alone.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '459afd83-d7c3-46e6-8ae4-2cb6b22a6c27' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState, expectLogErrors }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '459afd83-d7c3-46e6-8ae4-2cb6b22a6c27' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, assertMeadowHomeState, expectLogErrors }) => {
   const { editor, sourcing, nodeConfig, leaf, saveLeaf } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
@@ -55,8 +55,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '459afd83-d7c
     saveLeaf({ outlinksDepth: 0, inlinksDepth: 1 });
     await sourceCommand(() => sourcing.open());
     await sourceCommand(() => expect(sourcing.root.getByRole('button', { name: /Resolve .* configuration conflicts/ })).toHaveCount(0));
-    await sourceCommand(() => addKeyFrame(sourceReviewConfigurationMerge));
-    await sourceCommand(() => checkpoint('unchanged and equal saved fields merge with independent traversal and curation labels'));
+    await sourceCommand(() => checkpoint('unchanged and equal saved fields merge with independent traversal and curation labels', { keyFrames: [sourceReviewConfigurationMerge] }));
     await sourceCommand(() => sourcing.accept());
     expect(leaf()).toMatchObject({ outlinksDepth: 0, inlinksDepth: 1 });
     expect(nodeConfig.findNode({ bundleNodeName: 'Reference' })?.outlinksDepth).toBe(0);
@@ -99,8 +98,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '459afd83-d7c
     await sourceCommand(() => sourcing.open());
     await sourceCommand(() => sourcing.resolveConflicts(1));
     await sourceCommand(() => expect(conflict).toContainText('3'));
-    await sourceCommand(() => addKeyFrame(pendingProposalRevalidation));
-    await sourceCommand(() => checkpoint('the changed saved value invalidates the old resolution and is open for renewed review'));
+    await sourceCommand(() => checkpoint('the changed saved value invalidates the old resolution and is open for renewed review', { keyFrames: [pendingProposalRevalidation] }));
     await sourceCommand(() => conflict.getByRole('button', { name: 'Use proposed', exact: true }).click());
     await sourceCommand(() => expect(conflict).toContainText('All conflicts resolved.'));
     await sourceCommand(() => conflict.getByRole('button', { name: 'Close', exact: true }).click());

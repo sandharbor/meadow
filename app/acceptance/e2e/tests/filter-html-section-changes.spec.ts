@@ -41,7 +41,7 @@ const sections = scenarioSections({
   checkWhichSectionChanged: { type: 'test', text: conceptText`Check which section changed.` },
 });
 const areas = scenarioAreas([bundleReview], { subAreas: [changesTabDoc] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'e5b729ec-8d8d-4a05-acad-1822d0cc963c' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'e5b729ec-8d8d-4a05-acad-1822d0cc963c' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, checkpoint, skipMeadowHomeStateCheck }) => {
   const { modal, changesTab } = await test.step(sections.steps.setup, async () => {
     const wf = new Workflows(page, expect);
     await sourceCommand(() => wf.navigateToBigBundlePreview());
@@ -69,8 +69,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'e5b729ec-8d8
 
   await test.step(sections.steps.checkChangesAreCleared, async () => {
     await sourceCommand(() => changesTab.expectNoBadge());
-    await sourceCommand(() => addKeyFrame(htmlGeneration));
-    await sourceCommand(() => checkpoint("changes tab has no badge after save"));
+    await sourceCommand(() => checkpoint("changes tab has no badge after save", { keyFrames: [htmlGeneration] }));
   });
 
   await test.step(sections.steps.disableBreadcrumbs, async () => {
@@ -105,9 +104,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'e5b729ec-8d8
 
   await test.step(sections.steps.checkWhichSectionChanged, async () => {
     await sourceCommand(() => changesTab.expectOnlySectionsWithChanges(["<header>"]));
-    await sourceCommand(() => addKeyFrame(customize));
-    await sourceCommand(() => addKeyFrame(changesTabDoc));
-    await sourceCommand(() => checkpoint("only header section has changes"));
+    await sourceCommand(() => checkpoint("only header section has changes", { keyFrames: [customize, changesTabDoc] }));
   });
 
   void bigBundle;

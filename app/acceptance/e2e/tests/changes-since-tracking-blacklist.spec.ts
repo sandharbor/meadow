@@ -27,7 +27,7 @@ const sections = scenarioSections({
 });
 const areas = scenarioAreas([bundleCuration, bundleSourcing, bundleGeneration], { subAreas: [sourceReviewWorkspace] });
 const pressures = scenarioDesignPressures([preventAccidentalSharing]);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '738d7515-a266-4466-9a1c-46351067981b' }, name.annotation, description.annotation, areas.annotation, pressures.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '738d7515-a266-4466-9a1c-46351067981b' }, name.annotation, description.annotation, areas.annotation, pressures.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, skipMeadowHomeStateCheck }) => {
   const { editor, filters, review, proposal, nodeConfig, saved } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
@@ -49,8 +49,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '738d7515-a26
     await sourceCommand(() => filters.fillAndSaveCustomFilter({ name: 'Private bridge', field: 'title', matchType: 'regex', value: '^(Bridge|Departing)$', markSensitive: true }));
     await sourceCommand(() => review.expectSensitivityReviewReady());
     await sourceCommand(() => expect(review.sensitiveTrackingNode('Bridge.md').getByRole('button', { name: /^(Keep tracked|Blacklist|Untrack for now)$/ })).toHaveCount(3));
-    await sourceCommand(() => addKeyFrame(trackedNodeBecomesSensitive, changesSinceTracking));
-    await sourceCommand(() => checkpoint('newly sensitive nodes offer inclusion deliberate exclusion and temporary untracking'));
+    await sourceCommand(() => checkpoint('newly sensitive nodes offer inclusion deliberate exclusion and temporary untracking', { keyFrames: [trackedNodeBecomesSensitive, changesSinceTracking] }));
   });
 
   await test.step(sections.steps.stageBlacklistInspectConsequencesBeforeAcceptance, async () => {
@@ -66,8 +65,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '738d7515-a26
     await sourceCommand(() => review.select('Retained'));
     await sourceCommand(() => expect(review.selectedPage.getByText('Tracked', { exact: true })).toBeVisible());
     await sourceCommand(() => expect(review.changeKind).toHaveCount(0));
-    await sourceCommand(() => addKeyFrame(trackedNodeBecomesSensitive, blacklist));
-    await sourceCommand(() => checkpoint('the staged blacklist exposes dependent departures while an independent route remains'));
+    await sourceCommand(() => checkpoint('the staged blacklist exposes dependent departures while an independent route remains', { keyFrames: [trackedNodeBecomesSensitive, blacklist] }));
   });
 
   await test.step(sections.steps.discardRestoresAcceptedInclusionSavedSensitivityPolicy, async () => {
@@ -93,8 +91,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '738d7515-a26
     const generated = new MeadowHomeBundleConfig(testServer.configDir, 'sourcing-review', expect).generatedPreviewPages();
     for (const title of ['Bridge', 'Departing', 'Outside']) expect(generated.some(filename => filename === `${title}.html` || filename.endsWith(`/${title}.html`))).toBe(false);
     expect(generated.some(filename => filename === 'Retained.html' || filename.endsWith('/Retained.html'))).toBe(true);
-    await sourceCommand(() => addKeyFrame(trackedNodeBecomesSensitive));
-    await sourceCommand(() => checkpoint('accepted blacklisting resolves sensitivity review and excludes dependent output'));
+    await sourceCommand(() => checkpoint('accepted blacklisting resolves sensitivity review and excludes dependent output', { keyFrames: [trackedNodeBecomesSensitive] }));
   });
 
   await sourceCommand(() => skipMeadowHomeStateCheck());

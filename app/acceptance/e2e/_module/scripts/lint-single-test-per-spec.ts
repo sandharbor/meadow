@@ -8,75 +8,16 @@
 import { readFileSync, readdirSync } from "fs";
 import path from "path";
 import url from "url";
-import ts from "typescript";
-import { isScenarioTestCall, scenarioMetadataIssues } from './scenario-metadata.js';
-import { declaredScenarioAreas } from '../../src/artifacts/declaredScenarioAreas.js';
 import { loadDocumentRegistry } from '../../../../concepts/loadRegistry.js';
-import { resolveScenarioDocuments } from '../../src/artifacts/scenarioDocuments.js';
-import * as concepts from '../../../../concepts/index.js';
+import { auditScenarioSpec, type TestCase } from './spec-scenario-metadata.js';
+import { renderLintRule } from './lint-rule.js';
+import { singleTestPerSpecGuidance } from './rules/scenario-rule-definitions.js';
 
 const SCRIPT_DIR = path.dirname(url.fileURLToPath(import.meta.url));
 const TEST_RUNNER_DIR = path.resolve(SCRIPT_DIR, "../..");
 const TESTS_DIR = path.join(TEST_RUNNER_DIR, "tests");
 
-interface TestCase {
-  title: string;
-  line: number;
-}
-
-interface Issue {
-  file: string;
-  tests: TestCase[];
-}
-
-function isStringArg(node: ts.Node | undefined): node is ts.StringLiteral | ts.NoSubstitutionTemplateLiteral {
-  return !!node && ts.isStringLiteralLike(node);
-}
-
-function findTestCases(filePath: string): TestCase[] {
-  const text = readFileSync(filePath, "utf8");
-  const sourceFile = ts.createSourceFile(filePath, text, ts.ScriptTarget.ESNext, true);
-  const tests: TestCase[] = [];
-
-  function walk(node: ts.Node): void {
-    if (isScenarioTestCall(node)) {
-      const titleArg = node.arguments[0];
-      const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart());
-      tests.push({
-        title: isStringArg(titleArg) ? titleArg.text : "(unknown)",
-        line: line + 1,
-      });
-    }
-    ts.forEachChild(node, walk);
-  }
-
-  walk(sourceFile);
-  return tests;
-}
-
-/** Declared areas must be report areas, and each sub-area must belong to one of them. */
-function scenarioAreaIssues(source: ts.SourceFile): string[] {
-  const declared = declaredScenarioAreas(source);
-  if (!declared) return [];
-  const exported = concepts as unknown as Record<string, concepts.AnyMeadowConcept | undefined>;
-  const areaIds = new Set<string>(concepts.acceptanceAppAreaConcepts.map(area => area.id));
-  const issues: string[] = [];
-  const declaredAreaIds = declared.appAreas.map(name => exported[name]?.id ?? name);
-  for (const [index, name] of declared.appAreas.entries()) {
-    if (!areaIds.has(declaredAreaIds[index])) issues.push(`${name} is not an app area shown in reports.`);
-  }
-  for (const name of declared.subAreas) {
-    const concept = exported[name];
-    const uiOwner = concept?.kind === 'ui-sub-area' && concept.appAreaIds?.some(id => declaredAreaIds.includes(id));
-    if (!uiOwner && !concept?.subAreas?.some(entry => declaredAreaIds.includes(entry.areaId))) {
-      issues.push(`${name} is not a sub-area of a declared app area.`);
-    }
-  }
-  for (const list of [declared.appAreas, declared.subAreas]) {
-    if (new Set(list).size !== list.length) issues.push('scenarioAreas lists an area more than once.');
-  }
-  return issues;
-}
+interface Issue { file: string; tests: TestCase[]; }
 
 const registry = await loadDocumentRegistry();
 
@@ -89,14 +30,9 @@ function main(): void {
   const issues: Issue[] = [];
   const metadataIssues: string[] = [];
   for (const spec of specs) {
-    const tests = findTestCases(spec);
-    if (tests.length !== 1) {
-      issues.push({ file: spec, tests });
-    }
-    const source = ts.createSourceFile(spec, readFileSync(spec, 'utf8'), ts.ScriptTarget.ESNext, true);
-    for (const issue of scenarioMetadataIssues(source)) metadataIssues.push(`  ${path.relative(TEST_RUNNER_DIR, spec)}:${issue.line}: ${issue.message}`);
-    try { resolveScenarioDocuments(source.text, registry); } catch (error) { metadataIssues.push(`  ${path.relative(TEST_RUNNER_DIR, spec)}: ${String(error)}`); }
-    for (const issue of scenarioAreaIssues(source)) metadataIssues.push(`  ${path.relative(TEST_RUNNER_DIR, spec)}: ${issue}`);
+    const audit = auditScenarioSpec(readFileSync(spec, 'utf8'), registry, spec);
+    if (audit.tests.length !== 1) issues.push({ file: spec, tests: audit.tests });
+    for (const issue of audit.issues) metadataIssues.push(`  ${path.relative(TEST_RUNNER_DIR, spec)}:${issue.line}: ${issue.message}`);
   }
 
   if (issues.length === 0 && metadataIssues.length === 0) {
@@ -113,19 +49,7 @@ function main(): void {
     }
   }
   if (metadataIssues.length) console.error(`❌ scenario metadata linter found ${metadataIssues.length} issue(s):\n${metadataIssues.join('\n')}`);
-  console.error(`
-How to fix
-----------
-
-Move each test case into its own .spec.ts file. Shared setup and helper code
-should live in a non-.spec.ts module next to the specs or under src/run/utils.
-Declare const name = linkedScenarioName(conceptText\`…\`), then
-const description = linkedScenarioDescription(conceptText\`…\`), then
-const areas = scenarioAreas([...app areas], { subAreas: [...] }), using the helpers
-from concepts/index.js. List only the areas whose behavior the scenario exercises;
-linked concepts never add areas. Pass name.name as the title and all three
-metadata annotations alongside the scenario-id annotation.
-`.trimEnd());
+  console.error(renderLintRule(singleTestPerSpecGuidance));
   process.exit(1);
 }
 

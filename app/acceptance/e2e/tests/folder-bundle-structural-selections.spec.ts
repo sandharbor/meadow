@@ -35,7 +35,6 @@ const areas = scenarioAreas([bundleCuration], { subAreas: [nodeDetails] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: '7d68931a-2d3c-403f-b1d4-293f0dd5f124' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
-  addKeyFrame,
   assertMeadowHomeState,
 }) => {
   const { editor } = await test.step(sections.steps.setup, async () => {
@@ -60,8 +59,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '7d68931a-2d3
       "Nested",
       "Visual map",
     ].sort());
-    await sourceCommand(() => addKeyFrame(folderBundles));
-    await sourceCommand(() => checkpoint("Select Children includes every direct Alpha child"));
+    await sourceCommand(() => checkpoint("Select Children includes every direct Alpha child", { keyFrames: [folderBundles] }));
   });
 
   await test.step(sections.steps.selectAllDeeperPaths, async () => {
@@ -80,8 +78,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '7d68931a-2d3
     ].sort());
     await sourceCommand(() => editor.switchToGraphView());
     await sourceCommand(() => editor.expectGraphViewActive());
-    await sourceCommand(() => addKeyFrame(paths));
-    await sourceCommand(() => checkpoint("Select Deeper Paths highlights structural and linked descendants in the graph"));
+    await sourceCommand(() => checkpoint("Select Deeper Paths highlights structural and linked descendants in the graph", { keyFrames: [paths] }));
   });
 
   await sourceCommand(() => assertMeadowHomeState({

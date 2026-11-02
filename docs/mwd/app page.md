@@ -1,1 +1,0 @@
-Similar to [[app component]]

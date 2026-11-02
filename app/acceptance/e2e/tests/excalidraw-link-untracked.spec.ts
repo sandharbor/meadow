@@ -45,7 +45,6 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'fbc5bf52-5ae
   page,
   checkpoint,
   skipMeadowHomeStateCheck,
-  addKeyFrame,
   expectLogErrors,
 }) => {
   const { releaseWorkerWarning, releaseFontWarning, generatedBundle } = await test.step(sections.steps.setup, async () => {
@@ -94,8 +93,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'fbc5bf52-5ae
 
   await test.step(sections.steps.replacementTextShowsUpInRenderedSVG, async () => {
     await sourceCommand(() => generatedBundle.excalidraw.expectStandaloneDrawingText("link not tracked"));
-    await sourceCommand(() => addKeyFrame(excalidraw));
-    await sourceCommand(() => checkpoint("excalidraw untracked link rendered as 'link not tracked'"));
+    await sourceCommand(() => checkpoint("excalidraw untracked link rendered as 'link not tracked'", { keyFrames: [excalidraw] }));
   });
 
   await test.step(sections.steps.finishExpectedWarningCheck, async () => {

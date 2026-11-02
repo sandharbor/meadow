@@ -36,7 +36,6 @@ const areas = scenarioAreas([bundleGeneration]);
 test(name.name, { annotation: [{ type: 'scenario-id', description: 'f414fbce-32af-4a36-a75f-d5c514c9993c' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
-  addKeyFrame,
   assertMeadowHomeState,
 }) => {
   const { generatedBundle } = await test.step(sections.steps.setup, async () => {
@@ -70,8 +69,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'f414fbce-32a
       "../t006%20-%20embedded%20media.html",
     ));
     await sourceCommand(() => generatedBundle.svg.expectDirectedStandaloneLinkAbsent());
-    await sourceCommand(() => addKeyFrame(svg));
-    await sourceCommand(() => checkpoint("directed SVG embed rendered with live links"));
+    await sourceCommand(() => checkpoint("directed SVG embed rendered with live links", { keyFrames: [svg] }));
     return { textLink };
   });
 
@@ -87,8 +85,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'f414fbce-32a
     await sourceCommand(() => generatedBundle.expectHeading(
       "t006 --- page that embeds Excalidraw in another directory",
     ));
-    await sourceCommand(() => addKeyFrame(svg));
-    await sourceCommand(() => checkpoint("directed SVG embed link opened target"));
+    await sourceCommand(() => checkpoint("directed SVG embed link opened target", { keyFrames: [svg] }));
   });
 
   void bigBundle;

@@ -1,3 +1,0 @@
-[[filter]] _link not tracked_ to keep _link not tracked_ explainable, even if the filter is removed after the ignore is added
-...
-[[design motivation -- understandability]]

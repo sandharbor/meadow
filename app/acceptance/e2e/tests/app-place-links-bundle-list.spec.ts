@@ -15,12 +15,11 @@ const sections = scenarioSections({
   followEachLinkInTurn: { type: 'test', text: conceptText`Follow each link in turn.` },
 });
 const areas = scenarioAreas([bundles]);
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'bbbd73b9-749a-4bbd-8fd7-f633374005ae' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'bbbd73b9-749a-4bbd-8fd7-f633374005ae' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, skipMeadowHomeStateCheck }) => {
   await test.step(sections.steps.followEachLinkInTurn, async () => {
     const places = placesFor(placeExamples({ sourceGraphsDir: testServer.sourceGraphsDir }), key => key.startsWith("bundle-list:"));
     await sourceCommand(() => checkPlaceLinks(page, expect, places));
-    await sourceCommand(() => addKeyFrame(appPlace));
-    await sourceCommand(() => checkpoint("every bundle list surface opened from its link"));
+    await sourceCommand(() => checkpoint("every bundle list surface opened from its link", { keyFrames: [appPlace] }));
   });
 
   await sourceCommand(() => skipMeadowHomeStateCheck());

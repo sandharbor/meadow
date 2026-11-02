@@ -26,7 +26,7 @@ import path from "path";
 import { PreviewPublishModal, PublishToS3Tab, PublishedBundlePage } from "../src/run/pages/index.js";
 import { Workflows, Bundle } from "../src/run/workflows.js";
 import { scenarioSections, publishing, s3, deletion, conceptText, linkedScenarioName, linkedScenarioDescription, scenarioAreas, bundleSharing } from "../../../concepts/index.js";
-import { bigBundle } from "../src/bundle-docs/index.js";
+import { smallBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
@@ -66,7 +66,9 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'f133eb45-0c0
     await sourceCommand(() => testServer.activateS3Provider());
 
     const wf = new Workflows(page, expect);
-    await sourceCommand(() => wf.navigateToBigBundleShareTab());
+    // The lifecycle needs stable page identity, not a large publication. Keep
+    // every revision and restorable checkpoint inexpensive under parallel load.
+    await sourceCommand(() => wf.navigateToSmallBundleShareTab());
 
     const publishPage = new PublishToS3Tab(page, expect);
     await sourceCommand(() => publishPage.expectVisible());
@@ -87,7 +89,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'f133eb45-0c0
     await sourceCommand(() => addKeyFrame(s3));
     await sourceCommand(() => page.getByTestId('s3-config-toggle').click());
 
-    const publishSlug = `${Bundle.Big}-s3`;
+    const publishSlug = `${Bundle.Small}-s3`;
     await sourceCommand(() => publishPage.setPublishSlug(publishSlug));
     await sourceCommand(() => checkpoint("S3 publish slug saved"));
     return { publishSlug };
@@ -99,9 +101,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'f133eb45-0c0
     await sourceCommand(() => publishPage.clickPublish());
     const publishedUrl = await sourceCommand(() => publishPage.expectPublishSuccess());
     await sourceCommand(() => publishPage.expectNoError());
-    await sourceCommand(() => addKeyFrame(publishing));
-    await sourceCommand(() => addKeyFrame(s3));
-    await sourceCommand(() => checkpoint("S3 publish succeeded"));
+    await sourceCommand(() => checkpoint("S3 publish succeeded", { keyFrames: [publishing, s3] }));
     return { publishedUrl };
   });
 
@@ -127,7 +127,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'f133eb45-0c0
     await sourceCommand(() => publishPage.expectPublishButtonLabel("Republish"));
     await sourceCommand(() => publishPage.clickPublish());
     expect(await sourceCommand(() => publishPage.expectPublishSuccess())).toBe(publishedUrl);
-    const providerApi = `/api/sharing/publishing-providers/S3PublishingProvider/bundles/${encodeURIComponent(Bundle.Big)}`;
+    const providerApi = `/api/sharing/publishing-providers/S3PublishingProvider/bundles/${encodeURIComponent(Bundle.Small)}`;
     const publicationStateResponse = await sourceCommand(() => page.request.get(`${providerApi}/publication-state?versionId=${versionId}`));
     expect(publicationStateResponse.ok()).toBe(true);
     const publicationState = await sourceCommand(() => publicationStateResponse.json()) as {
@@ -176,12 +176,12 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'f133eb45-0c0
 
   const { successorVersionId, successorUrl, successorNamespace, successorManifest } = await test.step(sections.steps.publishConnectedSuccessor, async () => {
     const createSuccessorResponse = await sourceCommand(() => page.request.post(
-      `/api/bundles/${encodeURIComponent(Bundle.Big)}/generation/versions`,
+      `/api/bundles/${encodeURIComponent(Bundle.Small)}/generation/versions`,
       { data: { notes: "Connected reader successor", confirmedNoGeneratedChanges: true } },
     ));
     expect(createSuccessorResponse.ok()).toBe(true);
     const successorVersionId = (await sourceCommand(() => createSuccessorResponse.json()) as { versionId: string }).versionId;
-    const saveSuccessorResponse = await sourceCommand(() => page.request.get(`/api/bundles/${encodeURIComponent(Bundle.Big)}/review/save-changes`));
+    const saveSuccessorResponse = await sourceCommand(() => page.request.get(`/api/bundles/${encodeURIComponent(Bundle.Small)}/review/save-changes`));
     expect(saveSuccessorResponse.ok()).toBe(true);
     const publishSuccessorResponse = await sourceCommand(() => page.request.post(`${providerApi}/publish`, {
       data: { versionId: successorVersionId },
@@ -263,14 +263,14 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'f133eb45-0c0
 
   await test.step(sections.steps.publishedButDisconnectedThirdVersionMustNot, async () => {
     const createDisconnectedResponse = await sourceCommand(() => page.request.post(
-      `/api/bundles/${encodeURIComponent(Bundle.Big)}/generation/versions`,
+      `/api/bundles/${encodeURIComponent(Bundle.Small)}/generation/versions`,
       {
         data: { notes: "Disconnected reader release", confirmedNoGeneratedChanges: true },
       },
     ));
     expect(createDisconnectedResponse.ok()).toBe(true);
     const disconnectedVersionId = (await sourceCommand(() => createDisconnectedResponse.json()) as { versionId: string }).versionId;
-    expect((await sourceCommand(() => page.request.get(`/api/bundles/${encodeURIComponent(Bundle.Big)}/review/save-changes`))).ok()).toBe(true);
+    expect((await sourceCommand(() => page.request.get(`/api/bundles/${encodeURIComponent(Bundle.Small)}/review/save-changes`))).ok()).toBe(true);
     expect((await sourceCommand(() => page.request.post(`${providerApi}/publication-revisions/plan`, {
       data: {
         versionId: disconnectedVersionId,
@@ -292,7 +292,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'f133eb45-0c0
   });
 
   await test.step(sections.steps.returnAppExerciseSettingsDeletePublishedFlow, async () => {
-    await sourceCommand(() => wf.navigateToBigBundleShareTab());
+    await sourceCommand(() => wf.navigateToSmallBundleShareTab());
     const modal = new PreviewPublishModal(page, expect);
     await sourceCommand(() => modal.selectShareVersion(successorVersionId));
     await sourceCommand(() => publishPage.expectVisible());
@@ -304,8 +304,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'f133eb45-0c0
 
   await test.step(sections.steps.confirmRemoteDeletion, async () => {
     await sourceCommand(() => publishPage.confirmDelete());
-    await sourceCommand(() => addKeyFrame(deletion));
-    await sourceCommand(() => checkpoint("S3 published files deleted"));
+    await sourceCommand(() => checkpoint("S3 published files deleted", { keyFrames: [deletion] }));
   });
 
   await test.step(sections.steps.checkRetainedHistory, async () => {
@@ -336,7 +335,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'f133eb45-0c0
 
     await sourceCommand(() => expect.poll(() => new MeadowHomeFiles(testServer.configDir).logText())
       .toMatch(/\[operation ([0-9a-f-]+)] \[s3-publish] Started[\s\S]*\[operation \1] \[s3-publish] Published version/));
-    void bigBundle;
+    void smallBundle;
 
     await sourceCommand(() => checkpoint("the deleted successor retains its history and the older publication survives"));
   });

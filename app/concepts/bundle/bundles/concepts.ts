@@ -81,8 +81,57 @@ export const startingSelection = defineMeadowConcept({
   id: coreConceptIds.startingSelection, name: 'Starting Selection', kind: 'entity', searchFacet: false,
   appAreaIds: [coreConceptIds.bundles, coreConceptIds.bundleSourcing],
   definition: conceptText`A page or folder in a configured source from which a bundle's traversal begins.`,
-  mechanics: [conceptText`Starting selections are independent of source admission. One page can traverse several sources. Several selections form an ordered collection, and each member begins with its applicable depth budget. Missing required starts require explicit setup repair; Meadow never chooses replacement pages automatically.`, conceptText`A selection is written as source://name followed by a source-relative path, chosen from that source's pages or page-bearing folders.`],
+  mechanics: [
+    conceptText`The bundle owns its ordered starting selections. Several selections can come from one source or span multiple configured sources. Registering a source makes its files available but does not choose where traversal starts.`,
+    conceptText`One page can traverse several sources. Several selections form an ordered collection, and each member begins with its applicable depth budget. Missing required starts require explicit setup repair; Meadow never chooses replacement pages automatically.`,
+    conceptText`A selection is written as source://name followed by a source-relative path, chosen from that source's pages or page-bearing folders.`,
+    conceptText`The report's Starts with pills describe these starting structures: ${conceptLink(coreConceptIds.singleFileStart, 'Single File')}, ${conceptLink(coreConceptIds.singleFolderStart, 'Single Folder')}, ${conceptLink(coreConceptIds.multipleFolderStart, 'Multiple Folders')}, and ${conceptLink(coreConceptIds.mixedStartingSelections, 'Mixed Starting Selections')}. They describe the scenario's declared structure, which may change during the scenario, rather than the number of sources or generated files.`,
+  ],
   interplay: conceptText`${conceptLink(coreConceptIds.source, 'Sources')} bound the available filesystem inventory; the ${conceptLink(coreConceptIds.collectionNode, 'Collection Node')} groups multiple starting selections.`,
+});
+
+export const singleFileStart = defineMeadowConcept({
+  id: coreConceptIds.singleFileStart, name: 'Single File', kind: 'state', searchFacet: false,
+  parentId: coreConceptIds.startingSelection, appAreaIds: [coreConceptIds.bundles, coreConceptIds.bundleSourcing],
+  definition: conceptText`A bundle graph that starts from one selected source page.`,
+  mechanics: [
+    conceptText`The selected page becomes the ${conceptLink(coreConceptIds.initialPage, 'Initial Bundle Page')}. Traversal follows its links using the bundle's depth settings and can reach pages in other configured sources. Single file describes the starting selection, not a graph restricted to one file.`,
+    conceptText`The page provides the bundle's entry page. Adding another starting selection preserves the original page's identity and groups the selections under a ${conceptLink(coreConceptIds.collectionNode, 'Collection Node')}.`,
+  ],
+  interplay: conceptText`It is one form of ${conceptLink(coreConceptIds.startingSelection, 'Starting Selection')}. ${conceptLink(coreConceptIds.tracking, 'Bundle Node Tracking')} determines which discovered pages enter generated output.`,
+});
+
+export const singleFolderStart = defineMeadowConcept({
+  id: coreConceptIds.singleFolderStart, name: 'Single Folder', kind: 'state', searchFacet: false,
+  parentId: coreConceptIds.startingSelection, appAreaIds: [coreConceptIds.bundles, coreConceptIds.bundleSourcing],
+  definition: conceptText`A bundle graph that starts from one selected source folder.`,
+  mechanics: [
+    conceptText`The folder supplies the starting structure and home-page title of a ${conceptLink(coreConceptIds.folderBundles, 'Folder-Derived Bundle')}. Meadow discovers its descendants recursively; selecting the folder does not automatically track every descendant for publication.`,
+    conceptText`Adding another file or folder start creates a virtual ${conceptLink(coreConceptIds.collectionNode, 'Collection Node')} above the selections. The collection has no physical source folder, and the original folder remains a member with its own structural discovery.`,
+  ],
+  interplay: conceptText`${conceptLink(coreConceptIds.source, 'Multi-source')} supplies the source registry. A ${conceptLink(coreConceptIds.startingSelection, 'Starting Selection')} chooses a root within that registry; a source-folder visibility filter only changes the view.`,
+});
+
+export const multipleFolderStart = defineMeadowConcept({
+  id: coreConceptIds.multipleFolderStart, name: 'Multiple Folders', kind: 'state', searchFacet: false,
+  parentId: coreConceptIds.startingSelection, appAreaIds: [coreConceptIds.bundles, coreConceptIds.bundleSourcing],
+  definition: conceptText`A bundle graph that starts from an ordered collection of selected source folders.`,
+  mechanics: [
+    conceptText`The selected folders may belong to one source or several configured sources. A virtual ${conceptLink(coreConceptIds.collectionNode, 'Collection Node')} groups them and provides the generated home page; it is not a directory on disk.`,
+    conceptText`Each folder retains recursive structural discovery and its applicable traversal budget. Collection membership consumes no link-depth budget. Only selected roots are tracked at creation; descendants still need ${conceptLink(coreConceptIds.tracking, 'Bundle Node Tracking')} to enter generated output.`,
+  ],
+  interplay: conceptText`This combines several folder ${conceptLink(coreConceptIds.startingSelection, 'Starting Selections')} within a ${conceptLink(coreConceptIds.folderBundles, 'Folder-Derived Bundle')}.`,
+});
+
+export const mixedStartingSelections = defineMeadowConcept({
+  id: coreConceptIds.mixedStartingSelections, name: 'Mixed Starting Selections', kind: 'state', searchFacet: false,
+  parentId: coreConceptIds.startingSelection, appAreaIds: [coreConceptIds.bundles, coreConceptIds.bundleSourcing],
+  definition: conceptText`A bundle starting structure that combines page and folder selections.`,
+  mechanics: [
+    conceptText`A virtual ${conceptLink(coreConceptIds.collectionNode, 'Collection Node')} groups the ordered selections without replacing their durable identities. It provides a generated home page and has no physical source of its own.`,
+    conceptText`File members start page-link traversal; folder members retain recursive structural discovery. Each member begins with its applicable traversal budget, and collection membership itself consumes no link depth. The members may come from the same source or different configured sources.`,
+  ],
+  interplay: conceptText`${conceptLink(coreConceptIds.startingSelection, 'Starting Selection')} separates the choice of graph roots from source admission. ${conceptLink(coreConceptIds.sourceSetupEdit, 'Source Setup - Edit')} can change those selections through reviewed setup.`,
 });
 
 export const collectionNode = defineMeadowConcept({
@@ -129,6 +178,10 @@ export const bundleCollectionConcepts = [
   findInBundles,
   folderBundles,
   startingSelection,
+  singleFileStart,
+  singleFolderStart,
+  multipleFolderStart,
+  mixedStartingSelections,
   collectionNode,
   multiBundle,
   cli,

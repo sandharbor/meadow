@@ -18,7 +18,7 @@ const sections = scenarioSections({
   acceptSourceUpdate: { type: 'test', text: conceptText`Accept the source update.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewIdentity, sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '53c939c8-a8cf-4d90-b52f-b20924e0b6c1' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '53c939c8-a8cf-4d90-b52f-b20924e0b6c1' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, skipMeadowHomeStateCheck }) => {
   const { editor, bundleConfig, original } = await test.step(sections.steps.setup, async () => {
     await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
     const editor = new BundleEditorPage(page, expect);
@@ -40,8 +40,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '53c939c8-a8c
     await sourceCommand(() => editor.sourceReview.confirmSuggestedIdentities());
     await sourceCommand(() => editor.sourceReview.continueToGraph());
     await sourceCommand(() => editor.sourceReview.orphans.expectNotListed(original.bundleNodeName));
-    await sourceCommand(() => addKeyFrame(sourceMove));
-    await sourceCommand(() => checkpoint('review identifies the move through the shared source change'));
+    await sourceCommand(() => checkpoint('review identifies the move through the shared source change', { keyFrames: [sourceMove] }));
   });
 
   await test.step(sections.steps.acceptSourceUpdate, async () => {
@@ -50,9 +49,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '53c939c8-a8c
     await sourceCommand(() => editor.switchToListView());
     await sourceCommand(() => editor.expectListViewNodeVisible('file:source-changes/moved/t001 ---- child 2.md', true));
     await sourceCommand(() => editor.expectListViewNodeVisible('file:t001/deeper/t001 ---- child 2.md', false));
-    await sourceCommand(() => addKeyFrame(nameOnlyLink));
-    await sourceCommand(() => addKeyFrame(sourceSnapshot));
-    await sourceCommand(() => checkpoint('the moved file remains reachable with the same identity and tracking'));
+    await sourceCommand(() => checkpoint('the moved file remains reachable with the same identity and tracking', { keyFrames: [nameOnlyLink, sourceSnapshot] }));
   });
 
   await sourceCommand(() => skipMeadowHomeStateCheck());

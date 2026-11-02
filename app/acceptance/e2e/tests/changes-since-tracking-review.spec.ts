@@ -46,8 +46,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '22e7b817-c37
     await sourceCommand(() => review.expectSensitivityReviewReady());
     await sourceCommand(() => expect(review.sensitivityReview).toContainText('Global filter “Review existing inclusion”'));
     expect(proposal.current.candidateSnapshotId).toBe(accepted);
-    await sourceCommand(() => addKeyFrame(trackedNodeBecomesSensitive, changesSinceTracking));
-    await sourceCommand(() => checkpoint('the named global policy explains the sensitivity change'));
+    await sourceCommand(() => checkpoint('the named global policy explains the sensitivity change', { keyFrames: [trackedNodeBecomesSensitive, changesSinceTracking] }));
   });
 
   await test.step(sections.steps.reviewOnlyIndividuallyMatchedNodesRequiredNodes, async () => {
@@ -77,8 +76,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '22e7b817-c37
     await sourceCommand(() => editor.clickPreview());
     await sourceCommand(() => preview.waitForPreviewComplete());
     await sourceCommand(() => expect(page.getByTestId('sensitivity-warning')).toHaveCount(0));
-    await sourceCommand(() => addKeyFrame(trackedNodeBecomesSensitive));
-    await sourceCommand(() => checkpoint('preview preserves the deliberately retained nodes without a sensitivity warning'));
+    await sourceCommand(() => checkpoint('preview preserves the deliberately retained nodes without a sensitivity warning', { keyFrames: [trackedNodeBecomesSensitive] }));
   });
 
   await sourceCommand(() => skipMeadowHomeStateCheck());

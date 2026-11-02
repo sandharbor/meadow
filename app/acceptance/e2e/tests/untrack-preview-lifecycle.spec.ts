@@ -45,7 +45,6 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '09f3977f-b9a
   page,
   checkpoint,
   assertMeadowHomeState,
-  addKeyFrame,
 }) => {
   const { editor, modal, changesTab, pageTitle, generatedFilename } = await test.step(sections.steps.setup, async () => {
     const workflows = new Workflows(page, expect);
@@ -83,10 +82,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '09f3977f-b9a
     expect(await sourceCommand(() => changesTab.getChangeTypeCount("Deleted"))).toBeGreaterThan(0);
     expect(await sourceCommand(() => changesTab.getChangeTypeCount("Modified"))).toBeGreaterThan(0);
     await sourceCommand(() => changesTab.expectFileInChanges(generatedFilename));
-    await sourceCommand(() => addKeyFrame(tracking));
-    await sourceCommand(() => addKeyFrame(changesTabDoc));
-    await sourceCommand(() => addKeyFrame(htmlGeneration));
-    await sourceCommand(() => checkpoint("preview deletes the untracked page"));
+    await sourceCommand(() => checkpoint("preview deletes the untracked page", { keyFrames: [tracking, changesTabDoc, htmlGeneration] }));
   });
 
   await test.step(sections.steps.saveTrackPageAgain, async () => {

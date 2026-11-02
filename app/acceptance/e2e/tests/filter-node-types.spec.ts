@@ -35,7 +35,6 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '463d5905-356
   page,
   checkpoint,
   assertMeadowHomeState,
-  addKeyFrame,
 }) => {
   const { editor, filterPanel, markdownNodeCount } = await test.step(sections.steps.setup, async () => {
     const workflows = new Workflows(page, expect);
@@ -62,8 +61,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '463d5905-356
     const visibleTypes = await sourceCommand(() => editor.getListViewNodeTypes());
     expect(visibleTypes).toHaveLength(markdownNodeCount);
     expect(visibleTypes.every(type => type.trim() === ".md")).toBe(true);
-    await sourceCommand(() => addKeyFrame(filters));
-    await sourceCommand(() => checkpoint("Markdown nodes soloed"));
+    await sourceCommand(() => checkpoint("Markdown nodes soloed", { keyFrames: [filters] }));
   });
 
   void bigBundle;

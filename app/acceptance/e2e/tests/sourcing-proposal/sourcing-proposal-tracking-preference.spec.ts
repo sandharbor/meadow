@@ -23,7 +23,7 @@ const sections = scenarioSections({
 });
 const pressures = scenarioDesignPressures([preventAccidentalSharing]);
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '33353032-44bd-4d0e-a8e8-e43617f5628f' }, name.annotation, description.annotation, sections.annotation, areas.annotation, pressures.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '33353032-44bd-4d0e-a8e8-e43617f5628f' }, name.annotation, description.annotation, sections.annotation, areas.annotation, pressures.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, assertMeadowHomeState }) => {
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);
   const sourcing = new SourcingWorkspacePage(page, expect);
@@ -55,8 +55,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '33353032-44b
     await sourceCommand(() => filters.enableAndSoloFilter('Untracked'));
     for (const name of ['Secret', 'Policy Draft']) await sourceCommand(() => editor.expectListViewRowByExactNamePresent(name));
     for (const name of ['Safe One', 'Safe Two']) await sourceCommand(() => editor.expectListViewRowByExactNameNotPresent(name));
-    await sourceCommand(() => addKeyFrame(sourceReviewSensitivity));
-    await sourceCommand(() => checkpoint('safe additions are tracked by default while sensitive additions stay untracked'));
+    await sourceCommand(() => checkpoint('safe additions are tracked by default while sensitive additions stay untracked', { keyFrames: [sourceReviewSensitivity] }));
   });
 
   await test.step(sections.steps.accept, async () => {
@@ -70,8 +69,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '33353032-44b
     await sourceCommand(() => filters.enableAndSoloFilter('Untracked'));
     for (const name of ['Secret', 'Policy Draft']) await sourceCommand(() => editor.expectListViewRowByExactNamePresent(name));
     for (const name of ['Safe One', 'Safe Two']) await sourceCommand(() => editor.expectListViewRowByExactNameNotPresent(name));
-    await sourceCommand(() => addKeyFrame(sourceReviewSensitivity));
-    await sourceCommand(() => checkpoint('acceptance retains both safe additions and leaves only sensitive additions untracked'));
+    await sourceCommand(() => checkpoint('acceptance retains both safe additions and leaves only sensitive additions untracked', { keyFrames: [sourceReviewSensitivity] }));
   });
 
   await test.step(sections.steps.preview, async () => {

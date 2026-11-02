@@ -18,7 +18,7 @@ const sections = scenarioSections({
   acceptSourceUpdate: { type: 'test', text: conceptText`Accept the source update.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '4d62391e-d0a9-4a82-8713-97881db0498c' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '4d62391e-d0a9-4a82-8713-97881db0498c' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, skipMeadowHomeStateCheck }) => {
   const { editor, bundleConfig, original } = await test.step(sections.steps.setup, async () => {
     await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
     const editor = new BundleEditorPage(page, expect);
@@ -38,16 +38,14 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '4d62391e-d0a
     await sourceCommand(() => editor.sourceReview.orphans.showExplanation(original.bundleNodeName));
     await sourceCommand(() => editor.sourceReview.orphans.expectExplanation(original.bundleNodeName, 'but that file does not exist in the filesystem.'));
     expect(bundleConfig.findNode({ bundleNodeId: original.bundleNodeId })).toEqual(original);
-    await sourceCommand(() => addKeyFrame(orphan));
-    await sourceCommand(() => checkpoint('the missing page keeps its accepted configuration until review is accepted'));
+    await sourceCommand(() => checkpoint('the missing page keeps its accepted configuration until review is accepted', { keyFrames: [orphan] }));
   });
 
   await test.step(sections.steps.acceptSourceUpdate, async () => {
     await sourceCommand(() => editor.sourceReview.accept());
     expect(bundleConfig.findNode({ bundleNodeId: original.bundleNodeId })).toBeUndefined();
     await sourceCommand(() => editor.expectSourceOrphanCount(0));
-    await sourceCommand(() => addKeyFrame(sourceSnapshot));
-    await sourceCommand(() => checkpoint('acceptance removes the orphaned configuration'));
+    await sourceCommand(() => checkpoint('acceptance removes the orphaned configuration', { keyFrames: [sourceSnapshot] }));
   });
 
   await sourceCommand(() => skipMeadowHomeStateCheck());

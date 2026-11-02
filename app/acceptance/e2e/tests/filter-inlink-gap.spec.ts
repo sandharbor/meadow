@@ -35,7 +35,7 @@ const sections = scenarioSections({
   checkSelection: { type: 'test', text: conceptText`Check the selection.` },
 });
 const areas = scenarioAreas([bundleCuration]);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '80a06cf6-e286-4a89-926f-16bc96b26deb' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, checkpoint, assertMeadowHomeState, addKeyFrame }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '80a06cf6-e286-4a89-926f-16bc96b26deb' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, checkpoint, assertMeadowHomeState }) => {
   const { bundleList } = await test.step(sections.steps.setup, async () => {
     const bundleList = new BundleListPage(page, expect);
     await sourceCommand(() => bundleList.goto());
@@ -62,8 +62,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '80a06cf6-e28
   await test.step(sections.steps.checkAutomaticThreshold, async () => {
     const threshold = await sourceCommand(() => filterPanel.getFilterThresholdValue("Inlink Gap"));
     expect(threshold).toBe(3);
-    await sourceCommand(() => addKeyFrame(linkGap));
-    await sourceCommand(() => checkpoint("inlink gap threshold is 3"));
+    await sourceCommand(() => checkpoint("inlink gap threshold is 3", { keyFrames: [linkGap] }));
   });
 
   await test.step(sections.steps.soloMatchingPages, async () => {

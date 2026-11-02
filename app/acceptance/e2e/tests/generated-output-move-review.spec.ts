@@ -23,7 +23,7 @@ const sections = scenarioSections({
   movedModifiedFileMatchesEitherFilter: { type: 'test', text: conceptText`A moved and modified file matches either filter.` },
 });
 const areas = scenarioAreas([bundleSourcing, bundleGeneration, bundleReview], { subAreas: [changesTabDoc] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '20cb59b9-e1a1-49f7-910d-c17bcf1f8e64' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, meadowCli, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '20cb59b9-e1a1-49f7-910d-c17bcf1f8e64' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, meadowCli, sourceChanges, checkpoint, skipMeadowHomeStateCheck }) => {
   const { editor } = await test.step(sections.steps.setup, async () => {
     let command = 0;
     const run = (args: string[]) => meadowCli.run(args, { artifactName: `setup-${++command}` });
@@ -61,8 +61,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '20cb59b9-e1a
     await sourceCommand(() => changes.expectSelectedFileMove('t024 - markdown links.html', 'source-changes/t024 - markdown links.html'));
     await sourceCommand(() => changes.fileDetails.ensureOnDiffTab());
     await sourceCommand(() => changes.fileDetails.expectRenderedInsertion('demonstrates'));
-    await sourceCommand(() => addKeyFrame(changesTabDoc));
-    await sourceCommand(() => checkpoint('the moved page appears once with its old and new paths and its edits'));
+    await sourceCommand(() => checkpoint('the moved page appears once with its old and new paths and its edits', { keyFrames: [changesTabDoc] }));
     return { changes };
   });
 

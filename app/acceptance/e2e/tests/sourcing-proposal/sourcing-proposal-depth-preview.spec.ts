@@ -24,7 +24,7 @@ const sections = scenarioSections({
   discardLeavesAcceptedFixtureExactlyAsIt: { type: 'test', text: conceptText`Discard leaves the accepted fixture exactly as it was.` },
 });
 const areas = scenarioAreas([bundleCuration, bundleSourcing], { subAreas: [sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '75df4c30-b7f7-4342-9330-77af9f6eca5d' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '75df4c30-b7f7-4342-9330-77af9f6eca5d' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, assertMeadowHomeState }) => {
   const { editor, detail, saved } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
@@ -52,8 +52,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '75df4c30-b7f
     await sourceCommand(() => workspace.getByRole('button', { name: 'List View', exact: true }).click());
     await sourceCommand(() => sourcing.expectNodeVisible('Availability Bias'));
     expect(new MeadowHomeBundleConfig(testServer.configDir, "example-bundle", expect).readNodesText()).toBe(saved);
-    await sourceCommand(() => addKeyFrame(sourceReviewWorkspace));
-    await sourceCommand(() => checkpoint('expanded candidate includes Availability Bias while accepted configuration stays unchanged'));
+    await sourceCommand(() => checkpoint('expanded candidate includes Availability Bias while accepted configuration stays unchanged', { keyFrames: [sourceReviewWorkspace] }));
     return { sourcing, workspace };
   });
 

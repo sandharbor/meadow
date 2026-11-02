@@ -127,8 +127,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'e990e4cb-341
         { replaceText: { path: 'notes://Start.md', before: '[[Same/Inside]]', after: '[[Moved/Inside::research]] and [[Moved/Inside::reference]]', count: 1 } },
       ]));
       await sourceCommand(() => competing.scrollIntoViewIfNeeded());
-      await sourceCommand(() => addKeyFrame(sourceChange));
-      await sourceCommand(() => checkpoint('multi-source changes have one category home and readable source-qualified operations'));
+      await sourceCommand(() => checkpoint('multi-source changes have one category home and readable source-qualified operations', { keyFrames: [sourceChange] }));
     });
 
     await test.step(sections.steps.checkSharedFixtureMenus, async () => {
@@ -152,8 +151,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'e990e4cb-341
       const review = new BundleEditorPage(page, expect).sourceReview;
       await sourceCommand(() => review.open());
       await sourceCommand(() => review.expectMove('Moved', 't001/deeper/t001 ---- child 2.md', 'source-changes/moved/t001 ---- child 2.md'));
-      await sourceCommand(() => addKeyFrame(sourceSnapshot));
-      await sourceCommand(() => checkpoint('the running application discovers the move made through dev controls'));
+      await sourceCommand(() => checkpoint('the running application discovers the move made through dev controls', { keyFrames: [sourceSnapshot] }));
     });
   } finally {
     await sourceCommand(() => devTools.stop());

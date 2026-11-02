@@ -46,23 +46,20 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'b3137f45-515
     const detail = new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect);
     await sourceCommand(() => detail.openDetails());
     await sourceCommand(() => detail.expectRemoveOutlinksDepthVisible());
-    await sourceCommand(() => addKeyFrame(overrides));
-    await sourceCommand(() => checkpoint('Cognitive Biases is selected with its zero-depth override'));
+    await sourceCommand(() => checkpoint('Cognitive Biases is selected with its zero-depth override', { keyFrames: [overrides] }));
     return { detail };
   });
 
   await test.step(sections.steps.removingOverrideOpensIsolatedComparisonWorkspace, async () => {
     await sourceCommand(() => detail.removeOutlinksDepthOverride());
     await sourceCommand(() => expect(editor.sourceReview.root).toBeVisible());
-    await sourceCommand(() => addKeyFrame(overrides));
-    await sourceCommand(() => checkpoint('the inherited boundary and its newly reached pages await acceptance'));
+    await sourceCommand(() => checkpoint('the inherited boundary and its newly reached pages await acceptance', { keyFrames: [overrides] }));
 
     await sourceCommand(() => editor.sourceReview.expectTrackAdditions(true));
     for (const name of additions) {
       await sourceCommand(() => editor.sourceReview.expectAdded(`${name}.md`));
     }
-    await sourceCommand(() => addKeyFrame(sourceSnapshot));
-    await sourceCommand(() => checkpoint('all three newly reachable pages are ready for acceptance and later curation'));
+    await sourceCommand(() => checkpoint('all three newly reachable pages are ready for acceptance and later curation', { keyFrames: [sourceSnapshot] }));
   });
 
   await test.step(sections.steps.acceptSourceUpdateVerifyAdditionsAreTracked, async () => {
@@ -78,8 +75,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'b3137f45-515
       await sourceCommand(() => new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect).expectPill(Pill.Tracked));
       await sourceCommand(() => editor.clickSelectNone());
     }
-    await sourceCommand(() => addKeyFrame(bundleNodeKey));
-    await sourceCommand(() => checkpoint('all three accepted pages are tracked'));
+    await sourceCommand(() => checkpoint('all three accepted pages are tracked', { keyFrames: [bundleNodeKey] }));
   });
 
   await sourceCommand(() => assertMeadowHomeState());

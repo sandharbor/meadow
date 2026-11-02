@@ -27,7 +27,7 @@ const sections = scenarioSections({
   acceptSourceUpdate: { type: 'test', text: conceptText`Accept the source update.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceSetupEdit, sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '5ac47ba7-f545-421b-8521-e3267e6d0380' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck, expectLogErrors }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '5ac47ba7-f545-421b-8521-e3267e6d0380' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, skipMeadowHomeStateCheck, expectLogErrors }) => {
   const { editor, sources, bundleConfig, beforeNodes } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     await sourceCommand(() => list.goto());
@@ -46,8 +46,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '5ac47ba7-f54
     await sourceCommand(() => sourceChanges.apply('disconnect-reference', 'multi-source'));
     await sourceCommand(() => sources.open());
     await sourceCommand(() => sources.expectDisconnected('source000003'));
-    await sourceCommand(() => addKeyFrame(bundleSource));
-    await sourceCommand(() => checkpoint('a disconnected source is identified without discarding its captured material'));
+    await sourceCommand(() => checkpoint('a disconnected source is identified without discarding its captured material', { keyFrames: [bundleSource] }));
   });
 
   await test.step(sections.steps.verifyCapturedPagesRemainAvailable, async () => {
@@ -70,16 +69,14 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '5ac47ba7-f54
     expect(bundleConfig.readNodesText()).toBe(beforeNodes);
     await sourceCommand(() => editor.sourceReview.orphans.expectOrphanListed('Study'));
     await sourceCommand(() => editor.sourceReview.orphans.expectOrphanListed('Appendix'));
-    await sourceCommand(() => addKeyFrame(sourceSnapshot));
-    await sourceCommand(() => checkpoint('review shows only the removed source and affected pages while accepted material stays intact'));
+    await sourceCommand(() => checkpoint('review shows only the removed source and affected pages while accepted material stays intact', { keyFrames: [sourceSnapshot] }));
     return { registryChanges };
   });
 
   await test.step(sections.steps.cleanupExplainsWhyDisconnectedSourceSFiles, async () => {
     await sourceCommand(() => editor.sourceReview.orphans.showExplanation('Study'));
     await sourceCommand(() => editor.sourceReview.orphans.expectExplanation('Study', 'Its files are untouched.'));
-    await sourceCommand(() => addKeyFrame(sourceDisconnectedRemoval));
-    await sourceCommand(() => checkpoint('source removal cleans configuration at acceptance while retaining source files'));
+    await sourceCommand(() => checkpoint('source removal cleans configuration at acceptance while retaining source files', { keyFrames: [sourceDisconnectedRemoval] }));
   });
 
   const { pendingChanges } = await test.step(sections.steps.laterRetainsProposedRegistryAcrossReloadsDirect, async () => {
@@ -96,16 +93,14 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '5ac47ba7-f54
     await sourceCommand(() => expect(manageSources.getByRole('textbox', { name: 'Source name research', exact: true })).toHaveValue('research'));
     expect(bundleConfig.read().sources?.map(source => source.id)).toContain('source000003');
     expect(bundleConfig.readNodesText()).toBe(beforeNodes);
-    await sourceCommand(() => addKeyFrame(bundleSource));
-    await sourceCommand(() => checkpoint('Manage sources restores the pending removal after Later and reload while accepted material is retained'));
+    await sourceCommand(() => checkpoint('Manage sources restores the pending removal after Later and reload while accepted material is retained', { keyFrames: [bundleSource] }));
     await sourceCommand(() => pendingChanges.click());
     await sourceCommand(() => expect(manageSources).not.toBeVisible());
     await sourceCommand(() => expect(registryChanges).toContainText('Removed source reference'));
     await sourceCommand(() => editor.sourceReview.orphans.expectOrphanListed('Study'));
     await sourceCommand(() => editor.sourceReview.orphans.expectOrphanListed('Appendix'));
     expect(bundleConfig.readNodesText()).toBe(beforeNodes);
-    await sourceCommand(() => addKeyFrame(sourceSnapshot));
-    await sourceCommand(() => checkpoint('the pending changes indicator returns directly to the source and material review'));
+    await sourceCommand(() => checkpoint('the pending changes indicator returns directly to the source and material review', { keyFrames: [sourceSnapshot] }));
     return { pendingChanges };
   });
 
@@ -123,8 +118,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '5ac47ba7-f54
     await sourceCommand(() => sources.open());
     await sourceCommand(() => sources.expectDisconnected('source000003'));
     await sourceCommand(() => expect(pendingChanges).toHaveCount(0));
-    await sourceCommand(() => addKeyFrame(bundleSource));
-    await sourceCommand(() => checkpoint('cancelling source removal retains the registry, captured pages, and source files'));
+    await sourceCommand(() => checkpoint('cancelling source removal retains the registry, captured pages, and source files', { keyFrames: [bundleSource] }));
   });
 
   await test.step(sections.steps.proposeRemovalAgain, async () => {

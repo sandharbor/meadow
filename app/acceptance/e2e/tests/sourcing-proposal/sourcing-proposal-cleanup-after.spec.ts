@@ -26,7 +26,7 @@ const sections = scenarioSections({
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
 
-test(name.name, { annotation: [{ type: 'scenario-id', description: '98d3a524-50f8-46a4-9213-a5404ef8c6ce' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '98d3a524-50f8-46a4-9213-a5404ef8c6ce' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, assertMeadowHomeState }) => {
   const { editor, sourcing, nodeConfig, original } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
@@ -57,8 +57,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '98d3a524-50f
     }
     expect(nodeConfig.readNodes()).toEqual(original);
     await sourceCommand(() => expect(page.getByRole('button', { name: 'Keep in config', exact: true })).toHaveCount(0));
-    await sourceCommand(() => addKeyFrame(sourceReviewCleanup));
-    await sourceCommand(() => checkpoint('both external and intentional departures require cleanup on acceptance'));
+    await sourceCommand(() => checkpoint('both external and intentional departures require cleanup on acceptance', { keyFrames: [sourceReviewCleanup] }));
     await sourceCommand(() => sourcing.accept());
     for (const name of ['Leaf', 'Departing', 'Outside']) expect(nodeConfig.findNode({ bundleNodeName: name })).toBeUndefined();
     expect(nodeConfig.findNode({ bundleNodeName: 'Bridge' })?.listType).toBe('blacklist');

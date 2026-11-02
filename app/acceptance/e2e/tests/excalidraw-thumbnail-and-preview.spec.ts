@@ -60,7 +60,6 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '5cc5229f-f7a
   page,
   checkpoint,
   skipMeadowHomeStateCheck,
-  addKeyFrame,
   expectLogErrors,
 }) => {
   const { releaseWorkerWarning, releaseFontWarning, editor, modal, generatedBundle } = await test.step(sections.steps.setup, async () => {
@@ -96,8 +95,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '5cc5229f-f7a
   await test.step(sections.steps.openHoverPreviewHoverThumbnailTriggerHover, async () => {
     await sourceCommand(() => editor.hoverListViewThumbnail("t006 --- meadow-flower", "excalidraw"));
     await sourceCommand(() => page.waitForTimeout(750));
-    await sourceCommand(() => addKeyFrame(excalidraw));
-    await sourceCommand(() => checkpoint("excalidraw hover preview visible"));
+    await sourceCommand(() => checkpoint("excalidraw hover preview visible", { keyFrames: [excalidraw] }));
   });
 
   await test.step(sections.steps.previewBundle, async () => {
@@ -143,8 +141,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '5cc5229f-f7a
 
   await test.step(sections.steps.scrollEmbedIntoViewItSNear, async () => {
     await sourceCommand(() => generatedBundle.excalidraw.expectEmbedVisible());
-    await sourceCommand(() => addKeyFrame(excalidraw));
-    await sourceCommand(() => checkpoint("excalidraw drawing rendered inline in preview page"));
+    await sourceCommand(() => checkpoint("excalidraw drawing rendered inline in preview page", { keyFrames: [excalidraw] }));
   });
 
   const { directedDrawingHref } = await test.step(sections.steps.inspectDirectedDrawingLinks, async () => {
@@ -159,16 +156,14 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '5cc5229f-f7a
     await sourceCommand(() => generatedBundle.excalidraw.expectDirectedDrawingLink(directedNonTextHref));
     await sourceCommand(() => generatedBundle.excalidraw.expectDirectedDrawingLink(directedSunflowerHref));
     await sourceCommand(() => generatedBundle.excalidraw.expectDirectedStandaloneLinkAbsent());
-    await sourceCommand(() => addKeyFrame(excalidraw));
-    await sourceCommand(() => checkpoint("directed excalidraw embed rendered with live links"));
+    await sourceCommand(() => checkpoint("directed excalidraw embed rendered with live links", { keyFrames: [excalidraw] }));
     return { directedDrawingHref };
   });
 
   await test.step(sections.steps.openDrawingFullscreen, async () => {
     await sourceCommand(() => generatedBundle.excalidraw.openDirectedFullscreen());
     await sourceCommand(() => page.waitForTimeout(750));
-    await sourceCommand(() => addKeyFrame(excalidraw));
-    await sourceCommand(() => checkpoint("directed excalidraw embed fullscreen open"));
+    await sourceCommand(() => checkpoint("directed excalidraw embed fullscreen open", { keyFrames: [excalidraw] }));
   });
 
   await test.step(sections.steps.followDirectedDrawingLink, async () => {
@@ -176,8 +171,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '5cc5229f-f7a
 
     await sourceCommand(() => generatedBundle.excalidraw.clickDirectedDrawingLink(directedDrawingHref));
     await sourceCommand(() => generatedBundle.expectHeading("t006 --- linked-from-excalidraw"));
-    await sourceCommand(() => addKeyFrame(excalidraw));
-    await sourceCommand(() => checkpoint("directed excalidraw embed link opened target"));
+    await sourceCommand(() => checkpoint("directed excalidraw embed link opened target", { keyFrames: [excalidraw] }));
   });
 
   await test.step(sections.steps.openStandaloneDrawing, async () => {
@@ -192,8 +186,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '5cc5229f-f7a
 
   await test.step(sections.steps.waitForStandalonePageSDrawingRender, async () => {
     await sourceCommand(() => generatedBundle.excalidraw.expectStandaloneDrawingVisible());
-    await sourceCommand(() => addKeyFrame(excalidraw));
-    await sourceCommand(() => checkpoint("standalone excalidraw page with full drawing"));
+    await sourceCommand(() => checkpoint("standalone excalidraw page with full drawing", { keyFrames: [excalidraw] }));
   });
 
   const { standaloneDrawingHref, nonTextElementHref } = await test.step(sections.steps.followTrackedImageLink, async () => {
@@ -216,8 +209,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '5cc5229f-f7a
     await sourceCommand(() => generatedBundle.expectHeading(
       "page linked from tracked sunflower image in Excalidraw",
     ));
-    await sourceCommand(() => addKeyFrame(excalidraw));
-    await sourceCommand(() => checkpoint("standalone excalidraw tracked image link opened target"));
+    await sourceCommand(() => checkpoint("standalone excalidraw tracked image link opened target", { keyFrames: [excalidraw] }));
     return { standaloneDrawingHref, nonTextElementHref };
   });
 

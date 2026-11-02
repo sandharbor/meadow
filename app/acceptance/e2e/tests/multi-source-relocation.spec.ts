@@ -22,7 +22,7 @@ const sections = scenarioSections({
   reloadRepairedLocationGraphSConfigurationRead: { type: 'test', text: conceptText`Reload the repaired location. The graph's configuration read starts a dependent draft-status request. Finish that request before reload; networkidle may still describe the earlier document load when this request has only just been scheduled.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceSetupEdit] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '9e553a56-7e3c-408c-ab79-53e03fae54c0' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '9e553a56-7e3c-408c-ab79-53e03fae54c0' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, skipMeadowHomeStateCheck }) => {
   const { editor, sources, bundleConfig, beforeNodes } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     await sourceCommand(() => list.goto());
@@ -41,8 +41,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '9e553a56-7e3
     await sourceCommand(() => sourceChanges.apply('relocate-research', 'multi-source'));
     await sourceCommand(() => sources.open());
     await sourceCommand(() => sources.expectDisconnected('source000002'));
-    await sourceCommand(() => addKeyFrame(bundleSource));
-    await sourceCommand(() => checkpoint('the disconnected source keeps its accepted captured pages'));
+    await sourceCommand(() => checkpoint('the disconnected source keeps its accepted captured pages', { keyFrames: [bundleSource] }));
   });
 
   const { draftStatus } = await test.step(sections.steps.verifyCapturedPagesRepairSource, async () => {
@@ -60,8 +59,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '9e553a56-7e3
     ]));
     expect(bundleConfig.read().sources?.find(source => source.id === 'source000002')?.directory).toBe(relocated);
     expect(bundleConfig.readNodesText()).toBe(beforeNodes);
-    await sourceCommand(() => addKeyFrame(bundleSource));
-    await sourceCommand(() => checkpoint('reconnecting the source closes management with Sources updated and no material review'));
+    await sourceCommand(() => checkpoint('reconnecting the source closes management with Sources updated and no material review', { keyFrames: [bundleSource] }));
     return { draftStatus };
   });
 

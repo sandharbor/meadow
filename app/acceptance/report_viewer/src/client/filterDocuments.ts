@@ -6,4 +6,4 @@ export const surfaceDocumentIds: Readonly<Record<string, string>> = { browser: i
 export const sourceChangeDocumentIds: Readonly<Record<string, string>> = {
   move: id.sourceMove, rename: id.sourceMove, modify: id.sourceModification, remove: id.sourceRemoval,
 }
-// Starts-with values describe fixture shapes, not separate canonical documents.
+export { startingSelectionDocumentIds, startingSelectionConceptIds } from '../../../../concepts/startingSelectionShapes.js'

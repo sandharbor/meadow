@@ -2,8 +2,11 @@
 
 ## Docs
 
-Sometimes I'll allude to a "doc", for example when describing a specification.
-Those are available in docs/content as markdown files.
+Project specifications are typed TypeScript documents under `app/concepts/`.
+The report viewer renders these canonical concepts, shared documents, and design
+pressures. Read `app/concepts/README.md` for authoring conventions and update the
+owning definition with the implementation. Do not create or synchronize a
+parallel Markdown specification.
 
 ## Ubiquitous Language
 

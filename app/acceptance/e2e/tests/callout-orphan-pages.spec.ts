@@ -55,8 +55,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'fc541bcb-6df
   const { editor } = await test.step(sections.steps.inspectOrphanSummary, async () => {
     const editor = new BundleEditorPage(page, expect);
     await sourceCommand(() => editor.expectSourceOrphanCount(EXPECTED_ORPHAN_COUNT));
-    await sourceCommand(() => addKeyFrame(sourceSnapshot));
-    await sourceCommand(() => checkpoint("source toolbar counts existing orphans without a separate banner"));
+    await sourceCommand(() => checkpoint("source toolbar counts existing orphans without a separate banner", { keyFrames: [sourceSnapshot] }));
     return { editor };
   });
 
@@ -66,8 +65,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'fc541bcb-6df
     await sourceCommand(() => orphansModal.expectOrphanCount(EXPECTED_ORPHAN_COUNT));
     await sourceCommand(() => orphansModal.expectOrphanListed(CHILD_OF_BLACKLISTED));
     await sourceCommand(() => orphansModal.showExplanation(CHILD_OF_BLACKLISTED));
-    await sourceCommand(() => addKeyFrame(orphan, changesTray, configurationRemovalsPanel));
-    await sourceCommand(() => checkpoint("configuration removals beside Accept changes list unreachable config pages"));
+    await sourceCommand(() => checkpoint("configuration removals beside Accept changes list unreachable config pages", { keyFrames: [orphan, changesTray, configurationRemovalsPanel] }));
     return { review, orphansModal };
   });
 
@@ -89,8 +87,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'fc541bcb-6df
     await sourceCommand(() => orphansModal.showExplanation('t001 ---- child 2'));
     await sourceCommand(() => orphansModal.expectExplanation('t001 ---- child 2', 'no longer links to'));
     await sourceCommand(() => review.expectNoLongerIncluded('t001/deeper/t001 ---- child 2.md'));
-    await sourceCommand(() => addKeyFrame(orphan));
-    await sourceCommand(() => checkpoint('candidate orphan is listed once and removed by default with its broken link'));
+    await sourceCommand(() => checkpoint('candidate orphan is listed once and removed by default with its broken link', { keyFrames: [orphan] }));
   });
 
   await test.step(sections.steps.acceptSourceUpdate, async () => {

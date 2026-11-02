@@ -19,7 +19,7 @@ const sections = scenarioSections({
   acceptSourceUpdate: { type: 'test', text: conceptText`Accept the source update.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewIdentity, sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '107cf0b5-3e9e-4e5d-a0c8-23764a050e6c' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, sourceChanges, testServer, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '107cf0b5-3e9e-4e5d-a0c8-23764a050e6c' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, sourceChanges, testServer, checkpoint, skipMeadowHomeStateCheck }) => {
   const { editor, bundleConfig, original } = await test.step(sections.steps.setup, async () => {
     await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
     const editor = new BundleEditorPage(page, expect);
@@ -40,8 +40,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '107cf0b5-3e9
     await sourceCommand(() => review.open());
     await sourceCommand(() => review.expectMoveCount(3));
     await sourceCommand(() => review.expectDirectoryGroupCollapsed('t001', 't101', 3));
-    await sourceCommand(() => addKeyFrame(sourceMove));
-    await sourceCommand(() => checkpoint('a collapsed overview summarizes the shared change for three files'));
+    await sourceCommand(() => checkpoint('a collapsed overview summarizes the shared change for three files', { keyFrames: [sourceMove] }));
     for (const node of original) {
       await sourceCommand(() => review.expectMoveListed(node.bundleNodeId));
     }
@@ -49,16 +48,14 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '107cf0b5-3e9
     await sourceCommand(() => review.continueToGraph());
     for (const node of original) await sourceCommand(() => review.orphans.expectNotListed(node.bundleNodeName));
     await sourceCommand(() => review.orphans.expectSummaryCount(13));
-    await sourceCommand(() => addKeyFrame(sourceMove));
-    await sourceCommand(() => checkpoint('three linked moves form review items while existing unrelated orphans remain separate'));
+    await sourceCommand(() => checkpoint('three linked moves form review items while existing unrelated orphans remain separate', { keyFrames: [sourceMove] }));
     return { review };
   });
 
   await test.step(sections.steps.inspectUpdatedLinks, async () => {
     await sourceCommand(() => review.expandDetails('t001 - deeply nested.md'));
     await sourceCommand(() => review.expectInlineChanges('t001 - deeply nested.md', ['0', '0', '0'], ['1', '1', '1']));
-    await sourceCommand(() => addKeyFrame(sourceChange));
-    await sourceCommand(() => checkpoint('minor link edits highlight only the changed digits'));
+    await sourceCommand(() => checkpoint('minor link edits highlight only the changed digits', { keyFrames: [sourceChange] }));
   });
 
   await test.step(sections.steps.acceptSourceUpdate, async () => {
@@ -68,8 +65,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '107cf0b5-3e9
     for (const node of original) {
       expect(updated.find(item => item.bundleNodeId === node.bundleNodeId)?.bundleNodeName).toBe(node.bundleNodeName.replace('t001', 't101'));
     }
-    await sourceCommand(() => addKeyFrame(sourceSnapshot));
-    await sourceCommand(() => checkpoint('the group preserves all three identities after accepting the source update'));
+    await sourceCommand(() => checkpoint('the group preserves all three identities after accepting the source update', { keyFrames: [sourceSnapshot] }));
   });
 
   await sourceCommand(() => skipMeadowHomeStateCheck());

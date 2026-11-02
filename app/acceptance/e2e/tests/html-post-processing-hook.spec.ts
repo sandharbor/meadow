@@ -37,7 +37,7 @@ const sections = scenarioSections({
   goChangesTabInspectDiff: { type: 'test', text: conceptText`Go to Changes tab and inspect the diff` },
 });
 const areas = scenarioAreas([bundleGeneration], { subAreas: [hooks, customize] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '6e16ca6b-afe5-492d-9627-37c1aac8f45e' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '6e16ca6b-afe5-492d-9627-37c1aac8f45e' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, checkpoint, skipMeadowHomeStateCheck }) => {
   const { modal, changesTab } = await test.step(sections.steps.setup, async () => {
     const wf = new Workflows(page, expect);
     await sourceCommand(() => wf.navigateToBigBundlePreview());
@@ -89,9 +89,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '6e16ca6b-afe
     await sourceCommand(() => changesTab.fileDetails.ensureOnDiffTab());
     await sourceCommand(() => changesTab.fileDetails.clickCodeSubTab());
     await sourceCommand(() => changesTab.fileDetails.expectDiffContainsText("Hello from Meadow"));
-    await sourceCommand(() => addKeyFrame(hooks));
-    await sourceCommand(() => addKeyFrame(customize));
-    await sourceCommand(() => checkpoint("diff shows Hello from Meadow"));
+    await sourceCommand(() => checkpoint("diff shows Hello from Meadow", { keyFrames: [hooks, customize] }));
   });
 
   void bigBundle;

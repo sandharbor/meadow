@@ -35,7 +35,7 @@ const sections = scenarioSections({
   checkTheirTitles: { type: 'test', text: conceptText`Check their titles.` },
 });
 const areas = scenarioAreas([bundleCuration], { subAreas: [filters] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '12868fe8-be7a-4880-b45e-3ed0f10a2e54' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '12868fe8-be7a-4880-b45e-3ed0f10a2e54' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, checkpoint, skipMeadowHomeStateCheck }) => {
   const { bundleList } = await test.step(sections.steps.setup, async () => {
     const bundleList = new BundleListPage(page, expect);
     await sourceCommand(() => bundleList.goto());
@@ -72,8 +72,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '12868fe8-be7
     await sourceCommand(() => page.waitForTimeout(250));
 
     await sourceCommand(() => filterPanel.clickSoloOnFilter("inlink in title"));
-    await sourceCommand(() => addKeyFrame(filters));
-    await sourceCommand(() => checkpoint("filter soloed"));
+    await sourceCommand(() => checkpoint("filter soloed", { keyFrames: [filters] }));
   });
 
   await test.step(sections.steps.selectVisiblePages, async () => {

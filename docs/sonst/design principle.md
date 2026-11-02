@@ -1,1 +1,0 @@
-[[design principle -- fail early]]

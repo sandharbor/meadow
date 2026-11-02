@@ -20,7 +20,7 @@ const sections = scenarioSections({
   saveCaptureGraphBeforeAssertingExpectedImmediate: { type: 'test', text: conceptText`Save and capture the graph before asserting the expected immediate highlight.` },
 });
 const areas = scenarioAreas([bundleCuration], { subAreas: [filters] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '488196c6-95c0-4d4b-999b-596b56cf2732' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '488196c6-95c0-4d4b-999b-596b56cf2732' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, checkpoint, skipMeadowHomeStateCheck }) => {
   const { editor, filterPanel, filterName } = await test.step(sections.steps.setup, async () => {
     const editor = new BundleEditorPage(page, expect);
     const filterPanel = new FilterPanelComponent(page, expect);
@@ -58,15 +58,13 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '488196c6-95c
     await sourceCommand(() => editor.switchToGraphView());
     await sourceCommand(() => editor.expectGraphHighlightCount('#FFD700', 0));
     await sourceCommand(() => filterPanel.scrollFilterIntoView(filterName));
-    await sourceCommand(() => addKeyFrame(filters, filterSensitivity));
-    await sourceCommand(() => checkpoint('the saved filter marks seven nodes sensitive without highlighting them'));
+    await sourceCommand(() => checkpoint('the saved filter marks seven nodes sensitive without highlighting them', { keyFrames: [filters, filterSensitivity] }));
   });
 
   await test.step(sections.steps.reopenSavedFilterAddHighlightAlongsideMark, async () => {
     await sourceCommand(() => filterPanel.editCustomFilter(filterName));
     await sourceCommand(() => filterPanel.addHighlightToSensitivityFilterEdits());
-    await sourceCommand(() => addKeyFrame(filters));
-    await sourceCommand(() => checkpoint('the reopened filter contains both Mark Sensitive and Highlight before saving'));
+    await sourceCommand(() => checkpoint('the reopened filter contains both Mark Sensitive and Highlight before saving', { keyFrames: [filters] }));
   });
 
   await test.step(sections.steps.saveCaptureGraphBeforeAssertingExpectedImmediate, async () => {
@@ -76,8 +74,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '488196c6-95c
     await sourceCommand(() => editor.sourceReview.close());
     await sourceCommand(() => editor.expectGraphViewPageCount(7));
     await sourceCommand(() => filterPanel.scrollFilterIntoView(filterName));
-    await sourceCommand(() => addKeyFrame(filters, filterSensitivity));
-    await sourceCommand(() => checkpoint('the filter is saved with the added Highlight action'));
+    await sourceCommand(() => checkpoint('the filter is saved with the added Highlight action', { keyFrames: [filters, filterSensitivity] }));
     await sourceCommand(() => editor.expectGraphHighlightCount('#FFD700', 7));
   });
 

@@ -28,7 +28,7 @@ const sections = scenarioSections({
   followReaderSLinkRenamedPage: { type: 'test', text: conceptText`Follow the reader's link to the renamed page.` },
 });
 const areas = scenarioAreas([bundleSourcing, bundleGeneration, bundleReview, bundleSharing], { subAreas: [sourceReviewIdentity, publicationRevision] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '2632e392-a3dd-44cc-a0d3-4f3f520ac54f' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, sourceChanges, testServer, minioS3, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '2632e392-a3dd-44cc-a0d3-4f3f520ac54f' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, sourceChanges, testServer, minioS3, checkpoint, skipMeadowHomeStateCheck }) => {
   const { editor, bundleConfig, original, modal, versions, initialVersion, publish, originalUrl, originalPageKey, originalHtml } = await test.step(sections.steps.setup, async () => {
     await sourceCommand(() => testServer.activateS3Provider());
     await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
@@ -69,8 +69,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '2632e392-a3d
     await sourceCommand(() => review.confirmSuggestedIdentities());
     const rename = await sourceCommand(() => review.moveFrom(`${originalTitle}.md`));
     await sourceCommand(() => rename.expectSamePageSelected());
-    await sourceCommand(() => addKeyFrame(sourceMove));
-    await sourceCommand(() => checkpoint('Sourcing identifies the renamed file as the already published page'));
+    await sourceCommand(() => checkpoint('Sourcing identifies the renamed file as the already published page', { keyFrames: [sourceMove] }));
     return { review };
   });
 
@@ -91,8 +90,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '2632e392-a3d
     const [predecessor, successor] = await sourceCommand(() => versions.waitForCount(2));
     expect(predecessor).toMatchObject({ versionId: initialVersion.versionId, displayState: 'frozen' });
     expect(successor.displayState).toBe('unsaved');
-    await sourceCommand(() => addKeyFrame(versioning));
-    await sourceCommand(() => checkpoint('the new generated version preserves its frozen predecessor'));
+    await sourceCommand(() => checkpoint('the new generated version preserves its frozen predecessor', { keyFrames: [versioning] }));
     return { successor };
   });
 
@@ -126,8 +124,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '2632e392-a3d
     await sourceCommand(() => reader.goto(oldPageUrl));
     await sourceCommand(() => reader.expectMainHeadingVisible(originalTitle));
     await sourceCommand(() => reader.expectNewerPageLink(newPageUrl));
-    await sourceCommand(() => addKeyFrame(publicationRevision));
-    await sourceCommand(() => checkpoint('the old published page links directly to the renamed page in the newer version'));
+    await sourceCommand(() => checkpoint('the old published page links directly to the renamed page in the newer version', { keyFrames: [publicationRevision] }));
     return { newPageUrl, reader };
   });
 
@@ -136,8 +133,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '2632e392-a3d
     await sourceCommand(() => expect(page).toHaveURL(newPageUrl));
     await sourceCommand(() => reader.expectMainHeadingVisible(renamedTitle));
     await sourceCommand(() => reader.expectNoNewerVersionNotice());
-    await sourceCommand(() => addKeyFrame(publicationRevision));
-    await sourceCommand(() => checkpoint('the reader reaches the renamed page through the old publication'));
+    await sourceCommand(() => checkpoint('the reader reaches the renamed page through the old publication', { keyFrames: [publicationRevision] }));
   });
 
   await sourceCommand(() => skipMeadowHomeStateCheck());

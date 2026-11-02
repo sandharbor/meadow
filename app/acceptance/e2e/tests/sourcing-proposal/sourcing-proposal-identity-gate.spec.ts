@@ -20,7 +20,7 @@ const sections = scenarioSections({
   enterGraphAfterDeciding: { type: 'test', text: conceptText`Resolve every identity to enter the comparison graph without accepting the source update.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewIdentity, sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '9fbb91cb-48e4-43dc-b5a2-72864118bd2d' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '9fbb91cb-48e4-43dc-b5a2-72864118bd2d' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, assertMeadowHomeState }) => {
   const { editor, sourcing, saved } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
@@ -46,8 +46,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '9fbb91cb-48e
     await sourceCommand(() => sourcing.chooseIdentity('100000000002', 'Routes/Branch/Gateway.md'));
     await sourceCommand(() => expect(sourcing.identityButton('Confirm')).toBeDisabled());
     await sourceCommand(() => expect(sourcing.root.getByRole('button', { name: 'List View', exact: true })).toHaveCount(0));
-    await sourceCommand(() => addKeyFrame(sourceReviewIdentity));
-    await sourceCommand(() => checkpoint('the identity modal is open with one decision made and the others unresolved'));
+    await sourceCommand(() => checkpoint('the identity modal is open with one decision made and the others unresolved', { keyFrames: [sourceReviewIdentity] }));
   });
 
   await test.step(sections.steps.enterGraphAfterDeciding, async () => {
@@ -68,8 +67,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '9fbb91cb-48e
     await sourceCommand(() => sourcing.select('Petal'));
     await sourceCommand(() => expect(sourcing.changeKind).toHaveText('Add'));
     expect(new MeadowHomeBundleConfig(testServer.configDir, "sourcing-review", expect).readNodesText()).toBe(saved);
-    await sourceCommand(() => addKeyFrame(sourceReviewIdentity));
-    await sourceCommand(() => checkpoint('resolved identities are visible in the comparison without accepting the sources'));
+    await sourceCommand(() => checkpoint('resolved identities are visible in the comparison without accepting the sources', { keyFrames: [sourceReviewIdentity] }));
   });
 
   const proposal = new SourcingProposalState(testServer, 'sourcing-review');

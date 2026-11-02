@@ -1,4 +1,6 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
+import { renderLintRule } from './lint-rule.js';
+import { noRawDataGuidance } from './rules/scenario-rule-definitions.js';
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -11,26 +13,7 @@ for (const spec of specs) for (const issue of auditRawData(readFileSync(path.joi
   count++;
 }
 if (count) {
-  console.error(`\n❌ no-raw-data: ${count} issue(s).
-
-Scenarios should read at the level of intent. File layout, JSON/YAML parsing,
-and serialization boilerplate obscure the behavior being proved and couple
-scenarios to storage details. Put that knowledge in the reusable utility or
-page object responsible for the functionality under src/run, not a spec-local
-helper or a generic readJson/readYaml wrapper.
-
-For example:
-  expect(bundleConfig.nodeNamed('Bridge').outlinksDepth).toBe(0);
-  expect(bundleConfig.findNode({ bundleNodeName: 'Reference' })).toBeUndefined();
-  expect(filters.bundleFilterNamed('Bridge emphasis')).toBeDefined();
-
-If raw access itself is essential (for example corrupting bytes to test recovery),
-explain why immediately before the smallest statement or explicit { ... } block:
-  // e2e-allow-raw-data: Invalid YAML bytes are the input to this recovery test.
-  { /* raw access needed for this particular claim */ }
-
-The exception covers only that statement/block. Give a specific reason; remove
-unused exceptions. Prefer an existing domain utility for ordinary setup and
-assertions. See _module/docs/coding_standards.md and the E2E skill.`);
+  console.error(`\n❌ no-raw-data: ${count} issue(s) in ${specs.length} spec(s).`);
+  console.error(renderLintRule(noRawDataGuidance));
   process.exitCode = 1;
 } else console.log(`✅ ${specs.length} spec(s): parsing and file I/O stay behind intent-level utilities.`);

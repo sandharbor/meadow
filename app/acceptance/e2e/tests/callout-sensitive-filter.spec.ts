@@ -37,7 +37,6 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'd7b5274b-db4
   page,
   checkpoint,
   assertMeadowHomeState,
-  addKeyFrame,
 }) => {
   await test.step(sections.steps.setup, async () => {
     const wf = new Workflows(page, expect);
@@ -65,9 +64,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'd7b5274b-db4
       "meadow-sensitive: true",
     ));
 
-    await sourceCommand(() => addKeyFrame(callout));
-    await sourceCommand(() => addKeyFrame(sensitive));
-    await sourceCommand(() => checkpoint("sensitive filter callout tooltip visible"));
+    await sourceCommand(() => checkpoint("sensitive filter callout tooltip visible", { keyFrames: [callout, sensitive] }));
   });
 
   void bigBundle;

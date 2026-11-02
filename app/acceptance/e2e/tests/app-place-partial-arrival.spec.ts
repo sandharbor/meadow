@@ -17,7 +17,7 @@ const sections = scenarioSections({
   checkReportSenderReadsBack: { type: 'test', text: conceptText`Check the report the sender reads back.` },
 });
 const areas = scenarioAreas([bundleCuration]);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '2771ea2c-ce5c-44d6-81dd-eabb2aa8f97a' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '2771ea2c-ce5c-44d6-81dd-eabb2aa8f97a' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, skipMeadowHomeStateCheck }) => {
   const { places, requested } = await test.step(sections.steps.followLinkIntoBigBundle, async () => {
     const places = new AppPlace(page, expect);
     const requested = "/bundle/meadow-test-bundle-big?surface=custom-filter&filter=missing-filter&select=id:ef63f962db68,key:%2Fno+such+page.md";
@@ -28,8 +28,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '2771ea2c-ce5
       + "Custom filter couldn't open: there is no custom filter missing-filter.×",
     ));
     await sourceCommand(() => places.expectCurrent("/bundle/meadow-test-bundle-big?select=id:ef63f962db68"));
-    await sourceCommand(() => addKeyFrame(callout, appPlace));
-    await sourceCommand(() => checkpoint("the app reached the bundle and the page that still exists"));
+    await sourceCommand(() => checkpoint("the app reached the bundle and the page that still exists", { keyFrames: [callout, appPlace] }));
     return { places, requested };
   });
 

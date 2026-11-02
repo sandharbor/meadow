@@ -24,7 +24,7 @@ const sections = scenarioSections({
   trackAddedPagesTracksCapturedPagePreparing: { type: 'test', text: conceptText`Track added pages tracks the captured page, preparing it for generation.` },
 });
 const areas = scenarioAreas([bundleCuration, bundleSourcing, bundleGeneration], { subAreas: [sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'add4249e-bd6a-4747-8995-e8600181e8d1' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'add4249e-bd6a-4747-8995-e8600181e8d1' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, assertMeadowHomeState }) => {
   const { editor, sourcing, filters, preview, directory, accepted } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
@@ -49,8 +49,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'add4249e-bd6
     await sourceCommand(() => frontierPage.expectButtonDisabled(ActionButton.Track));
     await sourceCommand(() => expect(sourcing.root).toBeHidden());
     expect(new AcceptedSourcingState(testServer.configDir, "example-bundle").current.acceptedId).toBe(accepted);
-    await sourceCommand(() => addKeyFrame(frontier));
-    await sourceCommand(() => checkpoint('curation shows the live frontier without changing accepted material'));
+    await sourceCommand(() => checkpoint('curation shows the live frontier without changing accepted material', { keyFrames: [frontier] }));
   });
 
   await test.step(sections.steps.raisingTraversalDepthMovesIntoSourcingCaptures, async () => {

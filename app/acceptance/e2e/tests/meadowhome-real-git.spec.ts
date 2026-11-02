@@ -37,7 +37,7 @@ const sections = scenarioSections({
 });
 const areas = scenarioAreas([bundles]);
 test(name.name, { annotation: [{ type: 'scenario-id', description: '2288b7fe-637e-48aa-984f-762ae66da6ff' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
-  page, checkpoint, assertMeadowHomeState, addKeyFrame, testServer,
+  page, checkpoint, assertMeadowHomeState, testServer,
 }) => {
   const { bundleList, editor } = await test.step(sections.steps.setup, async () => {
     const bundleList = new BundleListPage(page, expect);
@@ -93,8 +93,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '2288b7fe-637
       `creating the example bundle, but \`git status --porcelain\` reports:\n${status}`,
     ).toBe("");
 
-    await sourceCommand(() => addKeyFrame(git));
-    await sourceCommand(() => checkpoint("MeadowHome clean via real git status"));
+    await sourceCommand(() => checkpoint("MeadowHome clean via real git status", { keyFrames: [git] }));
   });
 
   void exampleBundle;

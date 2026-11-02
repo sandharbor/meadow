@@ -18,7 +18,7 @@ const sections = scenarioSections({
   acceptSourceUpdate: { type: 'test', text: conceptText`Accept the source update.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewIdentity, sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'd9e784cb-3a46-431c-bdb7-e93cd91739e3' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'd9e784cb-3a46-431c-bdb7-e93cd91739e3' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, skipMeadowHomeStateCheck }) => {
   const { editor, bundleConfig, original } = await test.step(sections.steps.setup, async () => {
     await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
     const editor = new BundleEditorPage(page, expect);
@@ -40,8 +40,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'd9e784cb-3a4
     await sourceCommand(() => editor.sourceReview.confirmSuggestedIdentities());
     await sourceCommand(() => editor.sourceReview.continueToGraph());
     await sourceCommand(() => editor.sourceReview.orphans.expectNotListed(original.bundleNodeName));
-    await sourceCommand(() => addKeyFrame(sourceMove));
-    await sourceCommand(() => checkpoint('review identifies the move through the shared source change'));
+    await sourceCommand(() => checkpoint('review identifies the move through the shared source change', { keyFrames: [sourceMove] }));
   });
 
   await test.step(sections.steps.acceptSourceUpdate, async () => {
@@ -50,8 +49,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'd9e784cb-3a4
     await sourceCommand(() => editor.switchToListView());
     await sourceCommand(() => editor.expectListViewNodeVisible('file:t024/images/t024 ---- test image.png', true));
     await sourceCommand(() => editor.expectListViewNodeVisible('file:t024/t024 ---- test image.png', false));
-    await sourceCommand(() => addKeyFrame(sourceSnapshot));
-    await sourceCommand(() => checkpoint('the moved file remains reachable with the same identity and tracking'));
+    await sourceCommand(() => checkpoint('the moved file remains reachable with the same identity and tracking', { keyFrames: [sourceSnapshot] }));
   });
 
   await sourceCommand(() => skipMeadowHomeStateCheck());

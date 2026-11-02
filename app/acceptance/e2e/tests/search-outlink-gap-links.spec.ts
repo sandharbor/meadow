@@ -53,7 +53,6 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '5d8213b4-06d
   page,
   checkpoint,
   assertMeadowHomeState,
-  addKeyFrame,
 }) => {
   await test.step(sections.steps.setup, async () => {
     const wf = new Workflows(page, expect);
@@ -65,9 +64,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '5d8213b4-06d
     const filterPanel = new FilterPanelComponent(page, expect);
     await sourceCommand(() => filterPanel.fillSearch("outlink gap"));
     await sourceCommand(() => page.waitForTimeout(500));
-    await sourceCommand(() => addKeyFrame(sourceGraphSearch));
-    await sourceCommand(() => addKeyFrame(labels));
-    await sourceCommand(() => checkpoint("searched for outlink gap"));
+    await sourceCommand(() => checkpoint("searched for outlink gap", { keyFrames: [sourceGraphSearch, labels] }));
   });
 
   const { editor } = await test.step(sections.steps.inspectSearchResultInListView, async () => {
@@ -116,8 +113,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '5d8213b4-06d
   });
 
   await test.step(sections.steps.keyframeForLinkGapShowsOutlinksGap, async () => {
-    await sourceCommand(() => addKeyFrame(linkGap));
-    await sourceCommand(() => checkpoint("outlink gap links visible"));
+    await sourceCommand(() => checkpoint("outlink gap links visible", { keyFrames: [linkGap] }));
   });
 
   await test.step(sections.steps.readDepthExplanation, async () => {
@@ -127,8 +123,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '5d8213b4-06d
 
   await test.step(sections.steps.expectTooltipSayTargetPageBeyondOutlinks, async () => {
     await sourceCommand(() => linksModal.expectBeyondOutlinksDepthTooltip());
-    await sourceCommand(() => addKeyFrame(callout));
-    await sourceCommand(() => checkpoint("tooltip showing beyond outlinks depth"));
+    await sourceCommand(() => checkpoint("tooltip showing beyond outlinks depth", { keyFrames: [callout] }));
   });
 
   await test.step(sections.steps.followIncomingLink, async () => {
@@ -142,8 +137,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '5d8213b4-06d
   });
 
   await test.step(sections.steps.keyframeForBundlePageLinks, async () => {
-    await sourceCommand(() => addKeyFrame(links));
-    await sourceCommand(() => checkpoint("links modal showing t021 link gaps page"));
+    await sourceCommand(() => checkpoint("links modal showing t021 link gaps page", { keyFrames: [links] }));
   });
 
   void bigBundle;

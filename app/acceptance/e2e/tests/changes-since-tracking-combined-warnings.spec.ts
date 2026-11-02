@@ -22,7 +22,7 @@ const sections = scenarioSections({
 });
 const areas = scenarioAreas([bundleCuration, bundleSourcing, bundleGeneration], { subAreas: [sourceReviewWorkspace] });
 const pressures = scenarioDesignPressures([preventAccidentalSharing]);
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'c04a7606-5b14-4473-9302-ec5875746a8b' }, name.annotation, description.annotation, areas.annotation, pressures.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'c04a7606-5b14-4473-9302-ec5875746a8b' }, name.annotation, description.annotation, areas.annotation, pressures.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, skipMeadowHomeStateCheck }) => {
   const { editor, filters, review, preview, proposal, accepted } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
@@ -46,8 +46,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'c04a7606-5b1
     await sourceCommand(() => review.expectSensitivityReviewReady());
     await sourceCommand(() => expect(review.sensitivityReview).toContainText('Global filter “Review existing inclusion”'));
     expect(proposal.current.candidateSnapshotId).toBe(accepted);
-    await sourceCommand(() => addKeyFrame(trackedNodeBecomesSensitive, changesSinceTracking));
-    await sourceCommand(() => checkpoint('the named global policy explains the sensitivity change'));
+    await sourceCommand(() => checkpoint('the named global policy explains the sensitivity change', { keyFrames: [trackedNodeBecomesSensitive, changesSinceTracking] }));
   });
 
   await test.step(sections.steps.leaveReviewPendingGenerateOrdinaryUntrackedNodes, async () => {
@@ -58,8 +57,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'c04a7606-5b1
     await sourceCommand(() => preview.expectUntrackedPagesWarning());
     await sourceCommand(() => expect(page.getByTestId('sensitivity-warning')).toBeVisible());
     await sourceCommand(() => expect(page.getByRole('button', { name: /Check (them|it)/ })).toBeVisible());
-    await sourceCommand(() => addKeyFrame(trackedNodeBecomesSensitive));
-    await sourceCommand(() => checkpoint('both preview warnings have independent review actions'));
+    await sourceCommand(() => checkpoint('both preview warnings have independent review actions', { keyFrames: [trackedNodeBecomesSensitive] }));
   });
 
   await test.step(sections.steps.warningWrapsWithinModalAtNarrowDesktop, async () => {
@@ -68,8 +66,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'c04a7606-5b1
     await sourceCommand(() => expect(warning.getByRole('button', { name: 'Review pages', exact: true })).toBeVisible());
     const dimensions = await warning.evaluate(element => ({ width: element.clientWidth, content: element.scrollWidth }));
     expect(dimensions.content).toBeLessThanOrEqual(dimensions.width);
-    await sourceCommand(() => addKeyFrame(trackedNodeBecomesSensitive));
-    await sourceCommand(() => checkpoint('both warnings remain readable in a narrow preview'));
+    await sourceCommand(() => checkpoint('both warnings remain readable in a narrow preview', { keyFrames: [trackedNodeBecomesSensitive] }));
     await sourceCommand(() => preview.clickCheckUntrackedPages());
     await sourceCommand(() => editor.waitForLoad('multi-source-mixed'));
     await sourceCommand(() => editor.clickPreview());

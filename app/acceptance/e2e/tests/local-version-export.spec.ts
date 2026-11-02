@@ -44,7 +44,6 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '88cdda07-2ad
   page,
   artifactDir,
   checkpoint,
-  addKeyFrame,
   skipMeadowHomeStateCheck,
   testServer,
 }) => {
@@ -102,8 +101,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '88cdda07-2ad
     expect(allManifestText).not.toContain("private editorial note");
     expect(allManifestText).not.toContain(testServer.sourceGraphsDir);
 
-    await sourceCommand(() => addKeyFrame(localExport));
-    await sourceCommand(() => checkpoint("selected and all-version exports contain only shareable data"));
+    await sourceCommand(() => checkpoint("selected and all-version exports contain only shareable data", { keyFrames: [localExport] }));
     return { exportTo };
   });
 

@@ -31,7 +31,7 @@ const sections = scenarioSections({
 });
 const areas = scenarioAreas([bundleGeneration, bundleReview], { subAreas: [customize, generatedBundleSearch, previewBrowser] });
 test(name.name, { annotation: [{ type: 'scenario-id', description: 'beb448bf-8830-4679-ab10-8b55d20306d5' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
-  page, checkpoint, addKeyFrame, skipMeadowHomeStateCheck,
+  page, checkpoint, skipMeadowHomeStateCheck,
 }) => {
   const { modal, originalUrl, options, releaseResource } = await test.step(sections.steps.setup, async () => {
     // Keep pages readable while their load/pageshow events wait on a resource.
@@ -69,8 +69,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'beb448bf-883
     expect(new URL(regeneratedUrl).pathname).toBe(new URL(originalUrl).pathname);
     expect(regeneratedUrl).not.toBe(originalUrl);
     await sourceCommand(() => modal.expectPreviewNavigation(true, false));
-    await sourceCommand(() => addKeyFrame(previewBrowser));
-    await sourceCommand(() => checkpoint('Search is disabled and regeneration retains the child page'));
+    await sourceCommand(() => checkpoint('Search is disabled and regeneration retains the child page', { keyFrames: [previewBrowser] }));
   });
 
   await sourceCommand(() => skipMeadowHomeStateCheck());

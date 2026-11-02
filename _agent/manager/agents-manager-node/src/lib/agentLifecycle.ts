@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { existsSync, mkdirSync, writeFileSync, chmodSync, mkdtempSync, copyFileSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { existsSync, mkdirSync, writeFileSync, chmodSync, mkdtempSync } from "node:fs";
+import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { capture, shell, shellSafe } from "./exec.js";
 import { generateName } from "./names.js";
@@ -34,23 +34,6 @@ function branchExists(name: string): boolean {
     return true;
   } catch {
     return false;
-  }
-}
-
-/** Copy untracked files that are useful in every worktree. */
-function copyImportantUntrackedFiles(repoRoot: string, wtPath: string): void {
-  const relativePaths = [
-    "docs/tools/source_markdown_path.local",
-    "app/acceptance/e2e/export-scenarios-to-docs/living-spec_export_dir.local"
-  ];
-
-  for (const rel of relativePaths) {
-    const src = join(repoRoot, rel);
-    if (existsSync(src)) {
-      const dest = join(wtPath, rel);
-      mkdirSync(dirname(dest), { recursive: true });
-      copyFileSync(src, dest);
-    }
   }
 }
 
@@ -87,7 +70,6 @@ export function createAgent(task?: string): Agent {
   capture("git", ["worktree", "add", wtPath, "-b", branch, "HEAD"], { cwd: repoRoot });
 
   // Copy useful untracked files into the new worktree
-  copyImportantUntrackedFiles(repoRoot, wtPath);
 
   // Write _agent/agent/.agent_info into the worktree
   const sessionName = tmux.agentSessionName(name);

@@ -22,7 +22,7 @@ const sections = scenarioSections({
   verifyScenarioMixedSelectionContainsCandidateDeparting: { type: 'test', text: conceptText`Verify the scenario: the mixed selection contains a candidate and a departing comparison node.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'e6c2836c-da56-4f84-9488-64b007b3989a' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'e6c2836c-da56-4f84-9488-64b007b3989a' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, assertMeadowHomeState }) => {
   const { sourcing, proposal, saved } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
@@ -51,8 +51,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'e6c2836c-da5
     expect(proposal.current.tracking['file:Routes/Reference.md']).toMatchObject({ track: true, origin: 'explicit' });
     expect(proposal.current.tracking['file:Departing.md']).toBeUndefined();
     expect(new MeadowHomeBundleConfig(testServer.configDir, "sourcing-review", expect).readNodesText()).toBe(saved);
-    await sourceCommand(() => addKeyFrame(sourceReviewWorkspace));
-    await sourceCommand(() => checkpoint('the bulk action explicitly reports the skipped departure and stages only the eligible page'));
+    await sourceCommand(() => checkpoint('the bulk action explicitly reports the skipped departure and stages only the eligible page', { keyFrames: [sourceReviewWorkspace] }));
     await sourceCommand(() => sourcing.accept());
     const nodeConfig = new MeadowHomeBundleConfig(testServer.configDir, "sourcing-review", expect);
     expect(nodeConfig.findNode({ bundleNodeName: 'Reference' })).toBeDefined();

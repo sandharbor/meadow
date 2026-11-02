@@ -1,4 +1,0 @@
-^ [[app component]] -- sidebar
-
----
-

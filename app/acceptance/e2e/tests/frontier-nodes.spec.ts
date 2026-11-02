@@ -40,7 +40,7 @@ const sections = scenarioSections({
   returnFullGraph: { type: 'test', text: conceptText`Return to the full graph.` },
 });
 const areas = scenarioAreas([bundleCuration], { subAreas: [nodeDetails, nodePathDetails] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '360daa04-8a00-4999-96b2-4e655a7fba25' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, checkpoint, assertMeadowHomeState, addKeyFrame }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '360daa04-8a00-4999-96b2-4e655a7fba25' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, checkpoint, assertMeadowHomeState }) => {
   const { bundleList } = await test.step(sections.steps.setup, async () => {
     const bundleList = new BundleListPage(page, expect);
     await sourceCommand(() => bundleList.goto());
@@ -68,8 +68,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '360daa04-8a0
 
   await test.step(sections.steps.soloFrontier, async () => {
     await sourceCommand(() => filterPanel.clickSoloOnFilter("Frontier"));
-    await sourceCommand(() => addKeyFrame(frontier));
-    await sourceCommand(() => checkpoint("frontier filter soloed"));
+    await sourceCommand(() => checkpoint("frontier filter soloed", { keyFrames: [frontier] }));
   });
 
   await test.step(sections.steps.inspectNearbyFrontierPages, async () => {

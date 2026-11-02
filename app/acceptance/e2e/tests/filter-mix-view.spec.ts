@@ -39,7 +39,6 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '388a726c-11f
   page,
   checkpoint,
   assertMeadowHomeState,
-  addKeyFrame,
 }) => {
   await test.step(sections.steps.setup, async () => {
     const workflows = new Workflows(page, expect);
@@ -63,8 +62,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '388a726c-11f
     await sourceCommand(() => filterPanel.expectMixFiltersCustomized(false));
     await sourceCommand(() => filterPanel.openMixFilters());
     await sourceCommand(() => filterPanel.moveMixFiltersBy(80, 50));
-    await sourceCommand(() => addKeyFrame(filterMixing));
-    await sourceCommand(() => checkpoint("mix filters defaults to any and can move aside"));
+    await sourceCommand(() => checkpoint("mix filters defaults to any and can move aside", { keyFrames: [filterMixing] }));
   });
 
   await test.step(sections.steps.intersectTwoFilters, async () => {
@@ -78,8 +76,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '388a726c-11f
   await test.step(sections.steps.compareListView, async () => {
     await sourceCommand(() => editor.switchToListView());
     expect(await sourceCommand(() => editor.getListViewPageCount())).toBe(1);
-    await sourceCommand(() => addKeyFrame(filterMixing));
-    await sourceCommand(() => checkpoint("list view shows the same intersection"));
+    await sourceCommand(() => checkpoint("list view shows the same intersection", { keyFrames: [filterMixing] }));
   });
 
   await test.step(sections.steps.resetFilterMix, async () => {

@@ -107,12 +107,12 @@ test('captured scenario names open local concept details and select counted rela
     await page.goto(`/${runId}/linked-scenario`);
     await expect(headerDev).toHaveCount(0);
     const metadata = page.getByRole('region', { name: 'Scenario metadata', exact: true });
-    await metadata.getByRole('button', { name: bridgeExclusion.name, exact: true }).click();
+    await metadata.getByRole('button', { name: `Read ${bridgeExclusion.name}`, exact: true }).click();
     await expect(page).toHaveURL(`/${runId}/linked-scenario`);
     await expect(panel.getByRole('heading', { name: bridgeExclusion.name, exact: true })).toBeVisible();
     await expect(panel.getByRole('combobox', { name: 'Concept display' })).toHaveCount(0);
     await expect(select.getByLabel('1 related scenarios')).toHaveText('1');
-    await metadata.getByRole('button', { name: scopeExclusion.name, exact: true }).click();
+    await metadata.getByRole('button', { name: `Read ${scopeExclusion.name}`, exact: true }).click();
     await expect(panel).toHaveCount(1);
     await expect(panel.getByRole('heading', { name: scopeExclusion.name, exact: true })).toBeVisible();
     await expect(panel.getByRole('heading', { name: bridgeExclusion.name, exact: true })).toHaveCount(0);

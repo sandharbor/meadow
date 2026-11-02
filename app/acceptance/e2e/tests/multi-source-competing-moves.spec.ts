@@ -21,7 +21,7 @@ const sections = scenarioSections({
   bothDestinationsAreTrackedAsNewPages: { type: 'test', text: conceptText`Both destinations are tracked as new pages; neither takes the old identity.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewIdentity, sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'a429b1b9-137e-4567-a045-287920b81efc' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'a429b1b9-137e-4567-a045-287920b81efc' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, skipMeadowHomeStateCheck }) => {
   const { editor, bundleConfig, original } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     await sourceCommand(() => list.goto());
@@ -44,8 +44,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'a429b1b9-137
     await sourceCommand(() => move.expectUnresolved(['research://Moved/Inside.md', 'reference://Moved/Inside.md']));
     await sourceCommand(() => editor.sourceReview.expectIdentityChoiceRequired());
     expect(bundleConfig.findNode({ bundleNodeId: original.bundleNodeId })).toEqual(original);
-    await sourceCommand(() => addKeyFrame(sourceMove));
-    await sourceCommand(() => checkpoint('two equally plausible destinations require an explicit identity choice'));
+    await sourceCommand(() => checkpoint('two equally plausible destinations require an explicit identity choice', { keyFrames: [sourceMove] }));
     return { move };
   });
 
@@ -69,8 +68,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'a429b1b9-137
     expect(updated.some(node => node.bundleNodeId === original.bundleNodeId)).toBe(false);
     await sourceCommand(() => editor.switchToListView());
     for (const source of ['source000002', 'source000003']) await sourceCommand(() => editor.expectListViewNodeVisible(`file:_mw_sources/${source}/Moved/Inside.md`, true));
-    await sourceCommand(() => addKeyFrame(sourceSnapshot));
-    await sourceCommand(() => checkpoint('explicitly keeping pages separate removes the old identity and leaves both additions untracked for curation'));
+    await sourceCommand(() => checkpoint('explicitly keeping pages separate removes the old identity and leaves both additions untracked for curation', { keyFrames: [sourceSnapshot] }));
   });
 
   await sourceCommand(() => skipMeadowHomeStateCheck());

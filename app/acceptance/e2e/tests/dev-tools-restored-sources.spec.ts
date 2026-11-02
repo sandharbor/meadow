@@ -28,7 +28,7 @@ const sections = scenarioSections({
   realChangeInForkStillDiscoveredExplained: { type: 'test', text: conceptText`A real change in the fork is still discovered and explained.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceSetupEdit, sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '2e2a6687-4377-4afb-bcfd-496e131dce69' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, artifactDir, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }, testInfo) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '2e2a6687-4377-4afb-bcfd-496e131dce69' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, artifactDir, checkpoint, skipMeadowHomeStateCheck }, testInfo) => {
   await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     await sourceCommand(() => list.goto());
@@ -81,8 +81,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '2e2a6687-437
       await sourceCommand(() => expect(page.getByTestId('sourcing-status').getByRole('button', { name: /source changes.*Review/i })).toHaveCount(0));
       expect(new AcceptedSourcingState(forkHome, 'multi-source-page').current).toMatchObject({ acceptedId });
       expect(new AcceptedSourcingState(forkHome, 'multi-source-page').current.candidateId).toBeUndefined();
-      await sourceCommand(() => addKeyFrame(checkpointConcept, startingSelection));
-      await sourceCommand(() => checkpoint('the restored collection has no phantom changes after refreshing sources'));
+      await sourceCommand(() => checkpoint('the restored collection has no phantom changes after refreshing sources', { keyFrames: [checkpointConcept, startingSelection] }));
       return { forkEditor, refresh };
     });
 
@@ -91,8 +90,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '2e2a6687-437
       await sourceCommand(() => refresh());
       await sourceCommand(() => forkEditor.sourceReview.open());
       await sourceCommand(() => forkEditor.sourceReview.expectModified('_mw_sources/source000001/Overview.md'));
-      await sourceCommand(() => addKeyFrame(bundleSource));
-      await sourceCommand(() => checkpoint('the restored collection reviews a real source edit'));
+      await sourceCommand(() => checkpoint('the restored collection reviews a real source edit', { keyFrames: [bundleSource] }));
     });
   } finally {
     await sourceCommand(() => page.goto('about:blank').catch(() => undefined));

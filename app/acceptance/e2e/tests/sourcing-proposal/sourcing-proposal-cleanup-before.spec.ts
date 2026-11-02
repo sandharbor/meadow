@@ -22,7 +22,7 @@ const sections = scenarioSections({
   verifyScenarioReducedDepthLeavesExcludedPage: { type: 'test', text: conceptText`Verify the scenario: the reduced depth leaves excluded page configuration in the pending proposal.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '3edbe143-aa65-47b7-bdec-8422d2c3d888' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '3edbe143-aa65-47b7-bdec-8422d2c3d888' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, assertMeadowHomeState }) => {
   const { editor, sourcing, proposal, saved, original } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
@@ -75,8 +75,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '3edbe143-aa6
     await sourceCommand(() => expect(sourcing.selectedPage.getByText('Tracked', { exact: true })).toBeVisible());
     expect(proposal.current.proposed.nodes.find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Departing')).toEqual(original);
     expect(new MeadowHomeBundleConfig(testServer.configDir, "sourcing-review", expect).readNodesText()).toBe(saved);
-    await sourceCommand(() => addKeyFrame(sourceReviewCleanup));
-    await sourceCommand(() => checkpoint('reversing both exclusions restores the saved identity tracking and depth settings'));
+    await sourceCommand(() => checkpoint('reversing both exclusions restores the saved identity tracking and depth settings', { keyFrames: [sourceReviewCleanup] }));
     await sourceCommand(() => sourcing.discard());
     await sourceCommand(() => expect(sourcing.root).toBeHidden());
   });

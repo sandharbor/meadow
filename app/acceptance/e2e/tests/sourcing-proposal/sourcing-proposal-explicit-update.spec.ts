@@ -27,7 +27,7 @@ const sections = scenarioSections({
   resolvingUnavailableChoicePermitsAcceptanceWithoutSilently: { type: 'test', text: conceptText`Resolving the unavailable choice permits acceptance without silently restoring it.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '47eff446-9951-43f2-9c24-e60fea06abfc' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState, expectLogErrors }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '47eff446-9951-43f2-9c24-e60fea06abfc' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, assertMeadowHomeState, expectLogErrors }) => {
   const { editor, sourcing, proposal, captured } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
@@ -63,8 +63,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '47eff446-995
     await sourceCommand(() => expect(sourcing.root.getByRole('button', { name: 'Accept changes', exact: true })).toBeDisabled());
     await sourceCommand(() => sourcing.reviewTrackingChoices(1));
     await sourceCommand(() => expect(sourcing.sensitivityReview).toContainText('This page is no longer included'));
-    await sourceCommand(() => addKeyFrame(pendingProposalRevalidation));
-    await sourceCommand(() => checkpoint('the refreshed proposal retains the applicable choice and exposes the invalidated target'));
+    await sourceCommand(() => checkpoint('the refreshed proposal retains the applicable choice and exposes the invalidated target', { keyFrames: [pendingProposalRevalidation] }));
     await sourceCommand(() => sourcing.sensitivityReview.getByRole('button', { name: 'Close', exact: true }).click());
   });
 

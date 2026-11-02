@@ -1,1 +1,0 @@
-As described in [[b cognitive walkthrough]]

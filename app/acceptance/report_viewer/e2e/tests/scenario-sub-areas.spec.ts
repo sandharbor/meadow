@@ -35,7 +35,7 @@ for (const width of [1024, 390]) {
     const concepts = metadata.getByRole('group', { name: 'Concepts', exact: true });
     await expect(sourcing.getByRole('link')).toHaveText(['Source Review Workspace']);
     await expect(curation.getByRole('link')).toHaveText(['Custom Filtering', 'Filter Mixing']);
-    await expect(concepts.getByRole('button')).toHaveText([sensitive.name]);
+    await expect(concepts.getByRole('link')).toHaveText([sensitive.name]);
     const rows = [starts, areas, sourcing, curation, concepts];
     for (let i = 1; i < rows.length; i++) {
       const previous = (await rows[i - 1].boundingBox())!;

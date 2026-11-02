@@ -36,7 +36,6 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'd05dc908-cb6
   page,
   checkpoint,
   assertMeadowHomeState,
-  addKeyFrame,
 }) => {
   const { editor, filterPanel, initialPageCount } = await test.step(sections.steps.setup, async () => {
     const workflows = new Workflows(page, expect);
@@ -59,9 +58,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'd05dc908-cb6
     await sourceCommand(() => expect.poll(() => editor.getListViewPageCount()).toBe(initialPageCount - 1));
     await sourceCommand(() => filterPanel.collapseFolder("t024"));
     await sourceCommand(() => filterPanel.expectDescendantActivity("t024"));
-    await sourceCommand(() => addKeyFrame(filters));
-    await sourceCommand(() => addKeyFrame(folderFilter));
-    await sourceCommand(() => checkpoint("collapsed folder shows nested hide activity"));
+    await sourceCommand(() => checkpoint("collapsed folder shows nested hide activity", { keyFrames: [filters, folderFilter] }));
   });
 
   await test.step(sections.steps.resetFolderFilters, async () => {

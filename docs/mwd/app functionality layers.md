@@ -1,2 +1,0 @@
-[[app functionality layer -- advanced]]
-

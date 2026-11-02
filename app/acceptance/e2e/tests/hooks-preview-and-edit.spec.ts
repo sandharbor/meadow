@@ -39,7 +39,7 @@ const sections = scenarioSections({
   checkUpdatedTitleVerifyUpdatedHeadingSidebar: { type: 'test', text: conceptText`Check the updated title. Verify the updated heading (sidebar is alongside the preview, iframe is already visible)` },
 });
 const areas = scenarioAreas([bundleGeneration], { subAreas: [customize, hooks] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '5c38a3bb-fff1-466e-b6fe-a03358542cc4' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '5c38a3bb-fff1-466e-b6fe-a03358542cc4' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, checkpoint, skipMeadowHomeStateCheck }) => {
   const { bundleList } = await test.step(sections.steps.setup, async () => {
     const bundleList = new BundleListPage(page, expect);
     await sourceCommand(() => bundleList.goto());
@@ -65,8 +65,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '5c38a3bb-fff
 
   await test.step(sections.steps.checkHookGeneratedTitleVerifyPreviewIframe, async () => {
     await sourceCommand(() => modal.expectPreviewIframeHeading("video - Dwarkesh and Anthropic CEO in 2023"));
-    await sourceCommand(() => addKeyFrame(htmlGeneration));
-    await sourceCommand(() => checkpoint("verified page title with video hook"));
+    await sourceCommand(() => checkpoint("verified page title with video hook", { keyFrames: [htmlGeneration] }));
   });
 
   const { customizeTab } = await test.step(sections.steps.openGlobalHooks, async () => {
@@ -101,8 +100,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '5c38a3bb-fff
 
   await test.step(sections.steps.checkUpdatedTitleVerifyUpdatedHeadingSidebar, async () => {
     await sourceCommand(() => modal.expectPreviewIframeHeading("vulkan - Dwarkesh and Anthropic CEO in 2023"));
-    await sourceCommand(() => addKeyFrame(hooks));
-    await sourceCommand(() => checkpoint("verified updated page title with vulkan hook"));
+    await sourceCommand(() => checkpoint("verified updated page title with vulkan hook", { keyFrames: [hooks] }));
   });
 
   void hooksBundle;

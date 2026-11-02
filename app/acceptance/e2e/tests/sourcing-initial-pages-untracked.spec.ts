@@ -18,7 +18,7 @@ const sections = scenarioSections({
   compareTrackedStartingPage: { type: 'test', text: conceptText`Compare the tracked starting page.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceSetupNew] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '04728f44-2598-4428-8e09-ea18f8e8e390' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '04728f44-2598-4428-8e09-ea18f8e8e390' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, skipMeadowHomeStateCheck }) => {
   const { editor, detail } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const create = new CreateAndEditBundleModal(page, expect);
@@ -35,8 +35,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '04728f44-259
     await sourceCommand(() => editor.clickListViewRowByExactName('t001 ---- child 1'));
     const detail = new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect);
     await sourceCommand(() => detail.expectPill(Pill.NotTracked));
-    await sourceCommand(() => addKeyFrame(sourceSnapshot));
-    await sourceCommand(() => checkpoint('initially captured candidate page remains untracked'));
+    await sourceCommand(() => checkpoint('initially captured candidate page remains untracked', { keyFrames: [sourceSnapshot] }));
     return { editor, detail };
   });
 

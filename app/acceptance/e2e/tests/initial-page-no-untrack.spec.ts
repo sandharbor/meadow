@@ -35,7 +35,7 @@ const sections = scenarioSections({
 });
 const areas = scenarioAreas([bundleCuration]);
 test(name.name, { annotation: [{ type: 'scenario-id', description: '4fa96a5b-e698-4f24-b93f-756e0f05bea5' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
-  page, checkpoint, assertMeadowHomeState, addKeyFrame,
+  page, checkpoint, assertMeadowHomeState,
 }) => {
   const { editor } = await test.step(sections.steps.setup, async () => {
     const bundleList = new BundleListPage(page, expect);
@@ -51,8 +51,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '4fa96a5b-e69
     // Right-click the initial page — Untrack should be visible but disabled
     await sourceCommand(() => editor.rightClickRow(exampleBundleInitialPageTitle));
     await sourceCommand(() => editor.expectContextMenuItemDisabled("Untrack"));
-    await sourceCommand(() => addKeyFrame(initialPage));
-    await sourceCommand(() => checkpoint("initial page untrack is grayed out"));
+    await sourceCommand(() => checkpoint("initial page untrack is grayed out", { keyFrames: [initialPage] }));
     return { editor };
   });
 

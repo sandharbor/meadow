@@ -59,8 +59,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'd1647330-ccf
     await sourceCommand(() => filters.clickAddCustomFilter());
     await sourceCommand(() => filters.fillAndSaveCustomFilter({ name: 'Shared retained review', field: 'title', matchType: 'substring', value: 'Retained', scope: 'global' }));
     await sourceCommand(() => sourcing.expectAcceptedChanges([/^\d+ page changes$/, '3 setting changes', '4 tracking changes']));
-    await sourceCommand(() => addKeyFrame(proposalConfigurationDraft, changesTray));
-    await sourceCommand(() => checkpoint('the tray under Accept changes lists each kind of staged change'));
+    await sourceCommand(() => checkpoint('the tray under Accept changes lists each kind of staged change', { keyFrames: [proposalConfigurationDraft, changesTray] }));
   });
 
   const { settings } = await test.step(sections.steps.inspectStagedSettings, async () => {
@@ -73,8 +72,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'd1647330-ccf
     await sourceCommand(() => expect(settings).toContainText('All bundles'));
     await sourceCommand(() => expect(settings).not.toContainText('Reference'));
     await sourceCommand(() => expect(settings).not.toContainText('bundleNodeId'));
-    await sourceCommand(() => addKeyFrame(proposalConfigurationDraft, settingChangesPanel));
-    await sourceCommand(() => checkpoint('setting changes show each staged setting before and after'));
+    await sourceCommand(() => checkpoint('setting changes show each staged setting before and after', { keyFrames: [proposalConfigurationDraft, settingChangesPanel] }));
     return { settings };
   });
 
@@ -87,8 +85,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'd1647330-ccf
     await sourceCommand(() => trackingChanges.getByTestId('tracking-removals-toggle').click());
     await sourceCommand(() => expect(trackingChanges.getByTestId('tracking-removal')).toHaveCount(3));
     await sourceCommand(() => expect(trackingChanges.getByTestId('tracking-removal').first()).toContainText('Not Tracked (removed)'));
-    await sourceCommand(() => addKeyFrame(proposalConfigurationDraft, trackingChangesPanel));
-    await sourceCommand(() => checkpoint('tracking changes show the untracked page and the removals that untrack pages'));
+    await sourceCommand(() => checkpoint('tracking changes show the untracked page and the removals that untrack pages', { keyFrames: [proposalConfigurationDraft, trackingChangesPanel] }));
   });
 
   await test.step(sections.steps.inspectPageChangeTray, async () => {
@@ -98,8 +95,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'd1647330-ccf
     await sourceCommand(() => addKeyFrame(sourceReviewWorkspace, pageChangesPanel));
     await sourceCommand(() => sourcing.selectAcceptedPageChange('Leaf'));
     await sourceCommand(() => sourcing.expectSelectedChangeSummary('Leaf', 'Remove'));
-    await sourceCommand(() => addKeyFrame(sourceReviewWorkspace));
-    await sourceCommand(() => checkpoint('selecting a page change in the tray selects it in the graph'));
+    await sourceCommand(() => checkpoint('selecting a page change in the tray selects it in the graph', { keyFrames: [sourceReviewWorkspace] }));
   });
 
   await test.step(sections.steps.soloUntrackedPages, async () => {

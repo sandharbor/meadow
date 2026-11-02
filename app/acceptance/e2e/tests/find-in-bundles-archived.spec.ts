@@ -43,7 +43,6 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '2d70b840-01c
   page,
   checkpoint,
   skipMeadowHomeStateCheck,
-  addKeyFrame,
 }) => {
   const { bundleList, editor } = await test.step(sections.steps.setup, async () => {
     const wf = new Workflows(page, expect);
@@ -93,9 +92,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '2d70b840-01c
     await sourceCommand(() => bundleList.expectBundleVisible(Bundle.Small));
     await sourceCommand(() => bundleList.expectBundleNotVisible(Bundle.Big));
     await sourceCommand(() => bundleList.expectBundleNotVisible(Bundle.Example));
-    await sourceCommand(() => addKeyFrame(findInBundles));
-    await sourceCommand(() => addKeyFrame(multiBundle));
-    await sourceCommand(() => checkpoint("current tab shows only small bundle"));
+    await sourceCommand(() => checkpoint("current tab shows only small bundle", { keyFrames: [findInBundles, multiBundle] }));
   });
 
   await test.step(sections.steps.checkArchivedMatchCount, async () => {
@@ -107,8 +104,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '2d70b840-01c
     await sourceCommand(() => bundleList.clickArchivedTab());
     await sourceCommand(() => page.waitForTimeout(250));
     await sourceCommand(() => bundleList.expectBundleVisible(Bundle.Big));
-    await sourceCommand(() => addKeyFrame(archived));
-    await sourceCommand(() => checkpoint("archived tab shows big bundle match"));
+    await sourceCommand(() => checkpoint("archived tab shows big bundle match", { keyFrames: [archived] }));
   });
 
   await test.step(sections.steps.clearPageFilterClearingFindInBundles, async () => {

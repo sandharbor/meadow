@@ -22,7 +22,7 @@ const sections = scenarioSections({
   acceptStartingSelections: { type: 'test', text: conceptText`Accept the starting selections.` },
 });
 const areas = scenarioAreas([bundleSourcing, bundleCuration], { subAreas: [sourceSetupEdit, sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'aa046ed6-74f2-4249-af5d-5479b96797f3' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'aa046ed6-74f2-4249-af5d-5479b96797f3' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, skipMeadowHomeStateCheck }) => {
   const { editor, sources, bundleConfig, beforeConfig, originalOverview, originalStart } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     await sourceCommand(() => list.goto());
@@ -46,8 +46,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'aa046ed6-74f
     await sourceCommand(() => sources.editStartingSelections());
     await sourceCommand(() => sources.addStartingSelection());
     await sourceCommand(() => sources.setStartingSelection(2, 'research', 'folder', 'Same'));
-    await sourceCommand(() => addKeyFrame(startingSelection));
-    await sourceCommand(() => checkpoint('the original file stays first when a source folder is added'));
+    await sourceCommand(() => checkpoint('the original file stays first when a source folder is added', { keyFrames: [startingSelection] }));
   });
 
   const { collection, acceptedConfig } = await test.step(sections.steps.saveStartingSelectionsTheseFilesAreAlready, async () => {
@@ -78,8 +77,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'aa046ed6-74f
 
   await test.step(sections.steps.chooseReplacementStart, async () => {
     await sourceCommand(() => sources.setStartingSelection(1, 'notes', 'file', 'Overview.md'));
-    await sourceCommand(() => addKeyFrame(bundleSource, startingSelection));
-    await sourceCommand(() => checkpoint('the replacement start is selected and ready to accept'));
+    await sourceCommand(() => checkpoint('the replacement start is selected and ready to accept', { keyFrames: [bundleSource, startingSelection] }));
   });
 
   await test.step(sections.steps.acceptStartingSelections, async () => {
@@ -92,8 +90,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'aa046ed6-74f
       ...(collection.bundleNodeKind === 'collection' ? collection.memberBundleNodeIds.slice(1) : []),
     ]);
     expect(repairedNodes.some(node => node.bundleNodeId === originalStart.bundleNodeId)).toBe(false);
-    await sourceCommand(() => addKeyFrame(sourceSnapshot));
-    await sourceCommand(() => checkpoint('the repaired collection retains its identity and surviving folder selection'));
+    await sourceCommand(() => checkpoint('the repaired collection retains its identity and surviving folder selection', { keyFrames: [sourceSnapshot] }));
   });
 
   await sourceCommand(() => skipMeadowHomeStateCheck());

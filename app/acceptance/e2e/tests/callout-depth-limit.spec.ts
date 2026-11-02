@@ -67,8 +67,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '6296a54a-ba3
       await sourceCommand(() => editor.waitForLoad(slug));
       await sourceCommand(() => editor.expectGraphViewHasPages());
       await sourceCommand(() => editor.expectDepthCalloutNotVisible());
-      await sourceCommand(() => addKeyFrame(bundleConfig));
-      await sourceCommand(() => checkpoint(`new bundle with chosen traversal depth ${outlinksDepth}`));
+      await sourceCommand(() => checkpoint(`new bundle with chosen traversal depth ${outlinksDepth}`, { keyFrames: [bundleConfig] }));
 
       // Reopen the bundle.
       await sourceCommand(() => editor.clickBackToBundles());

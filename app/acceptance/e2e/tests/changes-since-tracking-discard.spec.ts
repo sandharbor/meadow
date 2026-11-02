@@ -25,7 +25,7 @@ const sections = scenarioSections({
 });
 const areas = scenarioAreas([bundleCuration, bundleSourcing, bundleGeneration], { subAreas: [sourceReviewWorkspace] });
 const pressures = scenarioDesignPressures([preventAccidentalSharing]);
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'd21b76d4-4a7b-47ae-ab11-79fb5ffc16ca' }, name.annotation, description.annotation, areas.annotation, pressures.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'd21b76d4-4a7b-47ae-ab11-79fb5ffc16ca' }, name.annotation, description.annotation, areas.annotation, pressures.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, skipMeadowHomeStateCheck }) => {
   const { list, editor, filters, review, preview, proposal, bundleConfig, accepted } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
@@ -50,8 +50,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'd21b76d4-4a7
     await sourceCommand(() => review.expectSensitivityReviewReady());
     await sourceCommand(() => expect(review.sensitivityReview).toContainText('Global filter “Review existing inclusion”'));
     expect(proposal.current.candidateSnapshotId).toBe(accepted);
-    await sourceCommand(() => addKeyFrame(trackedNodeBecomesSensitive, changesSinceTracking));
-    await sourceCommand(() => checkpoint('the named global policy explains the sensitivity change'));
+    await sourceCommand(() => checkpoint('the named global policy explains the sensitivity change', { keyFrames: [trackedNodeBecomesSensitive, changesSinceTracking] }));
   });
 
   await test.step(sections.steps.discardReviewSavedFilterUnresolvedNodeSurvive, async () => {
@@ -71,8 +70,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'd21b76d4-4a7
     await sourceCommand(() => preview.waitForPreviewComplete());
     await sourceCommand(() => expect(page.getByTestId('sensitivity-warning')).toContainText('1 tracked node'));
     expect(bundleConfig.generatedPreviewPages().some(name => name.endsWith('/research/Incoming.html'))).toBe(true);
-    await sourceCommand(() => addKeyFrame(trackedNodeBecomesSensitive));
-    await sourceCommand(() => checkpoint('preview warns without blocking generation'));
+    await sourceCommand(() => checkpoint('preview warns without blocking generation', { keyFrames: [trackedNodeBecomesSensitive] }));
     await sourceCommand(() => page.getByTestId('sensitivity-warning').getByRole('button', { name: 'Review pages', exact: true }).click());
     await sourceCommand(() => review.expectSensitivityReviewReady());
     await sourceCommand(() => expect(review.sensitivityReview).toContainText('Incoming.md'));
@@ -93,8 +91,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'd21b76d4-4a7
     await sourceCommand(() => review.expectSensitivityReviewReady());
     await sourceCommand(() => expect(review.sensitivityReview).toContainText('Incoming.md'));
     await sourceCommand(() => expect(review.sensitivityReview).toContainText('Global filter “Review existing inclusion”'));
-    await sourceCommand(() => addKeyFrame(trackedNodeBecomesSensitive));
-    await sourceCommand(() => checkpoint('opening another bundle surfaces policy changed elsewhere'));
+    await sourceCommand(() => checkpoint('opening another bundle surfaces policy changed elsewhere', { keyFrames: [trackedNodeBecomesSensitive] }));
   });
 
   await sourceCommand(() => skipMeadowHomeStateCheck());

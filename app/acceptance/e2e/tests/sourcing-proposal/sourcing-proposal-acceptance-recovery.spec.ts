@@ -31,7 +31,7 @@ const sections = scenarioSections({
   recoveredProposalRemainsActionableIncludingBothKinds: { type: 'test', text: conceptText`The recovered proposal remains actionable, including both kinds of mandatory cleanup.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '585e9b0e-3c46-47c8-b5d3-e0cf71bb3d8e' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState, expectLogErrors }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '585e9b0e-3c46-47c8-b5d3-e0cf71bb3d8e' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, assertMeadowHomeState, expectLogErrors }) => {
   const { list, editor, sourcing, proposal, filters, home, bundle, journalPath, faultPath, read, documents, arm, acceptedSourceRefs, beforeRefs, before, pending, proposed } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
@@ -89,8 +89,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '585e9b0e-3c4
     expect(acceptedSourceRefs()).toEqual(beforeRefs);
     expect(proposal.serialized).toBe(pending);
     endFailure();
-    await sourceCommand(() => addKeyFrame(sourceReviewAcceptance));
-    await sourceCommand(() => checkpoint('a real partial application failure restores accepted documents and preserves every draft'));
+    await sourceCommand(() => checkpoint('a real partial application failure restores accepted documents and preserves every draft', { keyFrames: [sourceReviewAcceptance] }));
   });
 
   await test.step(sections.steps.killOnlyScenarioServiceDuringInstallationThen, async () => {
@@ -115,8 +114,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '585e9b0e-3c4
     await sourceCommand(() => sourcing.open());
     await sourceCommand(() => filters.expectFilterVisible('Recovered bundle rule'));
     await sourceCommand(() => filters.expectFilterVisible('Recovered shared rule'));
-    await sourceCommand(() => addKeyFrame(proposalConfigurationDraft));
-    await sourceCommand(() => checkpoint('process restart recovers the original accepted state and reopens the complete pending proposal'));
+    await sourceCommand(() => checkpoint('process restart recovers the original accepted state and reopens the complete pending proposal', { keyFrames: [proposalConfigurationDraft] }));
   });
 
   await test.step(sections.steps.recoveredProposalRemainsActionableIncludingBothKinds, async () => {
@@ -135,8 +133,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '585e9b0e-3c4
     expect(new MeadowHomeFilters(home, 'sourcing-review').globalText()).toContain('Recovered shared rule');
     expect(new MeadowHomeFilters(testServer.configDir, 'sourcing-review').deletedDefaultFilterIds()).toContain('default-daily-notes-sensitive');
     expect(new AcceptedSourcingState(testServer.configDir, 'sourcing-review').acceptanceHistory).toHaveLength(1);
-    await sourceCommand(() => addKeyFrame(pendingProposalRevalidation));
-    await sourceCommand(() => checkpoint('successful retry accepts the reviewed capture settings shared policy tracking and cleanup together'));
+    await sourceCommand(() => checkpoint('successful retry accepts the reviewed capture settings shared policy tracking and cleanup together', { keyFrames: [pendingProposalRevalidation] }));
   });
 
   await sourceCommand(() => assertMeadowHomeState({ allowedUntracked: ['source_graphs/.source-changes.jsonl'], allowedModified: ['source_graphs/sourcing-review-data/Start.md'] }));

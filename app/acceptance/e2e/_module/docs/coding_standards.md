@@ -1,10 +1,19 @@
 # E2E Test Coding Standards
 
-## One test per spec file
+## Enforced rules before implementation
 
-Every `.spec.ts` file must contain exactly one `test(...)` call. If the user
-asks for multiple related scenarios, create multiple spec files. Never put
-multiple tests in a single file.
+Read the live rule reference from the E2E package root:
+
+```bash
+node --import tsx _module/scripts/rule-reference.ts
+```
+
+It reads the same TypeScript definitions as lint diagnostics and shows the
+requirements, rationale, repair advice, and examples exercised by quickcheck.
+Pass rule IDs to focus the output, or `--list` to see them. There is no generated
+copy to synchronize. These include the one-test-per-spec, metadata, data-access,
+checkpoint-keyframe, and final-assertion requirements. The E2E skill routes here
+for workflow and page-object design guidance that complements those checks.
 
 ## Named scenario sections
 
@@ -186,22 +195,6 @@ with UI text alone may weaken the scenario. Utilities should read fresh state
 on each query and make missing or ambiguous required lookups fail clearly.
 Keep exact-byte snapshots for claims that no write occurred.
 
-Quickcheck's `lint-no-raw-data.ts` rejects direct JSON/YAML parsing and raw file
-reads/writes in every discovered spec, including test-local helpers. Its error
-explains the rationale and the intended layer. When the raw access itself is
-necessary to the scenario (such as corrupting frozen HTML or checking a
-scenario-only migration schema), put a specific reason immediately before the
-smallest statement or explicit block:
-
-```ts
-// e2e-allow-raw-data: Inject malformed YAML bytes to exercise recovery.
-{
-  fs.writeFileSync(filename, 'nodes: [invalid');
-}
-```
-
-The exception covers only that statement/block, needs a substantive reason, and
-fails lint when unused or misplaced. Do not use exceptions to retain ordinary
-configuration parsing or bypass a reusable domain abstraction. A comment on a
-function body does not exempt the function; annotate the particular raw
-operation instead.
+For the exact raw-data boundary and narrowly scoped exception syntax, read
+`node --import tsx _module/scripts/rule-reference.ts no-raw-data`. Its displayed
+examples are tested against the actual checker.

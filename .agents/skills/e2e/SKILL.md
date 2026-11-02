@@ -12,6 +12,20 @@ An `/e2e` invocation without an authoring or review request uses run mode.
 
 ## Write or change a scenario
 
+Before implementing, read the live enforced-rule reference from the repository root:
+
+```bash
+NODE_OPTIONS="${NODE_OPTIONS:-} --preserve-symlinks" \
+  app/acceptance/e2e/node_modules/.bin/tsx \
+  app/acceptance/e2e/_module/scripts/rule-reference.ts
+```
+
+Use `--list` for rule IDs or pass IDs for focused lookup. The TypeScript rule
+definitions supply both this reference and lint failure guidance. Quickcheck
+runs their displayed valid and invalid examples through the real validators and
+checks that every lint is documented and registered at its stated enforcement
+level. This is a live view, with no generated document to refresh.
+
 Read [Specification quality](references/spec-quality.md), including the linked
 coding standards and canonical concept-authoring conventions. Design from the
 appropriate shared fixture, write intent-level sections using workflows and page

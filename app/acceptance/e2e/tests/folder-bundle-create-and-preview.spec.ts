@@ -58,8 +58,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'ce4b027f-df2
     await sourceCommand(() => editor.expectGraphEdgeKindControlsVisible());
     await sourceCommand(() => editor.expectGraphTextIsNotSelectable());
     await sourceCommand(() => editor.expectFolderScopeChangesBannerNotVisible());
-    await sourceCommand(() => addKeyFrame(folderBundles));
-    await sourceCommand(() => checkpoint("single folder graph with two linked depth rows"));
+    await sourceCommand(() => checkpoint("single folder graph with two linked depth rows", { keyFrames: [folderBundles] }));
     return { editor, previewModal };
   });
 
@@ -111,8 +110,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'ce4b027f-df2
 
   await test.step(sections.steps.trackFolderSContentsFolderStartTracks, async () => {
     await sourceCommand(() => editor.trackAllReachablePages());
-    await sourceCommand(() => addKeyFrame(tracking));
-    await sourceCommand(() => checkpoint("single folder contents tracked for publishing"));
+    await sourceCommand(() => checkpoint("single folder contents tracked for publishing", { keyFrames: [tracking] }));
   });
 
   const { folderNavigation } = await test.step(sections.steps.previewFolderHome, async () => {
@@ -143,8 +141,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'ce4b027f-df2
     ]));
     await sourceCommand(() => previewModal.generatedBundle.expectStructuralImagePreview("Visual map"));
     await sourceCommand(() => folderNavigation.close());
-    await sourceCommand(() => addKeyFrame(htmlGeneration));
-    await sourceCommand(() => checkpoint("single folder generated home"));
+    await sourceCommand(() => checkpoint("single folder generated home", { keyFrames: [htmlGeneration] }));
     return { folderNavigation };
   });
 

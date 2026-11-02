@@ -38,7 +38,6 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '720025cc-010
   page,
   checkpoint,
   skipMeadowHomeStateCheck,
-  addKeyFrame,
 }) => {
   const { editor, deleteModal } = await test.step(sections.steps.setup, async () => {
     const wf = new Workflows(page, expect);
@@ -60,9 +59,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '720025cc-010
 
   await test.step(sections.steps.verifyDeleteConfirmationModal, async () => {
     await sourceCommand(() => deleteModal.expectVisible());
-    await sourceCommand(() => addKeyFrame(callout));
-    await sourceCommand(() => addKeyFrame(deletion));
-    await sourceCommand(() => checkpoint("delete confirmation for unpublished bundle"));
+    await sourceCommand(() => checkpoint("delete confirmation for unpublished bundle", { keyFrames: [callout, deletion] }));
   });
 
   await test.step(sections.steps.confirmDeletion, async () => {

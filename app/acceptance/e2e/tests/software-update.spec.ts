@@ -32,7 +32,6 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '08283c70-204
   page,
   testServer,
   checkpoint,
-  addKeyFrame,
   assertMeadowHomeState,
 }) => {
   await test.step(sections.steps.setup, async () => {
@@ -92,8 +91,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '08283c70-204
     await sourceCommand(() => expect(page.getByText(/installed Meadow app was preserved/i)).toBeVisible());
     await sourceCommand(() => expect(page.getByRole('button', { name: 'Try Again' })).toBeVisible());
     await sourceCommand(() => expect(page.getByRole('button', { name: 'Restart to Update' })).toHaveCount(0));
-    await sourceCommand(() => addKeyFrame(softwareUpdate));
-    await sourceCommand(() => checkpoint('verified update checksum failure preserved installed app'));
+    await sourceCommand(() => checkpoint('verified update checksum failure preserved installed app', { keyFrames: [softwareUpdate] }));
   });
 
   await sourceCommand(() => assertMeadowHomeState());

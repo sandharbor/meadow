@@ -24,7 +24,7 @@ const sections = scenarioSections({
 });
 const pressures = scenarioDesignPressures([preventAccidentalSharing]);
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'c540d2c8-9d88-4810-8960-58e8682e9447' }, name.annotation, description.annotation, areas.annotation, pressures.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'c540d2c8-9d88-4810-8960-58e8682e9447' }, name.annotation, description.annotation, areas.annotation, pressures.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, assertMeadowHomeState }) => {
   const { editor, sourcing, proposal, filters, captured } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
@@ -64,8 +64,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'c540d2c8-9d8
     for (const name of ['Safe One', 'Safe Two']) expect(proposal.current.tracking[`file:Additions/${name}.md`]).toMatchObject({ origin: 'explicit', needsConfirmation: true });
     await sourceCommand(() => sourcing.reviewTrackingChoices(2));
     await sourceCommand(() => expect(sourcing.sensitivityReview).toContainText('Restricted review material'));
-    await sourceCommand(() => addKeyFrame(sourceReviewSensitivity, trackingSensitivityDialog));
-    await sourceCommand(() => checkpoint('renewed sensitivity review is open with both explicit choices unresolved'));
+    await sourceCommand(() => checkpoint('renewed sensitivity review is open with both explicit choices unresolved', { keyFrames: [sourceReviewSensitivity, trackingSensitivityDialog] }));
   });
 
   await test.step(sections.steps.exerciseBothDecisionsAgainstCurrentMaterialPolicy, async () => {

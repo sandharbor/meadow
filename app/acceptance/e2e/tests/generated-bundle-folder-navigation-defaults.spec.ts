@@ -96,8 +96,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'ed1db37f-0e0
     await sourceCommand(() => options.openFolderNavigationSettings());
     await sourceCommand(() => options.expectFolderNavigationDefaults('open', 'closed'));
     await sourceCommand(() => options.cancelFolderNavigationSettings());
-    await sourceCommand(() => addKeyFrame(htmlGeneration));
-    await sourceCommand(() => checkpoint('returning reader choice takes precedence over the new closed default'));
+    await sourceCommand(() => checkpoint('returning reader choice takes precedence over the new closed default', { keyFrames: [htmlGeneration] }));
   });
 
   const { newVisitor } = await test.step(sections.steps.checkNewReaderSession, async () => {

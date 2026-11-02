@@ -21,13 +21,12 @@ const sections = scenarioSections({
   checkHomeApplicationCreated: { type: 'test', text: conceptText`Check the home the application created.` },
 });
 const areas = scenarioAreas([bundles]);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '793de8b7-8389-4f34-a9ad-6c9f4a3fa593' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '793de8b7-8389-4f34-a9ad-6c9f4a3fa593' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, assertMeadowHomeState }) => {
   await test.step(sections.steps.openApplicationAgainstHomeDidNotExist, async () => {
     const bundleList = new BundleListPage(page, expect);
     await sourceCommand(() => bundleList.goto());
     await sourceCommand(() => bundleList.expectCalloutVisible("Turn your notes into bundles"));
-    await sourceCommand(() => addKeyFrame(emptyHome));
-    await sourceCommand(() => checkpoint("a fresh install opens the empty bundle list"));
+    await sourceCommand(() => checkpoint("a fresh install opens the empty bundle list", { keyFrames: [emptyHome] }));
   });
 
   await test.step(sections.steps.checkHomeApplicationCreated, async () => {
@@ -37,8 +36,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '793de8b7-838
     expect(commits.at(-1)).toBe("meadow_app: initial Meadow Home commit");
     const ignored = new MeadowHomeFiles(home).ignoreRules();
     expect(ignored).toContain("app/resources.local.yaml");
-    await sourceCommand(() => addKeyFrame(homeCommit));
-    await sourceCommand(() => checkpoint("the application made the initial Meadow Home commit"));
+    await sourceCommand(() => checkpoint("the application made the initial Meadow Home commit", { keyFrames: [homeCommit] }));
   });
 
   await sourceCommand(() => assertMeadowHomeState());

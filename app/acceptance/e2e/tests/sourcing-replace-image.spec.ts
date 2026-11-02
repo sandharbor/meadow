@@ -17,7 +17,7 @@ const sections = scenarioSections({
   acceptSourceUpdate: { type: 'test', text: conceptText`Accept the source update.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'ce0a8ba1-a5a2-4c97-a497-fa64407013bb' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'ce0a8ba1-a5a2-4c97-a497-fa64407013bb' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, sourceChanges, checkpoint, skipMeadowHomeStateCheck }) => {
   const { editor } = await test.step(sections.steps.setup, async () => {
     await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
     const editor = new BundleEditorPage(page, expect);
@@ -34,8 +34,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'ce0a8ba1-a5a
     await sourceCommand(() => editor.sourceReview.expectModified(filename));
     await sourceCommand(() => editor.sourceReview.expandDetails(filename));
     await sourceCommand(() => editor.sourceReview.expectImageComparison(filename));
-    await sourceCommand(() => addKeyFrame(sourceSnapshot));
-    await sourceCommand(() => checkpoint('both snapshots render their different image bytes for review'));
+    await sourceCommand(() => checkpoint('both snapshots render their different image bytes for review', { keyFrames: [sourceSnapshot] }));
   });
 
   await test.step(sections.steps.acceptSourceUpdate, async () => {

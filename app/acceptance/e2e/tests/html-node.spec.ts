@@ -44,7 +44,6 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '721b46f5-299
   page,
   testServer,
   checkpoint,
-  addKeyFrame,
   skipMeadowHomeStateCheck,
 }) => {
   const { editor, previewModal, generatedBundle } = await test.step(sections.steps.setup, async () => {
@@ -77,8 +76,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '721b46f5-299
     await sourceCommand(() => page.waitForTimeout(500));
     await sourceCommand(() => editor.clickDeselectSensitivePagesIfVisible());
     await sourceCommand(() => page.waitForTimeout(250));
-    await sourceCommand(() => addKeyFrame(htmlNode));
-    await sourceCommand(() => checkpoint("HTML node - source graph nodes selected"));
+    await sourceCommand(() => checkpoint("HTML node - source graph nodes selected", { keyFrames: [htmlNode] }));
     return { editor, previewModal, generatedBundle };
   });
 
@@ -94,8 +92,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '721b46f5-299
     await sourceCommand(() => generatedBundle.expectNativeHtmlCardColor("rgb(251, 249, 255)"));
     await sourceCommand(() => generatedBundle.expectNativeHtmlSharedImageVisible());
     await sourceCommand(() => generatedBundle.expectNativeHtmlSharedScriptLoaded());
-    await sourceCommand(() => addKeyFrame(htmlNode));
-    await sourceCommand(() => checkpoint("HTML node - first generated page"));
+    await sourceCommand(() => checkpoint("HTML node - first generated page", { keyFrames: [htmlNode] }));
   });
 
   await test.step(sections.steps.followLinkSecondHTMLPage, async () => {
@@ -103,15 +100,13 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '721b46f5-299
     await sourceCommand(() => generatedBundle.expectHeading("Second HTML page"));
     await sourceCommand(() => generatedBundle.expectNativeHtmlCardColor("rgb(245, 239, 255)"));
     await sourceCommand(() => generatedBundle.expectNativeHtmlSharedScriptLoaded());
-    await sourceCommand(() => addKeyFrame(htmlNode));
-    await sourceCommand(() => checkpoint("HTML node - second generated page"));
+    await sourceCommand(() => checkpoint("HTML node - second generated page", { keyFrames: [htmlNode] }));
   });
 
   await test.step(sections.steps.followLinkIntoMarkdown, async () => {
     await sourceCommand(() => generatedBundle.clickPageLink("Open the nested Markdown note"));
     await sourceCommand(() => generatedBundle.expectHeading("t026 ---- nested markdown"));
-    await sourceCommand(() => addKeyFrame(htmlNode));
-    await sourceCommand(() => checkpoint("HTML node - nested Markdown reached from HTML"));
+    await sourceCommand(() => checkpoint("HTML node - nested Markdown reached from HTML", { keyFrames: [htmlNode] }));
   });
 
   void customBundle;

@@ -23,7 +23,7 @@ const sections = scenarioSections({
   fieldLevelConflictNamesSharedDefinitionWhile: { type: 'test', text: conceptText`The field-level conflict names the shared definition while preserving compatible changes.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'fe6156b8-57d9-4872-81f7-a9ce26abbe8e' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'fe6156b8-57d9-4872-81f7-a9ce26abbe8e' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, assertMeadowHomeState }) => {
   const { editor, panel, sourcing, globals, create, defaultId, original } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
@@ -58,8 +58,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'fe6156b8-57d
 
   await test.step(sections.steps.sensitivityPolicySavesImmediatelyOrdinaryPresentationDrafts, async () => {
     expect(globals()).toEqual(original.filter((filter: { id: string }) => filter.id !== defaultId));
-    await sourceCommand(() => addKeyFrame(proposalConfigurationDraft));
-    await sourceCommand(() => checkpoint('presentation drafts stay isolated while sensitivity default deletion saves immediately'));
+    await sourceCommand(() => checkpoint('presentation drafts stay isolated while sensitivity default deletion saves immediately', { keyFrames: [proposalConfigurationDraft] }));
     await sourceCommand(() => sourcing.later());
     await sourceCommand(() => panel.editCustomFilter('Independent review'));
     await sourceCommand(() => panel.saveCustomFilterEdits({ note: 'Independent accepted description' }));
@@ -71,8 +70,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'fe6156b8-57d
 
   await test.step(sections.steps.keptProposalHasNoSourceChangesYet, async () => {
     await sourceCommand(() => expect(page.getByTestId('sourcing-status').getByRole('button', { name: 'Changes pending – Review', exact: true })).toBeVisible());
-    await sourceCommand(() => addKeyFrame(pendingSourceProposal));
-    await sourceCommand(() => checkpoint('accepted curation has independent global changes and one competing definition'));
+    await sourceCommand(() => checkpoint('accepted curation has independent global changes and one competing definition', { keyFrames: [pendingSourceProposal] }));
   });
 
   await test.step(sections.steps.fieldLevelConflictNamesSharedDefinitionWhile, async () => {
@@ -82,8 +80,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'fe6156b8-57d
     await sourceCommand(() => expect(dialog).toContainText('Shared review'));
     await sourceCommand(() => expect(dialog).toContainText('Competing accepted definition'));
     await sourceCommand(() => expect(dialog).toContainText('Proposed shared definition'));
-    await sourceCommand(() => addKeyFrame(sourceReviewConfigurationMerge));
-    await sourceCommand(() => checkpoint('the global definition conflict is open and unresolved'));
+    await sourceCommand(() => checkpoint('the global definition conflict is open and unresolved', { keyFrames: [sourceReviewConfigurationMerge] }));
     await sourceCommand(() => dialog.getByRole('button', { name: 'Use proposed', exact: true }).click());
     await sourceCommand(() => expect(dialog).toContainText('All conflicts resolved.'));
     await sourceCommand(() => dialog.getByRole('button', { name: 'Close', exact: true }).click());

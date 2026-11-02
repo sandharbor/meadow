@@ -43,7 +43,6 @@ const areas = scenarioAreas([bundleCuration, bundleGeneration]);
 test(name.name, { annotation: [{ type: 'scenario-id', description: '123ca774-77ce-4590-b6e7-ad0afbcc3fed' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
-  addKeyFrame,
   assertMeadowHomeState,
 }) => {
   const { editor, previewModal, generatedBundle } = await test.step(sections.steps.setup, async () => {
@@ -63,16 +62,14 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '123ca774-77c
     await sourceCommand(() => editor.expectMediaGraphIndicators());
     await sourceCommand(() => editor.switchToListView());
     await sourceCommand(() => editor.hoverListViewVideoIcon('t006 --- short clip'));
-    await sourceCommand(() => addKeyFrame(bundleCuration));
-    await sourceCommand(() => checkpoint('video hover shows a captured frame'));
+    await sourceCommand(() => checkpoint('video hover shows a captured frame', { keyFrames: [bundleCuration] }));
     await sourceCommand(() => page.mouse.move(0, 0));
   });
 
   await test.step(sections.steps.previewPdfInList, async () => {
     await sourceCommand(() => editor.hoverListViewPdfIcon("t006 --- document with a link"));
     await sourceCommand(() => editor.expectPdfHoverPreviewVisible("t006 --- document with a link"));
-    await sourceCommand(() => addKeyFrame(pdf));
-    await sourceCommand(() => checkpoint("PDF hover preview shows the first page"));
+    await sourceCommand(() => checkpoint("PDF hover preview shows the first page", { keyFrames: [pdf] }));
     await sourceCommand(() => page.mouse.move(0, 0));
   });
 
@@ -90,13 +87,11 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '123ca774-77c
 
     await sourceCommand(() => generatedBundle.media.expectAudioPlayer("short%20tone.mp3"));
     await sourceCommand(() => generatedBundle.media.expectVideoPlayer("short%20clip.mp4"));
-    await sourceCommand(() => addKeyFrame(bundleGeneration));
-    await sourceCommand(() => checkpoint("video plays with usable controls"));
+    await sourceCommand(() => checkpoint("video plays with usable controls", { keyFrames: [bundleGeneration] }));
     await sourceCommand(() => generatedBundle.media.expectPdfEmbedsRendered(2));
     await sourceCommand(() => generatedBundle.media.expectPdfLink(pageLinkedFromPdf));
     await sourceCommand(() => generatedBundle.media.expectPdfLink("https://example.com/"));
-    await sourceCommand(() => addKeyFrame(pdf));
-    await sourceCommand(() => checkpoint("media players and PDF viewers rendered"));
+    await sourceCommand(() => checkpoint("media players and PDF viewers rendered", { keyFrames: [pdf] }));
   });
 
   await test.step(sections.steps.dedicatedMediaPages, async () => {
@@ -108,16 +103,14 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '123ca774-77c
     ]) {
       if (!media.menu) {
         await sourceCommand(() => generatedBundle.media.openEmbeddedImageFullscreen(media.fragment));
-        await sourceCommand(() => addKeyFrame(bundleGeneration));
-        await sourceCommand(() => checkpoint('embedded image fullscreen'));
+        await sourceCommand(() => checkpoint('embedded image fullscreen', { keyFrames: [bundleGeneration] }));
         await sourceCommand(() => generatedBundle.media.closeMediaFullscreen());
       }
       await sourceCommand(() => generatedBundle.media.openEmbeddedMediaPage(media.fragment, media.menu));
       await sourceCommand(() => generatedBundle.expectHeading(media.title));
       await sourceCommand(() => generatedBundle.media.expectBacklink('t006 - embedded media'));
       await sourceCommand(() => generatedBundle.media.expectDedicatedMediaActions(media.fragment));
-      await sourceCommand(() => addKeyFrame(bundleGeneration));
-      await sourceCommand(() => checkpoint(`${media.title} page has backlinks and media actions`));
+      await sourceCommand(() => checkpoint(`${media.title} page has backlinks and media actions`, { keyFrames: [bundleGeneration] }));
       await sourceCommand(() => generatedBundle.media.openDedicatedMediaFullscreen());
       await sourceCommand(() => checkpoint(`${media.title} fullscreen is above page navigation`));
       await sourceCommand(() => generatedBundle.media.closeMediaFullscreen());
@@ -130,8 +123,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '123ca774-77c
 
   await test.step(sections.steps.openPdfFullscreen, async () => {
     await sourceCommand(() => generatedBundle.media.openPdfFullscreen());
-    await sourceCommand(() => addKeyFrame(pdf));
-    await sourceCommand(() => checkpoint("PDF viewer fullscreen open"));
+    await sourceCommand(() => checkpoint("PDF viewer fullscreen open", { keyFrames: [pdf] }));
     await sourceCommand(() => generatedBundle.media.closePdfFullscreen());
   });
 
@@ -148,8 +140,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '123ca774-77c
     await sourceCommand(() => generatedBundle.media.expectDedicatedMediaActions('document%20with%20a%20link.pdf'));
     await sourceCommand(() => generatedBundle.media.openDedicatedMediaFullscreen());
     await sourceCommand(() => generatedBundle.media.closeMediaFullscreen());
-    await sourceCommand(() => addKeyFrame(pdf));
-    await sourceCommand(() => checkpoint("the PDF's own page drew the PDF"));
+    await sourceCommand(() => checkpoint("the PDF's own page drew the PDF", { keyFrames: [pdf] }));
   });
 
   await test.step(sections.steps.openPdfPageFromEmbed, async () => {

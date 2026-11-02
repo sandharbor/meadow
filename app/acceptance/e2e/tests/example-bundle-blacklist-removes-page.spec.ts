@@ -44,7 +44,6 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '1e577e1d-98d
   page,
   checkpoint,
   skipMeadowHomeStateCheck,
-  addKeyFrame,
 }) => {
   const { editor, previewModal } = await test.step(sections.steps.setup, async () => {
     const bundleList = new BundleListPage(page, expect);
@@ -84,9 +83,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '1e577e1d-98d
 
   await test.step(sections.steps.autoSaveMeansThereNoPendingDraft, async () => {
     await sourceCommand(() => expect(page.getByRole('button', { name: 'Undo blacklist change', exact: true })).toBeVisible());
-    await sourceCommand(() => addKeyFrame(blacklist));
-    await sourceCommand(() => addKeyFrame(bundleConfig));
-    await sourceCommand(() => checkpoint("Razors blacklisted — no save button"));
+    await sourceCommand(() => checkpoint("Razors blacklisted — no save button", { keyFrames: [blacklist, bundleConfig] }));
   });
 
   await test.step(sections.steps.previewChangedLinksPreviewAgainLinkRazors, async () => {

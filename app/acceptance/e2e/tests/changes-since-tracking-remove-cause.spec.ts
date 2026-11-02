@@ -22,7 +22,7 @@ const sections = scenarioSections({
 });
 const areas = scenarioAreas([bundleCuration, bundleSourcing, bundleGeneration], { subAreas: [sourceReviewWorkspace] });
 const pressures = scenarioDesignPressures([preventAccidentalSharing]);
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'c0073d98-4247-43c3-b6c1-fc77b0831ed9' }, name.annotation, description.annotation, areas.annotation, pressures.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'c0073d98-4247-43c3-b6c1-fc77b0831ed9' }, name.annotation, description.annotation, areas.annotation, pressures.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, skipMeadowHomeStateCheck }) => {
   const { editor, filters, review, preview, proposal, accepted } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
@@ -46,8 +46,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'c0073d98-424
     await sourceCommand(() => review.expectSensitivityReviewReady());
     await sourceCommand(() => expect(review.sensitivityReview).toContainText('Global filter “Review existing inclusion”'));
     expect(proposal.current.candidateSnapshotId).toBe(accepted);
-    await sourceCommand(() => addKeyFrame(trackedNodeBecomesSensitive, changesSinceTracking));
-    await sourceCommand(() => checkpoint('the named global policy explains the sensitivity change'));
+    await sourceCommand(() => checkpoint('the named global policy explains the sensitivity change', { keyFrames: [trackedNodeBecomesSensitive, changesSinceTracking] }));
   });
 
   await test.step(sections.steps.collectionRemainsNodeLocalRequiredMembersHave, async () => {
@@ -58,8 +57,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'c0073d98-424
     await sourceCommand(() => review.expectAcceptedChanges([]));
     await sourceCommand(() => expect(review.root.getByRole('button', { name: 'Done', exact: true })).toBeEnabled());
     expect(Object.keys(proposal.current.tracking)).toHaveLength(0);
-    await sourceCommand(() => addKeyFrame(trackedNodeBecomesSensitive, filterSensitivity));
-    await sourceCommand(() => checkpoint('disabling the sole cause leaves an empty review with Done'));
+    await sourceCommand(() => checkpoint('disabling the sole cause leaves an empty review with Done', { keyFrames: [trackedNodeBecomesSensitive, filterSensitivity] }));
   });
 
   await test.step(sections.steps.doneExitsWithoutAcceptingFictitiousSourceOr, async () => {

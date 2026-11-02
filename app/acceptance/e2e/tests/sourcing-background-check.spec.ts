@@ -63,8 +63,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '59b627f9-402
     await sourceCommand(() => preview.expectUntrackedPagesWarning());
     await sourceCommand(() => page.clock.fastForward(60000));
     expect(scans).toBe(0);
-    await sourceCommand(() => addKeyFrame(sourceSnapshot));
-    await sourceCommand(() => checkpoint('automatic source checks pause while preview is open'));
+    await sourceCommand(() => checkpoint('automatic source checks pause while preview is open', { keyFrames: [sourceSnapshot] }));
     return { preview };
   });
 
@@ -100,8 +99,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '59b627f9-402
     release();
     const review = status.getByRole('button', { name: /source changes? available.*Review/i });
     await sourceCommand(() => expect(review).toHaveText('2 source changes available – Review'));
-    await sourceCommand(() => addKeyFrame(sourceSnapshot));
-    await sourceCommand(() => checkpoint('one move and its updated incoming link count as two source changes'));
+    await sourceCommand(() => checkpoint('one move and its updated incoming link count as two source changes', { keyFrames: [sourceSnapshot] }));
     return { review };
   });
 
@@ -116,8 +114,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '59b627f9-402
     await sourceCommand(() => addKeyFrame(sourceSnapshot));
     release();
     await sourceCommand(() => expect(review).toHaveText('3 source changes available – Review'));
-    await sourceCommand(() => addKeyFrame(sourceSnapshot));
-    await sourceCommand(() => checkpoint('a later background check preserves the review button while updating its count'));
+    await sourceCommand(() => checkpoint('a later background check preserves the review button while updating its count', { keyFrames: [sourceSnapshot] }));
   });
 
   const { rename } = await test.step(sections.steps.checkScanningWhileReviewOpen, async () => {

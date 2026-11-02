@@ -17,7 +17,7 @@ const sections = scenarioSections({
   reverse: { type: 'test', text: conceptText`Remove the staged blacklist and restore the original departure explanation.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '7ae13448-8745-4e95-bf5b-c4eb98fa5e34' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '7ae13448-8745-4e95-bf5b-c4eb98fa5e34' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, sourceChanges, checkpoint, assertMeadowHomeState }) => {
   const { editor, sourcing, filters } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect), editor = new BundleEditorPage(page, expect);
     const sourcing = new SourcingWorkspacePage(page, expect), filters = new FilterPanelComponent(page, expect);
@@ -36,16 +36,14 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '7ae13448-874
     await sourceCommand(() => sourcing.select('Leaf'));
     await sourceCommand(() => sourcing.expectSelectedRemovalReason('Not reachable'));
     await sourceCommand(() => filters.expectSourceChangeCount('Not reachable', 1));
-    await sourceCommand(() => addKeyFrame(sourceUnreachableRemoval));
-    await sourceCommand(() => checkpoint('the missing incoming route explains the departure'));
+    await sourceCommand(() => checkpoint('the missing incoming route explains the departure', { keyFrames: [sourceUnreachableRemoval] }));
   });
   await test.step(sections.steps.blacklist, async () => {
     await sourceCommand(() => sourcing.setSelectedBlacklisted(true));
     await sourceCommand(() => sourcing.expectSelectedRemovalReason('Blacklisted'));
     await sourceCommand(() => filters.expectSourceChangeCount('Blacklisted', 1));
     await sourceCommand(() => filters.expectSourceChangeCount('Not reachable', 0));
-    await sourceCommand(() => addKeyFrame(sourceBlacklistedRemoval));
-    await sourceCommand(() => checkpoint('explicit exclusion has its own Blacklisted removal subtype'));
+    await sourceCommand(() => checkpoint('explicit exclusion has its own Blacklisted removal subtype', { keyFrames: [sourceBlacklistedRemoval] }));
   });
   await test.step(sections.steps.reverse, async () => {
     await sourceCommand(() => sourcing.setSelectedBlacklisted(false));

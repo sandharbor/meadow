@@ -43,7 +43,7 @@ const tagRoute = `_mw_gen/tagpages/tag--${tag}.html`;
 
 test(name.name, { annotation: [{ type: 'scenario-id', description: '07a9d781-7567-4e0f-9e76-9a5e23747fa4' },
   name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
-  page, checkpoint, addKeyFrame, skipMeadowHomeStateCheck,
+  page, checkpoint, skipMeadowHomeStateCheck,
 }) => {
   const { generated, options } = await test.step(sections.steps.setup, async () => {
     await sourceCommand(() => new Workflows(page, expect).navigateToBigBundlePreview());
@@ -63,8 +63,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '07a9d781-756
     await sourceCommand(() => options.setTagsEnabled(false));
     await sourceCommand(() => generated.expectSingleHeading(firstSource));
     await sourceCommand(() => generated.expectTagTextWithoutLink(tag));
-    await sourceCommand(() => addKeyFrame(customize));
-    await sourceCommand(() => checkpoint('Tags disabled leaves source tag text without a generated link'));
+    await sourceCommand(() => checkpoint('Tags disabled leaves source tag text without a generated link', { keyFrames: [customize] }));
   });
 
   await test.step(sections.steps.enableTags, async () => {
@@ -76,17 +75,14 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '07a9d781-756
     expect(new URL(tagUrl).pathname).toMatch(/\/_mw_gen\/tagpages\/tag--t018-shared-1\.html$/);
     await sourceCommand(() => generated.expectBacklink(firstSource));
     await sourceCommand(() => generated.expectBacklink(secondSource));
-    await sourceCommand(() => addKeyFrame(tagPageGeneration));
-    await sourceCommand(() => addKeyFrame(generatedPagesDirectory));
-    await sourceCommand(() => checkpoint('generated tag page is under _mw_gen and links back to both source pages'));
+    await sourceCommand(() => checkpoint('generated tag page is under _mw_gen and links back to both source pages', { keyFrames: [tagPageGeneration, generatedPagesDirectory] }));
   });
 
   await test.step(sections.steps.followBacklink, async () => {
     await sourceCommand(() => generated.clickPageLink(secondSource));
     await sourceCommand(() => generated.expectSingleHeading(secondSource));
     await sourceCommand(() => generated.expectTagLink(tag, `../${tagRoute}`));
-    await sourceCommand(() => addKeyFrame(tagPageGeneration));
-    await sourceCommand(() => checkpoint('the other source page links to the same generated tag page'));
+    await sourceCommand(() => checkpoint('the other source page links to the same generated tag page', { keyFrames: [tagPageGeneration] }));
   });
 
   await sourceCommand(() => skipMeadowHomeStateCheck());

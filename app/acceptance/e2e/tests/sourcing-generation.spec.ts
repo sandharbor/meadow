@@ -27,7 +27,7 @@ const sections = scenarioSections({
   completeReplacementPageCarriesOrdinaryUnconditionalNodeSpec: { type: 'test', text: conceptText`The complete replacement page carries an ordinary, unconditional NodeSpec.` },
 });
 const areas = scenarioAreas([bundleSourcing, bundleGeneration], { subAreas: [sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '7fcae7e6-194d-4a16-99bd-326d24679ee5' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, sourceChanges, testServer, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '7fcae7e6-194d-4a16-99bd-326d24679ee5' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, sourceChanges, testServer, checkpoint, skipMeadowHomeStateCheck }) => {
   const { editor, previewModal, before } = await test.step(sections.steps.setup, async () => {
     const wf = new Workflows(page, expect);
     const editor = new BundleEditorPage(page, expect);
@@ -49,8 +49,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '7fcae7e6-194
     await sourceCommand(() => previewModal.waitForPreviewComplete());
     await sourceCommand(() => previewModal.expectUntrackedPagesWarning());
     expect(new AcceptedSourcingState(testServer.configDir, "meadow-test-bundle-big").retainedPageText(`${originalTitle}.md`)).toBe(before);
-    await sourceCommand(() => addKeyFrame(sourceSnapshot));
-    await sourceCommand(() => checkpoint('generation continues using the accepted checkpoint while live source differs'));
+    await sourceCommand(() => checkpoint('generation continues using the accepted checkpoint while live source differs', { keyFrames: [sourceSnapshot] }));
   });
 
   await test.step(sections.steps.acceptUpdateRegenerate, async () => {
@@ -85,8 +84,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '7fcae7e6-194
     const html = new GenerationRecords(testServer.configDir, slug).onlyVersionPageText(`${originalTitle}.html`);
     expect(extractMainSectionLinkPaths(html).sort()).toEqual(nodeSpec.generation.htmlRenderedLinks.mainSectionLinks.map(link => link.relativeLinkPath).sort());
     expect(extractFooterBacklinkPaths(html).sort()).toEqual(nodeSpec.generation.htmlRenderedLinks.footerSectionBacklinks.map(link => link.relativeLinkPath).sort());
-    await sourceCommand(() => addKeyFrame(sourceSnapshot));
-    await sourceCommand(() => checkpoint('generation adopts replaced source only after checkpoint acceptance'));
+    await sourceCommand(() => checkpoint('generation adopts replaced source only after checkpoint acceptance', { keyFrames: [sourceSnapshot] }));
   });
 
   await sourceCommand(() => skipMeadowHomeStateCheck());

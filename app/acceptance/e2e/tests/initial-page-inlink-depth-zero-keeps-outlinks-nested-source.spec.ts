@@ -56,7 +56,6 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'f6510873-acc
   testServer,
   checkpoint,
   assertMeadowHomeState,
-  addKeyFrame,
   expectLogErrors,
 }) => {
 
@@ -111,8 +110,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'f6510873-acc
       await sourceCommand(() => page.waitForTimeout(250));
       await sourceCommand(() => editor.switchToGraphView());
       await sourceCommand(() => page.waitForTimeout(250));
-      await sourceCommand(() => addKeyFrame(initialPage));
-      await sourceCommand(() => checkpoint("initial node selected in graph view, inlinks visible"));
+      await sourceCommand(() => checkpoint("initial node selected in graph view, inlinks visible", { keyFrames: [initialPage] }));
     });
 
     await test.step(sections.steps.removeIncomingTraversal, async () => {
@@ -128,9 +126,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'f6510873-acc
       await sourceCommand(() => editor.expectListViewRowByTitleAndFileTypePresent("t006 --- meadow", "png"));
       await sourceCommand(() => editor.expectListViewRowByTitleAndFileTypePresent("t006 --- meadow-flower", "svg"));
       await sourceCommand(() => editor.expectListViewRowByTitleAndFileTypePresent("t006 --- meadow-flower", "excalidraw"));
-      await sourceCommand(() => addKeyFrame(images));
-      await sourceCommand(() => addKeyFrame(excalidraw));
-      await sourceCommand(() => checkpoint("depth-1 outlink media still present in list view"));
+      await sourceCommand(() => checkpoint("depth-1 outlink media still present in list view", { keyFrames: [images, excalidraw] }));
       await sourceCommand(() => editor.sourceReview.accept());
       await sourceCommand(() => checkpoint("accepted incoming-depth change preserves the outgoing media"));
 

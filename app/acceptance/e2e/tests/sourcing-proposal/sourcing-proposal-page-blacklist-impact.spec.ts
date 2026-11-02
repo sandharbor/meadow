@@ -23,7 +23,7 @@ const sections = scenarioSections({
   reversePendingExclusionInspectRestoredConfigurationBefore: { type: 'test', text: conceptText`Reverse the pending exclusion and inspect the restored configuration before accepting anything.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'ba79e6c7-4b50-4a72-882a-de0230a677f0' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'ba79e6c7-4b50-4a72-882a-de0230a677f0' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, assertMeadowHomeState }) => {
   const { editor, sourcing, proposal, saved } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
@@ -52,8 +52,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'ba79e6c7-4b5
     await sourceCommand(() => sourcing.select('Retained'));
     await sourceCommand(() => sourcing.expectNoSelectedSourceChange());
     await sourceCommand(() => sourcing.expectSelectedRoute(['Start', 'Reference', 'Retained']));
-    await sourceCommand(() => addKeyFrame(sourceReviewWorkspace));
-    await sourceCommand(() => checkpoint('wider departures remain inspectable while an independent route retains its page'));
+    await sourceCommand(() => checkpoint('wider departures remain inspectable while an independent route retains its page', { keyFrames: [sourceReviewWorkspace] }));
   });
 
   await test.step(sections.steps.reversePendingExclusionInspectRestoredConfigurationBefore, async () => {

@@ -1,4 +1,0 @@
-^ [[design principle]] -- fail early
-
----
-

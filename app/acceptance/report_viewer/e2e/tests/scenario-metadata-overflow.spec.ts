@@ -1,12 +1,14 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 import { test, expect } from '@playwright/test';
 import { URL } from 'node:url';
+import { startingSelectionConceptIds } from '../../../../concepts/startingSelectionShapes.js';
 
 for (const width of [1280, 390]) {
   test(`scenario metadata disclosure follows content width at ${width}px`, async ({ page, request }, testInfo) => {
     await page.setViewportSize({ width, height: 900 });
     const catalog = await (await request.get('/api/concepts?all=true')).json() as { id: string; kind?: string; subAreas?: unknown[] }[];
-    const concepts = catalog.filter(doc => doc.kind !== 'app-area' && !doc.subAreas?.length).slice(0, 24).map(doc => doc.id);
+    const concepts = catalog.filter(doc => doc.kind !== 'app-area' && !doc.subAreas?.length
+      && !startingSelectionConceptIds.some(id => id === doc.id)).slice(0, 24).map(doc => doc.id);
     const compact = { testName: 'Compact metadata', bundleMode: 'single-file', logs: [], keyFrames: [], conceptIds: [], appAreaDocIds: [], subAreaDocIds: [] };
     const busy = { ...compact, testName: 'Many concepts', conceptIds: concepts, appAreaDocIds: ['bundle/curation'] };
     await page.route('**/api/runs/metadata-overflow', route => route.fulfill({ json: { runId: 'metadata-overflow', scenarios: [] } }));

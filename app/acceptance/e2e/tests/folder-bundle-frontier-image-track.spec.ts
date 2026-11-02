@@ -43,7 +43,6 @@ const areas = scenarioAreas([bundleCuration]);
 test(name.name, { annotation: [{ type: 'scenario-id', description: '78112a8f-5b71-4770-b9e2-e33a205bef9f' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
-  addKeyFrame,
   assertMeadowHomeState,
 }) => {
   const { editor, previewModal, detail } = await test.step(sections.steps.setup, async () => {
@@ -64,8 +63,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '78112a8f-5b7
     await sourceCommand(() => detail.expectNoPill(Pill.Frontier));
     await sourceCommand(() => detail.expectNoPill(Pill.Tracked));
     await sourceCommand(() => detail.expectButtonEnabled(ActionButton.Track));
-    await sourceCommand(() => addKeyFrame(frontier));
-    await sourceCommand(() => checkpoint("depth-three frontier image is available to track"));
+    await sourceCommand(() => checkpoint("depth-three frontier image is available to track", { keyFrames: [frontier] }));
     return { editor, previewModal, detail };
   });
 
@@ -73,8 +71,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '78112a8f-5b7
     await sourceCommand(() => detail.clickAction(ActionButton.Track, page));
     await sourceCommand(() => detail.expectPill(Pill.FrontierImage));
     await sourceCommand(() => detail.expectPill(Pill.Tracked));
-    await sourceCommand(() => addKeyFrame(tracking));
-    await sourceCommand(() => checkpoint("depth-three frontier image tracked in the folder bundle"));
+    await sourceCommand(() => checkpoint("depth-three frontier image tracked in the folder bundle", { keyFrames: [tracking] }));
   });
 
   await test.step(sections.steps.previewTrackedImage, async () => {
@@ -82,8 +79,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '78112a8f-5b7
     await sourceCommand(() => previewModal.waitForPreviewComplete());
     await sourceCommand(() => previewModal.expectUntrackedPagesWarning());
     await sourceCommand(() => previewModal.generatedBundle.expectSingleHeading("Alpha", 60_000));
-    await sourceCommand(() => addKeyFrame(htmlGeneration));
-    await sourceCommand(() => checkpoint("folder preview succeeds with the tracked frontier image"));
+    await sourceCommand(() => checkpoint("folder preview succeeds with the tracked frontier image", { keyFrames: [htmlGeneration] }));
   });
 
   void customBundle;

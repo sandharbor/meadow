@@ -19,7 +19,7 @@ const sections = scenarioSections({
   resetFolderFilters: { type: 'test', text: conceptText`Reset the folder filters.` },
 });
 const areas = scenarioAreas([bundleCuration, bundleSourcing], { subAreas: [sourceSetupEdit] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'ed923b4e-3481-433a-91e3-b9adb3190594' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'ed923b4e-3481-433a-91e3-b9adb3190594' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, checkpoint, skipMeadowHomeStateCheck }) => {
   const { editor, filters } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     await sourceCommand(() => list.goto());
@@ -39,8 +39,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'ed923b4e-348
     await sourceCommand(() => filters.expandFolder('research://'));
     await sourceCommand(() => filters.expectFolderCount('notes://Same', 1));
     await sourceCommand(() => filters.expectFolderCount('research://Same', 1));
-    await sourceCommand(() => addKeyFrame(bundleSource, folderFilter));
-    await sourceCommand(() => checkpoint('namesake pages and folders display their canonical source'));
+    await sourceCommand(() => checkpoint('namesake pages and folders display their canonical source', { keyFrames: [bundleSource, folderFilter] }));
     return { editor, filters };
   });
 
@@ -60,8 +59,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'ed923b4e-348
     await sourceCommand(() => editor.expectListViewNodeVisible('file:_mw_sources/source000002/Same/Inside.md', true));
     await sourceCommand(() => editor.expectListViewLocation('file:_mw_sources/source000001/Overview.md', 'notebook', '/'));
     await sourceCommand(() => filters.expectFolderVisible('notebook://Same'));
-    await sourceCommand(() => addKeyFrame(folderFilter));
-    await sourceCommand(() => checkpoint("the renamed source retains its folder filter"));
+    await sourceCommand(() => checkpoint("the renamed source retains its folder filter", { keyFrames: [folderFilter] }));
   });
 
   await test.step(sections.steps.resetFolderFilters, async () => {

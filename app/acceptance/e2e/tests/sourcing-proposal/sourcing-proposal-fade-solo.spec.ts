@@ -19,7 +19,7 @@ const sections = scenarioSections({
   verifyScenarioSoloedUntrackedContextHasFull: { type: 'test', text: conceptText`Verify the scenario: soloed untracked context has full prominence while Fade remains configured.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '3b2016ed-f843-43a3-830f-0088eeb5f0df' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '3b2016ed-f843-43a3-830f-0088eeb5f0df' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, checkpoint, assertMeadowHomeState }) => {
   const { sourcing, filters } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
@@ -46,8 +46,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '3b2016ed-f84
     await sourceCommand(() => sourcing.select('Reference'));
     await sourceCommand(() => sourcing.expectNoSelectedSourceChange());
     await sourceCommand(() => expect(sourcing.selectedPage.getByText('Not Tracked', { exact: true })).toBeVisible());
-    await sourceCommand(() => addKeyFrame(graphFade));
-    await sourceCommand(() => checkpoint('soloed untracked context has full prominence while Fade remains configured'));
+    await sourceCommand(() => checkpoint('soloed untracked context has full prominence while Fade remains configured', { keyFrames: [graphFade] }));
     await sourceCommand(() => sourcing.clearSelection());
     await sourceCommand(() => filters.clickSoloOnFilter('Untracked'));
     await sourceCommand(() => sourcing.expectListOpacity('Reference', 0.45));

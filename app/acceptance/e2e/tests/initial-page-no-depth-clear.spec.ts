@@ -36,7 +36,7 @@ const sections = scenarioSections({
 });
 const areas = scenarioAreas([bundleCuration]);
 test(name.name, { annotation: [{ type: 'scenario-id', description: '5f71211d-5ca3-48b0-8655-686be2662d65' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
-  page, checkpoint, assertMeadowHomeState, addKeyFrame,
+  page, checkpoint, assertMeadowHomeState,
 }) => {
   const { editor } = await test.step(sections.steps.setup, async () => {
     const bundleList = new BundleListPage(page, expect);
@@ -56,8 +56,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '5f71211d-5ca
     // The initial page has a depth set but the Remove override button should NOT be visible
     const initialDetail = new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect);
     await sourceCommand(() => initialDetail.expectRemoveOutlinksDepthNotVisible());
-    await sourceCommand(() => addKeyFrame(initialPage));
-    await sourceCommand(() => checkpoint("initial page depth has no remove override button"));
+    await sourceCommand(() => checkpoint("initial page depth has no remove override button", { keyFrames: [initialPage] }));
     return { editor };
   });
 
@@ -71,8 +70,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '5f71211d-5ca
     await sourceCommand(() => overrideDetail.openDetails());
     await sourceCommand(() => page.waitForTimeout(250));
     await sourceCommand(() => overrideDetail.expectRemoveOutlinksDepthVisible());
-    await sourceCommand(() => addKeyFrame(bundleConfig));
-    await sourceCommand(() => checkpoint("non-initial page depth has remove override button"));
+    await sourceCommand(() => checkpoint("non-initial page depth has remove override button", { keyFrames: [bundleConfig] }));
   });
 
   void exampleBundle;

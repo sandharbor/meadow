@@ -24,7 +24,7 @@ const sections = scenarioSections({
   acceptSourceUpdate: { type: 'test', text: conceptText`Accept the source update.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '2fd097fe-1920-458d-a0d2-26f66e48c93e' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, sourceChanges, testServer, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '2fd097fe-1920-458d-a0d2-26f66e48c93e' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, sourceChanges, testServer, checkpoint, skipMeadowHomeStateCheck }) => {
   const { editor, proposal, indexPath, readIndex, readState, before, acceptedId, recheck } = await test.step(sections.steps.setup, async () => {
     await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
     const editor = new BundleEditorPage(page, expect);
@@ -46,8 +46,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '2fd097fe-192
     await sourceCommand(() => expect(page.getByRole('button', { name: 'Recheck all source files', exact: true })).not.toBeVisible());
     await sourceCommand(() => editor.reviewSourceHistory());
     const recheck = page.getByRole('dialog', { name: 'Source snapshots', exact: true }).getByRole('button', { name: 'Recheck all source files', exact: true });
-    await sourceCommand(() => addKeyFrame(sourceSnapshot));
-    await sourceCommand(() => checkpoint('source history exposes a full recheck of the populated index'));
+    await sourceCommand(() => checkpoint('source history exposes a full recheck of the populated index', { keyFrames: [sourceSnapshot] }));
     return { editor, proposal, indexPath, readIndex, readState, before, acceptedId, recheck };
   });
 
@@ -63,8 +62,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '2fd097fe-192
     expect(rebuilt.metrics.cacheRebuilt).toBe(true);
     expect(rebuilt.metrics.filesRead).toBe(rebuilt.metrics.indexedFiles);
     expect(readState().acceptedId).toBe(acceptedId);
-    await sourceCommand(() => addKeyFrame(sourceSnapshot));
-    await sourceCommand(() => checkpoint('a thorough source check rebuilds the populated index without accepting source material'));
+    await sourceCommand(() => checkpoint('a thorough source check rebuilds the populated index without accepting source material', { keyFrames: [sourceSnapshot] }));
   });
 
   await test.step(sections.steps.rebuildAgainAfterSourceEdit, async () => {
@@ -82,8 +80,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '2fd097fe-192
     await sourceCommand(() => editor.sourceReview.expectModified('t003 ---- page with section to link to.md'));
     expect(readState().acceptedId).toBe(acceptedId);
     expect(proposal.current.candidateSnapshotId).not.toBe(acceptedId);
-    await sourceCommand(() => addKeyFrame(sourceSnapshot));
-    await sourceCommand(() => checkpoint('the full rebuild presents modified content for normal source review'));
+    await sourceCommand(() => checkpoint('the full rebuild presents modified content for normal source review', { keyFrames: [sourceSnapshot] }));
   });
 
   await test.step(sections.steps.acceptSourceUpdate, async () => {
@@ -92,8 +89,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '2fd097fe-192
     expect(readState().candidateId).toBeUndefined();
     expect(execFileSync('git', ['check-ignore', indexPath], { cwd: testServer.configDir, encoding: 'utf8' }).trim()).toBe(indexPath);
     expect(execFileSync('git', ['ls-files', '--', 'cache/source-index'], { cwd: testServer.configDir, encoding: 'utf8' }).trim()).toBe('');
-    await sourceCommand(() => addKeyFrame(sourceSnapshot));
-    await sourceCommand(() => checkpoint('acceptance installs the reviewed source checkpoint while the local index stays untracked'));
+    await sourceCommand(() => checkpoint('acceptance installs the reviewed source checkpoint while the local index stays untracked', { keyFrames: [sourceSnapshot] }));
   });
 
   await sourceCommand(() => skipMeadowHomeStateCheck());

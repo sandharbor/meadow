@@ -23,7 +23,7 @@ const sections = scenarioSections({
   inspectSavedSourceRegistration: { type: 'test', text: conceptText`Inspect the saved source registration.` },
 });
 const areas = scenarioAreas([bundleSourcing, bundleCuration], { subAreas: [sourceSetupEdit, sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '01fdc497-0439-4ac2-9272-220e4ef9504e' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '01fdc497-0439-4ac2-9272-220e4ef9504e' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, skipMeadowHomeStateCheck }) => {
   const { slug, editor, sources, filters } = await test.step(sections.steps.setup, async () => {
     const slug = 'multi-source-omitted';
     const list = new BundleListPage(page, expect);
@@ -38,8 +38,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '01fdc497-043
     await sourceCommand(() => filters.enableFilter('Frontier'));
     await sourceCommand(() => editor.expectGraphNodePresent('file:_mw_sources/source000001/Frontier.md'));
     await sourceCommand(() => sources.expectNotice());
-    await sourceCommand(() => addKeyFrame(frontier, bundleSource));
-    await sourceCommand(() => checkpoint('frontier references and unrelated indexed pages do not prompt source registration'));
+    await sourceCommand(() => checkpoint('frontier references and unrelated indexed pages do not prompt source registration', { keyFrames: [frontier, bundleSource] }));
     return { slug, editor, sources, filters };
   });
 
@@ -52,15 +51,13 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '01fdc497-043
     await sourceCommand(() => sources.reviewMissing());
     await sourceCommand(() => sources.expectReferences('reference', ['notes://Frontier', 'research://Report']));
     await sourceCommand(() => expect(page.getByTestId('source-reference-unrelated')).not.toBeVisible());
-    await sourceCommand(() => addKeyFrame(bundleSource));
-    await sourceCommand(() => checkpoint('newly admitted referrers group their missing-source references'));
+    await sourceCommand(() => checkpoint('newly admitted referrers group their missing-source references', { keyFrames: [bundleSource] }));
   });
 
   await test.step(sections.steps.registerNewlyReferencedSource, async () => {
     await sourceCommand(() => sources.addReferencedSource('reference', path.join(testServer.sourceGraphsDir, 'multi-source/reference')));
     await sourceCommand(() => sources.saveWithoutMaterialChanges());
-    await sourceCommand(() => addKeyFrame(sourceSnapshot));
-    await sourceCommand(() => checkpoint('registering a source with only frontier references saves without material review'));
+    await sourceCommand(() => checkpoint('registering a source with only frontier references saves without material review', { keyFrames: [sourceSnapshot] }));
   });
 
   await test.step(sections.steps.inspectSavedSourceRegistration, async () => {
@@ -74,8 +71,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '01fdc497-043
     await sourceCommand(() => editor.clickListViewRowByNodeKey(`file:_mw_sources/${referenceId}/Study.md`));
     await sourceCommand(() => new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect).expectPill(Pill.Frontier));
     await sourceCommand(() => sources.expectNotice());
-    await sourceCommand(() => addKeyFrame(bundleSource, frontier));
-    await sourceCommand(() => checkpoint('resolved reference pages retain the remaining traversal budget after acceptance'));
+    await sourceCommand(() => checkpoint('resolved reference pages retain the remaining traversal budget after acceptance', { keyFrames: [bundleSource, frontier] }));
   });
 
   await sourceCommand(() => skipMeadowHomeStateCheck());

@@ -24,7 +24,7 @@ const sections = scenarioSections({
 });
 const pressures = scenarioDesignPressures([preventAccidentalSharing]);
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '63b363d7-248b-4c3b-a136-7cc5dffb7754' }, name.annotation, description.annotation, areas.annotation, pressures.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '63b363d7-248b-4c3b-a136-7cc5dffb7754' }, name.annotation, description.annotation, areas.annotation, pressures.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, assertMeadowHomeState }) => {
   const { editor, sourcing, proposal, filters, captured } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
@@ -65,8 +65,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '63b363d7-248
     }
     await sourceCommand(() => sourcing.expectNoTrackingConfirmations());
     await sourceCommand(() => expect(sourcing.root.getByTestId('track-additions-sensitive')).toContainText('sensitive skipped'));
-    await sourceCommand(() => addKeyFrame(sourceReviewSensitivity));
-    await sourceCommand(() => checkpoint('newly sensitive additions are untracked without an explicit-choice confirmation'));
+    await sourceCommand(() => checkpoint('newly sensitive additions are untracked without an explicit-choice confirmation', { keyFrames: [sourceReviewSensitivity] }));
     await sourceCommand(() => sourcing.accept());
     const nodeConfig = new MeadowHomeBundleConfig(testServer.configDir, "sourcing-review", expect);
     expect(nodeConfig.findNode({ bundleNodeName: 'Safe One' })).toBeUndefined();

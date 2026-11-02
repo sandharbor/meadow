@@ -21,7 +21,7 @@ const sections = scenarioSections({
   pageSurvivesReloadRelatedConceptNavigationPreserves: { type: 'test', text: conceptText`The page survives reload and related-concept navigation preserves exact identities.` },
 });
 const areas = scenarioAreas([]);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '646aabe1-ce31-4123-a574-b9cd8ca878da' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, checkpoint, addKeyFrame, assertMeadowHomeState }, testInfo) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '646aabe1-ce31-4123-a574-b9cd8ca878da' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, checkpoint, assertMeadowHomeState }, testInfo) => {
 
   await sourceCommand(() => new BundleListPage(page, expect).goto());
   const viewer = await sourceCommand(() => startReportViewer(expect));
@@ -49,8 +49,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '646aabe1-ce3
       const actual = fs.readFileSync(path.resolve(import.meta.dirname, '../../../..', file), 'utf8').split('\n')[line - 1];
       expect(actual).toContain('export async function captureSourceSnapshot');
       await sourceCommand(() => expect(page.getByText(actual.trim(), { exact: false }).last()).toBeVisible());
-      await sourceCommand(() => addKeyFrame(conceptImplementationNavigation));
-      await sourceCommand(() => checkpoint('the selected participation opens the source at its real implementation declaration'));
+      await sourceCommand(() => checkpoint('the selected participation opens the source at its real implementation declaration', { keyFrames: [conceptImplementationNavigation] }));
       return { source };
     });
 
@@ -61,8 +60,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '646aabe1-ce3
       await sourceCommand(() => expect(page.getByRole('heading', { name: 'Source Changes During Review', exact: true })).toBeVisible());
       await sourceCommand(() => expect(implementations).toHaveCount(0));
       await sourceCommand(() => expect(page.getByText('No implementation declared.', { exact: true })).toBeVisible());
-      await sourceCommand(() => addKeyFrame(conceptRoleValidation));
-      await sourceCommand(() => checkpoint('a concept without declared participants makes no implementation claims'));
+      await sourceCommand(() => checkpoint('a concept without declared participants makes no implementation claims', { keyFrames: [conceptRoleValidation] }));
     });
   } finally {
     await sourceCommand(() => page.goto('about:blank'));

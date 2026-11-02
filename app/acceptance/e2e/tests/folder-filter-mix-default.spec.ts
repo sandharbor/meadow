@@ -36,7 +36,6 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '4fa68df7-a9c
   page,
   checkpoint,
   assertMeadowHomeState,
-  addKeyFrame,
 }) => {
   const { editor, filterPanel } = await test.step(sections.steps.setup, async () => {
     const workflows = new Workflows(page, expect);
@@ -67,9 +66,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '4fa68df7-a9c
       hides: ["Folder: t024"],
       solos: ["Folder: t023"],
     }));
-    await sourceCommand(() => addKeyFrame(filterMixing));
-    await sourceCommand(() => addKeyFrame(folderFilter));
-    await sourceCommand(() => checkpoint("hidden and soloed folders use the default grouped mix"));
+    await sourceCommand(() => checkpoint("hidden and soloed folders use the default grouped mix", { keyFrames: [filterMixing, folderFilter] }));
   });
 
   await test.step(sections.steps.checkResultingList, async () => {

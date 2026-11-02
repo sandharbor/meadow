@@ -87,8 +87,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '0da48f7e-632
 
   await test.step(sections.steps.saveExportSettings, async () => {
     await sourceCommand(() => okf.save());
-    await sourceCommand(() => addKeyFrame(customize));
-    await sourceCommand(() => checkpoint("sources zip and okf enabled"));
+    await sourceCommand(() => checkpoint("sources zip and okf enabled", { keyFrames: [customize] }));
   });
 
   const { changesTab } = await test.step(sections.steps.waitForPackageGeneration, async () => {
@@ -96,8 +95,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '0da48f7e-632
     await sourceCommand(() => changesTab.waitForRegenerationComplete());
     await sourceCommand(() => addKeyFrame(sourcesExport));
     await sourceCommand(() => customizeTab.generationOptions.expectOpenKnowledgeFormatRenameIndicatorVisible(2));
-    await sourceCommand(() => addKeyFrame(openKnowledgeFormat));
-    await sourceCommand(() => checkpoint("okf generation complete with reserved rename indicator"));
+    await sourceCommand(() => checkpoint("okf generation complete with reserved rename indicator", { keyFrames: [openKnowledgeFormat] }));
     return { changesTab };
   });
 
@@ -120,8 +118,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '0da48f7e-632
     await sourceCommand(() => changesTab.expandFolder("_mw_assets"));
     await sourceCommand(() => changesTab.expectFileInChanges("okf-download-manifest.json"));
     await sourceCommand(() => changesTab.expectFileInChanges("index-original.md"));
-    await sourceCommand(() => addKeyFrame(changesTabDoc));
-    await sourceCommand(() => checkpoint("changes include okf files"));
+    await sourceCommand(() => checkpoint("changes include okf files", { keyFrames: [changesTabDoc] }));
   });
 
   await test.step(sections.steps.saveGeneratedVersion, async () => {

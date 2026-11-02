@@ -14,7 +14,7 @@ const sections = scenarioSections({
   verifyScenarioNewerLiveLinksCannotBe: { type: 'test', text: conceptText`Verify the scenario: newer live links cannot be combined with the existing capture.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '334554e6-7b1c-4ae2-bcc1-3710e807b936' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '334554e6-7b1c-4ae2-bcc1-3710e807b936' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, sourceChanges, checkpoint, skipMeadowHomeStateCheck }) => {
   const { editor, review, filters } = await test.step(sections.steps.setup, async () => {
     await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
     const editor = new BundleEditorPage(page, expect);
@@ -23,8 +23,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '334554e6-7b1
     await sourceCommand(() => review.open());
     await sourceCommand(() => filters.enableFilter('Frontier'));
     await sourceCommand(() => editor.expectGraphNodePresent('file:t016 ---- level 5.md'));
-    await sourceCommand(() => addKeyFrame(frontier, frontierLiveDiscovery));
-    await sourceCommand(() => checkpoint('frontier exploration uses the current reviewed capture'));
+    await sourceCommand(() => checkpoint('frontier exploration uses the current reviewed capture', { keyFrames: [frontier, frontierLiveDiscovery] }));
     return { editor, review, filters };
   });
 
@@ -34,12 +33,10 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '334554e6-7b1
     const notice = page.getByText('Update sources to explore the frontier of the newer material. Your reviewed capture has been kept.', { exact: true });
     await sourceCommand(() => expect(notice).toBeVisible());
     await sourceCommand(() => editor.expectGraphNodeNotPresent('file:t016 ---- level 5.md'));
-    await sourceCommand(() => addKeyFrame(frontierPendingSources));
-    await sourceCommand(() => checkpoint('newer live links cannot be combined with the existing capture'));
+    await sourceCommand(() => checkpoint('newer live links cannot be combined with the existing capture', { keyFrames: [frontierPendingSources] }));
     await sourceCommand(() => filters.disableFilter('Frontier'));
     await sourceCommand(() => expect(notice).not.toBeVisible());
-    await sourceCommand(() => addKeyFrame(frontierDismissal));
-    await sourceCommand(() => checkpoint('disabling exploration preserves the pending capture'));
+    await sourceCommand(() => checkpoint('disabling exploration preserves the pending capture', { keyFrames: [frontierDismissal] }));
     await sourceCommand(() => review.checkAgain());
     await sourceCommand(() => review.confirmSuggestedIdentities());
     await sourceCommand(() => review.continueToGraph());

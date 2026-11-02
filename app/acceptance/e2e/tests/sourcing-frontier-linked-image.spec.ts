@@ -17,7 +17,7 @@ const sections = scenarioSections({
   showLiveFrontierInCuration: { type: 'test', text: conceptText`Show the live frontier in curation.` },
 });
 const areas = scenarioAreas([bundleSourcing, bundleCuration], { subAreas: [sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'caec0c25-9239-4906-8896-87b6bf817779' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'caec0c25-9239-4906-8896-87b6bf817779' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, sourceChanges, checkpoint, skipMeadowHomeStateCheck }) => {
   await test.step(sections.steps.setup, async () => {
     await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
     await sourceCommand(() => checkpoint('the accepted source state is established before changing files'));
@@ -30,8 +30,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'caec0c25-923
     await sourceCommand(() => editor.sourceReview.checkAgain());
     await sourceCommand(() => editor.sourceReview.expectNoLongerIncluded('t016 ---- level 5 - frontier image.png'));
     await sourceCommand(() => editor.sourceReview.orphans.expectNotListed('t016 ---- level 5 - frontier image'));
-    await sourceCommand(() => addKeyFrame(frontierEmbeddedAssets));
-    await sourceCommand(() => checkpoint('the formerly embedded image is no longer included, without orphaned configuration'));
+    await sourceCommand(() => checkpoint('the formerly embedded image is no longer included, without orphaned configuration', { keyFrames: [frontierEmbeddedAssets] }));
     return { editor };
   });
 
@@ -47,8 +46,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'caec0c25-923
     await sourceCommand(() => detail.expectPill(Pill.Frontier));
     await sourceCommand(() => detail.expectNoPill(Pill.FrontierImage));
     await sourceCommand(() => detail.expectButtonDisabled(ActionButton.Track));
-    await sourceCommand(() => addKeyFrame(frontierEmbeddedAssets));
-    await sourceCommand(() => checkpoint('an ordinary image link has the same frontier restrictions as a linked note'));
+    await sourceCommand(() => checkpoint('an ordinary image link has the same frontier restrictions as a linked note', { keyFrames: [frontierEmbeddedAssets] }));
   });
 
   await sourceCommand(() => skipMeadowHomeStateCheck());

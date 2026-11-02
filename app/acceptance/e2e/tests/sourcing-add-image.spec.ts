@@ -18,7 +18,7 @@ const sections = scenarioSections({
   trackInspectedImageThroughOrdinaryControlsThen: { type: 'test', text: conceptText`Track the inspected image through the ordinary controls, then accept.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'bf4dde21-65c3-4632-ab21-f1b8b5f23e6e' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'bf4dde21-65c3-4632-ab21-f1b8b5f23e6e' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, sourceChanges, checkpoint, skipMeadowHomeStateCheck }) => {
   const { editor } = await test.step(sections.steps.setup, async () => {
     await sourceCommand(() => new Workflows(page, expect).navigateToBigBundle());
     const editor = new BundleEditorPage(page, expect);
@@ -36,8 +36,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'bf4dde21-65c
   await test.step(sections.steps.thisScenarioAboutExplicitTrackingChoicesSo, async () => {
     await sourceCommand(() => editor.sourceReview.setTrackAdditions(false));
     await sourceCommand(() => editor.sourceReview.previewImage('source-changes/added sunflower.png', ['main page.md', 't006 - embedded media.md']));
-    await sourceCommand(() => addKeyFrame(sourceSnapshot));
-    await sourceCommand(() => checkpoint('the shared added image has a thumbnail and a real inclusion route'));
+    await sourceCommand(() => checkpoint('the shared added image has a thumbnail and a real inclusion route', { keyFrames: [sourceSnapshot] }));
   });
 
   await test.step(sections.steps.trackInspectedImageThroughOrdinaryControlsThen, async () => {
@@ -47,8 +46,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'bf4dde21-65c
     await sourceCommand(() => editor.switchToListView());
     await sourceCommand(() => editor.clickListViewRowByExactName('added sunflower'));
     await sourceCommand(() => new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect).expectPill(Pill.Tracked));
-    await sourceCommand(() => addKeyFrame(sourceSnapshot));
-    await sourceCommand(() => checkpoint('acceptance includes and tracks the new embedded image'));
+    await sourceCommand(() => checkpoint('acceptance includes and tracks the new embedded image', { keyFrames: [sourceSnapshot] }));
   });
 
   await sourceCommand(() => skipMeadowHomeStateCheck());

@@ -23,7 +23,7 @@ const sections = scenarioSections({
   regenerateReviewRenamedPageAgainstSavedSite: { type: 'test', text: conceptText`Regenerate and compare with the saved baseline in the ${conceptLink(changesTabDoc.id, 'Changes Tab')}. The renamed page appears once as Moved with its old and new paths.` },
 });
 const areas = scenarioAreas([bundleSourcing, bundleGeneration, bundleReview], { subAreas: [sourceReviewIdentity, sourceReviewWorkspace, changesTabDoc] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '86ec9574-29c5-4f44-b44e-58cfbbbae216' }, { type: 'concept', description: exemplarySpec.id }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, sourceChanges, testServer, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '86ec9574-29c5-4f44-b44e-58cfbbbae216' }, { type: 'concept', description: exemplarySpec.id }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, sourceChanges, testServer, checkpoint, skipMeadowHomeStateCheck }) => {
   const { editor, bundleConfig, original, modal, changes } = await test.step(sections.steps.setup, async () => {
     const wf = new Workflows(page, expect);
     await sourceCommand(() => wf.navigateToBigBundle());
@@ -54,8 +54,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '86ec9574-29c
     await sourceCommand(() => editor.sourceReview.expectClosed());
     await sourceCommand(() => editor.expectSourceOrphanCount(13));
     expect(bundleConfig.findNode({ bundleNodeId: original.bundleNodeId })).toEqual(original);
-    await sourceCommand(() => addKeyFrame(sourceSnapshot));
-    await sourceCommand(() => checkpoint(conceptText`The proposed ${conceptLink(sourceMove.id, 'Source Move')} awaits review; the original page's saved configuration and the existing orphan count are unchanged.`));
+    await sourceCommand(() => checkpoint(conceptText`The proposed ${conceptLink(sourceMove.id, 'Source Move')} awaits review; the original page's saved configuration and the existing orphan count are unchanged.`, { keyFrames: [sourceSnapshot] }));
   });
 
   const { review } = await test.step(sections.steps.confirmIdentity, async () => {
@@ -64,14 +63,12 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '86ec9574-29c
     await sourceCommand(() => review.expectIdentityReviewRequired());
     await sourceCommand(() => review.expectMove('Renamed', `${originalTitle}.md`, `${renamedTitle}.md`));
     const rename = await sourceCommand(() => review.moveFrom(`${originalTitle}.md`));
-    await sourceCommand(() => addKeyFrame(sourceMove));
-    await sourceCommand(() => checkpoint(conceptText`${conceptLink(sourceReviewIdentity.id, 'Source Review Identity')} requires a decision and presents the suggested rename.`));
+    await sourceCommand(() => checkpoint(conceptText`${conceptLink(sourceReviewIdentity.id, 'Source Review Identity')} requires a decision and presents the suggested rename.`, { keyFrames: [sourceMove] }));
     await sourceCommand(() => review.confirmSuggestedIdentities());
     await sourceCommand(() => rename.expectSamePageSelected());
     await sourceCommand(() => rename.expectNoContentComparison());
     await sourceCommand(() => rename.expectSingleRoute(['main page.md', 't003 - link to section.md']));
-    await sourceCommand(() => addKeyFrame(sourceMove));
-    await sourceCommand(() => checkpoint(conceptText`Same file is confirmed in ${conceptLink(sourceReviewIdentity.id, 'Source Review Identity')}; its evidence shows the unchanged leading route and unchanged page content.`));
+    await sourceCommand(() => checkpoint(conceptText`Same file is confirmed in ${conceptLink(sourceReviewIdentity.id, 'Source Review Identity')}; its evidence shows the unchanged leading route and unchanged page content.`, { keyFrames: [sourceMove] }));
     return { review };
   });
 
@@ -81,8 +78,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '86ec9574-29c
     await sourceCommand(() => editor.expectSourceOrphanCount(0));
     await sourceCommand(() => editor.switchToListView());
     await sourceCommand(() => expect(page.getByText(renamedTitle, { exact: true }).first()).toBeVisible());
-    await sourceCommand(() => addKeyFrame(sourceSnapshot));
-    await sourceCommand(() => checkpoint(conceptText`${conceptLink(sourceReviewAcceptance.id, 'Proposal Acceptance')} retains the ${conceptLink(bundleNodeId.id, 'Bundle Node ID')} under the renamed title.`));
+    await sourceCommand(() => checkpoint(conceptText`${conceptLink(sourceReviewAcceptance.id, 'Proposal Acceptance')} retains the ${conceptLink(bundleNodeId.id, 'Bundle Node ID')} under the renamed title.`, { keyFrames: [sourceSnapshot] }));
   });
 
   await test.step(sections.steps.regenerateReviewRenamedPageAgainstSavedSite, async () => {
@@ -97,8 +93,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '86ec9574-29c
     await sourceCommand(() => changes.expectFileNotInChanges(`${originalTitle}.html`));
     await sourceCommand(() => changes.selectFile(`${renamedTitle}.html`));
     await sourceCommand(() => changes.expectSelectedFileMove(`${originalTitle}.html`, `${renamedTitle}.html`));
-    await sourceCommand(() => addKeyFrame(changesTabDoc));
-    await sourceCommand(() => checkpoint(conceptText`The ${conceptLink(changesTabDoc.id, 'Changes Tab')} shows the renamed page once as Moved with its old and new paths.`));
+    await sourceCommand(() => checkpoint(conceptText`The ${conceptLink(changesTabDoc.id, 'Changes Tab')} shows the renamed page once as Moved with its old and new paths.`, { keyFrames: [changesTabDoc] }));
   });
 
   await sourceCommand(() => skipMeadowHomeStateCheck());

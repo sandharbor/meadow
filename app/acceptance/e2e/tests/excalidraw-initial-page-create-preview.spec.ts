@@ -45,7 +45,6 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '05e433b3-03e
   testServer,
   checkpoint,
   skipMeadowHomeStateCheck,
-  addKeyFrame,
   expectLogErrors,
 }) => {
   const { releaseWorkerWarning, editor, previewModal, generatedBundle } = await test.step(sections.steps.setup, async () => {
@@ -70,9 +69,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '05e433b3-03e
     await sourceCommand(() => createModal.clickCreateBundle());
 
     await sourceCommand(() => editor.waitForLoad("t006-meadow-flower"));
-    await sourceCommand(() => addKeyFrame(initialPage));
-    await sourceCommand(() => addKeyFrame(excalidraw));
-    await sourceCommand(() => checkpoint("graph view loaded with excalidraw initial page"));
+    await sourceCommand(() => checkpoint("graph view loaded with excalidraw initial page", { keyFrames: [initialPage, excalidraw] }));
     return { releaseWorkerWarning, editor, previewModal, generatedBundle };
   });
 
@@ -93,8 +90,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '05e433b3-03e
 
     await sourceCommand(() => generatedBundle.expectHeading("t006 --- meadow-flower", 30_000));
     await sourceCommand(() => generatedBundle.excalidraw.expectStandaloneDrawingVisible());
-    await sourceCommand(() => addKeyFrame(excalidraw));
-    await sourceCommand(() => checkpoint("preview shows excalidraw initial page"));
+    await sourceCommand(() => checkpoint("preview shows excalidraw initial page", { keyFrames: [excalidraw] }));
   });
 
   await test.step(sections.steps.followLinkInsideDrawing, async () => {
@@ -106,8 +102,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '05e433b3-03e
     await sourceCommand(() => generatedBundle.excalidraw.clickStandaloneDrawingLink(firstDrawingLinkHref));
 
     await sourceCommand(() => generatedBundle.expectHeading("t006 --- linked-from-excalidraw"));
-    await sourceCommand(() => addKeyFrame(excalidraw));
-    await sourceCommand(() => checkpoint("preview after clicking first excalidraw link"));
+    await sourceCommand(() => checkpoint("preview after clicking first excalidraw link", { keyFrames: [excalidraw] }));
 
     void customBundle;
 

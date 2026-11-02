@@ -22,7 +22,7 @@ const sections = scenarioSections({
   acceptInstallsCoherentScopeUntrackChoiceTogether: { type: 'test', text: conceptText`Use ${conceptLink(sourceReviewAcceptance.id, 'Proposal Acceptance')} to install the confirmed depth change and preserve the untrack decision in curation.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '51af7817-6b84-4f0e-b058-b20b13fe27c4' }, { type: 'concept', description: exemplarySpec.id }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, sourceChanges, testServer, checkpoint, addKeyFrame, assertMeadowHomeState, expectLogErrors }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '51af7817-6b84-4f0e-b058-b20b13fe27c4' }, { type: 'concept', description: exemplarySpec.id }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, sourceChanges, testServer, checkpoint, assertMeadowHomeState, expectLogErrors }) => {
   const { editor, sourcing, proposal, bundleConfig, before, acceptedConfig } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
@@ -55,8 +55,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '51af7817-6b8
     expect(proposal.current.candidateSnapshotId).toBe(before.candidateSnapshotId);
     expect(proposal.current.proposed.nodes.find(node => node.bundleNodeName === 'Cognitive Biases')?.outlinksDepth).toBe(0);
     expect(new MeadowHomeBundleConfig(testServer.configDir, "example-bundle", expect).readNodesText()).toBe(acceptedConfig);
-    await sourceCommand(() => addKeyFrame(sourceChangesDuringReview));
-    await sourceCommand(() => checkpoint(conceptText`Confirmation of ${conceptLink(sourceChangesDuringReview.id, 'Source Changes During Review')} is open. The reviewed capture, proposed depth, and accepted configuration are unchanged.`));
+    await sourceCommand(() => checkpoint(conceptText`Confirmation of ${conceptLink(sourceChangesDuringReview.id, 'Source Changes During Review')} is open. The reviewed capture, proposed depth, and accepted configuration are unchanged.`, { keyFrames: [sourceChangesDuringReview] }));
     return { confirmation };
   });
 

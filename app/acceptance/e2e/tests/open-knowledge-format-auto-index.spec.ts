@@ -50,7 +50,6 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'faf07c58-2ff
   page,
   checkpoint,
   skipMeadowHomeStateCheck,
-  addKeyFrame,
   testServer,
 }) => {
   const { modal } = await test.step(sections.steps.setup, async () => {
@@ -66,8 +65,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'faf07c58-2ff
     const customizeTab = new CustomizeTab(page, expect);
     const okf = await sourceCommand(() => customizeTab.generationOptions.openOpenKnowledgeFormatSettings());
     await sourceCommand(() => okf.expectSelectedIndex(sourceIndexPageName, "root"));
-    await sourceCommand(() => addKeyFrame(customize));
-    await sourceCommand(() => checkpoint("auto okf index page selected"));
+    await sourceCommand(() => checkpoint("auto okf index page selected", { keyFrames: [customize] }));
     return { okf };
   });
 
@@ -76,8 +74,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'faf07c58-2ff
 
     const changesTab = new ChangesTab(page, expect);
     await sourceCommand(() => changesTab.waitForRegenerationComplete());
-    await sourceCommand(() => addKeyFrame(openKnowledgeFormat));
-    await sourceCommand(() => checkpoint("okf generation complete with source index page"));
+    await sourceCommand(() => checkpoint("okf generation complete with source index page", { keyFrames: [openKnowledgeFormat] }));
   });
 
   await test.step(sections.steps.inspectGeneratedPackageFiles, async () => {

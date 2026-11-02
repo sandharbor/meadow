@@ -65,7 +65,6 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'ec8d200b-55a
   page,
   checkpoint,
   assertMeadowHomeState,
-  addKeyFrame,
   testServer,
 }) => {
   const { migrations } = await test.step(sections.steps.setup, async () => {
@@ -88,8 +87,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'ec8d200b-55a
     const bundleList = new BundleListPage(page, expect);
     await sourceCommand(() => bundleList.goto());
     await sourceCommand(() => bundleList.expectHeadingVisible());
-    await sourceCommand(() => addKeyFrame(migration));
-    await sourceCommand(() => checkpoint("app ready after E2E-only startup migration"));
+    await sourceCommand(() => checkpoint("app ready after E2E-only startup migration", { keyFrames: [migration] }));
   });
 
   void bigBundle;

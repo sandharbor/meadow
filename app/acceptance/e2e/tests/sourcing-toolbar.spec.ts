@@ -43,8 +43,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'fcb8cf0e-498
     const editor = new BundleEditorPage(page, expect);
     const sourceReview = editor.sourceReview;
     await sourceCommand(() => editor.expectSourceUpdateInToolbar());
-    await sourceCommand(() => addKeyFrame(sourceSnapshot));
-    await sourceCommand(() => checkpoint('source check occupies the bundle toolbar without an extra heading row'));
+    await sourceCommand(() => checkpoint('source check occupies the bundle toolbar without an extra heading row', { keyFrames: [sourceSnapshot] }));
     return { status, update, editor, sourceReview };
   });
 
@@ -73,8 +72,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'fcb8cf0e-498
     await sourceCommand(() => page.clock.runFor(2000));
     await sourceCommand(() => expect(update).toHaveText('Refresh sources'));
     expect(scans).toBe(3);
-    await sourceCommand(() => addKeyFrame(sourceSnapshot));
-    await sourceCommand(() => checkpoint('the refresh button briefly says no changes before restoring its label'));
+    await sourceCommand(() => checkpoint('the refresh button briefly says no changes before restoring its label', { keyFrames: [sourceSnapshot] }));
   });
 
   await test.step(sections.steps.inspectAcceptedHistory, async () => {
@@ -95,8 +93,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'fcb8cf0e-498
     await sourceCommand(() => page.clock.runFor(2100));
     await sourceCommand(() => expect(review).toBeVisible());
     await sourceCommand(() => sourceReview.expectClosed());
-    await sourceCommand(() => addKeyFrame(sourceSnapshot));
-    await sourceCommand(() => checkpoint('available changes keep an explicit review action in the toolbar'));
+    await sourceCommand(() => checkpoint('available changes keep an explicit review action in the toolbar', { keyFrames: [sourceSnapshot] }));
     return { review };
   });
 
@@ -141,8 +138,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'fcb8cf0e-498
     await sourceCommand(() => sourceReview.accept());
     const acceptedHistory = await sourceCommand(() => editor.reviewSourceHistory());
     await sourceCommand(() => acceptedHistory.expectSnapshotCount(2));
-    await sourceCommand(() => addKeyFrame(sourceSnapshot));
-    await sourceCommand(() => checkpoint('accepted history lists the current checkpoint and excludes pending source changes'));
+    await sourceCommand(() => checkpoint('accepted history lists the current checkpoint and excludes pending source changes', { keyFrames: [sourceSnapshot] }));
     return { acceptedHistory };
   });
 

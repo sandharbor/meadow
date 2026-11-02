@@ -40,7 +40,6 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '21247a8b-c29
   page,
   checkpoint,
   skipMeadowHomeStateCheck,
-  addKeyFrame,
 }) => {
   const { editor, modal } = await test.step(sections.steps.setup, async () => {
     const wf = new Workflows(page, expect);
@@ -56,8 +55,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '21247a8b-c29
   await test.step(sections.steps.inspectUntrackedPages, async () => {
     await sourceCommand(() => modal.clickCheckUntrackedPages());
     await sourceCommand(() => page.waitForTimeout(500));
-    await sourceCommand(() => addKeyFrame(callout));
-    await sourceCommand(() => checkpoint("modal closed - untracked filter active"));
+    await sourceCommand(() => checkpoint("modal closed - untracked filter active", { keyFrames: [callout] }));
   });
 
   await test.step(sections.steps.trackSafePagesThisLeavesSensitivePages, async () => {
@@ -68,8 +66,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '21247a8b-c29
     await sourceCommand(() => page.waitForTimeout(250));
 
     await sourceCommand(() => editor.clickTrackAll());
-    await sourceCommand(() => addKeyFrame(tracking));
-    await sourceCommand(() => checkpoint("non-sensitive untracked pages tracked"));
+    await sourceCommand(() => checkpoint("non-sensitive untracked pages tracked", { keyFrames: [tracking] }));
   });
 
   await test.step(sections.steps.reopenPreview, async () => {

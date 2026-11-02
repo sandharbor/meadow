@@ -180,7 +180,8 @@ html, body {
 
 /* The body and document segment share one pill, including its selected outline. */
 .filter-section .document-filter-pill,
-.scenario-metadata-group .document-filter-pill {
+.scenario-metadata-group .document-filter-pill,
+.document-filter-pill.scenario-metadata-group {
   background-color: color-mix(in srgb, var(--filter-background) 80%, var(--filter-accent));
 }
 
@@ -188,6 +189,11 @@ html, body {
   background-color: color-mix(in srgb, var(--filter-accent) 75%, white);
   color: theme(colors.neutral.800);
   outline: 2px solid theme(colors.orange.500);
+}
+
+.document-filter-pill[data-highlighted="true"] {
+  background-color: color-mix(in srgb, var(--filter-accent) 75%, white);
+  color: theme(colors.neutral.800);
 }
 
 .filter-section .document-filter-pill > button[aria-pressed],

@@ -1,1 +1,0 @@
-One special type of config is the [[hooks config]].

@@ -29,7 +29,7 @@ const sections = scenarioSections({
   newAcceptedSensitivityRuleInvalidatesExplicitChoice: { type: 'test', text: conceptText`A new accepted sensitivity rule invalidates the explicit choice without refreshing capture.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '852f3ce6-3489-4b5e-b396-1beb1e98f63e' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, artifactDir, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }, testInfo) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '852f3ce6-3489-4b5e-b396-1beb1e98f63e' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, artifactDir, checkpoint, skipMeadowHomeStateCheck }, testInfo) => {
   const { editor, panel, sourcing, preview, views, expectedViews } = await test.step(sections.steps.setup, async () => {
     test.setTimeout(180000);
     const list = new BundleListPage(page, expect);
@@ -105,8 +105,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '852f3ce6-348
       await sourceCommand(() => expect(page.getByRole('dialog', { name: 'Preview and publish', exact: true })).toBeVisible());
       await sourceCommand(() => expect(page).toHaveURL(/tab=versions/));
       await sourceCommand(() => expect.poll(views).toEqual(expectedViews));
-      await sourceCommand(() => addKeyFrame(checkpointViewRestoration));
-      await sourceCommand(() => checkpoint('a fresh home restores Preview on Versions and both independent editor views', target));
+      await sourceCommand(() => checkpoint('a fresh home restores Preview on Versions and both independent editor views', { ...target, keyFrames: [checkpointViewRestoration] }));
       await sourceCommand(() => preview.closeModal());
       await sourceCommand(() => sourcing.open());
       await sourceCommand(() => editor.expectGraphViewActive());
@@ -129,8 +128,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '852f3ce6-348
       await sourceCommand(() => expect(conflict).toContainText('Fork review settings'));
       await sourceCommand(() => expect(conflict.getByRole('button', { name: 'Use proposed', exact: true })).toBeVisible());
       await sourceCommand(() => expect.poll(views).toEqual(conflictViews));
-      await sourceCommand(() => addKeyFrame(checkpointConcept));
-      await sourceCommand(() => checkpoint('a second fresh home restores the unresolved configuration choice', target));
+      await sourceCommand(() => checkpoint('a second fresh home restores the unresolved configuration choice', { ...target, keyFrames: [checkpointConcept] }));
       await sourceCommand(() => conflict.getByRole('button', { name: 'Use proposed', exact: true }).click());
       await sourceCommand(() => expect(conflict).toContainText('All conflicts resolved.'));
       await sourceCommand(() => conflict.getByRole('button', { name: 'Close', exact: true }).click());
@@ -149,8 +147,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '852f3ce6-348
       await sourceCommand(() => expect(sourcing.sensitivityReview).toContainText('Restored review policy'));
       await sourceCommand(() => expect(sourcing.sensitivityReview.getByRole('button', { name: 'Confirm tracking sensitive page', exact: true })).toBeEnabled());
       await sourceCommand(() => expect.poll(views).toEqual(sensitivityViews));
-      await sourceCommand(() => addKeyFrame(sourceReviewViewState));
-      await sourceCommand(() => checkpoint('a third fresh home restores the exact unresolved sensitivity review', target));
+      await sourceCommand(() => checkpoint('a third fresh home restores the exact unresolved sensitivity review', { ...target, keyFrames: [sourceReviewViewState] }));
       await sourceCommand(() => sourcing.resolveSensitiveTracking('Safe One.md', false));
       await sourceCommand(() => sourcing.sensitivityReview.getByRole('button', { name: 'Close', exact: true }).click());
       await sourceCommand(() => sourcing.accept());

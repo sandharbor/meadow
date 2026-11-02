@@ -122,7 +122,7 @@ test('every document-backed overview row uses the same independent split control
   try {
     await page.goto(`/${run.id}?view=list&area=bundle/sourcing&area=bundle/curation`);
     const rows = [
-      ['Areas', 'Bundle Sourcing'], ['Bundle Sourcing sub-areas', 'Source Review Workspace'],
+      ['Starts with', 'Single File'], ['Areas', 'Bundle Sourcing'], ['Bundle Sourcing sub-areas', 'Source Review Workspace'],
       ['Bundle Sourcing UI sub-areas', 'Tracking Changes Panel'], ['Bundles', run.fixture.name],
       ['Concept filters', 'Source Snapshot'], ['Source changes', 'Source Review Modification'], ['Interface', 'Web Client'],
       ...(run.contribution ? [['Contributed concept filters', run.contribution.name]] : []),
@@ -140,7 +140,7 @@ test('every document-backed overview row uses the same independent split control
       await expect(page).toHaveURL(originalUrl);
       await details.getByRole('button', { name: 'Close concept details', exact: true }).click();
     }
-    await expect(page.getByRole('group', { name: 'Starts with', exact: true }).getByRole('button', { name: /^Read / })).toHaveCount(0);
+    await expect(page.getByRole('group', { name: 'Starts with', exact: true }).getByRole('button', { name: /^Read / })).toHaveCount(1);
     const sourceChanges = page.getByRole('group', { name: 'Source changes', exact: true });
     await expect(sourceChanges.getByRole('button', { name: 'add', exact: true }).locator('..').getByRole('button', { name: /^Read / })).toHaveCount(0);
     await sourceChanges.getByRole('button', { name: 'modify', exact: true }).click();

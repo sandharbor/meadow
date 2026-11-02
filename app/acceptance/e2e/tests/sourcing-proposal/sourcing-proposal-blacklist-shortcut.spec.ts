@@ -24,7 +24,7 @@ const sections = scenarioSections({
   onceSourcingOpenEvenHarmlessLeafExclusion: { type: 'test', text: conceptText`Once sourcing is open, even a harmless leaf exclusion remains staged.` },
 });
 const areas = scenarioAreas([bundleCuration, bundleSourcing], { subAreas: [sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '09fc160a-3e39-4bb1-8fe0-7b722c5c91ac' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '09fc160a-3e39-4bb1-8fe0-7b722c5c91ac' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, assertMeadowHomeState }) => {
   const { editor, sourcing, proposal, configuration, original } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
@@ -48,8 +48,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '09fc160a-3e3
     await sourceCommand(() => expect(undo).toBeVisible());
     await sourceCommand(() => expect(sourcing.root).toBeHidden());
     expect(configuration().nodes.find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Leaf')?.listType).toBe('blacklist');
-    await sourceCommand(() => addKeyFrame(blacklist));
-    await sourceCommand(() => checkpoint('the leaf blacklist was applied with Undo and no wider scope changes'));
+    await sourceCommand(() => checkpoint('the leaf blacklist was applied with Undo and no wider scope changes', { keyFrames: [blacklist] }));
 
     await sourceCommand(() => undo.click());
     await sourceCommand(() => expect(undo).toBeHidden());

@@ -42,7 +42,6 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '2a0ec475-6a3
   page,
   checkpoint,
   skipMeadowHomeStateCheck,
-  addKeyFrame,
   testServer,
 }) => {
   const { modal, versions, initialVersion, successor } = await test.step(sections.steps.setup, async () => {
@@ -96,8 +95,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '2a0ec475-6a3
 
     await sourceCommand(() => expect(page.getByText("Integrity Problem", { exact: true })).toBeVisible());
     await sourceCommand(() => expect(page.getByText("Frozen version modified locally", { exact: true })).toBeVisible());
-    await sourceCommand(() => addKeyFrame(versioning, frozenVersion, externalFileEdits, dataIntegrity));
-    await sourceCommand(() => checkpoint("frozen integrity problem blocks version workflow"));
+    await sourceCommand(() => checkpoint("frozen integrity problem blocks version workflow", { keyFrames: [versioning, frozenVersion, externalFileEdits, dataIntegrity] }));
   });
 
   await test.step(sections.steps.restoreFrozenVersion, async () => {
@@ -109,8 +107,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '2a0ec475-6a3
     // e2e-allow-raw-data: Inspect repaired HTML bytes for the injected corruption marker.
     expect(fs.readFileSync(frozenHtmlFile, "utf8")).not.toContain("injected frozen edit");
 
-    await sourceCommand(() => addKeyFrame(restoringFrozenVersion));
-    await sourceCommand(() => checkpoint("restoring from Git removes the frozen integrity problem"));
+    await sourceCommand(() => checkpoint("restoring from Git removes the frozen integrity problem", { keyFrames: [restoringFrozenVersion] }));
   });
 
   await test.step(sections.steps.cancelUnsavedSuccessor, async () => {

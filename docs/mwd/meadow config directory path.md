@@ -1,1 +1,0 @@
-[[meadow config]] directory path

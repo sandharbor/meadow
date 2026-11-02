@@ -18,7 +18,7 @@ const sections = scenarioSections({
   createBundle: { type: 'test', text: conceptText`Create the bundle.` },
 });
 const areas = scenarioAreas([bundles, bundleSourcing], { subAreas: [sourceSetupNew] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'ae17062f-0f31-4721-9594-504a8391aa6b' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'ae17062f-0f31-4721-9594-504a8391aa6b' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, skipMeadowHomeStateCheck }) => {
   const { dialog } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     await sourceCommand(() => list.goto());
@@ -39,8 +39,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'ae17062f-0f3
     await sourceCommand(() => createModal.chooseStartingSelectionPath(2, 'sa', 'Same', 'Same'));
     await sourceCommand(() => dialog.getByRole('spinbutton', { name: 'Default outlink depth', exact: true }).fill('2'));
     await sourceCommand(() => dialog.getByRole('spinbutton', { name: 'Default inlink depth', exact: true }).fill('1'));
-    await sourceCommand(() => addKeyFrame(bundleSource, startingSelection));
-    await sourceCommand(() => checkpoint('sources define admission while ordered files and folders define the starts'));
+    await sourceCommand(() => checkpoint('sources define admission while ordered files and folders define the starts', { keyFrames: [bundleSource, startingSelection] }));
     return { dialog };
   });
 
@@ -69,8 +68,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'ae17062f-0f3
     };
     expect(await sourceCommand(() => lookup('notes'))).toBe(true);
     expect(await sourceCommand(() => lookup('research'))).toBe(false);
-    await sourceCommand(() => addKeyFrame(startingSelection));
-    await sourceCommand(() => checkpoint('initial creation captures the sources and preserves initial tracking rules'));
+    await sourceCommand(() => checkpoint('initial creation captures the sources and preserves initial tracking rules', { keyFrames: [startingSelection] }));
   });
 
   await sourceCommand(() => skipMeadowHomeStateCheck());

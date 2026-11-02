@@ -50,7 +50,6 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '51a96f0d-bf0
   page,
   testServer,
   checkpoint,
-  addKeyFrame,
   assertMeadowHomeState,
 }) => {
   const { editor, previewModal, slug, bundleConfig } = await test.step(sections.steps.setup, async () => {
@@ -78,8 +77,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '51a96f0d-bf0
   await test.step(sections.steps.previewWhileOnlyStartingFolderTracked, async () => {
     await sourceCommand(() => editor.clickPreview());
     await sourceCommand(() => editor.expectStartingSelectionsPreviewWarningVisible());
-    await sourceCommand(() => addKeyFrame(callout));
-    await sourceCommand(() => checkpoint("preview explains that only the starting folder is tracked"));
+    await sourceCommand(() => checkpoint("preview explains that only the starting folder is tracked", { keyFrames: [callout] }));
   });
 
   await test.step(sections.steps.previewAnywayNothingBeneathFolderPublished, async () => {
@@ -96,8 +94,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '51a96f0d-bf0
     await sourceCommand(() => folderNavigation.expectRootFolderNames([]));
     await sourceCommand(() => folderNavigation.expectRootFileNames([]));
     expect(bundleConfig.generatedPreviewPages()).toEqual(["index.html"]);
-    await sourceCommand(() => addKeyFrame(folderBundles));
-    await sourceCommand(() => checkpoint("the preview contains only the starting folder page"));
+    await sourceCommand(() => checkpoint("the preview contains only the starting folder page", { keyFrames: [folderBundles] }));
   });
 
   await test.step(sections.steps.trackOneNestedPagePreviewAgain, async () => {
@@ -115,8 +112,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '51a96f0d-bf0
       "Alpha/Nested/Nested note.html",
       "index.html",
     ]);
-    await sourceCommand(() => addKeyFrame(tracking));
-    await sourceCommand(() => checkpoint("only the explicitly tracked page is published"));
+    await sourceCommand(() => checkpoint("only the explicitly tracked page is published", { keyFrames: [tracking] }));
   });
 
   void customBundle;

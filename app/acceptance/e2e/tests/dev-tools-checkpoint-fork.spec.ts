@@ -91,8 +91,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '581b954b-d94
       const { state, destination } = await sourceCommand(() => opened.json()) as { state: { homeDirectory: string; partition: string }; destination: string };
       forkHome = state.homeDirectory;
       expect(forkHome).not.toBe(testServer.configDir);
-      await sourceCommand(() => addKeyFrame(serviceTarget));
-      await sourceCommand(() => checkpoint('Dev Tools opened the checkpoint with Local services and refused Hosted Development'));
+      await sourceCommand(() => checkpoint('Dev Tools opened the checkpoint with Local services and refused Hosted Development', { keyFrames: [serviceTarget] }));
       return { state, destination };
     });
 
@@ -119,8 +118,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '581b954b-d94
     }
 
     await test.step(sections.steps.verifyScenarioForkHoldsCapturedHomeObject, async () => {
-      await sourceCommand(() => addKeyFrame(localServices));
-      await sourceCommand(() => checkpoint('the fork holds the captured home and object storage'));
+      await sourceCommand(() => checkpoint('the fork holds the captured home and object storage', { keyFrames: [localServices] }));
     });
 
     const { review } = await test.step(sections.steps.reviewMoveInForkedApplication, async () => {
@@ -134,8 +132,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '581b954b-d94
     await test.step(sections.steps.moveHappenedAfterScenarioSLastSource, async () => {
       await sourceCommand(() => review.checkAgain());
       await sourceCommand(() => review.expectMove('Moved', 't001/deeper/t001 ---- child 2.md', 'source-changes/moved/t001 ---- child 2.md'));
-      await sourceCommand(() => addKeyFrame(checkpointConcept));
-      await sourceCommand(() => checkpoint('the forked application reviews the same pending move'));
+      await sourceCommand(() => checkpoint('the forked application reviews the same pending move', { keyFrames: [checkpointConcept] }));
     });
   } finally {
     await sourceCommand(() => page.goto('about:blank').catch(() => undefined));

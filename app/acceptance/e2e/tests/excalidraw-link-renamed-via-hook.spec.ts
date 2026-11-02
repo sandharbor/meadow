@@ -64,7 +64,6 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '96c282bf-6c9
   page,
   checkpoint,
   skipMeadowHomeStateCheck,
-  addKeyFrame,
   expectLogErrors,
 }) => {
   const { releaseWorkerWarning, releaseFontWarning, modal, generatedBundle } = await test.step(sections.steps.setup, async () => {
@@ -112,8 +111,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '96c282bf-6c9
     );
     await sourceCommand(() => pageTitleHook.save());
     await sourceCommand(() => previewStreamDone);
-    await sourceCommand(() => addKeyFrame(hooks));
-    await sourceCommand(() => checkpoint("hook saved - preview regenerated"));
+    await sourceCommand(() => checkpoint("hook saved - preview regenerated", { keyFrames: [hooks] }));
   });
 
   await test.step(sections.steps.inspectRenamedEmbeddingPageCloseFloatingHook, async () => {
@@ -132,8 +130,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '96c282bf-6c9
     await sourceCommand(() => generatedBundle.excalidraw.expectEmbedVisible());
     await sourceCommand(() => generatedBundle.excalidraw.clickEmbed());
     await sourceCommand(() => generatedBundle.expectHeading("myprefix t006 --- meadow-flower"));
-    await sourceCommand(() => addKeyFrame(excalidraw));
-    await sourceCommand(() => checkpoint("standalone excalidraw page rendered with myprefix heading"));
+    await sourceCommand(() => checkpoint("standalone excalidraw page rendered with myprefix heading", { keyFrames: [excalidraw] }));
   });
 
   await test.step(sections.steps.inspectRenamedDrawingLinks, async () => {
@@ -147,9 +144,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '96c282bf-6c9
       renamedHref,
       "myprefix t006 --- linked-from-excalidraw",
     ));
-    await sourceCommand(() => addKeyFrame(excalidraw));
-    await sourceCommand(() => addKeyFrame(hooks));
-    await sourceCommand(() => checkpoint("in-drawing link reflects myprefix in both text and href"));
+    await sourceCommand(() => checkpoint("in-drawing link reflects myprefix in both text and href", { keyFrames: [excalidraw, hooks] }));
     return { renamedHref };
   });
 

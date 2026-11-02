@@ -22,7 +22,7 @@ const sections = scenarioSections({
   reviewRegeneratedImage: { type: 'test', text: conceptText`Review the regenerated image.` },
 });
 const areas = scenarioAreas([bundleReview], { subAreas: [changesTabDoc] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'e6332af2-80c8-4c20-9104-8bb2e1375b37' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, meadowCli, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'e6332af2-80c8-4c20-9104-8bb2e1375b37' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, meadowCli, sourceChanges, checkpoint, skipMeadowHomeStateCheck }) => {
   const { editor } = await test.step(sections.steps.setup, async () => {
     let command = 0;
     const run = (args: string[]) => meadowCli.run(args, { artifactName: `setup-${++command}` });
@@ -57,8 +57,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'e6332af2-80c
     await sourceCommand(() => changes.selectFile('t024 ---- test image.png'));
     await sourceCommand(() => changes.expectSelectedFileMove('t024/t024 ---- test image.png', 't024/images/t024 ---- test image.png'));
     await sourceCommand(() => changes.expectImageComparison());
-    await sourceCommand(() => addKeyFrame(changesTabDoc));
-    await sourceCommand(() => checkpoint('the moved image shows both paths and both previews'));
+    await sourceCommand(() => checkpoint('the moved image shows both paths and both previews', { keyFrames: [changesTabDoc] }));
   });
 
   await sourceCommand(() => skipMeadowHomeStateCheck());

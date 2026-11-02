@@ -69,8 +69,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'a1240dd2-45c
     await sourceCommand(() => sourcing.compare('Cognitive Biases'));
     await sourceCommand(() => expect(sourcing.comparison).toContainText('Reviewed revision B explains'));
     await sourceCommand(() => expect(sourcing.comparison).not.toContainText('Live revision C'));
-    await sourceCommand(() => addKeyFrame(sourceChangesDuringReview));
-    await sourceCommand(() => checkpoint('B remains under review while the newer C revision is available'));
+    await sourceCommand(() => checkpoint('B remains under review while the newer C revision is available', { keyFrames: [sourceChangesDuringReview] }));
   });
 
   const { preview } = await test.step(sections.steps.acceptanceGenerationUseBIncludingImageWhile, async () => {

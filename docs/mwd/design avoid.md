@@ -1,1 +1,0 @@
-Opposite of [[design motivation]]

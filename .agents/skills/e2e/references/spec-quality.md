@@ -11,6 +11,11 @@ copy once the structure is settled.
 
 ## Author at the level of intent
 
+Read the skill's live `rule-reference.ts` output before implementation. It is the
+source-owned reference for mechanically enforced requirements and their repair
+examples; the checks distinguish quickcheck rules from the selected-spec
+editorial audit. The guidance below adds judgment about specification quality.
+
 Read `app/acceptance/e2e/_module/docs/coding_standards.md` for the executable
 structure and `app/concepts/README.md` for typed metadata, concept links, and
 report capture. Keep one test per file. Use existing `Workflows` for navigation
@@ -25,7 +30,7 @@ generation records instead of constructing storage paths and parsing JSON/YAML
 inside the scenario. A spec-local parsing helper does not establish the reusable
 boundary. Preserve exact-byte snapshots and independent persistence evidence
 where those are the claim. Quickcheck enforces this with `lint-no-raw-data.ts`.
-For genuinely necessary raw access, follow the coding standards' narrowly scoped
+For genuinely necessary raw access, follow the live `no-raw-data` rule's narrowly scoped
 `e2e-allow-raw-data` comment with a specific reason; ordinary configuration
 assertions should use the domain utility.
 

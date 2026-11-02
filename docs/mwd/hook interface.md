@@ -1,1 +1,0 @@
-[[hooks config]] must match the hooks interface (the types, method arity, etc)

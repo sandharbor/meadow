@@ -21,7 +21,7 @@ const sections = scenarioSections({
   cancelPreservesOldCaptureDisplayedDepthAs: { type: 'test', text: conceptText`Cancel preserves the old capture and the displayed depth as well as the durable draft.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'aac78272-d544-432b-ad5d-9945ba2c6515' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, sourceChanges, testServer, checkpoint, addKeyFrame, assertMeadowHomeState, expectLogErrors }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'aac78272-d544-432b-ad5d-9945ba2c6515' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, sourceChanges, testServer, checkpoint, assertMeadowHomeState, expectLogErrors }) => {
   const { sourcing, proposal, before } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
@@ -49,8 +49,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'aac78272-d54
     await sourceCommand(() => expect(confirmation).toContainText('Newer source material is available'));
     expect(proposal.current.candidateSnapshotId).toBe(before.candidateSnapshotId);
     expect(proposal.current.proposed).toEqual(before.proposed);
-    await sourceCommand(() => addKeyFrame(sourceChangesDuringReview));
-    await sourceCommand(() => checkpoint('the depth refresh confirmation is open with the original proposal preserved'));
+    await sourceCommand(() => checkpoint('the depth refresh confirmation is open with the original proposal preserved', { keyFrames: [sourceChangesDuringReview] }));
     return { confirmation };
   });
 

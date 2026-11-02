@@ -37,5 +37,8 @@ npx tsx _module/scripts/lint-no-direct-locators.ts
 echo "Linting intent-level data access in specs..."
 npx tsx _module/scripts/lint-no-raw-data.ts
 
+echo "Linting checkpoint-owned keyframes in specs..."
+npx tsx _module/scripts/lint-checkpoint-keyframes.ts
+
 echo "Linting final-assertion placement in specs..."
 npx tsx _module/scripts/lint-final-assertion.ts

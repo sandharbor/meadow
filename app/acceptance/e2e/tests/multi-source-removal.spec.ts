@@ -23,7 +23,7 @@ const sections = scenarioSections({
   reconsiderIgnoredSource: { type: 'test', text: conceptText`Reconsider the ignored source.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceSetupEdit, sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '94c8b2ba-c324-4d76-ac2e-c6923fcb3356' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '94c8b2ba-c324-4d76-ac2e-c6923fcb3356' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, skipMeadowHomeStateCheck }) => {
   const { editor, sources, bundleConfig, study, referenceFile, referenceContent } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     await sourceCommand(() => list.goto());
@@ -47,8 +47,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '94c8b2ba-c32
     await sourceCommand(() => editor.sourceReview.orphans.expectSummaryCount(2));
     await sourceCommand(() => editor.sourceReview.orphans.showExplanation('Study'));
     expect(bundleConfig.findNode({ bundleNodeId: study.bundleNodeId })).toEqual(study);
-    await sourceCommand(() => addKeyFrame(bundleSource));
-    await sourceCommand(() => checkpoint('deliberate removal offers mandatory cleanup while preserving saved configuration until acceptance'));
+    await sourceCommand(() => checkpoint('deliberate removal offers mandatory cleanup while preserving saved configuration until acceptance', { keyFrames: [bundleSource] }));
   });
 
   await test.step(sections.steps.acceptSourceUpdate, async () => {
@@ -81,8 +80,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '94c8b2ba-c32
     expect(bundleConfig.read().ignoredSourceNames).toContain('reference');
     await sourceCommand(() => sources.open());
     await sourceCommand(() => sources.expectReferences('reference', ['notes://Start', 'notes://Frontier']));
-    await sourceCommand(() => addKeyFrame(bundleSource));
-    await sourceCommand(() => checkpoint('the saved ignored name also suppresses a newly captured reference'));
+    await sourceCommand(() => checkpoint('the saved ignored name also suppresses a newly captured reference', { keyFrames: [bundleSource] }));
   });
 
   await test.step(sections.steps.reconsiderIgnoredSource, async () => {

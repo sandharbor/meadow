@@ -39,7 +39,6 @@ const areas = scenarioAreas([bundleCuration]);
 test(name.name, { annotation: [{ type: 'scenario-id', description: 'c6ff4187-9d76-4de3-bb43-b697ee898364' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand,
   page,
   checkpoint,
-  addKeyFrame,
   assertMeadowHomeState,
 }) => {
   const { detail } = await test.step(sections.steps.setup, async () => {
@@ -58,8 +57,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'c6ff4187-9d7
     await sourceCommand(() => detail.expectNoPill(Pill.Frontier));
     await sourceCommand(() => detail.expectNoPill(Pill.Tracked));
     await sourceCommand(() => detail.expectButtonEnabled(ActionButton.Track));
-    await sourceCommand(() => addKeyFrame(frontier, frontierEmbeddedAssets));
-    await sourceCommand(() => checkpoint("page-derived frontier image is available to track"));
+    await sourceCommand(() => checkpoint("page-derived frontier image is available to track", { keyFrames: [frontier, frontierEmbeddedAssets] }));
     return { detail };
   });
 
@@ -67,8 +65,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'c6ff4187-9d7
     await sourceCommand(() => detail.clickAction(ActionButton.Track, page));
     await sourceCommand(() => detail.expectPill(Pill.FrontierImage));
     await sourceCommand(() => detail.expectPill(Pill.Tracked));
-    await sourceCommand(() => addKeyFrame(tracking));
-    await sourceCommand(() => checkpoint("frontier image tracked in the page-derived bundle"));
+    await sourceCommand(() => checkpoint("frontier image tracked in the page-derived bundle", { keyFrames: [tracking] }));
   });
 
   void bigBundle;

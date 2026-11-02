@@ -1,5 +1,6 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 import ts from 'typescript';
+import { scenarioMetadataIssues } from './scenario-metadata.js';
 
 export interface EditorialConceptIndex {
   exportNameToId: ReadonlyMap<string, string>;
@@ -79,4 +80,10 @@ export function editorialLinkIssues(source: ts.SourceFile, registry: EditorialCo
     }
   }
   return issues;
+}
+
+/** The selected-spec CLI also enforces captured scenario metadata. */
+export function auditEditorialSource(text: string, registry: EditorialConceptIndex, filename = 'scenario.spec.ts') {
+  const source = ts.createSourceFile(filename, text, ts.ScriptTarget.Latest, true);
+  return [...scenarioMetadataIssues(source), ...editorialLinkIssues(source, registry)];
 }

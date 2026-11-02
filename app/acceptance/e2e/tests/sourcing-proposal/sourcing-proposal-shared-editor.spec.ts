@@ -22,7 +22,7 @@ const sections = scenarioSections({
   verifyScenarioCurationSuppliesFullGraphList: { type: 'test', text: conceptText`Verify the scenario: curation supplies the full graph list filters details and selection tools.` },
 });
 const areas = scenarioAreas([bundleCuration, bundleSourcing], { subAreas: [sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '8200e571-3323-4e87-8ca1-817d55a94bee' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, sourceChanges, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '8200e571-3323-4e87-8ca1-817d55a94bee' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, sourceChanges, testServer, checkpoint, assertMeadowHomeState }) => {
   const { editor, filters, sourcing, acceptedConfig } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
@@ -78,15 +78,13 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '8200e571-332
       await sourceCommand(() => expect(resize).not.toHaveAttribute('aria-valuenow', beforeWidth!));
       if (mode === 'curation') {
         await sourceCommand(() => expect(page.getByRole('region', { name: 'Source review evidence' })).toHaveCount(0));
-        await sourceCommand(() => addKeyFrame(sourceReviewWorkspace));
-        await sourceCommand(() => checkpoint('curation supplies the full graph list filters details and selection tools'));
+        await sourceCommand(() => checkpoint('curation supplies the full graph list filters details and selection tools', { keyFrames: [sourceReviewWorkspace] }));
         await sourceCommand(() => editor.clickSelectNone());
       } else {
         await sourceCommand(() => sourcing.expectNoSelectedSourceChange());
         await sourceCommand(() => sourcing.untrackSelected());
         expect(new MeadowHomeBundleConfig(testServer.configDir, "sourcing-review", expect).readNodesText()).toBe(acceptedConfig);
-        await sourceCommand(() => addKeyFrame(sourceReviewWorkspace));
-        await sourceCommand(() => checkpoint('sourcing supplies the same editor and isolated tracking without change evidence for unchanged pages'));
+        await sourceCommand(() => checkpoint('sourcing supplies the same editor and isolated tracking without change evidence for unchanged pages', { keyFrames: [sourceReviewWorkspace] }));
       }
     }
     await sourceCommand(() => sourcing.later());

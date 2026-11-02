@@ -22,7 +22,7 @@ const sections = scenarioSections({
   keepSavedBlacklistForLeafApplyProposed: { type: 'test', text: conceptText`Keep the saved blacklist for Leaf and apply the proposed untrack for Retained.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'b5ad609f-77b6-4cbf-9e1f-80ff8d52db07' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'b5ad609f-77b6-4cbf-9e1f-80ff8d52db07' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, assertMeadowHomeState }) => {
   const { editor, sourcing, nodeConfig } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
@@ -74,8 +74,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'b5ad609f-77b
     await sourceCommand(() => sourcing.resolveConflicts(2));
     const conflict = sourcing.conflictReview;
     for (const text of ['Leaf', 'Retained', 'blacklist', 'Removed']) await sourceCommand(() => expect(conflict).toContainText(text));
-    await sourceCommand(() => addKeyFrame(sourceReviewConfigurationMerge, configurationConflictsDialog));
-    await sourceCommand(() => checkpoint('both conflicts are open and unresolved before choosing'));
+    await sourceCommand(() => checkpoint('both conflicts are open and unresolved before choosing', { keyFrames: [sourceReviewConfigurationMerge, configurationConflictsDialog] }));
     return { conflict };
   });
 

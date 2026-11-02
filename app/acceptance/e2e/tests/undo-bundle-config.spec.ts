@@ -37,7 +37,6 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '01d8b979-ec0
   page,
   checkpoint,
   assertMeadowHomeState,
-  addKeyFrame,
 }) => {
   const { editor, originalCount } = await test.step(sections.steps.setup, async () => {
     const wf = new Workflows(page, expect);
@@ -78,8 +77,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '01d8b979-ec0
     );
     await sourceCommand(() => restoredDetail.expectOutlinksDepthInputValue("4"));
 
-    await sourceCommand(() => addKeyFrame(bundleConfig));
-    await sourceCommand(() => checkpoint("after undo - page count and depth restored"));
+    await sourceCommand(() => checkpoint("after undo - page count and depth restored", { keyFrames: [bundleConfig] }));
   });
 
   void bigBundle;

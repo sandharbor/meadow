@@ -42,7 +42,7 @@ for (const width of [1280, 390]) {
       await expect(page.locator('[data-source-line="6"]')).toHaveCount(0);
       const frames = checkpoint.getByLabel('Checkpoint keyframes');
       await expect(frames.locator('img')).toHaveCount(2);
-      await frames.getByRole('button', { name: `About ${orphan.name}`, exact: true }).click();
+      await frames.getByRole('button', { name: `Read ${orphan.name}`, exact: true }).click();
       const keyframeDetails = page.getByRole('dialog', { name: 'Floating concept details', exact: true });
       await expect(keyframeDetails.getByRole('heading', { name: orphan.name, exact: true })).toBeVisible();
       await keyframeDetails.getByRole('button', { name: 'Close concept details', exact: true }).click();

@@ -20,7 +20,7 @@ const sections = scenarioSections({
   verifyScenarioBlacklistingEmptyFolderChangesOnly: { type: 'test', text: conceptText`Verify the scenario: blacklisting the empty folder changes only that folder and offers Undo.` },
 });
 const areas = scenarioAreas([bundleCuration, bundleSourcing], { subAreas: [sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'c18a4909-4dec-4cd5-8755-beee93dceaa2' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'c18a4909-4dec-4cd5-8755-beee93dceaa2' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, checkpoint, assertMeadowHomeState }) => {
   const { editor, sourcing, configuration, original } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
@@ -57,8 +57,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'c18a4909-4de
     await sourceCommand(() => sourcing.select('Retained'));
     await sourceCommand(() => sourcing.expectSelectedRoute(['Routes', 'Reference', 'Retained']));
     await sourceCommand(() => sourcing.expectNoSelectedSourceChange());
-    await sourceCommand(() => addKeyFrame(sourceReviewWorkspace));
-    await sourceCommand(() => checkpoint('folder exclusion previews departures outside its subtree and the independent route'));
+    await sourceCommand(() => checkpoint('folder exclusion previews departures outside its subtree and the independent route', { keyFrames: [sourceReviewWorkspace] }));
     await sourceCommand(() => sourcing.accept());
     await sourceCommand(() => editor.switchToListView());
     await sourceCommand(() => editor.expectListViewRowByExactNameNotPresent('Outside'));

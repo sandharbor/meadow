@@ -52,7 +52,6 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'd5c7a445-f8b
   page,
   checkpoint,
   skipMeadowHomeStateCheck,
-  addKeyFrame,
   testServer,
 }) => {
   const { modal } = await test.step(sections.steps.setup, async () => {
@@ -79,8 +78,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'd5c7a445-f8b
     const okf = await sourceCommand(() => customizeTab.generationOptions.openOpenKnowledgeFormatSettings());
     await sourceCommand(() => okf.expectLogPageNotSuggested(orphanLogChoicePageName, "orphan"));
     await sourceCommand(() => okf.chooseLogPage(releaseNotesPageName));
-    await sourceCommand(() => addKeyFrame(customize));
-    await sourceCommand(() => checkpoint("custom okf log page selected"));
+    await sourceCommand(() => checkpoint("custom okf log page selected", { keyFrames: [customize] }));
     return { okf };
   });
 
@@ -89,8 +87,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'd5c7a445-f8b
 
     const changesTab = new ChangesTab(page, expect);
     await sourceCommand(() => changesTab.waitForRegenerationComplete());
-    await sourceCommand(() => addKeyFrame(openKnowledgeFormat));
-    await sourceCommand(() => checkpoint("okf generation complete with custom log page"));
+    await sourceCommand(() => checkpoint("okf generation complete with custom log page", { keyFrames: [openKnowledgeFormat] }));
   });
 
   await test.step(sections.steps.inspectGeneratedPackageFiles, async () => {

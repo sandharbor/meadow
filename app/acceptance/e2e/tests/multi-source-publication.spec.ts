@@ -23,7 +23,7 @@ const sections = scenarioSections({
   openNewerPage: { type: 'test', text: conceptText`Open the newer page.` },
 });
 const areas = scenarioAreas([bundleSourcing, bundleSharing], { subAreas: [sourceSetupEdit, publicationRevision] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'ee4a97bf-6cac-45f3-8f0e-a1504a703777' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, minioS3, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'ee4a97bf-6cac-45f3-8f0e-a1504a703777' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, minioS3, checkpoint, skipMeadowHomeStateCheck }) => {
   const { slug, editor, authored, originalContent, modal, versions, publish, originalUrl, originalNamespace } = await test.step(sections.steps.setup, async () => {
     await sourceCommand(() => testServer.activateS3Provider());
     const slug = 'multi-source-page';
@@ -53,8 +53,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'ee4a97bf-6ca
     expect(originalKeys).toContain(`${originalNamespace}/sources/research/Overview.html`);
     expect(originalKeys).toContain(`${originalNamespace}/sources/notes/diagram.svg`);
     expect(originalKeys).toContain(`${originalNamespace}/sources/research/diagram.svg`);
-    await sourceCommand(() => addKeyFrame(publicationRevision));
-    await sourceCommand(() => checkpoint('namesake pages and assets have distinct published source paths'));
+    await sourceCommand(() => checkpoint('namesake pages and assets have distinct published source paths', { keyFrames: [publicationRevision] }));
     return { slug, editor, authored, originalContent, modal, versions, publish, originalUrl, originalNamespace };
   });
 
@@ -65,8 +64,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'ee4a97bf-6ca
     await sourceCommand(() => sources.rename('notes', 'notebook'));
     await sourceCommand(() => expect(page.getByRole('dialog', { name: 'Manage sources', exact: true })).toContainText('we recommend creating a new generated version'));
     await sourceCommand(() => expect(page.getByRole('dialog', { name: 'Manage sources', exact: true })).toContainText('You can keep working without publishing.'));
-    await sourceCommand(() => addKeyFrame(bundleSource));
-    await sourceCommand(() => checkpoint('source settings explain publication path changes before saving the rename'));
+    await sourceCommand(() => checkpoint('source settings explain publication path changes before saving the rename', { keyFrames: [bundleSource] }));
     return { sources };
   });
 
@@ -102,8 +100,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'ee4a97bf-6ca
     const routeKey = successorKeys.find(key => /\/_mw_assets\/versioning\/routes\./.test(key))!;
     const routes = await sourceCommand(() => minioS3.readerRouteIndex(routeKey));
     expect(routes.routesByBundleNodeId['95b568da6b98']).toBe('sources/notebook/Overview.html');
-    await sourceCommand(() => addKeyFrame(versioning, publicationRevision));
-    await sourceCommand(() => checkpoint('a connected successor is published while its predecessor remains available'));
+    await sourceCommand(() => checkpoint('a connected successor is published while its predecessor remains available', { keyFrames: [versioning, publicationRevision] }));
     return { successorUrl };
   });
 
@@ -114,8 +111,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'ee4a97bf-6ca
     await sourceCommand(() => reader.goto(oldPageUrl));
     await sourceCommand(() => reader.expectMainHeadingVisible('Overview'));
     await sourceCommand(() => reader.expectNewerPageLink(newPageUrl));
-    await sourceCommand(() => addKeyFrame(publicationRevision));
-    await sourceCommand(() => checkpoint('the retained old page offers its stable counterpart at the new source path'));
+    await sourceCommand(() => checkpoint('the retained old page offers its stable counterpart at the new source path', { keyFrames: [publicationRevision] }));
     return { newPageUrl, reader };
   });
 
@@ -123,8 +119,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'ee4a97bf-6ca
     await sourceCommand(() => reader.openNewerVersion());
     await sourceCommand(() => expect(page).toHaveURL(newPageUrl));
     await sourceCommand(() => reader.expectMainHeadingVisible('Overview'));
-    await sourceCommand(() => addKeyFrame(publicationRevision));
-    await sourceCommand(() => checkpoint("the newer version opens the same page at its moved source path"));
+    await sourceCommand(() => checkpoint("the newer version opens the same page at its moved source path", { keyFrames: [publicationRevision] }));
   });
 
   await sourceCommand(() => skipMeadowHomeStateCheck());

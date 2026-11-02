@@ -21,7 +21,7 @@ const sections = scenarioSections({
   inspectNodeWhoseSensitivityDeclaredInSource: { type: 'test', text: conceptText`Inspect a node whose sensitivity is declared in its source.` },
 });
 const areas = scenarioAreas([bundleCuration], { subAreas: [filters] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: 'aeea6748-a5bc-41e3-99eb-c17ba3fd8ab8' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: 'aeea6748-a5bc-41e3-99eb-c17ba3fd8ab8' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, checkpoint, skipMeadowHomeStateCheck }) => {
   const { editor, filterPanel, detail, nodeKey } = await test.step(sections.steps.setup, async () => {
     const editor = new BundleEditorPage(page, expect);
     const filterPanel = new FilterPanelComponent(page, expect);
@@ -43,23 +43,20 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'aeea6748-a5b
     await sourceCommand(() => filterPanel.scrollFilterIntoView('Private inlinks'));
     await sourceCommand(() => editor.hoverGraphNode(nodeKey));
     await sourceCommand(() => editor.expectNodeHoverFilter('Private inlinks', { sensitive: true, colored: false }));
-    await sourceCommand(() => addKeyFrame(filters, filterSensitivity));
-    await sourceCommand(() => checkpoint('the graph hover names the sensitivity filter without a color marker'));
+    await sourceCommand(() => checkpoint('the graph hover names the sensitivity filter without a color marker', { keyFrames: [filters, filterSensitivity] }));
   });
 
   await test.step(sections.steps.explainSameMatchInListSelectedNode, async () => {
     await sourceCommand(() => editor.switchToListView());
     await sourceCommand(() => editor.hoverListNodeGlyph(nodeKey));
     await sourceCommand(() => editor.expectNodeHoverFilter('Private inlinks', { sensitive: true, colored: false }));
-    await sourceCommand(() => addKeyFrame(filters));
-    await sourceCommand(() => checkpoint('the list hover also shows the sensitivity action without a color marker'));
+    await sourceCommand(() => checkpoint('the list hover also shows the sensitivity action without a color marker', { keyFrames: [filters] }));
   });
 
   await test.step(sections.steps.inspectReasonForSelectedNodeSSensitivity, async () => {
     await sourceCommand(() => editor.clickListViewRowByNodeKey(nodeKey));
     await sourceCommand(() => detail.hoverSensitivityExplanation(['Marked sensitive by this enabled filter:', 'Private inlinks']));
-    await sourceCommand(() => addKeyFrame(filterSensitivity));
-    await sourceCommand(() => checkpoint('the selected node names its sensitivity filter'));
+    await sourceCommand(() => checkpoint('the selected node names its sensitivity filter', { keyFrames: [filterSensitivity] }));
   });
 
   await test.step(sections.steps.addSecondSensitivityFilterShowBothCauses, async () => {
@@ -69,8 +66,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'aeea6748-a5b
     await sourceCommand(() => editor.sourceReview.sensitivityReview.getByRole('button', { name: 'Close', exact: true }).click());
     await sourceCommand(() => editor.sourceReview.close());
     await sourceCommand(() => detail.hoverSensitivityExplanation(['Marked sensitive by these enabled filters:', 'Private inlinks', 'Private branches']));
-    await sourceCommand(() => addKeyFrame(filterSensitivity));
-    await sourceCommand(() => checkpoint('the selected node lists both filters supplying sensitivity'));
+    await sourceCommand(() => checkpoint('the selected node lists both filters supplying sensitivity', { keyFrames: [filterSensitivity] }));
   });
 
   await test.step(sections.steps.inspectNodeWhoseSensitivityDeclaredInSource, async () => {
@@ -78,8 +74,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'aeea6748-a5b
     await sourceCommand(() => editor.clickSelectNone());
     await sourceCommand(() => editor.clickListViewRowByNodeKey('file:t004 ---- sensitive page.md'));
     await sourceCommand(() => detail.hoverSensitivityExplanation(['meadow-sensitive is marked in the source.']));
-    await sourceCommand(() => addKeyFrame(sourceSensitivity));
-    await sourceCommand(() => checkpoint('the source-sensitive node explains its source marking'));
+    await sourceCommand(() => checkpoint('the source-sensitive node explains its source marking', { keyFrames: [sourceSensitivity] }));
   });
 
   void bigBundle;

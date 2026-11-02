@@ -24,7 +24,7 @@ const sections = scenarioSections({
   verifyScenarioMissingRequiredEntryBlocksGraph: { type: 'test', text: conceptText`Verify the scenario: the missing required entry blocks graph entry and acceptance without removing its configuration.` },
 });
 const areas = scenarioAreas([bundleSourcing], { subAreas: [sourceSetupEdit, sourceReviewWorkspace] });
-test(name.name, { annotation: [{ type: 'scenario-id', description: '12fd5e89-e493-47f3-b84f-03cb00e65e32' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '12fd5e89-e493-47f3-b84f-03cb00e65e32' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, testServer, sourceChanges, checkpoint, assertMeadowHomeState }) => {
   const { sourcing, proposal, sources, panel, before, pendingId } = await test.step(sections.steps.setup, async () => {
     const list = new BundleListPage(page, expect);
     const editor = new BundleEditorPage(page, expect);
@@ -56,8 +56,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '12fd5e89-e49
     await sourceCommand(() => expect(page.getByTestId('graph-canvas')).toHaveCount(0));
     expect(new MeadowHomeBundleConfig(testServer.configDir, "multi-source-page", expect).readText()).toBe(before);
     expect(proposal.current.id).toBe(pendingId);
-    await sourceCommand(() => addKeyFrame(sourceReviewCleanup));
-    await sourceCommand(() => checkpoint('the missing required entry blocks graph entry and acceptance without removing its configuration'));
+    await sourceCommand(() => checkpoint('the missing required entry blocks graph entry and acceptance without removing its configuration', { keyFrames: [sourceReviewCleanup] }));
     await sourceCommand(() => sourcing.later());
     await sourceCommand(() => sources.open());
     await sourceCommand(() => sources.editStartingSelections());
@@ -74,8 +73,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '12fd5e89-e49
     await sourceCommand(() => sourcing.expectSelectedRemovalReason('Disconnected'));
     await sourceCommand(() => expect(sourcing.evidence).not.toContainText('source was missing'));
     expect(fs.existsSync(path.join(testServer.sourceGraphsDir, 'multi-source/research/Incoming.md'))).toBe(true);
-    await sourceCommand(() => addKeyFrame(startingSelection));
-    await sourceCommand(() => checkpoint('the repaired proposal keeps its pending decisions and distinguishes disconnected material'));
+    await sourceCommand(() => checkpoint('the repaired proposal keeps its pending decisions and distinguishes disconnected material', { keyFrames: [startingSelection] }));
     await sourceCommand(() => sourcing.accept());
     const accepted = new MeadowHomeBundleConfig(testServer.configDir, "multi-source-page", expect).read();
     expect(accepted.entryBundleNodeId).toBe('95b568da6b98');

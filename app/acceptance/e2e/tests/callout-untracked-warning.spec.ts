@@ -31,7 +31,7 @@ const sections = scenarioSections({
   previewBundle: { type: 'test', text: conceptText`Preview the bundle.` },
 });
 const areas = scenarioAreas([bundleReview]);
-test(name.name, { annotation: [{ type: 'scenario-id', description: '4ca9ede4-b658-40dc-96e2-487c29608fea' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame }) => {
+test(name.name, { annotation: [{ type: 'scenario-id', description: '4ca9ede4-b658-40dc-96e2-487c29608fea' }, name.annotation, description.annotation, areas.annotation, sections.annotation] }, async ({ sourceCommand, page, checkpoint, skipMeadowHomeStateCheck }) => {
   const { bundleList } = await test.step(sections.steps.setup, async () => {
     const bundleList = new BundleListPage(page, expect);
     await sourceCommand(() => bundleList.goto());
@@ -52,8 +52,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: '4ca9ede4-b65
     const modal = new PreviewPublishModal(page, expect);
     await sourceCommand(() => modal.waitForPreviewComplete());
     await sourceCommand(() => modal.expectUntrackedPagesWarning());
-    await sourceCommand(() => addKeyFrame(callout));
-    await sourceCommand(() => checkpoint("preview shows untracked warning"));
+    await sourceCommand(() => checkpoint("preview shows untracked warning", { keyFrames: [callout] }));
   });
 
   void bigBundle;

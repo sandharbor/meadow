@@ -39,7 +39,6 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'ec53dab3-295
   page,
   checkpoint,
   skipMeadowHomeStateCheck,
-  addKeyFrame,
   testServer,
 }) => {
   const { modal, versions, initialVersion } = await test.step(sections.steps.setup, async () => {
@@ -65,8 +64,7 @@ test(name.name, { annotation: [{ type: 'scenario-id', description: 'ec53dab3-295
     await sourceCommand(() => modal.openCreateNewVersionDialog());
     await sourceCommand(() => modal.expectReaderConnectionCopy());
     await sourceCommand(() => modal.expectNoChangeVersionConfirmationRequired());
-    await sourceCommand(() => addKeyFrame(versioning));
-    await sourceCommand(() => checkpoint("no-change version requires explicit confirmation"));
+    await sourceCommand(() => checkpoint("no-change version requires explicit confirmation", { keyFrames: [versioning] }));
   });
 
   await test.step(sections.steps.confirmIntentionalDuplicate, async () => {
