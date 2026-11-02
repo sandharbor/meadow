@@ -472,7 +472,10 @@ const ConfigFileExplorer: React.FC<ConfigFileExplorerProps> = ({
   const [showChangedOnly, setShowChangedOnly] = useState(initialShowChangedOnly);
   const [activeTab, setActiveTab] = useState<ViewTab>('whole');
   const [selectedFileGitStatus, setSelectedFileGitStatus] = useState<string | undefined>(undefined);
-  const [hasAutoSelected, setHasAutoSelected] = useState(false);
+  // Refs, not state: changing them must not re-run the tree fetch effect.
+  const hasAutoSelectedRef = useRef(false);
+  const selectedKeyRef = useRef(selectedKey);
+  selectedKeyRef.current = selectedKey;
   const [fileType, setFileType] = useState<'text' | 'image' | 'binary'>('text');
   const [originalFileType, setOriginalFileType] = useState<'text' | 'image' | 'binary'>('text');
   const [selectedFileLoading, setSelectedFileLoading] = useState(false);
@@ -482,13 +485,18 @@ const ConfigFileExplorer: React.FC<ConfigFileExplorerProps> = ({
   const [fileTreeWidth, setFileTreeWidth] = useState(DEFAULT_FILE_TREE_WIDTH);
   const [isResizing, setIsResizing] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const treeRequestIdRef = useRef(0);
 
-  const fetchTree = useCallback(async (changedOnly = false) => {
+  // Resolves to null when a newer fetch has started, so a late response never replaces a newer tree.
+  const fetchTree = useCallback(async (changedOnly = false): Promise<FileNode[] | null> => {
     console.log('[ConfigFileExplorer] fetchTree called', { changedOnly });
+    const requestId = ++treeRequestIdRef.current;
+    // `loading` starts true and covers only the first fetch. Refetches keep the
+    // current tree on screen so filter changes and refreshes do not flash a spinner.
     try {
-      setLoading(true);
       console.log('[ConfigFileExplorer] Calling api.fetchTree...');
       const data = await api.fetchTree({ changedOnly });
+      if (requestId !== treeRequestIdRef.current) return null;
       console.log('[ConfigFileExplorer] fetchTree response received', { 
         treeLength: data.tree?.length,
         root: data.root 
@@ -498,11 +506,12 @@ const ConfigFileExplorer: React.FC<ConfigFileExplorerProps> = ({
       setError(null);
       return data.tree;
     } catch (err) {
+      if (requestId !== treeRequestIdRef.current) return null;
       console.error('[ConfigFileExplorer] fetchTree error:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
       return [];
     } finally {
-      setLoading(false);
+      if (requestId === treeRequestIdRef.current) setLoading(false);
       console.log('[ConfigFileExplorer] fetchTree complete, loading set to false');
     }
   }, [api]);
@@ -799,32 +808,54 @@ const ConfigFileExplorer: React.FC<ConfigFileExplorerProps> = ({
     let cancelled = false;
     // Pass showChangedOnly to optimize backend fetch when in "changed only" mode
     fetchTree(showChangedOnly).then((loadedTree) => {
-      if (cancelled) return;
+      if (cancelled || !loadedTree) return;
       // Auto-expand folders if requested
       if (autoExpandFolders && loadedTree.length > 0) {
         const allPaths = collectDirectoryPaths(loadedTree, shouldAutoExpandFolder);
         setExpandedPaths(new Set(allPaths));
       }
       
+      // A refetch keeps the selected file while the new tree still lists it.
+      // Otherwise it falls through to the same choice a fresh view would make.
+      const currentKey = selectedKeyRef.current;
+      if (hasAutoSelectedRef.current && currentKey) {
+        const stillListed = findFileNode(loadedTree, currentKey) ?? findFileByPath(loadedTree, currentKey);
+        if (stillListed) {
+          setSelectedNode(stillListed);
+          return;
+        }
+        fileLoadRequestIdRef.current += 1;
+        setSelectedPath(null);
+        setSelectedNode(null);
+        setSelectedFileGitStatus(undefined);
+        setSelectedFileLoading(false);
+        resetSelectedFileState();
+        if (autoSelectFirstChangedFile) {
+          const firstChanged = findAutoSelectedChangedFile(loadedTree, shouldPreferAutoSelectedFile);
+          if (firstChanged) selectFile(fileNodeKey(firstChanged), loadedTree);
+        }
+        return;
+      }
+
       // If initialSelectedFile is provided, use it (highest priority)
-      if (initialSelectedFile && !hasAutoSelected) {
-        setHasAutoSelected(true);
+      if (initialSelectedFile && !hasAutoSelectedRef.current) {
+        hasAutoSelectedRef.current = true;
         selectFile(initialSelectedFile, loadedTree);
         return;
       }
-      
+
       // Auto-select first changed file if requested and not already selected
-      if (autoSelectFirstChangedFile && !hasAutoSelected && loadedTree.length > 0) {
+      if (autoSelectFirstChangedFile && !hasAutoSelectedRef.current && loadedTree.length > 0) {
         const firstChanged = findAutoSelectedChangedFile(loadedTree, shouldPreferAutoSelectedFile);
         if (firstChanged) {
-          setHasAutoSelected(true);
+          hasAutoSelectedRef.current = true;
           // Use selectFile directly with the just-loaded tree to avoid stale state
           selectFile(fileNodeKey(firstChanged), loadedTree);
         }
       }
     });
     return () => { cancelled = true; };
-  }, [fetchTree, autoExpandFolders, shouldAutoExpandFolder, autoSelectFirstChangedFile, shouldPreferAutoSelectedFile, hasAutoSelected, selectFile, initialSelectedFile, showChangedOnly, mode]);
+  }, [fetchTree, autoExpandFolders, shouldAutoExpandFolder, autoSelectFirstChangedFile, shouldPreferAutoSelectedFile, selectFile, initialSelectedFile, showChangedOnly, mode, findFileNode, findFileByPath, resetSelectedFileState]);
 
   const handleSave = async () => {
     if (!selectedPath || !api.saveContent) return;

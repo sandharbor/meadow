@@ -189,9 +189,9 @@ const PreviewChangesTab: React.FC<PreviewChangesTabProps> = ({
   const [htmlSectionChangesMap, setHtmlSectionChangesMap] = useState<Record<string, HtmlSectionChanges>>({});
   const [htmlSectionChangesLoading, setHtmlSectionChangesLoading] = useState(false);
   const [hiddenCount, setHiddenCount] = useState(0);
-  const [htmlSectionChangesEpoch, setHtmlSectionChangesEpoch] = useState(0);
   const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
   const filterDropdownRef = useRef<HTMLDivElement>(null);
+  const treeRequestIdRef = useRef(0);
 
   // Change type filtering state
   const [changeTypeFilters, setChangeTypeFilters] = useState<ChangeTypeFilters>({
@@ -244,7 +244,6 @@ const PreviewChangesTab: React.FC<PreviewChangesTabProps> = ({
           }
         }
         setHtmlSectionChangesMap(map);
-        setHtmlSectionChangesEpoch((v) => v + 1);
       })
       .catch((err) => {
         logger.error('Failed to load HTML section changes:', err);
@@ -263,26 +262,6 @@ const PreviewChangesTab: React.FC<PreviewChangesTabProps> = ({
   const toggleChangeTypeFilter = useCallback((key: ChangeTypeKey) => {
     setChangeTypeFilters((prev) => ({ ...prev, [key]: !prev[key] }));
   }, []);
-
-  const sectionFilterKey = useMemo(() => {
-    return [
-      htmlSectionFilters.head ? '1' : '0',
-      htmlSectionFilters.aside ? '1' : '0',
-      htmlSectionFilters.header ? '1' : '0',
-      htmlSectionFilters.main ? '1' : '0',
-      htmlSectionFilters.footer ? '1' : '0',
-      htmlSectionFilters.other ? '1' : '0',
-    ].join('');
-  }, [htmlSectionFilters]);
-
-  const changeTypeFilterKey = useMemo(() => {
-    return [
-      changeTypeFilters.added ? '1' : '0',
-      changeTypeFilters.modified ? '1' : '0',
-      changeTypeFilters.moved ? '1' : '0',
-      changeTypeFilters.deleted ? '1' : '0',
-    ].join('');
-  }, [changeTypeFilters]);
 
   const displayedHtmlSections = useMemo(() => {
     const sections: Array<{ key: HtmlSectionFilterKey; label: string }> = [
@@ -343,7 +322,10 @@ const PreviewChangesTab: React.FC<PreviewChangesTabProps> = ({
   const filteredApi: ConfigFileExplorerApi = useMemo(() => ({
     ...baseApi,
     fetchTree: async (options) => {
+      const requestId = ++treeRequestIdRef.current;
       const data = (await baseApi.fetchTree(options)) as FileTreeResponse & { comparison?: GeneratedComparisonSummary | null };
+      // The explorer discards a superseded response; its counts must not land either.
+      if (requestId !== treeRequestIdRef.current) return data;
       setComparisonSummary(data.comparison ?? null);
 
       if (!options?.changedOnly) {
@@ -422,8 +404,10 @@ const PreviewChangesTab: React.FC<PreviewChangesTabProps> = ({
           </div>
         )}
         <div className="min-h-0 flex-1">
+        {/* Filters and section data reach the explorer through filteredApi, which
+            refetches in place; remounting on them would flash the whole view. */}
         <ConfigFileExplorer
-          key={`${initialFile || 'default'}-${sectionFilterKey}-${changeTypeFilterKey}-${htmlSectionChangesEpoch}-${refreshKey}`}
+          key={`${initialFile || 'default'}-${refreshKey}`}
           api={filteredApi}
           showPath={false}
           showHeader={true}

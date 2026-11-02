@@ -65,4 +65,63 @@ describe('ConfigFileExplorer live content refresh', () => {
     await waitFor(() => expect(screen.getByText('After customization')).toBeInTheDocument());
     expect(screen.getAllByText('selected.txt').length).toBeGreaterThan(0);
   });
+
+  it('does not refetch the tree after auto-selecting the first changed file', async () => {
+    const filePath = '/bundle/page.html';
+    const api: ConfigFileExplorerApi = {
+      fetchTree: vi.fn(async () => ({ root: '/bundle', tree: [{ name: 'page.html', path: filePath, type: 'file' as const, gitStatus: 'new' }] })),
+      fetchContent: vi.fn(async () => ({ content: 'Page body', path: filePath, fileType: 'text' as const })),
+      fetchOriginal: vi.fn(async () => ({ content: null, path: filePath, isNew: true })),
+    };
+    render(<ConfigFileExplorer api={api} readOnly autoSelectFirstChangedFile />);
+    await waitFor(() => expect(api.fetchContent).toHaveBeenCalledWith(filePath));
+    await act(async () => { await Promise.resolve(); });
+    expect(api.fetchTree).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the tree on screen while a new api refetches and moves the selection off a file it no longer lists', async () => {
+    const first = '/bundle/first.html';
+    const second = '/bundle/second.html';
+    const file = (path: string) => ({ name: path.split('/').pop()!, path, type: 'file' as const, gitStatus: 'new' });
+    const fetchContent = vi.fn(async (path: string) => ({ content: `Body of ${path}`, path, fileType: 'text' as const }));
+    const fetchOriginal = vi.fn(async (path: string) => ({ content: null, path, isNew: true }));
+    const initialApi: ConfigFileExplorerApi = {
+      fetchTree: vi.fn(async () => ({ root: '/bundle', tree: [file(first), file(second)] })),
+      fetchContent,
+      fetchOriginal,
+    };
+    const { container, rerender } = render(<ConfigFileExplorer api={initialApi} readOnly autoSelectFirstChangedFile />);
+    await waitFor(() => expect(fetchContent).toHaveBeenCalledWith(first));
+
+    let resolveTree!: (tree: FileTreeResponse) => void;
+    const filteredApi: ConfigFileExplorerApi = {
+      fetchTree: vi.fn(() => new Promise<FileTreeResponse>(resolve => { resolveTree = resolve; })),
+      fetchContent,
+      fetchOriginal,
+    };
+    rerender(<ConfigFileExplorer api={filteredApi} readOnly autoSelectFirstChangedFile />);
+    await waitFor(() => expect(filteredApi.fetchTree).toHaveBeenCalled());
+    expect(container.querySelector('.animate-spin.h-8')).toBeNull();
+    expect(screen.getAllByText('first.html').length).toBeGreaterThan(0);
+
+    await act(async () => { resolveTree({ root: '/bundle', tree: [file(second)] }); });
+    await waitFor(() => expect(fetchContent).toHaveBeenCalledWith(second));
+    expect(screen.queryByText('first.html')).toBeNull();
+  });
+
+  it('ignores a tree response that a newer fetch has superseded', async () => {
+    const file = (path: string) => ({ name: path.split('/').pop()!, path, type: 'file' as const });
+    const base = { fetchContent: vi.fn(), fetchOriginal: vi.fn() };
+    const { rerender } = render(<ConfigFileExplorer api={{ ...base, fetchTree: vi.fn(async () => ({ root: '/bundle', tree: [file('/bundle/start.txt')] })) }} readOnly />);
+    await waitFor(() => expect(screen.getByText('start.txt')).toBeInTheDocument());
+
+    let resolveStale!: (tree: FileTreeResponse) => void;
+    rerender(<ConfigFileExplorer api={{ ...base, fetchTree: () => new Promise<FileTreeResponse>(resolve => { resolveStale = resolve; }) }} readOnly />);
+    rerender(<ConfigFileExplorer api={{ ...base, fetchTree: vi.fn(async () => ({ root: '/bundle', tree: [file('/bundle/latest.txt')] })) }} readOnly />);
+    await waitFor(() => expect(screen.getByText('latest.txt')).toBeInTheDocument());
+
+    await act(async () => { resolveStale({ root: '/bundle', tree: [file('/bundle/stale.txt')] }); });
+    expect(screen.queryByText('stale.txt')).toBeNull();
+    expect(screen.getByText('latest.txt')).toBeInTheDocument();
+  });
 });
